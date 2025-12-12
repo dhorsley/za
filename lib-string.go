@@ -524,7 +524,7 @@ func buildStringLib() {
         return StripCC(args[0].(string)), nil
     }
 
-    slhelp["clean"] = LibHelp{in: "string", out: "string", action: "Remove curly brace nests from a string. Use this to sanitise inputs."}
+    slhelp["clean"] = LibHelp{in: "string", out: "string", action: "Remove curly brace nests from a string."}
     stdlib["clean"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("clean", args, 1, "1", "string"); !ok {
             return nil, err
@@ -540,8 +540,11 @@ func buildStringLib() {
         return log_sanitise(args[0].(string)), nil
     }
 
-    slhelp["sanitisation_enabled"] = LibHelp{in: "", out: "bool", action: "Check if log sanitisation is currently enabled. Returns true if enabled, false if disabled."}
-    stdlib["sanitisation_enabled"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+    slhelp["sanitisation"] = LibHelp{in: "", out: "bool", action: "set/check if log sanitisation is currently enabled. Returns true if previously enabled."}
+    stdlib["sanitisation"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sanitisation", args, 1, "1", "bool"); !ok {
+            return nil, err
+        }
         sanitisationMutex.Lock()
         defer sanitisationMutex.Unlock()
         if len(args) == 0 {

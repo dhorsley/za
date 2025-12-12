@@ -54,10 +54,12 @@ library changes
 ---------------
 
     * added log_sanitise() call to remove some common risk exposures from strings.
-    * (not yet active) : added sanitisation_enabled() call to enable or disable automated use of log_sanitise()
-        - this is enabled by default. only disable it in protected environments
-        - N.B.: this is not enabled throughout all of the logging system yet, just in timeout logging currently.
-                however, the setting will be respected elsewhere when plog() and similar functions are updated.
+        - this will need improvement over time. it is only really intended to look
+           for very specific cases currently.
+
+    * added sanitisation() call to enable or disable automated use of log_sanitise()
+        - this is enabled by default. only disable it in protected environments.
+
     * added permit("sanitisation",...) call for enabling/disabling the above call.
 
     * re-enabled concat() function for array concatenation of two arrays (1d)

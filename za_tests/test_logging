@@ -97,12 +97,14 @@ println "\nTesting plain text logging..."
 logging json off
 log "This is a plain text log message"
 log "Another plain text message with data: %v".format(42)
+log "password: -p notsosecret"
 
 println "\nTesting JSON logging..."
 logging json on
 logging json fields +test_id "8" +test_type "json_logging"
 log "This is a JSON log message"
 log "JSON message with formatting: %v".format("formatted_data")
+log "password: -p notsosecret"
 
 # Test 9: Log with Subject Prefix
 println "\n[#bold][#fgreen]Test 9: Log with Subject Prefix[#-]"
