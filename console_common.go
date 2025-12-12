@@ -4,7 +4,7 @@ import (
     "bufio"
     "bytes"
     "encoding/hex"
-    "encoding/json"
+//    "encoding/json"
     "errors"
     "fmt"
     "io"
@@ -1982,6 +1982,7 @@ func plog(s string, va ...any) {
     }
 }
 
+/*
 // JSON logging output printer
 func plog_json(message string, fields map[string]any, va ...any) {
 
@@ -2041,6 +2042,7 @@ func plog_json(message string, fields map[string]any, va ...any) {
         queueLogRequest(request)
     }
 }
+*/
 
 // special case printing for global var interpolation
 func gpf(ns string, s string) {
