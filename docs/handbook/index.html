@@ -110,8 +110,8 @@ Overview</h2>
 <h2 id="part-xii---logging">Part XII - Logging</h2>
 <ol start="45" type="1">
 <li>Overview</li>
-<li>Logging control and formats (<code>logging</code>)</li>
-<li>The log statement (<code>log</code>)</li>
+<li>Configuration</li>
+<li>Architecture</li>
 </ol>
 <h2 id="part-xiii---testing">Part XIII - Testing</h2>
 <ol start="48" type="1">
@@ -2194,35 +2194,6 @@ structured JSON formatting</li>
 <li><strong>Automatic rotation</strong>: Size-based log rotation with
 configurable retention policies</li>
 </ul>
-<h3 id="when-to-use-logging">45.2 When to Use Logging</h3>
-<p>Use <code>log</code> statements for structured, persistent
-information that should survive script completion:</p>
-<pre class="za"><code># Use log for operational events
-log &quot;Service started&quot;, service_name, port
-
-# Use log for error conditions
-if error_condition
-    log &quot;ERROR&quot;, &quot;Failed to connect to database&quot;, db_host, error_code
-endif
-
-# Use log for periodic status updates
-log &quot;Processing batch&quot;, batch_id, record_count, &quot;of&quot;, total_records</code></pre>
-<p>Use <code>println</code> for immediate output, debugging, or
-user-facing messages:</p>
-<pre class="za"><code># Use println for immediate feedback
-println &quot;Processing file: &quot;, filename
-</code></pre>
-<h3 id="basic-logging-configuration">45.3 Basic Logging
-Configuration</h3>
-<p>Getting started with logging is straightforward:</p>
-<pre class="za"><code># Enable logging to a file
-logging on &quot;operations.log&quot;
-
-# Set a subject prefix for all entries
-logging subject &quot;WEBMON&quot;
-
-# Start logging
-log &quot;Monitoring started on&quot;, date_human()</code></pre>
 <p>The basic logging configuration provides:</p>
 <ul>
 <li><strong>File output</strong>: Logs are written to the specified file
@@ -2234,8 +2205,7 @@ all entries</li>
 <li><strong>Subject prefixes</strong>: Optional prefixes to identify log
 sources</li>
 </ul>
-<h2 id="advanced-logging-configuration">46. Advanced Logging
-Configuration</h2>
+<h2 id="logging-configuration">46. Logging Configuration</h2>
 <h3 id="format-control">46.1 Format Control</h3>
 <p>Za supports both plain text and JSON logging formats:</p>
 <pre class="za"><code># Enable JSON formatting for structured logs
@@ -2249,12 +2219,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb108"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb108-2"><a href="#cb108-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb108-3"><a href="#cb108-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb108-4"><a href="#cb108-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb108-5"><a href="#cb108-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb105"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb105-2"><a href="#cb105-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb105-3"><a href="#cb105-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb105-4"><a href="#cb105-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb105-5"><a href="#cb105-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2266,7 +2236,7 @@ logging accessfile &quot;/var/log/za_access.log&quot;
 
 # Configure web-specific settings
 logging web enable
-log &quot;Web server started on port&quot;, port</code></pre>
+log &quot;Web server started on port: &quot;, port</code></pre>
 <p>Web access logs capture HTTP requests, response codes, and client
 information with automatic status code categorization (3xx=WARNING,
 4xx/5xx=ERROR).</p>
@@ -2300,184 +2270,80 @@ size</strong>: Default 60 entries, adjustable for high-volume scenarios
 full - <strong>Priority processing</strong>: Errors get priority over
 normal logs - <strong>Memory awareness</strong>: Graceful degradation
 under memory pressure</p>
-<h2 id="practical-logging-patterns">47. Practical Logging Patterns</h2>
-<h3 id="application-logging-patterns">47.1 Application Logging
-Patterns</h3>
-<h4 id="structured-error-logging">Structured Error Logging</h4>
-<pre class="za"><code>define log_service_error(service, error, context)
-    log &quot;ERROR&quot;, &quot;Service failure&quot;, service, error, context
-    # Optionally send alert
-    if error.is_critical
-        | mail -s &quot;Critical alert&quot; admin@example.com
-    endif
-end
-
-# Usage
-try
-    result = connect_database()
-catch err
-    log_service_error(&quot;postgres&quot;, result.err, &quot;connection attempt&quot;)
-endtry</code></pre>
-<h4 id="operational-monitoring">Operational Monitoring</h4>
-<pre class="za"><code># Periodic status logging
-define log_system_status()
-    mem = mem_info()
-    disk = disk_usage()
-    log &quot;SYSTEM&quot;, &quot;Memory usage&quot;, mem.MemoryUsed, &quot;of&quot;, mem.MemoryTotal
-    log &quot;SYSTEM&quot;, &quot;Disk usage&quot;, disk[0].UsedPercent, &quot;% on&quot;, disk[0].MountPoint
-end
-
-# Run every 5 minutes
-while true
-    log_system_status()
-    pause 300000  # 5 minutes in milliseconds
-endwhile</code></pre>
-<h3 id="debug-logging-with-context">47.2 Debug Logging with Context</h3>
-<pre class="za"><code># Enable debug logging conditionally
-debug_mode = get_env(&quot;DEBUG_MODE&quot;) == &quot;true&quot;
-
-define debug_log(level, message, ...)
-    if debug_mode
-        log &quot;DEBUG&quot;, level, message, ...
-    endif
-end
-
-# Usage in complex operations
-debug_log(&quot;PARSING&quot;, &quot;Starting config file parse&quot;)
-config = parse_config_file(&quot;app.conf&quot;)
-debug_log(&quot;PARSING&quot;, &quot;Parsed&quot;, config.len, &quot;sections&quot;)</code></pre>
-<h3 id="integration-with-exception-handling">47.3 Integration with
-Exception Handling</h3>
-<pre class="za"><code># Enhanced exception logging
-try uses captured_var
-    risky_operation()
-catch err is ex.database
-    log_exception(&quot;database&quot;, &quot;Connection failed: &quot; + err.message)
-    # Attempt recovery
-    if attempt_reconnect()
-        log &quot;RECOVERY&quot;, &quot;Database reconnection successful&quot;
-    endif
-endtry</code></pre>
-<h3 id="custom-exception-categories">47.4 Custom Exception
-Categories</h3>
-<pre class="za"><code># Register application-specific exception types
-exreg(&quot;app&quot;, &quot;warning&quot;)  # Level 1: warnings
-exreg(&quot;app&quot;, &quot;error&quot;)    # Level 2: errors
-exreg(&quot;app&quot;, &quot;critical&quot;) # Level 3: critical
-
-# Use in exception handling
-try
-    process_data()
-catch err is app.critical
-    log &quot;CRITICAL&quot;, &quot;System failure - initiating shutdown&quot;, err.details
-    emergency_shutdown()
-endtry</code></pre>
-<h3 id="log-analysis-and-troubleshooting">47.5 Log Analysis and
-Troubleshooting</h3>
-<p>Za provides tools for analyzing log patterns:</p>
-<pre class="za"><code># Parse JSON logs for analysis
-logs = read_file(&quot;operations.log&quot;)
-json_logs = logs.json_query(&quot;.[]?&quot;)
-
-# Find error patterns
-errors = json_logs ?&gt; `#.level == &quot;ERROR&quot;`
-foreach error in errors
-    println error.timestamp, &quot;: &quot;, error.message
-endfor
-
-# Generate summary report
-error_count = errors.len
-warn_count = json_logs ?&gt; `#.level == &quot;WARNING&quot;`.len
-println &quot;Errors:&quot;, error_count, &quot;Warnings:&quot;, warn_count</code></pre>
-<p>This logging system provides the foundation for production-ready Za
-scripts while maintaining the language’s focus on simplicity and
-operational effectiveness.</p>
-<pre><code>    - Improved path validation with better cross-platform support (restricts log paths to more sensible possibilities)
-
-    - see eg/manual_checks/test_logging for examples
-
-    - Logging system summary:
-
-        Logging Statement Types
-
-        Application Logging:
-        log &quot;message&quot;,x,y,z             - Primary logging statement (goes to log file + console by default)
-        log level: &quot;message&quot;,x,y,z      - Primary logging statement (goes to log file + console by default)
-
-        Basic Control:
-        logging on [filepath] - Enable main logging, optionally set log file path
-        logging off - Disable main logging
-        logging status - Display comprehensive logging configuration and statistics
-        logging quiet - Suppress console output from log statements
-        logging loud - Enable console output from log statements (default)
-
-        Format Control:
-        logging json on                     - Enable JSON format for all logs
-        logging json off                    - Use plain text format (default)
-        logging json fields +field value    - Add custom field to JSON logs
-        logging json fields -field          - Remove specific field from JSON logs
-        logging json fields -               - Clear all custom fields
-        logging json fields push            - Save current fields to stack
-        logging json fields pop             - Restore fields from stack
-
-        Web Access Logging:
-        logging web enable                  - Enable web access logging
-        logging web disable                 - Disable web access logging
-        logging accessfile &lt;path&gt;           - Set web access log file location (default: ./za_access.log)
-
-        Advanced Features:
-        logging subject &lt;text&gt;              - Set prefix for all log entries
-        logging error on/off                - Enable/disable automatic error logging
-        logging queue size &lt;number&gt;         - Set background processing queue size (default: 60)
-        logging rotate size &lt;bytes&gt;         - Set log rotation file size threshold
-        logging rotate count &lt;number&gt;       - Set number of rotated files to keep
-        logging reserve &lt;bytes&gt;             - Set emergency memory reserve for logging under pressure
-
-        Infrastructure Design
-
-        Unified Architecture:
-
-            Application Code -----+                                        +--&gt; Main Log File --------+
-                                  |----&gt; Background Queue --&gt; Processor ---|                          |--&gt; Rotation Handling
-            Web Server Code ------+                                        +--&gt; Web Access Log File --+
-
-        Key Components:
-
-            Background Queue Processing
-            Non-blocking logging operations
-            Configurable queue size (default: 60 requests, increased for modern systems)
-            Automatic queue overflow handling with warnings
-            Dual Destination System
-
-            Main logs: Application events, errors, user log statements
-            Web access logs: HTTP requests, service lifecycle, web errors
-                Separate files, shared formatting and processing
-
-        Format Management
-            Plain text or JSON formatting (applies to both log types)
-            Custom field management for JSON logs
-            Automatic timestamp and subject prefix handling
-
-        Log Rotation
-            Size-based rotation for both main and web access logs
-            Configurable file count retention
-            Automatic cleanup of old rotated files
-
-        Memory Management
-            Emergency memory reserve system
-            Priority-based queue management (errors &gt; main logs &gt; web access logs)
-            Graceful degradation under memory pressure
-
-        Error Integration
-            Automatic error logging for Za interpreter errors
-            HTTP status code tracking for web access logs (3xx=WARNING, 4xx/5xx=ERROR)
-            Enhanced error context with source line numbers
-
-        Performance Characteristics:
-            Non-blocking I/O for all logging operations
-            Memory-aware request dropping for web access logs under pressure
-            Unified statistics tracking and monitoring
-            Cross-platform path validation and security</code></pre>
+<h2 id="logging-architecture">47. Logging Architecture</h2>
+<p>Za’s logging system provides a comprehensive infrastructure for both
+application events and web access logging. The system is designed around
+non-blocking operations, unified processing, and graceful resource
+management to ensure reliable logging without impacting script
+performance.</p>
+<h2 id="logging-statement-types">47.1 Logging Statement Types</h2>
+<p>The logging system supports several categories of statements for
+different logging needs. Application Logging uses the primary log
+statement which writes to both log file and console by default, with
+support for level-specific logging. Basic Control statements enable and
+disable logging, configure output paths, and control console echo
+behavior. Format Control allows switching between plain text and JSON
+formats, managing custom fields for structured logs. Web Access Logging
+provides separate controls for HTTP request logging with configurable
+file locations and automatic status code categorization. Advanced
+Features include subject prefixes, automatic error logging, queue
+management, rotation control, and memory reservation.</p>
+<pre class="za"><code></code></pre>
+<p>Application Logging: log “message”,x,y,z # Primary logging statement
+log level: “message”,x,y,z # Level-specific logging</p>
+<p>Basic Control: logging on [filepath] - Enable main logging,
+optionally set log file path logging off - Disable main logging logging
+status - Display comprehensive logging configuration and statistics
+logging quiet - Suppress console output from log statements logging loud
+- Enable console output from log statements (default)</p>
+<p>Format Control: logging json on # Enable JSON format for all logs
+logging json off # Use plain text format (default) logging json fields
++field value # Add custom field to JSON logs logging json fields -field
+# Remove specific field from JSON logs logging json fields - # Clear all
+custom fields logging json fields push # Save current fields to stack
+logging json fields pop # Restore fields from stack</p>
+<p>Web Access Logging: logging web enable # Enable web access logging
+logging web disable # Disable web access logging logging accessfile
+<path> # Set web access log file location (default: ./za_access.log)</p>
+<p>Advanced Features: logging subject <text> # Set prefix for all log
+entries logging error on/off # Enable/disable automatic error logging
+logging queue size <number> # Set background processing queue size
+(default: 60) logging rotate size <bytes> # Set log rotation file size
+threshold logging rotate count <number> # Set number of rotated files to
+keep logging reserve <bytes> # Set emergency memory reserve for logging
+under pressure</p>
+<pre><code></code></pre>
+<h2 id="infrastructure-design">47.2 Infrastructure Design</h2>
+<p>The logging architecture uses a Unified Architecture where both
+application code and web server code feed into a common background queue
+that processes entries through shared formatting and rotation pipelines.
+Key Components include background queue processing with configurable
+size and overflow handling, dual destination systems for main logs and
+web access logs, and format management supporting both plain text and
+JSON with custom field capabilities. Format Management handles automatic
+timestamps and subject prefix handling while allowing custom field
+manipulation for structured logs. Log Rotation provides size-based
+rotation for both main and web access logs with configurable file count
+retention and automatic cleanup of old rotated files. Memory Management
+includes an emergency memory reserve system and priority-based queue
+management that favors errors over normal logs under pressure. Error
+Integration automatically logs Za interpreter errors with enhanced
+context and HTTP status code tracking for web access logs.</p>
+<h2 id="performance-characteristics">47.3 Performance
+Characteristics</h2>
+<p>The logging system is optimized for minimal performance impact
+through Non-blocking I/O for all logging operations, ensuring script
+execution never waits on log writes. The system implements Memory-aware
+request dropping for web access logs under memory pressure, with
+automatic warnings when queue capacity is exceeded. Unified statistics
+tracking provides comprehensive monitoring of logging system performance
+and health. Cross-platform path validation and security ensures safe
+file operations with appropriate permission checks and path sanitization
+across different operating systems.</p>
+<p>This design ensures that logging operations provide comprehensive
+coverage of application events while maintaining high performance and
+reliability, making the system suitable for everything from simple
+scripts to high-volume web services.</p>
 <hr />
 <h1 id="part-xiii---testing-1">Part XIII - Testing</h1>
 <h2 id="testing-overview">48. Testing Overview</h2>
@@ -2501,23 +2367,23 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb119"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb119-1"><a href="#cb119-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb119-2"><a href="#cb119-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
-<span id="cb119-3"><a href="#cb119-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb119-4"><a href="#cb119-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb119-5"><a href="#cb119-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
-<span id="cb119-6"><a href="#cb119-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb119-7"><a href="#cb119-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb119-8"><a href="#cb119-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
-<span id="cb119-9"><a href="#cb119-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb119-10"><a href="#cb119-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
-<span id="cb119-11"><a href="#cb119-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb111"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
+<span id="cb111-3"><a href="#cb111-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-4"><a href="#cb111-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb111-5"><a href="#cb111-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
+<span id="cb111-6"><a href="#cb111-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-7"><a href="#cb111-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb111-8"><a href="#cb111-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
+<span id="cb111-9"><a href="#cb111-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-10"><a href="#cb111-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
+<span id="cb111-11"><a href="#cb111-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple but powerful structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
     # Test setup code
-    assert condition, &quot;failure message&quot;
+    assert condition [, custom_message ]
     # Additional assertions
     doc &quot;This test verifies that...&quot;
     # Test execution code
@@ -2530,11 +2396,13 @@ failures, reporting all failures</p>
 <h3 id="basic-test-structure">49.1 Basic Test Structure</h3>
 <pre class="za"><code>test &quot;integer_addition&quot; GROUP &quot;math_basics&quot;
     # Test basic arithmetic
+    println &quot;2 + 3 should equal 5&quot;
     result = 2 + 3
-    assert result == 5, &quot;2 + 3 should equal 5&quot;
+    assert result == 5
 
     # Test with different values
-    assert (10 + 15) == 25, &quot;10 + 15 should equal 25&quot;
+    println &quot;10 + 15 should equal 25&quot;
+    assert (10 + 15) == 25
     doc &quot;Verifies basic integer addition operations&quot;
 endtest</code></pre>
 <h3 id="error-handling-tests">49.2 Error Handling Tests</h3>
@@ -2543,15 +2411,14 @@ endtest</code></pre>
     try
         content = read_file(&quot;/nonexistent/file.txt&quot;)
     catch err
-        assert err.kind == &quot;ex.io&quot;, &quot;Should be file I/O exception&quot;
-        assert err.message.contains(&quot;no such file&quot;), &quot;Error should mention file not found&quot;
+        println &quot;error type : &quot;,err.pp
     endtry
 
     # Test permission error handling
     try
         write_file(&quot;/root/protected.txt&quot;, &quot;test&quot;)
     catch err
-        assert err.kind == &quot;ex.permission&quot;, &quot;Should be permission exception&quot;
+        println &quot;error type : &quot;,err.pp
     endtry
 
     doc &quot;Tests file operation error detection and categorization&quot;
@@ -2567,12 +2434,12 @@ Tests</h3>
     end
 
     result_sum, result_diff = compute_stats(10, 3)
-    assert result_sum == 13, &quot;Sum should be 13&quot;
-    assert result_diff == 7, &quot;Difference should be 7&quot;
+    assert result_sum == 13
+    assert result_diff == 7
 
     # Test single return value unpacking
     values = compute_stats(5, 2)
-    assert values == [7, 3], &quot;Should return array with [7, 3]&quot;
+    assert values == [7, 3]
 
     doc &quot;Validates function return value handling&quot;
 endtest</code></pre>
@@ -2580,18 +2447,18 @@ endtest</code></pre>
 <pre class="za"><code>test &quot;map_operations&quot; GROUP &quot;data_structures&quot;
     # Test map creation and access
     config = map(.host &quot;localhost&quot;, .port 5432, .ssl true)
-    assert config.host == &quot;localhost&quot;, &quot;Host should be localhost&quot;
-    assert config.port == 5432, &quot;Port should be 5432&quot;
-    assert config.ssl == true, &quot;SSL should be enabled&quot;
+    assert config.host == &quot;localhost&quot;
+    assert config.port == 5432
+    assert config.ssl == true
 
     # Test map as set operations
     set_a = map(.a 1, .b 2, .c 3)
     set_b = map(.b 2, .c 3, .d 4)
 
     intersection = set_a &amp; set_b
-    assert intersection.len == 2, &quot;Intersection should have 2 elements&quot;
-    assert intersection.c == 2, &quot;Should contain &#39;c&#39;&quot;
-    assert intersection.b == 2, &quot;Should contain &#39;b&#39;&quot;
+    assert intersection.len == 2
+    assert intersection.c == 2
+    assert intersection.b == 2
 
     doc &quot;Tests map literal syntax and set operations&quot;
 endtest</code></pre>
@@ -2599,15 +2466,16 @@ endtest</code></pre>
 Tests</h3>
 <pre class="za"><code>test &quot;system_integration&quot; GROUP &quot;integration&quot;
     # Test system call integration
-    result = | &quot;echo &#39;test output&#39;&quot;
-    assert result.okay == true, &quot;Echo command should succeed&quot;
-    assert result.out.contains(&quot;test output&quot;), &quot;Output should contain expected text&quot;
+    result =| &quot;echo &#39;test output&#39;&quot;
+    assert result.okay
+    assert result.out ~ &quot;test output&quot;
 
     # Test table parsing
-    df_data = table(| &quot;echo &#39;Filesystem 1K-blocks Used Available Use% Mounted on&#39;&quot;,
-                   map(.parse_only true))
-    assert df_data.len == 1, &quot;Should parse one row of data&quot;
-    assert df_data[0].Filesystem == &quot;Filesystem&quot;, &quot;Should parse filesystem column&quot;
+    df_data = table(${echo &#39;Filesystem 1K-blocks Used Available Use% Mounted on&#39;},
+                   map(.parse_only true)
+    )
+    assert df_data.len == 1
+    assert df_data[0].Filesystem == &quot;Filesystem&quot;
 
     doc &quot;Validates integration with system commands and data parsing&quot;
 endtest</code></pre>
@@ -2625,26 +2493,15 @@ specific groups with <code>-G</code> flag - <strong>Clear
 reporting</strong>: Test output organized by functional area -
 <strong>Maintenance</strong>: Easy to locate and update related
 tests</p>
-<h3 id="assertion-strategies">50.2 Assertion Strategies</h3>
-<p>Use descriptive assertion messages:</p>
-<pre class="za"><code># Poor assertion
-assert result == expected, &quot;failed&quot;
-
-# Good assertion
-assert result == expected, &quot;User creation failed: expected name &#39;&quot; + expected + &quot;&#39;, got &#39;&quot; + result + &quot;&#39;&quot;</code></pre>
-<h3 id="error-handling-in-tests">50.3 Error Handling in Tests</h3>
+<h3 id="error-handling-in-tests">50.2 Error Handling in Tests</h3>
 <p>The <code>ASSERT ERROR</code> syntax handles function call failures
 gracefully:</p>
 <pre class="za"><code>test &quot;robust_function_calls&quot; GROUP &quot;error_handling&quot;
     # This continues execution even if connect() fails
-    assert error connect(&quot;invalid_host&quot;) is ex.connection, &quot;Should detect connection error&quot;
-
-    # Test with custom error handling
-    assert error parse_json(&quot;{invalid&quot;) is ex.parse, &quot;Should catch JSON parse error&quot;
-
+    assert error connect(&quot;invalid_host&quot;)
     doc &quot;Tests error handling with ASSERT ERROR syntax&quot;
 endtest</code></pre>
-<h3 id="documentation-integration">50.4 Documentation Integration</h3>
+<h3 id="documentation-integration">50.3 Documentation Integration</h3>
 <p>Use <code>doc</code> statements to provide test context:</p>
 <pre class="za"><code>test &quot;complex_business_logic&quot; GROUP &quot;business_rules&quot;
     # Setup complex scenario
@@ -2658,13 +2515,10 @@ endtest</code></pre>
          3. Inventory updated appropriately&quot;
 
     # Assertions for each rule
-    assert order.discount_applied == true, &quot;Discount should be applied&quot;
-    assert order.tax_amount &gt; 0, &quot;Tax should be calculated&quot;
-    assert inventory_updated(order.items), &quot;Inventory should be updated&quot;
+    assert order.discount_applied
+    assert order.tax_amount &gt; 0
+    assert inventory_updated(order.items)
 endtest</code></pre>
-<p>The testing framework provides comprehensive validation capabilities
-while maintaining Za’s focus on simplicity and practical system
-administration needs.</p>
 <hr />
 <h1 id="appendix-a-operator-reference-summary">Appendix A — Operator
 reference (summary)</h1>

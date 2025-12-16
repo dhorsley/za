@@ -106,8 +106,8 @@ Daniel Horsley
 
 ## Part XII - Logging
 45. Overview
-46. Logging control and formats (`logging`)
-47. The log statement (`log`)
+46. Configuration
+47. Architecture
 
 ## Part XIII - Testing
 48. Overview
@@ -2507,46 +2507,6 @@ The logging system is built around several key principles:
 - **Flexible output**: Support for both plain text and structured JSON formatting
 - **Automatic rotation**: Size-based log rotation with configurable retention policies
 
-### 45.2 When to Use Logging
-
-Use `log` statements for structured, persistent information that should survive script completion:
-
-```za
-# Use log for operational events
-log "Service started", service_name, port
-
-# Use log for error conditions
-if error_condition
-    log "ERROR", "Failed to connect to database", db_host, error_code
-endif
-
-# Use log for periodic status updates
-log "Processing batch", batch_id, record_count, "of", total_records
-```
-
-Use `println` for immediate output, debugging, or user-facing messages:
-
-```za
-# Use println for immediate feedback
-println "Processing file: ", filename
-
-```
-
-### 45.3 Basic Logging Configuration
-
-Getting started with logging is straightforward:
-
-```za
-# Enable logging to a file
-logging on "operations.log"
-
-# Set a subject prefix for all entries
-logging subject "WEBMON"
-
-# Start logging
-log "Monitoring started on", date_human()
-```
-
 The basic logging configuration provides:
 
 - **File output**: Logs are written to the specified file with automatic rotation
@@ -2554,7 +2514,7 @@ The basic logging configuration provides:
 - **Timestamp handling**: Automatic timestamps added to all entries
 - **Subject prefixes**: Optional prefixes to identify log sources
 
-## 46. Advanced Logging Configuration
+## 46. Logging Configuration
 
 ### 46.1 Format Control
 
@@ -2595,7 +2555,7 @@ logging accessfile "/var/log/za_access.log"
 
 # Configure web-specific settings
 logging web enable
-log "Web server started on port", port
+log "Web server started on port: ", port
 ```
 
 Web access logs capture HTTP requests, response codes, and client information with automatic status code categorization (3xx=WARNING, 4xx/5xx=ERROR).
@@ -2641,206 +2601,61 @@ The background queue system provides:
 - **Priority processing**: Errors get priority over normal logs
 - **Memory awareness**: Graceful degradation under memory pressure
 
-## 47. Practical Logging Patterns
 
-### 47.1 Application Logging Patterns
+## 47. Logging Architecture
 
-#### Structured Error Logging
+Za's logging system provides a comprehensive infrastructure for both application events and web access logging. The system is designed around non-blocking operations, unified processing, and graceful resource management to ensure reliable logging without impacting script performance.
 
-```za
-define log_service_error(service, error, context)
-    log "ERROR", "Service failure", service, error, context
-    # Optionally send alert
-    if error.is_critical
-        | mail -s "Critical alert" admin@example.com
-    endif
-end
+## 47.1 Logging Statement Types
 
-# Usage
-try
-    result = connect_database()
-catch err
-    log_service_error("postgres", result.err, "connection attempt")
-endtry
-```
-
-#### Operational Monitoring
+The logging system supports several categories of statements for different logging needs. Application Logging uses the primary log statement which writes to both log file and console by default, with support for level-specific logging. Basic Control statements enable and disable logging, configure output paths, and control console echo behavior. Format Control allows switching between plain text and JSON formats, managing custom fields for structured logs. Web Access Logging provides separate controls for HTTP request logging with configurable file locations and automatic status code categorization. Advanced Features include subject prefixes, automatic error logging, queue management, rotation control, and memory reservation.
 
 ```za
-# Periodic status logging
-define log_system_status()
-    mem = mem_info()
-    disk = disk_usage()
-    log "SYSTEM", "Memory usage", mem.MemoryUsed, "of", mem.MemoryTotal
-    log "SYSTEM", "Disk usage", disk[0].UsedPercent, "% on", disk[0].MountPoint
-end
+```
+Application Logging:
+log "message",x,y,z             # Primary logging statement
+log level: "message",x,y,z      # Level-specific logging
 
-# Run every 5 minutes
-while true
-    log_system_status()
-    pause 300000  # 5 minutes in milliseconds
-endwhile
+Basic Control:
+logging on [filepath] - Enable main logging, optionally set log file path
+logging off - Disable main logging
+logging status - Display comprehensive logging configuration and statistics
+logging quiet - Suppress console output from log statements
+logging loud - Enable console output from log statements (default)
+
+Format Control:
+logging json on                     # Enable JSON format for all logs
+logging json off                    # Use plain text format (default)
+logging json fields +field value    # Add custom field to JSON logs
+logging json fields -field          # Remove specific field from JSON logs
+logging json fields -               # Clear all custom fields
+logging json fields push            # Save current fields to stack
+logging json fields pop             # Restore fields from stack
+
+Web Access Logging:
+logging web enable                  # Enable web access logging
+logging web disable                 # Disable web access logging
+logging accessfile <path>           # Set web access log file location (default: ./za_access.log)
+
+Advanced Features:
+logging subject <text>              # Set prefix for all log entries
+logging error on/off                # Enable/disable automatic error logging
+logging queue size <number>         # Set background processing queue size (default: 60)
+logging rotate size <bytes>         # Set log rotation file size threshold
+logging rotate count <number>       # Set number of rotated files to keep
+logging reserve <bytes>             # Set emergency memory reserve for logging under pressure
 ```
 
-### 47.2 Debug Logging with Context
-
-```za
-# Enable debug logging conditionally
-debug_mode = get_env("DEBUG_MODE") == "true"
-
-define debug_log(level, message, ...)
-    if debug_mode
-        log "DEBUG", level, message, ...
-    endif
-end
-
-# Usage in complex operations
-debug_log("PARSING", "Starting config file parse")
-config = parse_config_file("app.conf")
-debug_log("PARSING", "Parsed", config.len, "sections")
 ```
+## 47.2 Infrastructure Design
 
-### 47.3 Integration with Exception Handling
+The logging architecture uses a Unified Architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines. Key Components include background queue processing with configurable size and overflow handling, dual destination systems for main logs and web access logs, and format management supporting both plain text and JSON with custom field capabilities. Format Management handles automatic timestamps and subject prefix handling while allowing custom field manipulation for structured logs. Log Rotation provides size-based rotation for both main and web access logs with configurable file count retention and automatic cleanup of old rotated files. Memory Management includes an emergency memory reserve system and priority-based queue management that favors errors over normal logs under pressure. Error Integration automatically logs Za interpreter errors with enhanced context and HTTP status code tracking for web access logs.
 
-```za
-# Enhanced exception logging
-try uses captured_var
-    risky_operation()
-catch err is ex.database
-    log_exception("database", "Connection failed: " + err.message)
-    # Attempt recovery
-    if attempt_reconnect()
-        log "RECOVERY", "Database reconnection successful"
-    endif
-endtry
-```
+## 47.3 Performance Characteristics
 
-### 47.4 Custom Exception Categories
+The logging system is optimized for minimal performance impact through Non-blocking I/O for all logging operations, ensuring script execution never waits on log writes. The system implements Memory-aware request dropping for web access logs under memory pressure, with automatic warnings when queue capacity is exceeded. Unified statistics tracking provides comprehensive monitoring of logging system performance and health. Cross-platform path validation and security ensures safe file operations with appropriate permission checks and path sanitization across different operating systems.
 
-```za
-# Register application-specific exception types
-exreg("app", "warning")  # Level 1: warnings
-exreg("app", "error")    # Level 2: errors
-exreg("app", "critical") # Level 3: critical
-
-# Use in exception handling
-try
-    process_data()
-catch err is app.critical
-    log "CRITICAL", "System failure - initiating shutdown", err.details
-    emergency_shutdown()
-endtry
-```
-
-### 47.5 Log Analysis and Troubleshooting
-
-Za provides tools for analyzing log patterns:
-
-```za
-# Parse JSON logs for analysis
-logs = read_file("operations.log")
-json_logs = logs.json_query(".[]?")
-
-# Find error patterns
-errors = json_logs ?> `#.level == "ERROR"`
-foreach error in errors
-    println error.timestamp, ": ", error.message
-endfor
-
-# Generate summary report
-error_count = errors.len
-warn_count = json_logs ?> `#.level == "WARNING"`.len
-println "Errors:", error_count, "Warnings:", warn_count
-```
-
-This logging system provides the foundation for production-ready Za scripts while maintaining the language's focus on simplicity and operational effectiveness.
-
-        - Improved path validation with better cross-platform support (restricts log paths to more sensible possibilities)
-
-        - see eg/manual_checks/test_logging for examples
-
-        - Logging system summary:
-
-            Logging Statement Types
-
-            Application Logging:
-            log "message",x,y,z             - Primary logging statement (goes to log file + console by default)
-            log level: "message",x,y,z      - Primary logging statement (goes to log file + console by default)
-
-            Basic Control:
-            logging on [filepath] - Enable main logging, optionally set log file path
-            logging off - Disable main logging
-            logging status - Display comprehensive logging configuration and statistics
-            logging quiet - Suppress console output from log statements
-            logging loud - Enable console output from log statements (default)
-
-            Format Control:
-            logging json on                     - Enable JSON format for all logs
-            logging json off                    - Use plain text format (default)
-            logging json fields +field value    - Add custom field to JSON logs
-            logging json fields -field          - Remove specific field from JSON logs
-            logging json fields -               - Clear all custom fields
-            logging json fields push            - Save current fields to stack
-            logging json fields pop             - Restore fields from stack
-
-            Web Access Logging:
-            logging web enable                  - Enable web access logging
-            logging web disable                 - Disable web access logging
-            logging accessfile <path>           - Set web access log file location (default: ./za_access.log)
-
-            Advanced Features:
-            logging subject <text>              - Set prefix for all log entries
-            logging error on/off                - Enable/disable automatic error logging
-            logging queue size <number>         - Set background processing queue size (default: 60)
-            logging rotate size <bytes>         - Set log rotation file size threshold
-            logging rotate count <number>       - Set number of rotated files to keep
-            logging reserve <bytes>             - Set emergency memory reserve for logging under pressure
-
-            Infrastructure Design
-
-            Unified Architecture:
-
-                Application Code -----+                                        +--> Main Log File --------+
-				                      |----> Background Queue --> Processor ---|                          |--> Rotation Handling
-                Web Server Code ------+                                        +--> Web Access Log File --+
-
-            Key Components:
-
-                Background Queue Processing
-                Non-blocking logging operations
-                Configurable queue size (default: 60 requests, increased for modern systems)
-                Automatic queue overflow handling with warnings
-                Dual Destination System
-
-                Main logs: Application events, errors, user log statements
-                Web access logs: HTTP requests, service lifecycle, web errors
-                    Separate files, shared formatting and processing
-
-            Format Management
-                Plain text or JSON formatting (applies to both log types)
-                Custom field management for JSON logs
-                Automatic timestamp and subject prefix handling
-
-            Log Rotation
-                Size-based rotation for both main and web access logs
-                Configurable file count retention
-                Automatic cleanup of old rotated files
-
-            Memory Management
-                Emergency memory reserve system
-                Priority-based queue management (errors > main logs > web access logs)
-                Graceful degradation under memory pressure
-
-            Error Integration
-                Automatic error logging for Za interpreter errors
-                HTTP status code tracking for web access logs (3xx=WARNING, 4xx/5xx=ERROR)
-                Enhanced error context with source line numbers
-
-            Performance Characteristics:
-                Non-blocking I/O for all logging operations
-                Memory-aware request dropping for web access logs under pressure
-                Unified statistics tracking and monitoring
-                Cross-platform path validation and security
+This design ensures that logging operations provide comprehensive coverage of application events while maintaining high performance and reliability, making the system suitable for everything from simple scripts to high-volume web services.
 
 
 ---
@@ -2884,7 +2699,7 @@ Tests use a simple but powerful structure:
 ```za
 test "test_name" GROUP "group_name" [ASSERT FAIL|CONTINUE]
     # Test setup code
-    assert condition, "failure message"
+    assert condition [, custom_message ]
     # Additional assertions
     doc "This test verifies that..."
     # Test execution code
@@ -2902,11 +2717,13 @@ The optional assertion mode controls test behavior:
 ```za
 test "integer_addition" GROUP "math_basics"
     # Test basic arithmetic
+    println "2 + 3 should equal 5"
     result = 2 + 3
-    assert result == 5, "2 + 3 should equal 5"
+    assert result == 5
 
     # Test with different values
-    assert (10 + 15) == 25, "10 + 15 should equal 25"
+    println "10 + 15 should equal 25"
+    assert (10 + 15) == 25
     doc "Verifies basic integer addition operations"
 endtest
 ```
@@ -2919,15 +2736,14 @@ test "file_error_handling" GROUP "io_operations" ASSERT CONTINUE
     try
         content = read_file("/nonexistent/file.txt")
     catch err
-        assert err.kind == "ex.io", "Should be file I/O exception"
-        assert err.message.contains("no such file"), "Error should mention file not found"
+        println "error type : ",err.pp
     endtry
 
     # Test permission error handling
     try
         write_file("/root/protected.txt", "test")
     catch err
-        assert err.kind == "ex.permission", "Should be permission exception"
+        println "error type : ",err.pp
     endtry
 
     doc "Tests file operation error detection and categorization"
@@ -2946,12 +2762,12 @@ test "function_returns" GROUP "function_validation"
     end
 
     result_sum, result_diff = compute_stats(10, 3)
-    assert result_sum == 13, "Sum should be 13"
-    assert result_diff == 7, "Difference should be 7"
+    assert result_sum == 13
+    assert result_diff == 7
 
     # Test single return value unpacking
     values = compute_stats(5, 2)
-    assert values == [7, 3], "Should return array with [7, 3]"
+    assert values == [7, 3]
 
     doc "Validates function return value handling"
 endtest
@@ -2963,18 +2779,18 @@ endtest
 test "map_operations" GROUP "data_structures"
     # Test map creation and access
     config = map(.host "localhost", .port 5432, .ssl true)
-    assert config.host == "localhost", "Host should be localhost"
-    assert config.port == 5432, "Port should be 5432"
-    assert config.ssl == true, "SSL should be enabled"
+    assert config.host == "localhost"
+    assert config.port == 5432
+    assert config.ssl == true
 
     # Test map as set operations
     set_a = map(.a 1, .b 2, .c 3)
     set_b = map(.b 2, .c 3, .d 4)
 
     intersection = set_a & set_b
-    assert intersection.len == 2, "Intersection should have 2 elements"
-    assert intersection.c == 2, "Should contain 'c'"
-    assert intersection.b == 2, "Should contain 'b'"
+    assert intersection.len == 2
+    assert intersection.c == 2
+    assert intersection.b == 2
 
     doc "Tests map literal syntax and set operations"
 endtest
@@ -2985,15 +2801,16 @@ endtest
 ```za
 test "system_integration" GROUP "integration"
     # Test system call integration
-    result = | "echo 'test output'"
-    assert result.okay == true, "Echo command should succeed"
-    assert result.out.contains("test output"), "Output should contain expected text"
+    result =| "echo 'test output'"
+    assert result.okay
+    assert result.out ~ "test output"
 
     # Test table parsing
-    df_data = table(| "echo 'Filesystem 1K-blocks Used Available Use% Mounted on'",
-                   map(.parse_only true))
-    assert df_data.len == 1, "Should parse one row of data"
-    assert df_data[0].Filesystem == "Filesystem", "Should parse filesystem column"
+    df_data = table(${echo 'Filesystem 1K-blocks Used Available Use% Mounted on'},
+                   map(.parse_only true)
+    )
+    assert df_data.len == 1
+    assert df_data[0].Filesystem == "Filesystem"
 
     doc "Validates integration with system commands and data parsing"
 endtest
@@ -3018,35 +2835,19 @@ This organization allows:
 - **Clear reporting**: Test output organized by functional area
 - **Maintenance**: Easy to locate and update related tests
 
-### 50.2 Assertion Strategies
-
-Use descriptive assertion messages:
-
-```za
-# Poor assertion
-assert result == expected, "failed"
-
-# Good assertion
-assert result == expected, "User creation failed: expected name '" + expected + "', got '" + result + "'"
-```
-
-### 50.3 Error Handling in Tests
+### 50.2 Error Handling in Tests
 
 The `ASSERT ERROR` syntax handles function call failures gracefully:
 
 ```za
 test "robust_function_calls" GROUP "error_handling"
     # This continues execution even if connect() fails
-    assert error connect("invalid_host") is ex.connection, "Should detect connection error"
-
-    # Test with custom error handling
-    assert error parse_json("{invalid") is ex.parse, "Should catch JSON parse error"
-
+    assert error connect("invalid_host")
     doc "Tests error handling with ASSERT ERROR syntax"
 endtest
 ```
 
-### 50.4 Documentation Integration
+### 50.3 Documentation Integration
 
 Use `doc` statements to provide test context:
 
@@ -3063,13 +2864,11 @@ test "complex_business_logic" GROUP "business_rules"
          3. Inventory updated appropriately"
 
     # Assertions for each rule
-    assert order.discount_applied == true, "Discount should be applied"
-    assert order.tax_amount > 0, "Tax should be calculated"
-    assert inventory_updated(order.items), "Inventory should be updated"
+    assert order.discount_applied
+    assert order.tax_amount > 0
+    assert inventory_updated(order.items)
 endtest
 ```
-
-The testing framework provides comprehensive validation capabilities while maintaining Za's focus on simplicity and practical system administration needs.
 
 
 ---
