@@ -1738,9 +1738,9 @@ demonstrate practical usage patterns.</p>
 files, and user input:</p>
 <pre class="za"><code># Basic string operations
 text = &quot;  System Log Entry  &quot;
-trimmed = text.trim()                    # &quot;System Log Entry&quot;
-upper = text.upper()                     # &quot;  SYSTEM LOG ENTRY  &quot;
-lower = text.lower()                     # &quot;  system log entry  &quot;
+trimmed = text.trim                      # &quot;System Log Entry&quot;
+upper = text.upper                       # &quot;  SYSTEM LOG ENTRY  &quot;
+lower = text.lower                       # &quot;  system log entry  &quot;
 
 # String splitting and joining
 log_line = &quot;2023-12-01 10:30:15 ERROR: Database connection failed&quot;
@@ -1749,9 +1749,9 @@ timestamp = parts[0] + &quot; &quot; + parts[1]    # &quot;2023-12-01 10:30:15&q
 message = parts[3:].join(&quot; &quot;)            # &quot;Database connection failed&quot;
 
 # Pattern matching and replacement
-config_line = &quot;port = 8080&quot;
-if config_line.contains(&quot;port&quot;)
-    port_value = config_line.split(&quot;=&quot;)[1].trim()
+config_line = &quot;port=8080&quot;
+if config_line ~ &quot;port&quot;
+    port_value = config_line.split(&quot;=&quot;)[1].trim
     port_num = int(port_value)
 endif
 
@@ -1769,28 +1769,29 @@ report = &quot;Server: {0}, CPU: {1}%, Memory: {2}%&quot;.format(hostname, cpu_u
 files, or data points:</p>
 <pre class="za"><code># Creating and manipulating lists
 servers = [&quot;web-01&quot;, &quot;web-02&quot;, &quot;db-01&quot;, &quot;cache-01&quot;]
-web_servers = servers.filter(|x| x.startswith(&quot;web&quot;))     # [&quot;web-01&quot;, &quot;web-02&quot;]
+web_servers = servers ?&gt; `has_start(&quot;web-&quot;)`     # [&quot;web-01&quot;, &quot;web-02&quot;]
 
 # List transformations
 port_numbers = [80, 443, 8080, 3000]
-secure_ports = port_numbers.map(|x| x + 1)               # [81, 444, 8081, 3001]
+secure_ports = port_numbers -&gt; `as_int(#+1)`              # [81, 444, 8081, 3001]
 
 # List aggregation
 response_times = [120, 85, 200, 95, 150]
-avg_response = response_times.sum() / response_times.len()  # Average response time
-max_response = response_times.max()                         # 200
-min_response = response_times.min()                         # 85
+avg_response = response_times.sum / response_times.len    # Average response time
+max_response = response_times.max                         # 200
+min_response = response_times.min                         # 85
 
 # Array operations for numeric data
 cpu_readings = [45.2, 67.8, 89.1, 34.5, 78.9]
-high_cpu_periods = cpu_readings.filter(|x| x &gt; 80.0)      # [89.1]
+high_cpu_periods = cpu_readings ?&gt; `#&gt;80`                 # [89.1]
 
 # Multi-dimensional arrays for metrics
 hourly_metrics = [
-    [10, 15, 12, 8],     # Hour 0-3
-    [20, 25, 18, 22],    # Hour 4-7
-    [30, 35, 28, 32]     # Hour 8-11]
-morning_avg = hourly_metrics[1].sum() / 4                # Average for hours 4-7</code></pre>
+    [10, 15, 12, 8],
+    [20, 25, 18, 22],
+    [30, 35, 28, 32]
+] # Hour 0-3, 4-7, 8-11
+morning_avg = hourly_metrics[1].sum / 4                # Average for hours 4-7</code></pre>
 <h3 id="map-operations">38.3 Map Operations</h3>
 <p>Maps are perfect for configuration management, key-value stores, and
 structured data:</p>
@@ -1803,7 +1804,7 @@ server_config = map(
 )
 
 # Accessing and modifying
-if server_config.key(&quot;ssl&quot;) and server_config.ssl
+if server_config.ssl is bool and server_config.ssl
     protocol = &quot;https&quot;
 else
     protocol = &quot;http&quot;
@@ -1812,7 +1813,7 @@ endif
 # Merging configurations
 default_config = map(.timeout 60, .retries 3, .debug false)
 user_config = map(.timeout 120, .debug true)
-final_config = default_config.merge(user_config) # -or- a | b
+final_config = default_config.merge(user_config)
 # Result: {&quot;timeout&quot;: 120, &quot;retries&quot;: 3, &quot;debug&quot;: true}
 
 # Map operations for system inventory
@@ -1958,6 +1959,7 @@ try
     h=db_init(execpath()+&quot;/files/test.db&quot;)
     res=h.db_query(&quot;select * from users&quot;,map(.format &quot;map&quot;))
     h.db_close
+    # first 30
     println res[:30].table(
         map(
             .border_style &quot;unicode&quot;,
