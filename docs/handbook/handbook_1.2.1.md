@@ -1252,6 +1252,7 @@ end
 
 The return values may also be unpacked on return:
 
+```go
 def f(a,b,c)
 	return b,c,a
 end
@@ -1264,6 +1265,7 @@ b,c,a=f(1,2,3)
 b,c,a=g(4,5,6)
 # or
 vals=g(4,5,6) # vals=[5,6,4]
+```
 
 ## 24. Modules and namespaces
 
@@ -1295,7 +1297,6 @@ Syntax:
     USE POP         # pop chain from top of chain stack
                     # push and pop would be used to completely isolate namespacing in a module.
 ```
-```
 
 The current namespace is always either main:: or the module name/alias.
 If you want to use a different namespace then you need to create a new file and import it with MODULE.
@@ -1311,9 +1312,6 @@ matches ahead of the default behaviour, if no explicit name is supplied:
 Example:
 
 ```za
-```
-```
-```
 	# global ns / main program
 	MODULE "modpath/time" AS tm
 
@@ -1332,8 +1330,6 @@ Example:
 							#  i.e.
 							# explicit name > use_chain > current namespace > main
 
-
-```
 ```
 
 ---
@@ -1682,7 +1678,6 @@ Use this checklist for security review:
 **Command Execution:**
 
 - [ ] Commands are validated against allowlist
-- [ ] Arguments are passed as arrays, not concatenated strings
 - [ ] Shell injection vulnerabilities are prevented
 - [ ] Command output is properly handled
 
@@ -1720,14 +1715,15 @@ The `permit()` function controls runtime capabilities such as allowing shell exe
 # Disable all potentially dangerous features
 permit("shell", false)
 permit("eval", false)
-permit("interpolation", false)
-permit("macros", false)
+permit("interpol", false)
+permit("macro", false)
 
 # Enable strict variable checking
-permit("strict_uninitialized", true)
+permit("uninit", false)
 
 # Later, selectively re-enable what's needed
-permit("shell", true)  # Allow specific shell commands
+permit("shell", true)
+permit("sanitisation", false)
 ```
 
 ### 30.3 Input Validation and Sanitization
@@ -1746,7 +1742,7 @@ Za's async capabilities enable efficient parallel processing of multiple hosts, 
 ```za
 # Define async check function
 define check_host(host_id)
-    pause rand(50)  # Simulate network delay
+    pause rand(500)  # Simulate network delay
     return host_id % 3 == 0 ? "up" : "down"
 end
 
@@ -1774,7 +1770,7 @@ println "Up hosts:", up_hosts
 ```za
 # Service status checking
 define check_service(service_name)
-    pause rand(30)  # Simulate check delay
+    pause rand(500)  # Simulate check delay
     # In real usage: status = =| "systemctl is-active " + service_name
     return service_name ~ "nginx|mysql" ? "running" : "stopped"
 end
@@ -1802,7 +1798,7 @@ println "Running services:", running_services
 ```za
 # Process multiple data items in parallel
 define process_data(item)
-    pause rand(40)  # Simulate processing time
+    pause rand(500)  # Simulate processing time
     return item * 2  # Simple transformation
 end
 
@@ -1829,7 +1825,7 @@ println "High values:", high_values
 ```za
 # Network checks with isolated failures
 define check_network(host)
-    pause rand(60)  # Simulate network timeout
+    pause rand(500)  # Simulate network timeout
     # Simulate different failure modes
     case host
     is "8.8.8.8"
@@ -1867,7 +1863,7 @@ println "Problem hosts:", problem_hosts
 ```za
 # Database connectivity with partial success handling
 define check_database(db_name)
-    pause rand(80)  # Simulate connection attempt
+    pause rand(800)  # Simulate connection attempt
     # Simulate different connection outcomes
     case db_name
     is "primary"

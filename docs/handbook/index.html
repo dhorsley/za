@@ -1020,9 +1020,19 @@ end</code></pre>
 <p><code>return</code> may be used without a value. <code>return</code>
 may also return multiple values (comma separated expressions).</p>
 <p>The return values may also be unpacked on return:</p>
-<p>def f(a,b,c) return b,c,a end</p>
-<p>def g(a,b,c) return [b,c,a] end</p>
-<p>b,c,a=f(1,2,3) b,c,a=g(4,5,6) # or vals=g(4,5,6) # vals=[5,6,4]</p>
+<div class="sourceCode" id="cb56"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
+<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
+<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a># or</span>
+<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
 <h2 id="modules-and-namespaces">24. Modules and namespaces</h2>
 <p>Import a module:</p>
 <pre class="za"><code>module &quot;cron&quot;
@@ -1041,40 +1051,35 @@ processed by the interpreter.</p>
     USE PUSH        # push current chain on chain stack
     USE POP         # pop chain from top of chain stack
                     # push and pop would be used to completely isolate namespacing in a module.</code></pre>
-<pre><code>
-The current namespace is always either main:: or the module name/alias.
-If you want to use a different namespace then you need to create a new file and import it with MODULE.
+<p>The current namespace is always either main:: or the module
+name/alias. If you want to use a different namespace then you need to
+create a new file and import it with MODULE.</p>
+<p>The use_chain array will be consulted, when not empty, on function
+calls, enum references and struct references for matches ahead of the
+default behaviour, if no explicit name is supplied:</p>
+<pre><code>1. explicit namespace (name::)
+2. use_chain match
+3. current namespace (no :: ref), then
+4. main:: (global namespace)</code></pre>
+<p>Example:</p>
+<pre class="za"><code>    # global ns / main program
+    MODULE &quot;modpath/time&quot; AS tm
 
-The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
-matches ahead of the default behaviour, if no explicit name is supplied:
+    tm::string_date()       # call function string_date in module time with explicit alias &#39;tm&#39;
+    string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
+                            # which should error as undefined.
 
-    1. explicit namespace (name::)
-    2. use_chain match
-    3. current namespace (no :: ref), then
-    4. main:: (global namespace)
+    USE +tm
 
-Example:
+    string_date()           # check if string_date() exists in tm namespace and call it if found.
 
-```za</code></pre>
-<pre><code></code></pre>
-<pre><code># global ns / main program
-MODULE &quot;modpath/time&quot; AS tm
+                            # if not found (even though this one would be) then try to call it in current namespace (main::)
+                            #  which should error as undefined.
 
-tm::string_date()       # call function string_date in module time with explicit alias &#39;tm&#39;
-string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
-                        # which should error as undefined.
-
-USE +tm
-
-string_date()           # check if string_date() exists in tm namespace and call it if found.
-
-                        # if not found (even though this one would be) then try to call it in current namespace (main::)
-                        #  which should error as undefined.
-
-                        # whenever there are conflicting names then the first match takes precedence.
-                        #  i.e.
-                        # explicit name &gt; use_chain &gt; current namespace &gt; main</code></pre>
-<pre><code></code></pre>
+                            # whenever there are conflicting names then the first match takes precedence.
+                            #  i.e.
+                            # explicit name &gt; use_chain &gt; current namespace &gt; main
+</code></pre>
 <hr />
 <h1 id="part-vii-errors-debugging-and-safety">Part VII — Errors,
 Debugging, and Safety</h1>
@@ -1117,8 +1122,8 @@ troubleshooting.</p>
 <p>Debugging can be enabled in two ways:</p>
 <ul>
 <li><p><strong>Via command line</strong>:</p>
-<div class="sourceCode" id="cb65"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb64"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
 <li><p><strong>From within a script</strong>:</p>
 <pre class="za"><code>debug on</code></pre></li>
 </ul>
@@ -1357,8 +1362,8 @@ breakdowns.</p>
 <p>Enable profiling using either:</p>
 <ul>
 <li><p><strong>Command line</strong>:</p>
-<div class="sourceCode" id="cb72"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb71"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
 </ul>
 <h3 id="profiler-behavior">29.2 Profiler Behavior</h3>
 <p>When enabled:</p>
@@ -1503,8 +1508,6 @@ canonicalized</label></li>
 <ul class="task-list">
 <li><label><input type="checkbox" />Commands are validated against
 allowlist</label></li>
-<li><label><input type="checkbox" />Arguments are passed as arrays, not
-concatenated strings</label></li>
 <li><label><input type="checkbox" />Shell injection vulnerabilities are
 prevented</label></li>
 <li><label><input type="checkbox" />Command output is properly
@@ -1557,14 +1560,15 @@ don’t need and re-enable only deliberately.</p>
 <pre class="za"><code># Disable all potentially dangerous features
 permit(&quot;shell&quot;, false)
 permit(&quot;eval&quot;, false)
-permit(&quot;interpolation&quot;, false)
-permit(&quot;macros&quot;, false)
+permit(&quot;interpol&quot;, false)
+permit(&quot;macro&quot;, false)
 
 # Enable strict variable checking
-permit(&quot;strict_uninitialized&quot;, true)
+permit(&quot;uninit&quot;, false)
 
 # Later, selectively re-enable what&#39;s needed
-permit(&quot;shell&quot;, true)  # Allow specific shell commands</code></pre>
+permit(&quot;shell&quot;, true)
+permit(&quot;sanitisation&quot;, false)</code></pre>
 <h3 id="input-validation-and-sanitization">30.3 Input Validation and
 Sanitization</h3>
 <p>Always validate and sanitize external inputs to prevent injection
@@ -1578,7 +1582,7 @@ multiple hosts, services, or data sources.</p>
 Probing</h3>
 <pre class="za"><code># Define async check function
 define check_host(host_id)
-    pause rand(50)  # Simulate network delay
+    pause rand(500)  # Simulate network delay
     return host_id % 3 == 0 ? &quot;up&quot; : &quot;down&quot;
 end
 
@@ -1602,7 +1606,7 @@ println &quot;Up hosts:&quot;, up_hosts</code></pre>
 <h3 id="parallel-service-checks">31.2 Parallel Service Checks</h3>
 <pre class="za"><code># Service status checking
 define check_service(service_name)
-    pause rand(30)  # Simulate check delay
+    pause rand(500)  # Simulate check delay
     # In real usage: status = =| &quot;systemctl is-active &quot; + service_name
     return service_name ~ &quot;nginx|mysql&quot; ? &quot;running&quot; : &quot;stopped&quot;
 end
@@ -1626,7 +1630,7 @@ println &quot;Running services:&quot;, running_services</code></pre>
 <h3 id="parallel-data-processing">31.3 Parallel Data Processing</h3>
 <pre class="za"><code># Process multiple data items in parallel
 define process_data(item)
-    pause rand(40)  # Simulate processing time
+    pause rand(500)  # Simulate processing time
     return item * 2  # Simple transformation
 end
 
@@ -1649,7 +1653,7 @@ println &quot;High values:&quot;, high_values</code></pre>
 <h3 id="isolated-failure-handling">31.4 Isolated Failure Handling</h3>
 <pre class="za"><code># Network checks with isolated failures
 define check_network(host)
-    pause rand(60)  # Simulate network timeout
+    pause rand(500)  # Simulate network timeout
     # Simulate different failure modes
     case host
     is &quot;8.8.8.8&quot;
@@ -1684,7 +1688,7 @@ println &quot;Problem hosts:&quot;, problem_hosts</code></pre>
 Collection</h3>
 <pre class="za"><code># Database connectivity with partial success handling
 define check_database(db_name)
-    pause rand(80)  # Simulate connection attempt
+    pause rand(800)  # Simulate connection attempt
     # Simulate different connection outcomes
     case db_name
     is &quot;primary&quot;
@@ -2229,12 +2233,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb103"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb103-5"><a href="#cb103-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb102"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb102-5"><a href="#cb102-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2386,18 +2390,18 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb109"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb109-1"><a href="#cb109-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb109-2"><a href="#cb109-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
-<span id="cb109-3"><a href="#cb109-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb109-4"><a href="#cb109-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb109-5"><a href="#cb109-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
-<span id="cb109-6"><a href="#cb109-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb109-7"><a href="#cb109-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb109-8"><a href="#cb109-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
-<span id="cb109-9"><a href="#cb109-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb109-10"><a href="#cb109-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
-<span id="cb109-11"><a href="#cb109-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb108"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb108-2"><a href="#cb108-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
+<span id="cb108-3"><a href="#cb108-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb108-4"><a href="#cb108-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb108-5"><a href="#cb108-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
+<span id="cb108-6"><a href="#cb108-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb108-7"><a href="#cb108-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb108-8"><a href="#cb108-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
+<span id="cb108-9"><a href="#cb108-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb108-10"><a href="#cb108-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
+<span id="cb108-11"><a href="#cb108-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple but powerful structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
