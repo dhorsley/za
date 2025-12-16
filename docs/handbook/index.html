@@ -159,7 +159,7 @@ reporting, monitoring and many small tasks that are in the scope of
 system administrators, SREs, developers and others who are regularly
 expected to probe issues and generate state information.</p>
 <p>It prioritises: - <strong>ease of maintenance</strong> -
-<strong>rapid prototyping</strong> - <strong>inspectability</strong></p>
+<strong>rapid prototyping</strong> - <strong>portability</strong></p>
 <p>Za does not attempt to replace a general-purpose language for large
 services and should be used cautiously in production environments.</p>
 <h2 id="running-za">2. Running Za</h2>
@@ -225,7 +225,7 @@ configured with your preferred prompt, modules, and helper macros.</p>
 <p>Za provides built-in help and discovery mechanisms. Use the
 command-line help to see available options:</p>
 <div class="sourceCode" id="cb5"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za <span class="at">--help</span></span></code></pre></div>
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za <span class="at">-h</span></span></code></pre></div>
 <p>For discovering available functions and modules, examine the standard
 library source files and examples in the <code>eg/</code> directory. The
 language documentation and examples provide comprehensive coverage of
@@ -255,7 +255,7 @@ expected</p>
      5|     return result, temp
      6| end
 
-ctrl-d  # Accept and execute
+ctrl-d  # Accept input and return no normal REPL prompt
 escape  # Abandon and return to single-line mode</code></pre>
 <p>The multi-line editor provides: - Line numbering with syntax
 highlighting - Tab-based indentation (4 spaces) - Fuzzy search mode
@@ -304,9 +304,6 @@ macro! +test `echo &quot;debug&quot;`
 <p>The REPL is ideal for rapid prototyping and interactive data
 exploration. Test your commands interactively before incorporating them
 into scripts.</p>
-<p><strong>Note:</strong> All examples in this handbook should be tested
-in standalone files before use, as REPL behavior may differ from script
-execution due to variable scoping and state management.</p>
 <pre class="za"><code># Filter system data for interesting entries
 &gt;&gt; high_usage = disk_usage() ?&gt; `#.usage_percent &gt; 50`
 
@@ -325,7 +322,7 @@ execution due to variable scoping and state management.</p>
 
 # Create a quick report
 &gt;&gt; foreach item in high_usage
-&gt;&gt;     println &quot;ALERT: {item.path} at {item.mounted_path} is {item.usage_percent}&quot;
+&gt;&gt;     println &quot;ALERT: {=item.path} at {=item.mounted_path} is {=item.usage_percent}&quot;
 &gt;&gt; endfor
 ALERT: /dev/sda1 at /boot is 92%
 ALERT: /dev/sda2 at / is 87%</code></pre>
@@ -554,8 +551,7 @@ current instance, and fields may be read/updated via
 module scope. There is one predefined enum: <code>ex</code>, containing
 default exception categories.</p>
 <p>An enum is defined like this:</p>
-<p>enum enum_name ( enum_name_1 [ = value1 ] [ , … , enum_name_N [ =
-valueN ] ] )</p>
+<pre class="za"><code>enum enum_name ( enum_name_1 [ = value1 ] [ , ... , enum_name_N [ = valueN ] ] )</code></pre>
 <p>Setting a value with = sets the current auto-incrementing value. This
 means that you should always set a value for non-integer enum
 values.</p>
@@ -1102,8 +1098,8 @@ troubleshooting.</p>
 <p>Debugging can be enabled in two ways:</p>
 <ul>
 <li><p><strong>Via command line</strong>:</p>
-<div class="sourceCode" id="cb64"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb65"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
 <li><p><strong>From within a script</strong>:</p>
 <pre class="za"><code>debug on</code></pre></li>
 </ul>
@@ -1342,24 +1338,9 @@ breakdowns.</p>
 <p>Enable profiling using either:</p>
 <ul>
 <li><p><strong>Command line</strong>:</p>
-<div class="sourceCode" id="cb71"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
-<li><p><strong>Environment variable</strong>:</p>
 <div class="sourceCode" id="cb72"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROFILE</span><span class="op">=</span>1 <span class="ex">za</span> script.za</span></code></pre></div></li>
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
 </ul>
-<p><strong>Note:</strong> For most command execution, use the
-<code>{command}</code> form instead of shell operators for better
-reliability:</p>
-<pre class="za"><code># Preferred form
-files = {ls -la /etc}
-date = {date}
-
-# Command results return structs - convert to string for processing
-date_str = as_string({date})
-files_str = as_string({ls -la /etc})
-
-# Instead of shell operators in complex cases</code></pre>
 <h3 id="profiler-behavior">29.2 Profiler Behavior</h3>
 <p>When enabled:</p>
 <ul>
@@ -1378,7 +1359,7 @@ debugging and analysis.</p>
 Results</h3>
 <p>After script execution completes, a summary is printed to standard
 output:</p>
-<pre><code>Profile Summary
+<pre class="za"><code>Profile Summary
 
 main:
   parse: 360.182µs
@@ -1477,30 +1458,72 @@ scripts.</strong></p>
 then work through the checklist below:</p>
 <h3 id="security-checklist">30.1 Security Checklist</h3>
 <p>Use this checklist for security review:</p>
-<p><strong>Input Validation:</strong> - [ ] All external inputs are
-validated - [ ] File paths are sanitized against directory traversal - [
-] Numeric inputs are range-checked - [ ] String inputs are checked for
-injection patterns</p>
-<p><strong>File Operations:</strong> - [ ] File permissions are checked
-before access - [ ] Sensitive files have restricted permissions - [ ]
-Temporary files are properly cleaned up - [ ] File paths are validated
-and canonicalized</p>
-<p><strong>Command Execution:</strong> - [ ] Commands are validated
-against allowlist - [ ] Arguments are passed as arrays, not concatenated
-strings - [ ] Shell injection vulnerabilities are prevented - [ ]
-Command output is properly handled</p>
-<p><strong>Network Security:</strong> - [ ] URLs are validated for
-protocol and format - [ ] Server-side request forgery is prevented - [ ]
-API keys and secrets are properly handled - [ ] HTTPS is used for
-sensitive communications</p>
-<p><strong>Logging and Monitoring:</strong> - [ ] Sensitive data is not
-logged - [ ] Security events are properly logged - [ ] Error messages
-are sanitized for external display - [ ] Log files have appropriate
-permissions</p>
-<p><strong>Code Integrity:</strong> - [ ] Script files have appropriate
-permissions - [ ] Configuration files are validated - [ ] Code
-signing/integrity checks are implemented - [ ] Dependencies are from
-trusted sources</p>
+<p><strong>Input Validation:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />All external inputs are
+validated</label></li>
+<li><label><input type="checkbox" />File paths are sanitized against
+directory traversal</label></li>
+<li><label><input type="checkbox" />Numeric inputs are
+range-checked</label></li>
+<li><label><input type="checkbox" />String inputs are checked for
+injection patterns</label></li>
+</ul>
+<p><strong>File Operations:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />File permissions are checked before
+access</label></li>
+<li><label><input type="checkbox" />Sensitive files have restricted
+permissions</label></li>
+<li><label><input type="checkbox" />Temporary files are properly cleaned
+up</label></li>
+<li><label><input type="checkbox" />File paths are validated and
+canonicalized</label></li>
+</ul>
+<p><strong>Command Execution:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Commands are validated against
+allowlist</label></li>
+<li><label><input type="checkbox" />Arguments are passed as arrays, not
+concatenated strings</label></li>
+<li><label><input type="checkbox" />Shell injection vulnerabilities are
+prevented</label></li>
+<li><label><input type="checkbox" />Command output is properly
+handled</label></li>
+</ul>
+<p><strong>Network Security:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />URLs are validated for protocol and
+format</label></li>
+<li><label><input type="checkbox" />Server-side request forgery is
+prevented</label></li>
+<li><label><input type="checkbox" />API keys and secrets are properly
+handled</label></li>
+<li><label><input type="checkbox" />HTTPS is used for sensitive
+communications</label></li>
+</ul>
+<p><strong>Logging and Monitoring:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Sensitive data is not
+logged</label></li>
+<li><label><input type="checkbox" />Security events are properly
+logged</label></li>
+<li><label><input type="checkbox" />Error messages are sanitized for
+external display</label></li>
+<li><label><input type="checkbox" />Log files have appropriate
+permissions</label></li>
+</ul>
+<p><strong>Code Integrity:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Script files have appropriate
+permissions</label></li>
+<li><label><input type="checkbox" />Configuration files are
+validated</label></li>
+<li><label><input type="checkbox" />Code signing/integrity checks are
+implemented</label></li>
+<li><label><input type="checkbox" />Dependencies are from trusted
+sources</label></li>
+</ul>
 <p>By following these security practices and using <code>permit()</code>
 to control runtime capabilities, you can write Za scripts that are
 robust, maintainable, and secure against common vulnerabilities. It does
@@ -1938,14 +1961,14 @@ endif
 # DNS resolution
 ip_address = dns_resolve(&quot;example.com&quot;)
 if ip_address.records.len&gt;0
-    println(&quot;example.com resolves to: &quot; + ip_address.records[0])
+    println &quot;example.com resolves to: &quot; + ip_address.records[0]
 endif
 
 # Network interface information
 interfaces = network.interfaces()
 for interface in net_interfaces_detailed()
     if interface.up and not interface.name == &quot;lo&quot;
-        println(&quot;Interface: &quot; + interface.name + &quot; IP: &quot; + interface.ips)
+        println &quot;Interface: &quot;, interface.name, &quot; IP: &quot;, interface.ips
     endif
 endfor</code></pre>
 <h3 id="database-operations">38.8 Database Operations</h3>
@@ -2003,13 +2026,12 @@ try
     validate_config(config)
     apply_config(config)
 catch config_error
-    log(&quot;error&quot;, &quot;Configuration error: &quot; + config_error.message)
-    notify.send(&quot;Configuration Error&quot;, config_error.message, &quot;error&quot;)
+    log error: &quot;Configuration error: &quot; + config_error.message
 catch validation_error
-    log(&quot;error&quot;, &quot;Validation failed: &quot; + validation_error.message)
+    log error: &quot;Validation failed: &quot; + validation_error.message
     rollback_config()
 catch system_error
-    log(&quot;critical&quot;, &quot;System error: &quot; + system_error.message)
+    log critical: &quot;System error: &quot; + system_error.message
     emergency_shutdown()
 finally
     cleanup_temp_files()
@@ -2021,25 +2043,12 @@ exreg(&quot;NetworkError&quot;, &quot;warning&quot;)
 exreg(&quot;DatabaseError&quot;, &quot;critical&quot;)
 
 # Logging with different levels
-log(&quot;debug&quot;, &quot;Starting configuration process&quot;)
-log(&quot;info&quot;, &quot;Loading configuration from &quot; + config_file)
-log(&quot;warning&quot;, &quot;Using default values for missing settings&quot;)
-log(&quot;error&quot;, &quot;Failed to connect to database&quot;)
-log(&quot;critical&quot;, &quot;System out of memory&quot;)
-
-# Structured logging
-log_entry = {
-    &quot;timestamp&quot;: time.now().format(),
-    &quot;level&quot;: &quot;info&quot;,
-    &quot;component&quot;: &quot;backup&quot;,
-    &quot;message&quot;: &quot;Backup completed&quot;,
-    &quot;details&quot;: {
-        &quot;files&quot;: 150,
-        &quot;size_mb&quot;: 2048,
-        &quot;duration_seconds&quot;: 45
-    }
-}
-log_structured(log_entry)</code></pre>
+log debug: &quot;Starting configuration process&quot;
+log info: &quot;Loading configuration from &quot; + config_file
+log warning: &quot;Using default values for missing settings&quot;
+log error: &quot;Failed to connect to database&quot;
+log critical: &quot;System out of memory&quot;
+</code></pre>
 <p>These representative idioms demonstrate the power and flexibility of
 Za’s standard library categories for system administration tasks. Each
 category provides specialized tools that can be combined to create
@@ -2087,7 +2096,7 @@ filtered_pids = test_pids ?&gt; `int(#) &gt; 100`
 println &quot;High PIDs:&quot;, filtered_pids</code></pre>
 <h3 id="service-status-via-cli">41.2 Service Status via CLI</h3>
 <pre class="za"><code># Parse service status using table()
-service_output = =| &quot;systemctl list-units --type=service --state=running&quot;
+service_output = ${systemctl list-units --type=service --state=running}
 services = table(service_output, map(.parse_only true))
 
 # Filter services by name
@@ -2095,8 +2104,8 @@ web_services = services ?&gt; `#.0 ~ &quot;nginx|apache|httpd&quot;`
 println &quot;Web services:&quot;, web_services
 
 # Check specific service status
-nginx_status = =| &quot;systemctl is-active nginx&quot;
-if nginx_status.trim() == &quot;active&quot;
+nginx_status = ${systemctl is-active nginx}
+if $st nginx_status == &quot;active&quot;
     println &quot;Nginx is running&quot;
 else
     println &quot;Nginx is not running&quot;
@@ -2107,7 +2116,7 @@ checks). Prefer structured results over parsing external tool
 output.</p>
 <h3 id="basic-network-testing">42.1 Basic Network Testing</h3>
 <pre class="za"><code># Test connectivity using ping
-ping_result = =| &quot;ping -c 1 8.8.8.8&quot;
+ping_result = ${ping -c 1 8.8.8.8}
 if ping_result ~ &quot;1 received&quot;
     println &quot;Internet connectivity OK&quot;
 else
@@ -2115,7 +2124,7 @@ else
 endif
 
 # DNS resolution test
-dns_result = =| &quot;nslookup google.com&quot;
+dns_result = ${nslookup google.com}
 if dns_result ~ &quot;Address:&quot;
     println &quot;DNS resolution working&quot;
 else
@@ -2124,7 +2133,7 @@ endif</code></pre>
 <h3 id="port-checking">42.2 Port Checking</h3>
 <pre class="za"><code># Check if ports are open using netcat
 function check_port(host, port)
-    result = =| &quot;nc -z &quot; + host + &quot; &quot; + port + &quot; 2&gt;&amp;1&quot;
+    result = ${nc -z {host} {port} 2&gt;&amp;1}
     return result.len() == 0  # Empty output means port is open
 endfunction
 
@@ -2135,24 +2144,6 @@ for port in ports_to_check
         println &quot;Port&quot;, port, &quot;is open&quot;
     else
         println &quot;Port&quot;, port, &quot;is closed&quot;
-    endif
-endfor</code></pre>
-<h3 id="network-interface-information">42.3 Network Interface
-Information</h3>
-<pre class="za"><code># Get network interface information
-ifconfig_output = =| &quot;ifconfig&quot;
-interfaces = table(ifconfig_output, map(.parse_only true))
-
-# Extract interface names
-interface_lines = ifconfig_output.split(&quot;\n&quot;)
-interface_names = interface_lines ?&gt; `# ~ &quot;^[a-zA-Z]&quot;` -&gt; `split(#, &quot; &quot;)[0]`
-println &quot;Network interfaces:&quot;, interface_names
-
-# Check interface status
-for interface in interface_names
-    if interface != &quot;lo&quot;  # Skip loopback
-        status_output = =| &quot;cat /sys/class/net/&quot; + interface + &quot;/operstate&quot;
-        println interface, &quot;status:&quot;, status_output.trim()
     endif
 endfor</code></pre>
 <h2 id="parallel-host-probing">43. Parallel host probing</h2>
@@ -2219,12 +2210,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb105"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb105-1"><a href="#cb105-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb105-2"><a href="#cb105-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb105-3"><a href="#cb105-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb105-4"><a href="#cb105-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb105-5"><a href="#cb105-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb103"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb103-5"><a href="#cb103-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2289,57 +2280,66 @@ file locations and automatic status code categorization. Advanced
 Features include subject prefixes, automatic error logging, queue
 management, rotation control, and memory reservation.</p>
 <pre class="za"><code></code></pre>
-<p>Application Logging: log “message”,x,y,z # Primary logging statement
-log level: “message”,x,y,z # Level-specific logging</p>
-<p>Basic Control: logging on [filepath] - Enable main logging,
-optionally set log file path logging off - Disable main logging logging
-status - Display comprehensive logging configuration and statistics
-logging quiet - Suppress console output from log statements logging loud
-- Enable console output from log statements (default)</p>
-<p>Format Control: logging json on # Enable JSON format for all logs
-logging json off # Use plain text format (default) logging json fields
-+field value # Add custom field to JSON logs logging json fields -field
-# Remove specific field from JSON logs logging json fields - # Clear all
-custom fields logging json fields push # Save current fields to stack
-logging json fields pop # Restore fields from stack</p>
-<p>Web Access Logging: logging web enable # Enable web access logging
-logging web disable # Disable web access logging logging accessfile
-<path> # Set web access log file location (default: ./za_access.log)</p>
-<p>Advanced Features: logging subject <text> # Set prefix for all log
-entries logging error on/off # Enable/disable automatic error logging
-logging queue size <number> # Set background processing queue size
-(default: 60) logging rotate size <bytes> # Set log rotation file size
-threshold logging rotate count <number> # Set number of rotated files to
-keep logging reserve <bytes> # Set emergency memory reserve for logging
-under pressure</p>
+<p>Application Logging:</p>
+<p>log “message”,x,y,z # Primary logging statement log level:
+“message”,x,y,z # Level-specific logging</p>
+<p>Basic Control:</p>
+<p>logging on [filepath] - Enable main logging, optionally set log file
+path logging off - Disable main logging logging status - Display
+comprehensive logging configuration and statistics logging quiet -
+Suppress console output from log statements logging loud - Enable
+console output from log statements (default)</p>
+<p>Format Control:</p>
+<p>logging json on # Enable JSON format for all logs logging json off #
+Use plain text format (default) logging json fields +field value # Add
+custom field to JSON logs logging json fields -field # Remove specific
+field from JSON logs logging json fields - # Clear all custom fields
+logging json fields push # Save current fields to stack logging json
+fields pop # Restore fields from stack</p>
+<p>Web Access Logging:</p>
+<p>logging web enable # Enable web access logging logging web disable #
+Disable web access logging logging accessfile <path> # Set web access
+log file location (default: ./za_access.log)</p>
+<p>Advanced Features:</p>
+<p>logging subject <text> # Set prefix for all log entries logging error
+on/off # Enable/disable automatic error logging logging queue size
+<number> # Set background processing queue size (default: 60) logging
+rotate size <bytes> # Set log rotation file size threshold logging
+rotate count <number> # Set number of rotated files to keep logging
+reserve <bytes> # Set emergency memory reserve for logging under
+pressure</p>
 <pre><code></code></pre>
 <h2 id="infrastructure-design">47.2 Infrastructure Design</h2>
 <p>The logging architecture uses a Unified Architecture where both
 application code and web server code feed into a common background queue
-that processes entries through shared formatting and rotation pipelines.
-Key Components include background queue processing with configurable
+that processes entries through shared formatting and rotation
+pipelines.</p>
+<p>Key Components include background queue processing with configurable
 size and overflow handling, dual destination systems for main logs and
 web access logs, and format management supporting both plain text and
-JSON with custom field capabilities. Format Management handles automatic
-timestamps and subject prefix handling while allowing custom field
-manipulation for structured logs. Log Rotation provides size-based
-rotation for both main and web access logs with configurable file count
-retention and automatic cleanup of old rotated files. Memory Management
-includes an emergency memory reserve system and priority-based queue
-management that favors errors over normal logs under pressure. Error
-Integration automatically logs Za interpreter errors with enhanced
-context and HTTP status code tracking for web access logs.</p>
+JSON with custom field capabilities.</p>
+<p>Format Management handles automatic timestamps and subject prefix
+handling while allowing custom field manipulation for structured logs.
+Log Rotation provides size-based rotation for both main and web access
+logs with configurable file count retention and automatic cleanup of old
+rotated files.</p>
+<p>Memory Management includes an emergency memory reserve system and
+priority-based queue management that favors errors over normal logs
+under pressure. Error Integration automatically logs Za interpreter
+errors with enhanced context and HTTP status code tracking for web
+access logs.</p>
 <h2 id="performance-characteristics">47.3 Performance
 Characteristics</h2>
 <p>The logging system is optimized for minimal performance impact
 through Non-blocking I/O for all logging operations, ensuring script
-execution never waits on log writes. The system implements Memory-aware
-request dropping for web access logs under memory pressure, with
-automatic warnings when queue capacity is exceeded. Unified statistics
-tracking provides comprehensive monitoring of logging system performance
-and health. Cross-platform path validation and security ensures safe
-file operations with appropriate permission checks and path sanitization
-across different operating systems.</p>
+execution never waits on log writes.</p>
+<p>The system implements Memory-aware request dropping for web access
+logs under memory pressure, with automatic warnings when queue capacity
+is exceeded.</p>
+<p>Unified statistics tracking provides comprehensive monitoring of
+logging system performance and health. Cross-platform path validation
+and security ensures safe file operations with appropriate permission
+checks and path sanitization across different operating systems.</p>
 <p>This design ensures that logging operations provide comprehensive
 coverage of application events while maintaining high performance and
 reliability, making the system suitable for everything from simple
@@ -2367,18 +2367,18 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb111"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
-<span id="cb111-3"><a href="#cb111-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb111-4"><a href="#cb111-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb111-5"><a href="#cb111-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
-<span id="cb111-6"><a href="#cb111-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb111-7"><a href="#cb111-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb111-8"><a href="#cb111-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
-<span id="cb111-9"><a href="#cb111-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb111-10"><a href="#cb111-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
-<span id="cb111-11"><a href="#cb111-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb109"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb109-1"><a href="#cb109-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb109-2"><a href="#cb109-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
+<span id="cb109-3"><a href="#cb109-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb109-4"><a href="#cb109-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb109-5"><a href="#cb109-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
+<span id="cb109-6"><a href="#cb109-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb109-7"><a href="#cb109-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb109-8"><a href="#cb109-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
+<span id="cb109-9"><a href="#cb109-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb109-10"><a href="#cb109-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
+<span id="cb109-11"><a href="#cb109-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple but powerful structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
