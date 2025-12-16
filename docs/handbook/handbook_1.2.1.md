@@ -165,7 +165,7 @@ and others who are regularly expected to probe issues and generate state informa
 It prioritises:
 - **ease of maintenance**
 - **rapid prototyping**
-- **inspectability**
+- **portability**
 
 Za does not attempt to replace a general-purpose language for large services and
 should be used cautiously in production environments.
@@ -247,7 +247,7 @@ Now when you start `za`, your environment is automatically configured with your 
 Za provides built-in help and discovery mechanisms. Use the command-line help to see available options:
 
 ```bash
-$ za --help
+$ za -h
 ```
 
 For discovering available functions and modules, examine the standard library source files and examples in the `eg/` directory. The language documentation and examples provide comprehensive coverage of available capabilities.
@@ -291,7 +291,7 @@ For complex expressions, use the built-in multi-line editor:
      5|     return result, temp
      6| end
 
-ctrl-d  # Accept and execute
+ctrl-d  # Accept input and return no normal REPL prompt
 escape  # Abandon and return to single-line mode
 ```
 
@@ -361,8 +361,6 @@ macro! +test `echo "debug"`
 
 The REPL is ideal for rapid prototyping and interactive data exploration. Test your commands interactively before incorporating them into scripts.
 
-**Note:** All examples in this handbook should be tested in standalone files before use, as REPL behavior may differ from script execution due to variable scoping and state management.
-
 ```za
 # Filter system data for interesting entries
 >> high_usage = disk_usage() ?> `#.usage_percent > 50`
@@ -382,7 +380,7 @@ The REPL is ideal for rapid prototyping and interactive data exploration. Test y
 
 # Create a quick report
 >> foreach item in high_usage
->>     println "ALERT: {item.path} at {item.mounted_path} is {item.usage_percent}"
+>>     println "ALERT: {=item.path} at {=item.mounted_path} is {=item.usage_percent}"
 >> endfor
 ALERT: /dev/sda1 at /boot is 92%
 ALERT: /dev/sda2 at / is 87%
@@ -683,7 +681,9 @@ predefined enum: `ex`, containing default exception categories.
 
 An enum is defined like this:
 
+```za
 enum enum_name ( enum_name_1 [ = value1 ] [ , ... , enum_name_N [ = valueN ] ] )
+```
 
 Setting a value with = sets the current auto-incrementing value. This means that
 you should always set a value for non-integer enum values.
@@ -1538,24 +1538,6 @@ Enable profiling using either:
   za -P script.za
   ```
 
-- **Environment variable**:
-  ```bash
-  ZA_PROFILE=1 za script.za
-  ```
-
-**Note:** For most command execution, use the `{command}` form instead of shell operators for better reliability:
-```za
-# Preferred form
-files = {ls -la /etc}
-date = {date}
-
-# Command results return structs - convert to string for processing
-date_str = as_string({date})
-files_str = as_string({ls -la /etc})
-
-# Instead of shell operators in complex cases
-```
-
 ### 29.2 Profiler Behavior
 
 When enabled:
@@ -1572,7 +1554,7 @@ Profiling incurs minimal overhead but is best used for performance debugging and
 
 After script execution completes, a summary is printed to standard output:
 
-```
+```za
 Profile Summary
 
 main:
@@ -1675,36 +1657,42 @@ If you are going to use Za in situations it was not designed for, then work thro
 Use this checklist for security review:
 
 **Input Validation:**
+
 - [ ] All external inputs are validated
 - [ ] File paths are sanitized against directory traversal
 - [ ] Numeric inputs are range-checked
 - [ ] String inputs are checked for injection patterns
 
 **File Operations:**
+
 - [ ] File permissions are checked before access
 - [ ] Sensitive files have restricted permissions
 - [ ] Temporary files are properly cleaned up
 - [ ] File paths are validated and canonicalized
 
 **Command Execution:**
+
 - [ ] Commands are validated against allowlist
 - [ ] Arguments are passed as arrays, not concatenated strings
 - [ ] Shell injection vulnerabilities are prevented
 - [ ] Command output is properly handled
 
 **Network Security:**
+
 - [ ] URLs are validated for protocol and format
 - [ ] Server-side request forgery is prevented
 - [ ] API keys and secrets are properly handled
 - [ ] HTTPS is used for sensitive communications
 
 **Logging and Monitoring:**
+
 - [ ] Sensitive data is not logged
 - [ ] Security events are properly logged
 - [ ] Error messages are sanitized for external display
 - [ ] Log files have appropriate permissions
 
 **Code Integrity:**
+
 - [ ] Script files have appropriate permissions
 - [ ] Configuration files are validated
 - [ ] Code signing/integrity checks are implemented
@@ -2200,14 +2188,14 @@ endif
 # DNS resolution
 ip_address = dns_resolve("example.com")
 if ip_address.records.len>0
-    println("example.com resolves to: " + ip_address.records[0])
+    println "example.com resolves to: " + ip_address.records[0]
 endif
 
 # Network interface information
 interfaces = network.interfaces()
 for interface in net_interfaces_detailed()
     if interface.up and not interface.name == "lo"
-        println("Interface: " + interface.name + " IP: " + interface.ips)
+        println "Interface: ", interface.name, " IP: ", interface.ips
     endif
 endfor
 ```
@@ -2282,13 +2270,12 @@ try
     validate_config(config)
     apply_config(config)
 catch config_error
-    log("error", "Configuration error: " + config_error.message)
-    notify.send("Configuration Error", config_error.message, "error")
+    log error: "Configuration error: " + config_error.message
 catch validation_error
-    log("error", "Validation failed: " + validation_error.message)
+    log error: "Validation failed: " + validation_error.message
     rollback_config()
 catch system_error
-    log("critical", "System error: " + system_error.message)
+    log critical: "System error: " + system_error.message
     emergency_shutdown()
 finally
     cleanup_temp_files()
@@ -2300,25 +2287,12 @@ exreg("NetworkError", "warning")
 exreg("DatabaseError", "critical")
 
 # Logging with different levels
-log("debug", "Starting configuration process")
-log("info", "Loading configuration from " + config_file)
-log("warning", "Using default values for missing settings")
-log("error", "Failed to connect to database")
-log("critical", "System out of memory")
+log debug: "Starting configuration process"
+log info: "Loading configuration from " + config_file
+log warning: "Using default values for missing settings"
+log error: "Failed to connect to database"
+log critical: "System out of memory"
 
-# Structured logging
-log_entry = {
-    "timestamp": time.now().format(),
-    "level": "info",
-    "component": "backup",
-    "message": "Backup completed",
-    "details": {
-        "files": 150,
-        "size_mb": 2048,
-        "duration_seconds": 45
-    }
-}
-log_structured(log_entry)
 ```
 
 These representative idioms demonstrate the power and flexibility of Za's standard library categories for system administration tasks. Each category provides specialized tools that can be combined to create comprehensive automation solutions.
@@ -2382,7 +2356,7 @@ println "High PIDs:", filtered_pids
 
 ```za
 # Parse service status using table()
-service_output = =| "systemctl list-units --type=service --state=running"
+service_output = ${systemctl list-units --type=service --state=running}
 services = table(service_output, map(.parse_only true))
 
 # Filter services by name
@@ -2390,8 +2364,8 @@ web_services = services ?> `#.0 ~ "nginx|apache|httpd"`
 println "Web services:", web_services
 
 # Check specific service status
-nginx_status = =| "systemctl is-active nginx"
-if nginx_status.trim() == "active"
+nginx_status = ${systemctl is-active nginx}
+if $st nginx_status == "active"
     println "Nginx is running"
 else
     println "Nginx is not running"
@@ -2406,7 +2380,7 @@ Za provides network helpers for common tasks (reachability, DNS, port checks). P
 
 ```za
 # Test connectivity using ping
-ping_result = =| "ping -c 1 8.8.8.8"
+ping_result = ${ping -c 1 8.8.8.8}
 if ping_result ~ "1 received"
     println "Internet connectivity OK"
 else
@@ -2414,7 +2388,7 @@ else
 endif
 
 # DNS resolution test
-dns_result = =| "nslookup google.com"
+dns_result = ${nslookup google.com}
 if dns_result ~ "Address:"
     println "DNS resolution working"
 else
@@ -2427,7 +2401,7 @@ endif
 ```za
 # Check if ports are open using netcat
 function check_port(host, port)
-    result = =| "nc -z " + host + " " + port + " 2>&1"
+    result = ${nc -z {host} {port} 2>&1}
     return result.len() == 0  # Empty output means port is open
 endfunction
 
@@ -2438,27 +2412,6 @@ for port in ports_to_check
         println "Port", port, "is open"
     else
         println "Port", port, "is closed"
-    endif
-endfor
-```
-
-### 42.3 Network Interface Information
-
-```za
-# Get network interface information
-ifconfig_output = =| "ifconfig"
-interfaces = table(ifconfig_output, map(.parse_only true))
-
-# Extract interface names
-interface_lines = ifconfig_output.split("\n")
-interface_names = interface_lines ?> `# ~ "^[a-zA-Z]"` -> `split(#, " ")[0]`
-println "Network interfaces:", interface_names
-
-# Check interface status
-for interface in interface_names
-    if interface != "lo"  # Skip loopback
-        status_output = =| "cat /sys/class/net/" + interface + "/operstate"
-        println interface, "status:", status_output.trim()
     endif
 endfor
 ```
@@ -2613,10 +2566,12 @@ The logging system supports several categories of statements for different loggi
 ```za
 ```
 Application Logging:
+
 log "message",x,y,z             # Primary logging statement
 log level: "message",x,y,z      # Level-specific logging
 
 Basic Control:
+
 logging on [filepath] - Enable main logging, optionally set log file path
 logging off - Disable main logging
 logging status - Display comprehensive logging configuration and statistics
@@ -2624,6 +2579,7 @@ logging quiet - Suppress console output from log statements
 logging loud - Enable console output from log statements (default)
 
 Format Control:
+
 logging json on                     # Enable JSON format for all logs
 logging json off                    # Use plain text format (default)
 logging json fields +field value    # Add custom field to JSON logs
@@ -2633,11 +2589,13 @@ logging json fields push            # Save current fields to stack
 logging json fields pop             # Restore fields from stack
 
 Web Access Logging:
+
 logging web enable                  # Enable web access logging
 logging web disable                 # Disable web access logging
 logging accessfile <path>           # Set web access log file location (default: ./za_access.log)
 
 Advanced Features:
+
 logging subject <text>              # Set prefix for all log entries
 logging error on/off                # Enable/disable automatic error logging
 logging queue size <number>         # Set background processing queue size (default: 60)
@@ -2649,14 +2607,23 @@ logging reserve <bytes>             # Set emergency memory reserve for logging u
 ```
 ## 47.2 Infrastructure Design
 
-The logging architecture uses a Unified Architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines. Key Components include background queue processing with configurable size and overflow handling, dual destination systems for main logs and web access logs, and format management supporting both plain text and JSON with custom field capabilities. Format Management handles automatic timestamps and subject prefix handling while allowing custom field manipulation for structured logs. Log Rotation provides size-based rotation for both main and web access logs with configurable file count retention and automatic cleanup of old rotated files. Memory Management includes an emergency memory reserve system and priority-based queue management that favors errors over normal logs under pressure. Error Integration automatically logs Za interpreter errors with enhanced context and HTTP status code tracking for web access logs.
+The logging architecture uses a Unified Architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines.
+
+Key Components include background queue processing with configurable size and overflow handling, dual destination systems for main logs and web access logs, and format management supporting both plain text and JSON with custom field capabilities.
+
+Format Management handles automatic timestamps and subject prefix handling while allowing custom field manipulation for structured logs. Log Rotation provides size-based rotation for both main and web access logs with configurable file count retention and automatic cleanup of old rotated files.
+
+Memory Management includes an emergency memory reserve system and priority-based queue management that favors errors over normal logs under pressure. Error Integration automatically logs Za interpreter errors with enhanced context and HTTP status code tracking for web access logs.
 
 ## 47.3 Performance Characteristics
 
-The logging system is optimized for minimal performance impact through Non-blocking I/O for all logging operations, ensuring script execution never waits on log writes. The system implements Memory-aware request dropping for web access logs under memory pressure, with automatic warnings when queue capacity is exceeded. Unified statistics tracking provides comprehensive monitoring of logging system performance and health. Cross-platform path validation and security ensures safe file operations with appropriate permission checks and path sanitization across different operating systems.
+The logging system is optimized for minimal performance impact through Non-blocking I/O for all logging operations, ensuring script execution never waits on log writes.
+
+The system implements Memory-aware request dropping for web access logs under memory pressure, with automatic warnings when queue capacity is exceeded.
+
+Unified statistics tracking provides comprehensive monitoring of logging system performance and health. Cross-platform path validation and security ensures safe file operations with appropriate permission checks and path sanitization across different operating systems.
 
 This design ensures that logging operations provide comprehensive coverage of application events while maintaining high performance and reliability, making the system suitable for everything from simple scripts to high-volume web services.
-
 
 ---
 
