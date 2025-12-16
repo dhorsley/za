@@ -1915,9 +1915,9 @@ String manipulation is fundamental for processing logs, configuration files, and
 ```za
 # Basic string operations
 text = "  System Log Entry  "
-trimmed = text.trim()                    # "System Log Entry"
-upper = text.upper()                     # "  SYSTEM LOG ENTRY  "
-lower = text.lower()                     # "  system log entry  "
+trimmed = text.trim                      # "System Log Entry"
+upper = text.upper                       # "  SYSTEM LOG ENTRY  "
+lower = text.lower                       # "  system log entry  "
 
 # String splitting and joining
 log_line = "2023-12-01 10:30:15 ERROR: Database connection failed"
@@ -1926,9 +1926,9 @@ timestamp = parts[0] + " " + parts[1]    # "2023-12-01 10:30:15"
 message = parts[3:].join(" ")            # "Database connection failed"
 
 # Pattern matching and replacement
-config_line = "port = 8080"
-if config_line.contains("port")
-    port_value = config_line.split("=")[1].trim()
+config_line = "port=8080"
+if config_line ~ "port"
+    port_value = config_line.split("=")[1].trim
     port_num = int(port_value)
 endif
 
@@ -1950,28 +1950,29 @@ Lists and arrays are essential for managing collections of servers, files, or da
 ```za
 # Creating and manipulating lists
 servers = ["web-01", "web-02", "db-01", "cache-01"]
-web_servers = servers.filter(|x| x.startswith("web"))     # ["web-01", "web-02"]
+web_servers = servers ?> `has_start("web-")`     # ["web-01", "web-02"]
 
 # List transformations
 port_numbers = [80, 443, 8080, 3000]
-secure_ports = port_numbers.map(|x| x + 1)               # [81, 444, 8081, 3001]
+secure_ports = port_numbers -> `as_int(#+1)`              # [81, 444, 8081, 3001]
 
 # List aggregation
 response_times = [120, 85, 200, 95, 150]
-avg_response = response_times.sum() / response_times.len()  # Average response time
-max_response = response_times.max()                         # 200
-min_response = response_times.min()                         # 85
+avg_response = response_times.sum / response_times.len    # Average response time
+max_response = response_times.max                         # 200
+min_response = response_times.min                         # 85
 
 # Array operations for numeric data
 cpu_readings = [45.2, 67.8, 89.1, 34.5, 78.9]
-high_cpu_periods = cpu_readings.filter(|x| x > 80.0)      # [89.1]
+high_cpu_periods = cpu_readings ?> `#>80`                 # [89.1]
 
 # Multi-dimensional arrays for metrics
 hourly_metrics = [
-    [10, 15, 12, 8],     # Hour 0-3
-    [20, 25, 18, 22],    # Hour 4-7
-    [30, 35, 28, 32]     # Hour 8-11]
-morning_avg = hourly_metrics[1].sum() / 4                # Average for hours 4-7
+    [10, 15, 12, 8],
+    [20, 25, 18, 22],
+    [30, 35, 28, 32]
+] # Hour 0-3, 4-7, 8-11
+morning_avg = hourly_metrics[1].sum / 4                # Average for hours 4-7
 ```
 
 ### 38.3 Map Operations
@@ -1988,7 +1989,7 @@ server_config = map(
 )
 
 # Accessing and modifying
-if server_config.key("ssl") and server_config.ssl
+if server_config.ssl is bool and server_config.ssl
     protocol = "https"
 else
     protocol = "http"
@@ -1997,7 +1998,7 @@ endif
 # Merging configurations
 default_config = map(.timeout 60, .retries 3, .debug false)
 user_config = map(.timeout 120, .debug true)
-final_config = default_config.merge(user_config) # -or- a | b
+final_config = default_config.merge(user_config)
 # Result: {"timeout": 120, "retries": 3, "debug": true}
 
 # Map operations for system inventory
@@ -2163,6 +2164,7 @@ try
     h=db_init(execpath()+"/files/test.db")
     res=h.db_query("select * from users",map(.format "map"))
     h.db_close
+    # first 30
     println res[:30].table(
         map(
             .border_style "unicode",
