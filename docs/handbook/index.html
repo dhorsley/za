@@ -120,8 +120,11 @@ Overview</h2>
 <li>Behaviours</li>
 </ol>
 <h2 id="appendices">Appendices</h2>
-<p>A. Operator reference (summary) B. Keywords (summary) C. Built-in
-constants D. Standard library reference E. Worked example script</p>
+<p>A. Operator reference (summary)</p>
+<p>B. Keywords (summary)</p>
+<p>C. Built-in constants</p>
+<p>D. Standard library reference</p>
+<p>E. Worked example script</p>
 <div style="page-break-after: always;">
 
 </div>
@@ -158,8 +161,12 @@ monitor systems. It can be used for glue scripts, test rigs, ad-hoc
 reporting, monitoring and many small tasks that are in the scope of
 system administrators, SREs, developers and others who are regularly
 expected to probe issues and generate state information.</p>
-<p>It prioritises: - <strong>ease of maintenance</strong> -
-<strong>rapid prototyping</strong> - <strong>portability</strong></p>
+<p>It prioritises:</p>
+<ul>
+<li><strong>ease of maintenance</strong></li>
+<li><strong>rapid prototyping</strong></li>
+<li><strong>portability</strong></li>
+</ul>
 <p>Za does not attempt to replace a general-purpose language for large
 services and should be used cautiously in production environments.</p>
 <h2 id="running-za">2. Running Za</h2>
@@ -198,9 +205,9 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="
 <p>Upon startup, you’ll see the default prompt:</p>
 <pre class="za"><code>&gt;&gt;</code></pre>
 <h4 id="customizing-your-environment">Customizing Your Environment</h4>
-<p>The most powerful REPL feature is the startup script. Create a file
-at <code>~/.zarc</code> to automatically configure your session. Here’s
-a simplified example based on the actual startup script:</p>
+<p>A useful REPL feature is the startup script. Create a file at
+<code>~/.zarc</code> to automatically configure your session. Here’s a
+simplified example based on the actual startup script:</p>
 <pre class="za"><code># ~/.zarc - simplified startup configuration
 
 # Set a basic prompt
@@ -213,9 +220,13 @@ macro +df `df -h`
 # Enable command fallback
 _=permit(&quot;cmdfallback&quot;,true)</code></pre>
 <p>The full example startup script in the Za repository demonstrates
-advanced features including: - Custom prompts with git status and system
-information - Environment-specific AWS profile handling - Colored system
-banners - Complex macros for file listing and system monitoring</p>
+advanced features including:</p>
+<ul>
+<li>Custom prompts with git status and system information</li>
+<li>Environment-specific AWS profile handling</li>
+<li>Colored system banners</li>
+<li>Complex macros for file listing and system monitoring</li>
+</ul>
 <h1 id="display-welcome-message">Display welcome message</h1>
 <pre class="za"><code>
 println &quot;Za REPL ready. Type &#39;help&#39; for assistance.&quot;</code></pre>
@@ -257,9 +268,13 @@ expected</p>
 
 ctrl-d  # Accept input and return no normal REPL prompt
 escape  # Abandon and return to single-line mode</code></pre>
-<p>The multi-line editor provides: - Line numbering with syntax
-highlighting - Tab-based indentation (4 spaces) - Fuzzy search mode
-(ctrl-f within editor) - Dynamic height adjustment</p>
+<p>The multi-line editor provides:</p>
+<ul>
+<li>Line numbering with syntax highlighting</li>
+<li>Tab-based indentation (4 spaces)</li>
+<li>Fuzzy search mode (ctrl-f within editor)</li>
+<li>Dynamic height adjustment</li>
+</ul>
 <h3 id="repl-macros">3.5 REPL Macros</h3>
 <p>Macros provide powerful command shortcuts, particularly useful for
 repetitive system administration tasks.</p>
@@ -424,10 +439,14 @@ errors.</p>
 <p>In the event that you wish to catch these type errors earlier, you
 can also declare a variable using the VAR statement: e.g.</p>
 <pre class="za"><code>var x int = 10</code></pre>
-<p>Using VAR in this way will: - fix the type and, optionally, set the
-value. - raise an error if the value assigned (during declaration or
-after) is of an incompatible type. - prevent re-typing of the variable
-(and report if this is attempted).</p>
+<p>Using VAR in this way will:</p>
+<ul>
+<li>fix the type and, optionally, set the value.</li>
+<li>raise an error if the value assigned (during declaration or after)
+is of an incompatible type.</li>
+<li>prevent re-typing of the variable (and report if this is
+attempted).</li>
+</ul>
 <p>To re-type that variable locally you would first have to UNSET the
 variable.</p>
 <h3 id="auto-vivification-assignment-driven">6.2 Auto-vivification
