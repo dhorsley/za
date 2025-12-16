@@ -144,13 +144,7 @@ Za is stable enough to run in production, but it is not designed as a framework 
 
 ## Who this book is for
 
-The intended readership is **Linux system administrators**, from novice to expert. Existing programmers should also be able to use this book as a reliable syntax + behaviour reference.
-
-## Conventions used
-
-- Keywords are shown in lowercase.
-- Examples use real Za syntax from the interpreter and example corpus.
-
+The intended readership is **Linux system administrators**, from novice to expert. Existing programmers should also be able to use this book as a reliable syntax and behaviour reference.
 
 ## Version coverage
 
@@ -187,7 +181,9 @@ The interpreter also has a REPL with interactive help features.
 
 ## 3. The REPL
 
-The REPL is a first-class workflow tool designed for rapid prototyping, data exploration, and system inspection. Unlike simple command interpreters, Za's REPL maintains full state between commands, allowing you to build up complex solutions incrementally.
+The REPL is a workflow tool designed for prototyping, data exploration and system inspection.
+
+You can use it as a shell, if desired, but this is not the intent of this interactive mode.
 
 ### 3.1 REPL Overview
 
@@ -206,8 +202,6 @@ Starting the REPL is simple:
 
 ```bash
 $ za
-# or explicitly
-$ za -i
 ```
 
 Upon startup, you'll see the default prompt:
@@ -218,10 +212,9 @@ Upon startup, you'll see the default prompt:
 
 #### Customizing Your Environment
 
-A useful REPL feature is the startup script. Create a file at `~/.zarc` to automatically configure your session. Here's a simplified example based on the actual startup script:
+A useful REPL feature is the startup script. Create a file at `~/.zarc` to automatically configure your session. Here's a simplified one:
 
 ```za
-# ~/.zarc - simplified startup configuration
 
 # Set a basic prompt
 prompt=">> "
@@ -230,7 +223,7 @@ prompt=">> "
 macro +ll `ls -la`
 macro +df `df -h`
 
-# Enable command fallback
+# Enable command fallback - this allows execution of shell commands
 _=permit("cmdfallback",true)
 ```
 
@@ -276,38 +269,16 @@ The REPL maintains a persistent command history across sessions:
 
 #### Line Editing
 
-UTF-8 support with intuitive navigation:
+Interactive mode supports UTF-8 characters. Navigation keystrokes should be familiar from similar systems:
 
-# Navigation shortcuts:
+# Standard arrow navigation works as expected
 ctrl-a  # Beginning of line
 ctrl-e  # End of line
 ctrl-u  # Delete to beginning
 ctrl-k  # Delete to end
-# Standard arrow navigation works as expected
-
-#### Multi-line Editor
-
-For complex expressions, use the built-in multi-line editor:
-
-```za
->> ctrl-o  # Opens alternate screen with line numbers
-     1| define complex_calc(x, y)
-     2|     # Calculate intermediate values
-     3|     temp = x * y
-     4|     result = temp.sqrt + (x + y)
-     5|     return result, temp
-     6| end
-
-ctrl-d  # Accept input and return no normal REPL prompt
-escape  # Abandon and return to single-line mode
-```
-
-The multi-line editor provides:
-
-- Line numbering with syntax highlighting
-- Tab-based indentation (4 spaces)
-- Fuzzy search mode (ctrl-f within editor)
-- Dynamic height adjustment
+ctrl-c  # interrupt (interrupt session)
+ctrl-d  # end-of-input (end session)
+ctrl-z  # suspend REPL to background
 
 ### 3.5 REPL Macros
 
@@ -344,8 +315,8 @@ macro +addall(base, ...) `$base + $1 + $2 + $3`
 # Nested macro expansion
 macro +complex `#addall(10, #ls("."), "extra")`
 
-# Debug macro expansion
->> #macro!name  # Shows expanded code before execution
+# Debug macro expansion- Shows expanded code before execution
+>> #macro_name!
 ```
 
 #### Macro Management
@@ -360,14 +331,14 @@ macro -ls
 # Remove all macros
 macro -
 
-# Verbose operations (shows confirmation messages)
-macro! +test `echo "debug"`
+# Verbose operations (when logging enabled, shows confirmation messages)
+macro ! +test `echo "debug"`
 # Output: Macro 'test' defined
 ```
 
 ### 3.6 REPL Workflow Examples
 
-The REPL is ideal for rapid prototyping and interactive data exploration. Test your commands interactively before incorporating them into scripts.
+The REPL is ideal for prototyping and interactive data exploration. Test your commands interactively before incorporating them into scripts.
 
 ```za
 # Filter system data for interesting entries
@@ -664,7 +635,8 @@ p.age  = 42
 Struct instances may also be created using constructor-style syntax and field initialisers (as shown in examples):
 
 ```za
-p = person(.name "Alice", .age 30)
+p1 = person("Alice",30)
+p2 = person(.name "Bob", .age 21)
 ```
 
 ### 12.3 Anonymous structs
@@ -709,6 +681,7 @@ Za defines operator precedence in the interpreter. Notable points:
 - comparisons bind tighter than boolean `and/or`
 - mapping/filtering (`->`, `?>`) bind relatively loosely (near assignment),
    which is intentional for readability of pipelines
+- you may occasionally need to avoid UFCS syntax due to this
 
 ## 16. Operators (overview)
 
@@ -738,7 +711,7 @@ cpu_cores = 4
 total_threads = cpu_cores * 2  # Hyperthreading
 memory_gb = 16
 memory_mb = memory_gb * 1024    # Convert to MB
-disk_usage_percent = (used_space / total_space) * 100
+disk_usage_percent = as_float(used_space / total_space) * 100
 ```
 
 ### 16.2 Comparison Operators
@@ -788,9 +761,7 @@ if user_exists and password_valid
     grant_access()
 endif
 
-if backup_failed or disk_full
-    send_alert()
-endif
+on backup_failed or disk_full do send_alert()
 
 if not service_running
     start_service()
@@ -892,24 +863,24 @@ The range operator `..` creates numeric ranges useful for loops and indexing:
 numbers = 1..10        # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 # System administration examples
+#  - many of these can be done in alternate ways
+
 # Port checking using shell commands (you would normally use a lib call for this)
 open_ports=[]
-for port in 8000..8005
+foreach port in 8000..8005
     port_check = ${nc -z localhost {port} 2>&1}
-    if port_check.len == 0
-        # Empty output means port is open
-        open_ports=concat(open_ports,port)
-    endif
+    # Empty output means port is open
+    on port_check.len == 0 do open_ports=concat(open_ports,port)
 endfor
 
 # Process multiple log files
-for day in 1..31
+foreach day in 1..31
     log_file = "/var/log/app-{day}.log"
     on is_file(log_file) do process_log(log_file)
 endfor
 
 # Generate server names
-for i in 1..5
+foreach i in 1..5
     server_name = "web-server-{i}"
     create_server(server_name)
 endfor
@@ -999,16 +970,16 @@ log_entry $out "/var/log/app.log"
 db_config = json.decode($in "/etc/database/config.json")
 
 # Write backup
-current_config $out "/backup/config-" + date.now() + ".json"
+current_config $out "/backup/config-{=date()}.json"
 
 # Append to log - there are many better ways of doing this:
-"[" + time.now() + "] Service started" $out "/var/log/service.log"
+"[{=date()}] Service started" $out "/var/log/service.log"
 
 # Process configuration files
-for config_file in dir("/etc/app",".*.conf")
+foreach config_file in dir("/etc/app",".*.conf")
     content = $in config_file.name
     processed = process_config(content)
-    processed $out "/tmp/processed_" + $pb config_file
+    processed $out "/tmp/processed_{=$pb config_file}"
 endfor
 ```
 
@@ -1020,7 +991,7 @@ Shell operators enable system command execution:
 # | - Pipe to shell (discard output)
 | mkdir -p /tmp/backup
 
-# =| - Capture output
+# Capture output
 files =| ls -la /var/log
 disk_usage =| df -h /
 
@@ -1084,15 +1055,11 @@ overflow = 300[0:255]               # Clamped to 255
 
 # Type handling
 float_value = 4.7[3.0:5.0]          # Result: 4.7 (within range)
-int_clamped = 4.7[3:5]              # Result: 5 (int, clamped to upper bound)
-
-# Data validation
-user_age = input_age[0:150]         # Ensure reasonable age
-discount_rate = 0.25[0.0:1.0]       # Clamp discount to valid range
+int_clamped = 5.7[3:5]              # Result: 5 (int, clamped to upper bound)
 
 # Configuration bounds
-cpu_usage = current_cpu[0.0:100.0]  # Normalize CPU percentage
-memory_usage = current_mem[0.0:1.0] # Normalize to 0-100% range
+cpu_usage = current_cpu[0f:100f]  # Normalize CPU percentage
+memory_usage = current_mem[0f:1f] # Normalize to 0-100% range
 ```
 
 #### Use Cases for System Administration
@@ -1119,7 +1086,7 @@ Block conditional:
 
 ```za
 if condition
-    println "ok"
+    # action
 [ else
     # action ]
 endif
@@ -1128,7 +1095,9 @@ endif
 Single-statement guard:
 
 ```za
-on condition do println "ok"
+on condition1 do break
+on condition2 do println "ok"
+# etc
 ```
 
 `on … do` executes exactly one statement when condition is true.
@@ -1408,7 +1377,7 @@ When enabled, the debugger can pause execution at:
 Use breakpoints to pause execution at specific points:
 
 ```za
-function complex_calculation(x, y)
+def complex_calculation(x, y)
     debug break  # Pause execution here
     result = x * y + sqrt(x + y)
     debug break  # Or here to inspect intermediate result
@@ -1473,7 +1442,7 @@ When paused, Za shows an interactive prompt:
 #### Debugging Function Calls
 
 ```za
-define calculate_discount(price, category)
+def calculate_discount(price, category)
     debug break  # Inspect inputs
     if category == "premium"
         discount = 0.20
@@ -1495,16 +1464,16 @@ price = calculate_discount(100.0, "premium")
 
 ```za
 # Complex data transformation
-data = table(| "ps aux", map(.parse_only true))
-cpu_intensive = data ?> `#.CPU.as_int > 50`
+data = table(${ps aux}, map(.parse_only true))
+cpu_intensive = data ?> `#[2].as_float > 0.5`
 
 debug break  # Inspect filtering results
 
 # Process high-CPU processes
 foreach proc in cpu_intensive
     debug break  # Examine each process
-    println "Killing process:", proc.Name
-    | kill -9 {proc.PID}
+    println "Killing process, name : ", proc[10]
+    | kill -9 {=proc[1]}
 endfor
 ```
 
@@ -1512,13 +1481,13 @@ endfor
 
 ```za
 # Network service debugging
-define check_service(host, port)
+def check_service(host, port)
     debug break  # Check connection parameters
-    result = tcp_ping(host, 5000)  # 5 second timeout
+    result = tcp_ping(host, port, 5000)  # 5 second timeout
     debug break  # Examine connection result
 
     if not result.okay
-        log "SERVICE_ERROR", "Cannot reach", host, ":", port
+        log error: "Cannot reach", host, ":", port
         return false
     endif
 
@@ -1601,26 +1570,6 @@ data_processing:
   save_results: 1.1s
 ```
 
-#### Optimizing Call Chains
-
-```za
-# Inefficient nested calls
-define process_item(item)
-    return transform(validate(item))
-end
-
-define inefficient_batch(items)
-    results = []
-    foreach item in items
-        results.append(process_item(item))  # Function call per item
-    endfor
-    return results
-end
-
-# Optimized version
-define efficient_batch(items)
-    return items -> transform(validate)  # Single function call for all items
-end
 ```
 
 #### Analyzing Recursive Performance
@@ -1629,10 +1578,8 @@ end
 
 ```za
 # Recursive function with profiling
-define factorial(n)
-    if n <= 1
-        return 1
-    endif
+def factorial(n)
+    on n <= 1 do return 1
     return n * factorial(n - 1)
 end
 
@@ -1741,7 +1688,7 @@ Za's async capabilities enable efficient parallel processing of multiple hosts, 
 
 ```za
 # Define async check function
-define check_host(host_id)
+def check_host(host_id)
     pause rand(500)  # Simulate network delay
     return host_id % 3 == 0 ? "up" : "down"
 end
@@ -1769,9 +1716,8 @@ println "Up hosts:", up_hosts
 
 ```za
 # Service status checking
-define check_service(service_name)
-    pause rand(500)  # Simulate check delay
-    # In real usage: status = =| "systemctl is-active " + service_name
+def check_service(service_name)
+    In real usage: status = ${systemctl is-active {service_name}}
     return service_name ~ "nginx|mysql" ? "running" : "stopped"
 end
 
@@ -1797,7 +1743,7 @@ println "Running services:", running_services
 
 ```za
 # Process multiple data items in parallel
-define process_data(item)
+def process_data(item)
     pause rand(500)  # Simulate processing time
     return item * 2  # Simple transformation
 end
@@ -1824,7 +1770,7 @@ println "High values:", high_values
 
 ```za
 # Network checks with isolated failures
-define check_network(host)
+def check_network(host)
     pause rand(500)  # Simulate network timeout
     # Simulate different failure modes
     case host
@@ -1862,7 +1808,7 @@ println "Problem hosts:", problem_hosts
 
 ```za
 # Database connectivity with partial success handling
-define check_database(db_name)
+def check_database(db_name)
     pause rand(800)  # Simulate connection attempt
     # Simulate different connection outcomes
     case db_name
@@ -1895,7 +1841,7 @@ endfor
 connected_dbs = databases ?> `db_results[#] == "connected"`
 total_dbs = len(databases)
 
-println "Connected: {=len(connected_dbs)}/{=total_dbs} databases"
+println "Connected: {=len(connected_dbs)}/{total_dbs} databases"
 
 if len(connected_dbs) < total_dbs
     failed_dbs = databases ?> `db_results[#] != "connected"`

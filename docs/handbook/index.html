@@ -143,14 +143,8 @@ readability and portability.</p>
 <h2 id="who-this-book-is-for">Who this book is for</h2>
 <p>The intended readership is <strong>Linux system
 administrators</strong>, from novice to expert. Existing programmers
-should also be able to use this book as a reliable syntax + behaviour
+should also be able to use this book as a reliable syntax and behaviour
 reference.</p>
-<h2 id="conventions-used">Conventions used</h2>
-<ul>
-<li>Keywords are shown in lowercase.</li>
-<li>Examples use real Za syntax from the interpreter and example
-corpus.</li>
-</ul>
 <h2 id="version-coverage">Version coverage</h2>
 <p>This text is written for <strong>Za 1.2.1</strong>.</p>
 <hr />
@@ -175,10 +169,10 @@ services and should be used cautiously in production environments.</p>
 features are available across all platforms where allowed by the OS.</p>
 <p>The interpreter also has a REPL with interactive help features.</p>
 <h2 id="the-repl">3. The REPL</h2>
-<p>The REPL is a first-class workflow tool designed for rapid
-prototyping, data exploration, and system inspection. Unlike simple
-command interpreters, Za’s REPL maintains full state between commands,
-allowing you to build up complex solutions incrementally.</p>
+<p>The REPL is a workflow tool designed for prototyping, data
+exploration and system inspection.</p>
+<p>You can use it as a shell, if desired, but this is not the intent of
+this interactive mode.</p>
 <h3 id="repl-overview">3.1 REPL Overview</h3>
 <p>The REPL provides several key capabilities that make it particularly
 effective for system administration tasks:</p>
@@ -199,17 +193,14 @@ while maintaining Za’s data structures</li>
 <h3 id="getting-started">3.2 Getting Started</h3>
 <p>Starting the REPL is simple:</p>
 <div class="sourceCode" id="cb1"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># or explicitly</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za <span class="at">-i</span></span></code></pre></div>
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za</span></code></pre></div>
 <p>Upon startup, you’ll see the default prompt:</p>
 <pre class="za"><code>&gt;&gt;</code></pre>
 <h4 id="customizing-your-environment">Customizing Your Environment</h4>
 <p>A useful REPL feature is the startup script. Create a file at
 <code>~/.zarc</code> to automatically configure your session. Here’s a
-simplified example based on the actual startup script:</p>
-<pre class="za"><code># ~/.zarc - simplified startup configuration
-
+simplified one:</p>
+<pre class="za"><code>
 # Set a basic prompt
 prompt=&quot;&gt;&gt; &quot;
 
@@ -217,7 +208,7 @@ prompt=&quot;&gt;&gt; &quot;
 macro +ll `ls -la`
 macro +df `df -h`
 
-# Enable command fallback
+# Enable command fallback - this allows execution of shell commands
 _=permit(&quot;cmdfallback&quot;,true)</code></pre>
 <p>The full example startup script in the Za repository demonstrates
 advanced features including:</p>
@@ -251,30 +242,14 @@ available capabilities.</p>
 (search): `ls`:
 # Type to search, use arrows to navigate results</code></pre>
 <h4 id="line-editing">Line Editing</h4>
-<p>UTF-8 support with intuitive navigation:</p>
-<h1 id="navigation-shortcuts">Navigation shortcuts:</h1>
+<p>Interactive mode supports UTF-8 characters. Navigation keystrokes
+should be familiar from similar systems:</p>
+<h1 id="standard-arrow-navigation-works-as-expected">Standard arrow
+navigation works as expected</h1>
 <p>ctrl-a # Beginning of line ctrl-e # End of line ctrl-u # Delete to
-beginning ctrl-k # Delete to end # Standard arrow navigation works as
-expected</p>
-<h4 id="multi-line-editor">Multi-line Editor</h4>
-<p>For complex expressions, use the built-in multi-line editor:</p>
-<pre class="za"><code>&gt;&gt; ctrl-o  # Opens alternate screen with line numbers
-     1| define complex_calc(x, y)
-     2|     # Calculate intermediate values
-     3|     temp = x * y
-     4|     result = temp.sqrt + (x + y)
-     5|     return result, temp
-     6| end
-
-ctrl-d  # Accept input and return no normal REPL prompt
-escape  # Abandon and return to single-line mode</code></pre>
-<p>The multi-line editor provides:</p>
-<ul>
-<li>Line numbering with syntax highlighting</li>
-<li>Tab-based indentation (4 spaces)</li>
-<li>Fuzzy search mode (ctrl-f within editor)</li>
-<li>Dynamic height adjustment</li>
-</ul>
+beginning ctrl-k # Delete to end ctrl-c # interrupt (interrupt session)
+ctrl-d # end-of-input (end session) ctrl-z # suspend REPL to
+background</p>
 <h3 id="repl-macros">3.5 REPL Macros</h3>
 <p>Macros provide powerful command shortcuts, particularly useful for
 repetitive system administration tasks.</p>
@@ -300,8 +275,8 @@ macro +addall(base, ...) `$base + $1 + $2 + $3`
 # Nested macro expansion
 macro +complex `#addall(10, #ls(&quot;.&quot;), &quot;extra&quot;)`
 
-# Debug macro expansion
-&gt;&gt; #macro!name  # Shows expanded code before execution</code></pre>
+# Debug macro expansion- Shows expanded code before execution
+&gt;&gt; #macro_name!</code></pre>
 <h4 id="macro-management">Macro Management</h4>
 <pre class="za"><code># List all macros
 macro
@@ -312,13 +287,13 @@ macro -ls
 # Remove all macros
 macro -
 
-# Verbose operations (shows confirmation messages)
-macro! +test `echo &quot;debug&quot;`
+# Verbose operations (when logging enabled, shows confirmation messages)
+macro ! +test `echo &quot;debug&quot;`
 # Output: Macro &#39;test&#39; defined</code></pre>
 <h3 id="repl-workflow-examples">3.6 REPL Workflow Examples</h3>
-<p>The REPL is ideal for rapid prototyping and interactive data
-exploration. Test your commands interactively before incorporating them
-into scripts.</p>
+<p>The REPL is ideal for prototyping and interactive data exploration.
+Test your commands interactively before incorporating them into
+scripts.</p>
 <pre class="za"><code># Filter system data for interesting entries
 &gt;&gt; high_usage = disk_usage() ?&gt; `#.usage_percent &gt; 50`
 
@@ -552,7 +527,8 @@ p.age  = 42</code></pre>
 <h3 id="struct-literals">12.2 Struct literals</h3>
 <p>Struct instances may also be created using constructor-style syntax
 and field initialisers (as shown in examples):</p>
-<pre class="za"><code>p = person(.name &quot;Alice&quot;, .age 30)</code></pre>
+<pre class="za"><code>p1 = person(&quot;Alice&quot;,30)
+p2 = person(.name &quot;Bob&quot;, .age 21)</code></pre>
 <h3 id="anonymous-structs">12.3 Anonymous structs</h3>
 <p>Anonymous structs are created with <code>anon(...)</code>:</p>
 <pre class="za"><code>x = anon(.device device, .usage usage)</code></pre>
@@ -586,6 +562,7 @@ points:</p>
 <li>mapping/filtering (<code>-&gt;</code>, <code>?&gt;</code>) bind
 relatively loosely (near assignment), which is intentional for
 readability of pipelines</li>
+<li>you may occasionally need to avoid UFCS syntax due to this</li>
 </ul>
 <h2 id="operators-overview">16. Operators (overview)</h2>
 <p><strong>Comprehensive operator coverage for system administration
@@ -614,7 +591,7 @@ cpu_cores = 4
 total_threads = cpu_cores * 2  # Hyperthreading
 memory_gb = 16
 memory_mb = memory_gb * 1024    # Convert to MB
-disk_usage_percent = (used_space / total_space) * 100</code></pre>
+disk_usage_percent = as_float(used_space / total_space) * 100</code></pre>
 <h3 id="comparison-operators">16.2 Comparison Operators</h3>
 <p>Comparison operators return boolean values and are essential for
 conditional logic:</p>
@@ -655,9 +632,7 @@ if user_exists and password_valid
     grant_access()
 endif
 
-if backup_failed or disk_full
-    send_alert()
-endif
+on backup_failed or disk_full do send_alert()
 
 if not service_running
     start_service()
@@ -747,24 +722,24 @@ loops and indexing:</p>
 numbers = 1..10        # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 # System administration examples
+#  - many of these can be done in alternate ways
+
 # Port checking using shell commands (you would normally use a lib call for this)
 open_ports=[]
-for port in 8000..8005
+foreach port in 8000..8005
     port_check = ${nc -z localhost {port} 2&gt;&amp;1}
-    if port_check.len == 0
-        # Empty output means port is open
-        open_ports=concat(open_ports,port)
-    endif
+    # Empty output means port is open
+    on port_check.len == 0 do open_ports=concat(open_ports,port)
 endfor
 
 # Process multiple log files
-for day in 1..31
+foreach day in 1..31
     log_file = &quot;/var/log/app-{day}.log&quot;
     on is_file(log_file) do process_log(log_file)
 endfor
 
 # Generate server names
-for i in 1..5
+foreach i in 1..5
     server_name = &quot;web-server-{i}&quot;
     create_server(server_name)
 endfor</code></pre>
@@ -834,23 +809,23 @@ log_entry $out &quot;/var/log/app.log&quot;
 db_config = json.decode($in &quot;/etc/database/config.json&quot;)
 
 # Write backup
-current_config $out &quot;/backup/config-&quot; + date.now() + &quot;.json&quot;
+current_config $out &quot;/backup/config-{=date()}.json&quot;
 
 # Append to log - there are many better ways of doing this:
-&quot;[&quot; + time.now() + &quot;] Service started&quot; $out &quot;/var/log/service.log&quot;
+&quot;[{=date()}] Service started&quot; $out &quot;/var/log/service.log&quot;
 
 # Process configuration files
-for config_file in dir(&quot;/etc/app&quot;,&quot;.*.conf&quot;)
+foreach config_file in dir(&quot;/etc/app&quot;,&quot;.*.conf&quot;)
     content = $in config_file.name
     processed = process_config(content)
-    processed $out &quot;/tmp/processed_&quot; + $pb config_file
+    processed $out &quot;/tmp/processed_{=$pb config_file}&quot;
 endfor</code></pre>
 <h3 id="shell-execution-operators">16.11 Shell Execution Operators</h3>
 <p>Shell operators enable system command execution:</p>
 <pre class="za"><code># | - Pipe to shell (discard output)
 | mkdir -p /tmp/backup
 
-# =| - Capture output
+# Capture output
 files =| ls -la /var/log
 disk_usage =| df -h /
 
@@ -905,15 +880,11 @@ overflow = 300[0:255]               # Clamped to 255
 
 # Type handling
 float_value = 4.7[3.0:5.0]          # Result: 4.7 (within range)
-int_clamped = 4.7[3:5]              # Result: 5 (int, clamped to upper bound)
-
-# Data validation
-user_age = input_age[0:150]         # Ensure reasonable age
-discount_rate = 0.25[0.0:1.0]       # Clamp discount to valid range
+int_clamped = 5.7[3:5]              # Result: 5 (int, clamped to upper bound)
 
 # Configuration bounds
-cpu_usage = current_cpu[0.0:100.0]  # Normalize CPU percentage
-memory_usage = current_mem[0.0:1.0] # Normalize to 0-100% range</code></pre>
+cpu_usage = current_cpu[0f:100f]  # Normalize CPU percentage
+memory_usage = current_mem[0f:1f] # Normalize to 0-100% range</code></pre>
 <h4 id="use-cases-for-system-administration">Use Cases for System
 Administration</h4>
 <pre class="za"><code># Network latency normalization
@@ -933,12 +904,14 @@ slicing.</p>
 <h2 id="conditionals">17. Conditionals</h2>
 <p>Block conditional:</p>
 <pre class="za"><code>if condition
-    println &quot;ok&quot;
+    # action
 [ else
     # action ]
 endif</code></pre>
 <p>Single-statement guard:</p>
-<pre class="za"><code>on condition do println &quot;ok&quot;</code></pre>
+<pre class="za"><code>on condition1 do break
+on condition2 do println &quot;ok&quot;
+# etc</code></pre>
 <p><code>on … do</code> executes exactly one statement when condition is
 true.</p>
 <h2 id="loops">18. Loops</h2>
@@ -1020,19 +993,19 @@ end</code></pre>
 <p><code>return</code> may be used without a value. <code>return</code>
 may also return multiple values (comma separated expressions).</p>
 <p>The return values may also be unpacked on return:</p>
-<div class="sourceCode" id="cb56"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
-<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
-<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>end</span>
-<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
-<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
-<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>end</span>
-<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
-<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
-<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a># or</span>
-<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb55"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a># or</span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
 <h2 id="modules-and-namespaces">24. Modules and namespaces</h2>
 <p>Import a module:</p>
 <pre class="za"><code>module &quot;cron&quot;
@@ -1122,8 +1095,8 @@ troubleshooting.</p>
 <p>Debugging can be enabled in two ways:</p>
 <ul>
 <li><p><strong>Via command line</strong>:</p>
-<div class="sourceCode" id="cb64"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb63"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
 <li><p><strong>From within a script</strong>:</p>
 <pre class="za"><code>debug on</code></pre></li>
 </ul>
@@ -1147,7 +1120,7 @@ unhandled errors or exceptions.</p>
 </blockquote>
 <h3 id="setting-breakpoints">28.3 Setting Breakpoints</h3>
 <p>Use breakpoints to pause execution at specific points:</p>
-<pre class="za"><code>function complex_calculation(x, y)
+<pre class="za"><code>def complex_calculation(x, y)
     debug break  # Pause execution here
     result = x * y + sqrt(x + y)
     debug break  # Or here to inspect intermediate result
@@ -1307,7 +1280,7 @@ scopes.</li>
 <h3 id="practical-debugging-examples">28.6 Practical Debugging
 Examples</h3>
 <h4 id="debugging-function-calls">Debugging Function Calls</h4>
-<pre class="za"><code>define calculate_discount(price, category)
+<pre class="za"><code>def calculate_discount(price, category)
     debug break  # Inspect inputs
     if category == &quot;premium&quot;
         discount = 0.20
@@ -1325,26 +1298,26 @@ price = calculate_discount(100.0, &quot;premium&quot;)
 # Debugger pauses at each debug break for inspection</code></pre>
 <h4 id="debugging-data-processing">Debugging Data Processing</h4>
 <pre class="za"><code># Complex data transformation
-data = table(| &quot;ps aux&quot;, map(.parse_only true))
-cpu_intensive = data ?&gt; `#.CPU.as_int &gt; 50`
+data = table(${ps aux}, map(.parse_only true))
+cpu_intensive = data ?&gt; `#[2].as_float &gt; 0.5`
 
 debug break  # Inspect filtering results
 
 # Process high-CPU processes
 foreach proc in cpu_intensive
     debug break  # Examine each process
-    println &quot;Killing process:&quot;, proc.Name
-    | kill -9 {proc.PID}
+    println &quot;Killing process, name : &quot;, proc[10]
+    | kill -9 {=proc[1]}
 endfor</code></pre>
 <h4 id="debugging-system-integration">Debugging System Integration</h4>
 <pre class="za"><code># Network service debugging
-define check_service(host, port)
+def check_service(host, port)
     debug break  # Check connection parameters
-    result = tcp_ping(host, 5000)  # 5 second timeout
+    result = tcp_ping(host, port, 5000)  # 5 second timeout
     debug break  # Examine connection result
 
     if not result.okay
-        log &quot;SERVICE_ERROR&quot;, &quot;Cannot reach&quot;, host, &quot;:&quot;, port
+        log error: &quot;Cannot reach&quot;, host, &quot;:&quot;, port
         return false
     endif
 
@@ -1362,8 +1335,8 @@ breakdowns.</p>
 <p>Enable profiling using either:</p>
 <ul>
 <li><p><strong>Command line</strong>:</p>
-<div class="sourceCode" id="cb71"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb70"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
 </ul>
 <h3 id="profiler-behavior">29.2 Profiler Behavior</h3>
 <p>When enabled:</p>
@@ -1425,33 +1398,15 @@ data_processing:
   validate_data: 15.2s
   transform_data: 45.6s  # &lt;-- Bottleneck
   save_results: 1.1s</code></pre>
-<h4 id="optimizing-call-chains">Optimizing Call Chains</h4>
-<pre class="za"><code># Inefficient nested calls
-define process_item(item)
-    return transform(validate(item))
-end
+<pre><code>
+#### Analyzing Recursive Performance
 
-define inefficient_batch(items)
-    results = []
-    foreach item in items
-        results.append(process_item(item))  # Function call per item
-    endfor
-    return results
-end
+**Note:** The following example is illustrative only - actual profiling output may differ.
 
-# Optimized version
-define efficient_batch(items)
-    return items -&gt; transform(validate)  # Single function call for all items
-end</code></pre>
-<h4 id="analyzing-recursive-performance">Analyzing Recursive
-Performance</h4>
-<p><strong>Note:</strong> The following example is illustrative only -
-actual profiling output may differ.</p>
-<pre class="za"><code># Recursive function with profiling
-define factorial(n)
-    if n &lt;= 1
-        return 1
-    endif
+```za
+# Recursive function with profiling
+def factorial(n)
+    on n &lt;= 1 do return 1
     return n * factorial(n - 1)
 end
 
@@ -1581,7 +1536,7 @@ multiple hosts, services, or data sources.</p>
 <h3 id="fan-outfan-in-host-probing">31.1 Fan-out/Fan-in Host
 Probing</h3>
 <pre class="za"><code># Define async check function
-define check_host(host_id)
+def check_host(host_id)
     pause rand(500)  # Simulate network delay
     return host_id % 3 == 0 ? &quot;up&quot; : &quot;down&quot;
 end
@@ -1605,9 +1560,8 @@ up_hosts = hosts ?&gt; `results[#] == &quot;up&quot;`
 println &quot;Up hosts:&quot;, up_hosts</code></pre>
 <h3 id="parallel-service-checks">31.2 Parallel Service Checks</h3>
 <pre class="za"><code># Service status checking
-define check_service(service_name)
-    pause rand(500)  # Simulate check delay
-    # In real usage: status = =| &quot;systemctl is-active &quot; + service_name
+def check_service(service_name)
+    In real usage: status = ${systemctl is-active {service_name}}
     return service_name ~ &quot;nginx|mysql&quot; ? &quot;running&quot; : &quot;stopped&quot;
 end
 
@@ -1629,7 +1583,7 @@ running_services = services ?&gt; `service_results[#] == &quot;running&quot;`
 println &quot;Running services:&quot;, running_services</code></pre>
 <h3 id="parallel-data-processing">31.3 Parallel Data Processing</h3>
 <pre class="za"><code># Process multiple data items in parallel
-define process_data(item)
+def process_data(item)
     pause rand(500)  # Simulate processing time
     return item * 2  # Simple transformation
 end
@@ -1652,7 +1606,7 @@ high_values = processed_results ?&gt; `# &gt; 50`
 println &quot;High values:&quot;, high_values</code></pre>
 <h3 id="isolated-failure-handling">31.4 Isolated Failure Handling</h3>
 <pre class="za"><code># Network checks with isolated failures
-define check_network(host)
+def check_network(host)
     pause rand(500)  # Simulate network timeout
     # Simulate different failure modes
     case host
@@ -1687,7 +1641,7 @@ println &quot;Problem hosts:&quot;, problem_hosts</code></pre>
 <h3 id="partial-completion-collection">31.5 Partial Completion
 Collection</h3>
 <pre class="za"><code># Database connectivity with partial success handling
-define check_database(db_name)
+def check_database(db_name)
     pause rand(800)  # Simulate connection attempt
     # Simulate different connection outcomes
     case db_name
@@ -1720,7 +1674,7 @@ endfor
 connected_dbs = databases ?&gt; `db_results[#] == &quot;connected&quot;`
 total_dbs = len(databases)
 
-println &quot;Connected: {=len(connected_dbs)}/{=total_dbs} databases&quot;
+println &quot;Connected: {=len(connected_dbs)}/{total_dbs} databases&quot;
 
 if len(connected_dbs) &lt; total_dbs
     failed_dbs = databases ?&gt; `db_results[#] != &quot;connected&quot;`
@@ -2233,12 +2187,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb102"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb102-5"><a href="#cb102-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb100"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb100-2"><a href="#cb100-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb100-3"><a href="#cb100-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb100-4"><a href="#cb100-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb100-5"><a href="#cb100-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2390,18 +2344,18 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb108"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb108-2"><a href="#cb108-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
-<span id="cb108-3"><a href="#cb108-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb108-4"><a href="#cb108-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb108-5"><a href="#cb108-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
-<span id="cb108-6"><a href="#cb108-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb108-7"><a href="#cb108-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb108-8"><a href="#cb108-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
-<span id="cb108-9"><a href="#cb108-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb108-10"><a href="#cb108-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
-<span id="cb108-11"><a href="#cb108-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb106"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb106-1"><a href="#cb106-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb106-2"><a href="#cb106-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
+<span id="cb106-3"><a href="#cb106-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb106-4"><a href="#cb106-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb106-5"><a href="#cb106-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
+<span id="cb106-6"><a href="#cb106-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb106-7"><a href="#cb106-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb106-8"><a href="#cb106-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
+<span id="cb106-9"><a href="#cb106-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb106-10"><a href="#cb106-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
+<span id="cb106-11"><a href="#cb106-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple but powerful structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
