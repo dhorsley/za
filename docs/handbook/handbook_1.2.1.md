@@ -115,10 +115,15 @@ Daniel Horsley
 50. Behaviours
 
 ## Appendices
+
 A. Operator reference (summary)
+
 B. Keywords (summary)
+
 C. Built-in constants
+
 D. Standard library reference
+
 E. Worked example script
 
 
@@ -163,6 +168,7 @@ small tasks that are in the scope of system administrators, SREs, developers
 and others who are regularly expected to probe issues and generate state information.
 
 It prioritises:
+
 - **ease of maintenance**
 - **rapid prototyping**
 - **portability**
@@ -212,7 +218,7 @@ Upon startup, you'll see the default prompt:
 
 #### Customizing Your Environment
 
-The most powerful REPL feature is the startup script. Create a file at `~/.zarc` to automatically configure your session. Here's a simplified example based on the actual startup script:
+A useful REPL feature is the startup script. Create a file at `~/.zarc` to automatically configure your session. Here's a simplified example based on the actual startup script:
 
 ```za
 # ~/.zarc - simplified startup configuration
@@ -229,6 +235,7 @@ _=permit("cmdfallback",true)
 ```
 
 The full example startup script in the Za repository demonstrates advanced features including:
+
 - Custom prompts with git status and system information
 - Environment-specific AWS profile handling
 - Colored system banners
@@ -296,6 +303,7 @@ escape  # Abandon and return to single-line mode
 ```
 
 The multi-line editor provides:
+
 - Line numbering with syntax highlighting
 - Tab-based indentation (4 spaces)
 - Fuzzy search mode (ctrl-f within editor)
@@ -506,6 +514,7 @@ var x int = 10
 ```
 
 Using VAR in this way will:
+
 - fix the type and, optionally, set the value.
 - raise an error if the value assigned (during declaration or after) is of
    an incompatible type.
