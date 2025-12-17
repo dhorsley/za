@@ -271,7 +271,9 @@ The REPL maintains a persistent command history across sessions:
 
 Interactive mode supports UTF-8 characters. Navigation keystrokes should be familiar from similar systems:
 
-# Standard arrow navigation works as expected
+Standard arrow navigation works as expected
+
+```za
 ctrl-a  # Beginning of line
 ctrl-e  # End of line
 ctrl-u  # Delete to beginning
@@ -279,6 +281,7 @@ ctrl-k  # Delete to end
 ctrl-c  # interrupt (interrupt session)
 ctrl-d  # end-of-input (end session)
 ctrl-z  # suspend REPL to background
+```
 
 ### 3.5 REPL Macros
 
@@ -315,7 +318,7 @@ macro +addall(base, ...) `$base + $1 + $2 + $3`
 # Nested macro expansion
 macro +complex `#addall(10, #ls("."), "extra")`
 
-# Debug macro expansion- Shows expanded code before execution
+# Debug macro expansion - Shows expanded code before execution
 >> #macro_name!
 ```
 
@@ -1020,6 +1023,7 @@ result = value[start:end]
 ```
 
 The expression returns:
+
 - `start` if `value < start`
 - `end` if `value > end`
 - `value` if `start ≤ value ≤ end`
@@ -2791,19 +2795,24 @@ Advanced Features include subject prefixes, automatic error logging, queue manag
 ```
 Application Logging:
 
+```za
 log "message",x,y,z             # Primary logging statement
 log level: "message",x,y,z      # Level-specific logging
+```
 
 Basic Control:
 
-logging on [filepath] - Enable main logging, optionally set log file path
-logging off - Disable main logging
-logging status - Display comprehensive logging configuration and statistics
-logging quiet - Suppress console output from log statements
-logging loud - Enable console output from log statements (default)
+```za
+logging on [filepath]           # Enable main logging, optionally set log file path
+logging off                     # Disable main logging
+logging status                  # Display comprehensive logging configuration and statistics
+logging quiet                   # Suppress console output from log statements
+logging loud                    # Enable console output from log statements (default)
+```
 
 Format Control:
 
+```za
 logging json on                     # Enable JSON format for all logs
 logging json off                    # Use plain text format (default)
 logging json fields +field value    # Add custom field to JSON logs
@@ -2811,15 +2820,19 @@ logging json fields -field          # Remove specific field from JSON logs
 logging json fields -               # Clear all custom fields
 logging json fields push            # Save current fields to stack
 logging json fields pop             # Restore fields from stack
+```
 
 Web Access Logging:
 
+```za
 logging web enable                  # Enable web access logging
 logging web disable                 # Disable web access logging
 logging accessfile <path>           # Set web access log file location (default: ./za_access.log)
+```
 
 Advanced Features:
 
+```za
 logging subject <text>              # Set prefix for all log entries
 logging error on/off                # Enable/disable automatic error logging
 logging queue size <number>         # Set background processing queue size (default: 60)
@@ -2828,7 +2841,6 @@ logging rotate count <number>       # Set number of rotated files to keep
 logging reserve <bytes>             # Set emergency memory reserve for logging under pressure
 ```
 
-```
 ## 47.2 Infrastructure Design
 
 The logging architecture uses a unified architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines.
@@ -3021,6 +3033,7 @@ test "database_query" GROUP "database"
 ```
 
 This organization allows:
+
 - **Selective execution**: Run specific groups with `-G` flag
 - **Clear reporting**: Test output organized by functional area
 - **Maintenance**: Easy to locate and update related tests
@@ -3060,20 +3073,18 @@ test "complex_business_logic" GROUP "business_rules"
 endtest
 ```
 
-Expanded DOC statement usage
+### Expanded DOC statement usage
 
 The DOC statement is also used to generate HEREDOC content in both normal execution and test modes. Some example use cases below:
 
-DOC Statement Examples from test_doc.za
-
-1. Basic DOC with VAR clause
+#### Basic DOC with VAR clause
 
 ```za
 doc var myvar "Hello World"
 println myvar
 ```
 
-2. DOC with GEN clause (default delimiter)
+#### DOC with GEN clause (default delimiter)
 
 ```za
 doc gen
@@ -3082,7 +3093,7 @@ captured in test mode.
 Yes?
 ```
 
-3. DOC with GEN and custom DELIM clause
+#### DOC with GEN and custom DELIM clause
 
 ```za
 doc gen delim TERMINAL
@@ -3091,7 +3102,7 @@ be captured in test mode.
 TERMINAL
 ```
 
-4. DOC with custom DELIM and VAR clauses
+#### DOC with custom DELIM and VAR clauses
 
 ```za
 doc delim END var multiline
@@ -3101,7 +3112,7 @@ END
 print multiline
 ```
 
-5. DOC with GEN clause and variable interpolation
+#### DOC with GEN clause and variable interpolation
 
 ```za
 doc gen
@@ -3111,7 +3122,7 @@ abc value is {=abc}
 Yes?
 ```
 
-Key Features Demonstrated
+### Key Features Demonstrated
 
 - VAR clause: Stores content in variable (myvar, multiline)
 - GEN clause: Enables test mode documentation capture
@@ -3148,7 +3159,7 @@ Key Features Demonstrated
 `def end return`
 `try catch then endtry`
 `struct endstruct`
-`enum endenum`
+`enum`
 `module use namespace`
 `test endtest assert doc`
 `async var pause |`
@@ -3163,12 +3174,9 @@ Key Features Demonstrated
 
 # Appendix D — Standard Library Categories
 
-Za’s standard library is implemented in the interpreter source as a set of built-in calls registered into `stdlib[...]`.
+Za’s standard library is implemented in the interpreter source as a set of built-in calls. These library calls do not require any module imports.
 
-This appendix lists the calls **by category** (category = the `lib-*.go` file they are defined in).
-
-For each category, all function names are listed, followed by a short “commonly used” section that calls out the names most often used in the shipped examples/tests.
-
+This appendix lists the calls **by category**. For each category, all function names are listed, followed by a short “commonly used” section.
 
 > This appendix intentionally does not repeat full per-function documentation, because Za can generate function reference pages automatically and the REPL supports `help` and `func(...)` lookups.
 
