@@ -1,0 +1,42 @@
+#!/usr/bin/za
+
+# Test script for glob() function
+# Usage: za test_glob.za
+
+println "Testing glob() function:"
+
+# Test 1: Basic glob in current directory
+println "1. Files ending with .za:"
+files = glob("*.za")
+foreach file in files
+    println "  " + file
+endfor
+
+# Test 2: Glob in specific directory
+println "2. Go files in lib-*.go pattern:"
+go_files = glob("lib-*.go", ".")
+foreach file in go_files
+    println "  " + file
+endfor
+
+# Test 3: Recursive pattern
+println "3. All .sh shell files:"
+foreach file in glob("**/*.sh")
+    println "  " + file
+endfor
+
+# Test 4: Complex pattern
+println "4. Files with 3-character extensions:"
+three_char = glob("*.???")
+foreach file in three_char
+    println "  " + file
+endfor
+
+# Test 5: Empty pattern (should return empty array)
+println "5. Empty pattern test:"
+empty = glob("")
+println "  Result count: " + len(empty)
+
+println "glob() function test completed."
+
+

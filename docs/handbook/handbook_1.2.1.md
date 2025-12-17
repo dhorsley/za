@@ -2061,7 +2061,7 @@ config_content = read_file("/etc/app/config.json")
 
 # Writing files
 backup_content = "Backup created at " + date()
-write_file("/backup/config-" + date.now() + ".bak", backup_content)
+write_file("/backup/config-{=date()}.bak", backup_content)
 
 # File existence and properties
 if is_file("/etc/app/config")
@@ -2147,7 +2147,6 @@ if ip_address.records.len>0
 endif
 
 # Network interface information
-interfaces = network.interfaces()
 for interface in net_interfaces_detailed()
     if interface.up and not interface.name == "lo"
         println "Interface: ", interface.name, " IP: ", interface.ips
@@ -3524,10 +3523,10 @@ ev_event, ev_exists, ev_mask, ev_watch, ev_watch_add, ev_watch_close, ev_watch_r
 
 ## os
 
-**Functions (36):**
+**Functions (37):**
 
 
-can_read, can_write, cd, chroot, copy, cwd, delete, dir, env, fileabs, filebase, get_env, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename, set_env, umask, user_add, user_del, user_info, user_list, user_mod, username
+can_read, can_write, cd, chroot, copy, cwd, delete, dir, env, fileabs, filebase, get_env, glob, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename, set_env, umask, user_add, user_del, user_info, user_list, user_mod, username
 
 
 **Commonly used (from examples/tests):**

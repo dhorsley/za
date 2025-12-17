@@ -1866,7 +1866,7 @@ config_content = read_file(&quot;/etc/app/config.json&quot;)
 
 # Writing files
 backup_content = &quot;Backup created at &quot; + date()
-write_file(&quot;/backup/config-&quot; + date.now() + &quot;.bak&quot;, backup_content)
+write_file(&quot;/backup/config-{=date()}.bak&quot;, backup_content)
 
 # File existence and properties
 if is_file(&quot;/etc/app/config&quot;)
@@ -1944,7 +1944,6 @@ if ip_address.records.len&gt;0
 endif
 
 # Network interface information
-interfaces = network.interfaces()
 for interface in net_interfaces_detailed()
     if interface.up and not interface.name == &quot;lo&quot;
         println &quot;Interface: &quot;, interface.name, &quot; IP: &quot;, interface.ips
@@ -3040,9 +3039,9 @@ ev_watch_remove</p>
 <li>ev_event</li>
 </ul>
 <h2 id="os">os</h2>
-<p><strong>Functions (36):</strong></p>
+<p><strong>Functions (37):</strong></p>
 <p>can_read, can_write, cd, chroot, copy, cwd, delete, dir, env,
-fileabs, filebase, get_env, group_add, group_del, group_info,
+fileabs, filebase, get_env, glob, group_add, group_del, group_info,
 group_list, group_membership, group_mod, groupname, is_device, is_pipe,
 is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename,
 set_env, umask, user_add, user_del, user_info, user_list, user_mod,

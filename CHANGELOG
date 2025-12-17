@@ -53,6 +53,8 @@ fixes
 library changes
 ---------------
 
+    * added glob() call for returning []string file globbing results
+
     * added log_sanitise() call to remove some common risk exposures from strings.
         - this will need improvement over time. it is only really intended to look
            for very specific cases currently.
