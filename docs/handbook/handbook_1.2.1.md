@@ -231,7 +231,7 @@ The full example startup script in the Za repository demonstrates advanced featu
 
 - Custom prompts with git status and system information
 - Environment-specific AWS profile handling
-- Colored system banners
+- Coloured system banners
 - Complex macros for file listing and system monitoring
 
 # Display welcome message
@@ -1078,7 +1078,7 @@ priority = nice_level[-20:19]       # Valid nice range
 temp_celsius = sensor_temp[-40:125] # Operating range for server room
 ```
 
-This clamping syntax reuses Za's range-like brackets `[:]` but provides distinct behavior for numeric types compared to array slicing.
+This clamping syntax reuses Za's range-like brackets `[:]` but provides distinct behaviour for numeric types compared to array slicing.
 
 ## 17. Conditionals
 
@@ -1430,7 +1430,7 @@ When paused, Za shows an interactive prompt:
 | `q`, `quit`, `exit` | Exit interpreter completely |
 | `h`, `help` | Show this help message |
 
-### 28.5 Debugger Scope and Behavior
+### 28.5 Debugger Scope and Behaviour
 
 - The debugger only affects **the main script thread**. Any `async` tasks or shell commands continue running independently.
 - Variable commands (`vars`, `mvars`, `gvars`) rely on standard library debug functions.
@@ -1512,7 +1512,7 @@ Enable profiling using either:
   za -P script.za
   ```
 
-### 29.2 Profiler Behavior
+### 29.2 Profiler Behaviour
 
 When enabled:
 
@@ -1885,6 +1885,14 @@ println "[#bold][#1]ERROR[#-] message"
 
 The ANSI macro handling can be enabled/disabled via `ansi(true|false)` and startup flags.
 
+A full list of supported style macros can be found with:
+
+```za
+help colour
+
+
+```
+
 ---
 
 # Part X — Standard Library Overview
@@ -2183,33 +2191,287 @@ endtry
 
 YAML operations are essential for managing configuration files in modern applications.
 
+#### Basic Usage
+
+Parse YAML:
+
+```za
+yaml_str = "name: John\nage: 30\ncity: New York"
+data = yaml_parse(yaml_str)
+```
+
+Marshal to YAML:
+
+```za
+data["name"] = "Alice"
+data["age"] = 28
+yaml_output = yaml_marshal(data)
+```
+
+Parse nested structures:
+
+```za
+yaml3 = "person:\n  name: Jane\n  age: 25\n  hobbies:\n    - reading\n    - swimming"
+result3 = yaml_parse(yaml3)
+```
+
+Parse lists:
+
+```za
+yaml2 = "- apple\n- banana\n- orange"
+result2 = yaml_parse(yaml2)
+```
+
+# Get nested values
+
+```za
+host = yaml_get(data, "server.host")           # returns "localhost"
+debug = yaml_get(data, "server.config.debug")  # returns true
+port1 = yaml_get(data, "server.ports[0]")      # returns 8080
+port2 = yaml_get(data, "server.ports[1]")      # returns 8081
+```
+
+# Update existing values
+
+```za
+data = yaml_set(data, "server.host", "example.com")
+data = yaml_set(data, "server.config.debug", false)
+data = yaml_set(data, "server.ports[0]", 9090)
+```
+
+# Add new values
+
+```za
+data = yaml_set(data, "server.timeout", 30)
+```
+
+# Remove specific values
+
+```za
+data = yaml_delete(data, "server.config.debug")
+data = yaml_delete(data, "server.ports[1]")  # removes second port
+```
+
 Please see za_tests/test_yaml.za for a larger example set.
 
-
-### 38.10 Archive Operations (ZIP/TAR)
+### 38.10 Archive Operations (ZIP)
 
 Archive operations are useful for backup, deployment, and file distribution.
+
+Create ZIP:
+
+```za
+files = ["test1.txt", "test2.txt"]
+result = zip_create("test_archive.zip", files)
+```
+
+List contents:
+
+```za
+contents = zip_list("test_archive.zip")
+```
+
+Extract all files:
+
+```za
+result = zip_extract("test_archive.zip", extract_dir)
+```
+
+Extract specific files:
+
+```za
+result = zip_extract_file("test_archive.zip", ["files","to","extract"], "single_extract_dir")
+```
+
+Add files:
+
+```za
+result = zip_add("test_archive.zip", ["files","to","add])
+```
+
+Remove files:
+
+```za
+result = zip_remove("test_archive.zip", ["test2.txt"])
+```
 
 Please see za_tests/test_zip.za for a larger example set.
 
 ### 38.11 Regular Expressions (PCRE)
 
-Regular expressions provide powerful pattern matching for text processing.
+Regular expressions provide powerful pattern matching for text processing. The reg_* library calls use a PCRE library implementation instead of the builtin regular expression engine. Due to this, these calls are only available on static linux builds of Za.
+
+Searching:
+
+```za
+# Tests if string contains regex match:
+reg_match(string, regex)
+```
+
+Filtering:
+
+```za
+# Returns array of [start_pos, end_pos] match positions:
+reg_filter(string, regex[, count])
+```
+
+Replacement:
+
+```za
+# Replaces regex matches with replacement string:
+reg_replace(var, regex, replacement[, int_flags])
+```
 
 
 ### 38.12 Checksum Operations
 
 Checksum operations are essential for file integrity verification and security.
 
+```za
+# Returns MD5 checksum of input string:
+md5sum(string)
+
+ Returns SHA1 checksum of input string
+sha1sum(string)
+
+# Returns SHA224 checksum of input string
+sha224sum(string)
+
+# Returns SHA256 checksum of input string:
+sha256sum(string)
+
+# Returns struct with .sum and .err for S3 ETag comparison:
+s3sum(filename[, blocksize])
+```
+
+- s3sum supports multipart upload calculations with configurable block sizes.
+- Error codes: 0=ok, 1=single-part warning, 2=file error, 3=checksum error
+- Auto-selects 8MB blocksize when blocksize=0
+
+S3 ETag Functionality
+
+The s3sum function specifically calculates checksums compatible with Amazon S3 ETags, including multipart upload format (hash-parts) for files larger than the blocksize.
 
 ### 38.13 TUI (Terminal User Interface)
 
-TUI operations enable interactive terminal applications for system administration:
+Create TUI objects and style:
+
+```za
+# Create TUI options map
+tui_obj = tui_new()
+# Create style with custom borders and colours
+style = tui_new_style()
+```
+
+Text display with box:
+
+```za
+tui_obj["Action"] = "text"
+tui_obj["Content"] = "Hello, World!"
+tui_obj["Row"] = 5
+tui_obj["Col"] = 10
+tui_obj["Width"] = 30
+tui_obj["Height"] = 5
+tui_obj["Border"] = true
+tui(tui_obj, style)
+```
+
+Interactive menu:
+
+```za
+tui_obj["Action"] = "menu"
+tui_obj["Title"] = "Choose an option:"
+tui_obj["Options"] = ["Option 1", "Option 2", "Exit"]
+tui_obj["Row"] = 10
+tui_obj["Col"] = 20
+result = tui(tui_obj, style)
+```
+
+Progress bar:
+
+```za
+tui_obj["Action"] = "progress"
+tui_obj["Title"] = "Processing..."
+tui_obj["Value"] = 0.75  # 75% complete
+tui_obj["Row"] = 15
+tui_obj["Col"] = 5
+tui_obj["Width"] = 40
+tui_progress(tui_obj, style)
+```
+
+Text editor:
+
+```za
+edited_text = editor("Initial content", 80, 24, "Edit Document")
+```
+
+Table display:
+
+```za
+tui_obj["Action"] = "table"
+tui_obj["Data"] = "Name,Age,City\nJohn,30,NYC\nJane,25,LA"
+tui_obj["Format"] = "csv"
+tui_obj["Headers"] = true
+tui_table(tui_obj, style)
+```
+
+Screen buffer switching:
+
+```za
+tui_screen(0)  # Switch to primary screen
+tui_screen(1)  # Switch to secondary screen
+```
+
+The TUI system uses maps to configure display properties like position (Row, Col), size (Width, Height), content (Content, Data), and styling (Border, colours)
 
 
 ### 38.14 Notification Operations
 
-Notifications enable alerting and communication for system events:
+Za provides 7 builtin file system notification library functions.
+
+Watcher Management Functions
+
+```za
+# Create new watcher, returns [watcher, error_code]
+# - Error codes: 0=success, 1=create_watcher_failed, 2=file_path_failure
+ev_watch(filepath_string)
+
+# Dispose of watcher object
+ev_watch_close(watcher)
+
+# Check if watcher is still available
+ev_exists(watcher)
+```
+
+Path Management Functions
+
+```za
+# Add a path to existing watcher
+ev_watch_add(watcher, filepath_string)
+
+# Remove a path from watcher
+ev_watch_remove(watcher, filepath_string)
+```
+
+Event Handling Functions
+
+```za
+# Sample events from watcher, returns notify_event or nil
+ev_event(watcher)
+
+# Test event type, returns filename or nil
+ev_mask(notify_event, str_event_type)
+```
+
+Event Types
+
+Supported event types for ev_mask:
+
+- "create" - File/directory creation
+- "write"  - File write operations
+- "remove" - File/directory deletion
+- "rename" - File/directory renaming
+- "chmod"  - Permission changes
 
 
 ### 38.15 Error Handling and Logging
@@ -2248,7 +2510,7 @@ log critical: "System out of memory"
 
 ```
 
-These representative idioms demonstrate the power and flexibility of Za's standard library categories for system administration tasks. Each category provides specialized tools that can be combined to create comprehensive automation solutions.
+These representative idioms demonstrate the flexibility of Za's standard library categories for system administration tasks. Each category provides specialized tools that can be combined to create comprehensive automation solutions.
 
 ---
 
@@ -2265,19 +2527,17 @@ println t.pp
 
 ## 40. Disk and filesystem checks
 
-Use filter expressions with backticks for clarity:
-
 ```za
-t = table(| "df -h", map(.parse_only true))
-bad = t ?> `#.UsePercent.replace("%","").as_int > 90`
+t = disk_usage()
+bad = t ?> `#.usage_percent > 90`
 foreach r in bad
-    println r.Filesystem, r.MountedOn, r.UsePercent
+    println r.path, r.mounted_path, r.usage
 endfor
 ```
 
 ## 41. Process and service inspection
 
-Use system/process library calls where available; otherwise, ingest CLI output via `table()` and operate structurally.
+Use system/process library calls where available; otherwise, ingest CLI output via `table()` where possible and operate structurally.
 
 ### 41.1 Process Monitoring
 
@@ -2353,10 +2613,10 @@ endif
 
 ```za
 # Check if ports are open using netcat
-function check_port(host, port)
+def check_port(host, port)
     result = ${nc -z {host} {port} 2>&1}
     return result.len() == 0  # Empty output means port is open
-endfunction
+end
 
 # Test multiple ports
 ports_to_check = [80, 443, 22, 3306]
@@ -2374,7 +2634,7 @@ endfor
 Use async fan-out and deterministic collection:
 
 ```za
-define check(h)
+def check(h)
     return icmp_ping(h, 2)
 end
 
@@ -2429,6 +2689,7 @@ Za supports both plain text and JSON logging formats:
 ```za
 # Enable JSON formatting for structured logs
 logging json on
+logging subject "WEBMON"
 
 # Add custom fields to all JSON entries
 logging json fields +service "web-monitor"
@@ -2482,6 +2743,7 @@ logging reserve 1048576
 ```
 
 The rotation system automatically:
+
 - Rotates files when they exceed the size threshold
 - Maintains a configurable number of historical files
 - Cleans up old files beyond the retention limit
@@ -2502,6 +2764,7 @@ println "Processed: ", stats.total_processed, " entries"
 ```
 
 The background queue system provides:
+
 - **Configurable queue size**: Default 60 entries, adjustable for high-volume scenarios
 - **Overflow handling**: Automatic warnings when queue is full
 - **Priority processing**: Errors get priority over normal logs
@@ -2514,7 +2777,15 @@ Za's logging system provides a comprehensive infrastructure for both application
 
 ## 47.1 Logging Statement Types
 
-The logging system supports several categories of statements for different logging needs. Application Logging uses the primary log statement which writes to both log file and console by default, with support for level-specific logging. Basic Control statements enable and disable logging, configure output paths, and control console echo behavior. Format Control allows switching between plain text and JSON formats, managing custom fields for structured logs. Web Access Logging provides separate controls for HTTP request logging with configurable file locations and automatic status code categorization. Advanced Features include subject prefixes, automatic error logging, queue management, rotation control, and memory reservation.
+The logging system supports several categories of statements for different logging needs. Application Logging uses the primary log statement which writes to both log file and console by default, with support for level-specific logging.
+
+Basic Control statements enable and disable logging, configure output paths, and control console echo behaviour.
+
+Format Control allows switching between plain text and JSON formats, managing custom fields for structured logs.
+
+Web Access Logging provides separate controls for HTTP request logging with configurable file locations and automatic status code categorization.
+
+Advanced Features include subject prefixes, automatic error logging, queue management, rotation control, and memory reservation.
 
 ```za
 ```
@@ -2560,23 +2831,24 @@ logging reserve <bytes>             # Set emergency memory reserve for logging u
 ```
 ## 47.2 Infrastructure Design
 
-The logging architecture uses a Unified Architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines.
+The logging architecture uses a unified architecture where both application code and web server code feed into a common background queue that processes entries through shared formatting and rotation pipelines.
 
-Key Components include background queue processing with configurable size and overflow handling, dual destination systems for main logs and web access logs, and format management supporting both plain text and JSON with custom field capabilities.
+Key Components include background queue processing with configurable size and overflow handling, dual destinations for main logs and web access logs, and format management supporting both plain text and JSON with custom field capabilities.
 
 Format Management handles automatic timestamps and subject prefix handling while allowing custom field manipulation for structured logs. Log Rotation provides size-based rotation for both main and web access logs with configurable file count retention and automatic cleanup of old rotated files.
 
-Memory Management includes an emergency memory reserve system and priority-based queue management that favors errors over normal logs under pressure. Error Integration automatically logs Za interpreter errors with enhanced context and HTTP status code tracking for web access logs.
+Memory Management includes an emergency memory reserve system and priority-based queue management that favours errors over normal logs under pressure. Error integration automatically logs Za interpreter errors with enhanced context and HTTP status code tracking for web access logs.
 
 ## 47.3 Performance Characteristics
 
-The logging system is optimized for minimal performance impact through Non-blocking I/O for all logging operations, ensuring script execution never waits on log writes.
+The logging system is optimized for minimal performance impact through non-blocking I/O for all logging operations, ensuring script execution never waits on log writes.
 
-The system implements Memory-aware request dropping for web access logs under memory pressure, with automatic warnings when queue capacity is exceeded.
+The system implements memory-aware request dropping for web access logs under memory pressure, with automatic warnings when queue capacity is exceeded.
 
-Unified statistics tracking provides comprehensive monitoring of logging system performance and health. Cross-platform path validation and security ensures safe file operations with appropriate permission checks and path sanitization across different operating systems.
+Statistics tracking provides comprehensive monitoring of logging system performance and health. Cross-platform path validation and security ensures safe file operations with appropriate permission checks and path sanitization across different operating systems.
 
-This design ensures that logging operations provide comprehensive coverage of application events while maintaining high performance and reliability, making the system suitable for everything from simple scripts to high-volume web services.
+This design ensures that logging operations provide comprehensive coverage of application events while maintaining high performance and reliability.
+
 
 ---
 
@@ -2600,21 +2872,21 @@ The testing framework follows these principles:
 
 ```bash
 # Run all tests
-za -t script.za
+za -t script
 
 # Run specific test groups
-za -t -G "database" script.za
+za -t -G "database" script
 
 # Run with custom output file
-za -t -o "test_results.txt" script.za
+za -t -o "test_results.txt" script
 
-# Override assertion values (useful for environment-specific testing)
-za -t -O "expected_value" script.za
+# Override group assertion failure action]
+za -t -O "fail|continue" script
 ```
 
 ### 48.3 Test Structure
 
-Tests use a simple but powerful structure:
+Tests use a simple structure:
 
 ```za
 test "test_name" GROUP "group_name" [ASSERT FAIL|CONTINUE]
@@ -2626,7 +2898,7 @@ test "test_name" GROUP "group_name" [ASSERT FAIL|CONTINUE]
 endtest
 ```
 
-The optional assertion mode controls test behavior:
+The optional assertion mode controls test behaviour:
 - **ASSERT FAIL** (default): Test execution stops on first assertion failure
 - **ASSERT CONTINUE**: Test continues past assertion failures, reporting all failures
 
@@ -2637,13 +2909,11 @@ The optional assertion mode controls test behavior:
 ```za
 test "integer_addition" GROUP "math_basics"
     # Test basic arithmetic
-    println "2 + 3 should equal 5"
     result = 2 + 3
-    assert result == 5
+    assert result == 5, "2 + 3 should equal 5"
 
     # Test with different values
-    println "10 + 15 should equal 25"
-    assert (10 + 15) == 25
+    assert (10 + 15) == 25, "10 + 15 should equal 25"
     doc "Verifies basic integer addition operations"
 endtest
 ```
@@ -2736,7 +3006,7 @@ test "system_integration" GROUP "integration"
 endtest
 ```
 
-## 50. Test Behaviors and Best Practices
+## 50. Test Behaviours and Best Practices
 
 ### 50.1 Test Organization
 
@@ -2790,6 +3060,66 @@ test "complex_business_logic" GROUP "business_rules"
 endtest
 ```
 
+Expanded DOC statement usage
+
+The DOC statement is also used to generate HEREDOC content in both normal execution and test modes. Some example use cases below:
+
+DOC Statement Examples from test_doc.za
+
+1. Basic DOC with VAR clause
+
+```za
+doc var myvar "Hello World"
+println myvar
+```
+
+2. DOC with GEN clause (default delimiter)
+
+```za
+doc gen
+These lines should be
+captured in test mode.
+Yes?
+```
+
+3. DOC with GEN and custom DELIM clause
+
+```za
+doc gen delim TERMINAL
+These [#2]delimited[#-] lines should
+be captured in test mode.
+TERMINAL
+```
+
+4. DOC with custom DELIM and VAR clauses
+
+```za
+doc delim END var multiline
+This is a multi-line
+string with "quotes"
+END
+print multiline
+```
+
+5. DOC with GEN clause and variable interpolation
+
+```za
+doc gen
+These lines should be
+captured in test mode.
+abc value is {=abc}
+Yes?
+```
+
+Key Features Demonstrated
+
+- VAR clause: Stores content in variable (myvar, multiline)
+- GEN clause: Enables test mode documentation capture
+- DELIM clause: Custom terminators (TERMINAL, END)
+- Variable interpolation: {=abc} substitution in GEN mode
+- Multi-line content: Using custom delimiters for block text
+- Default delimiter: "\n\n" when no DELIM specified
+
 
 ---
 
@@ -2831,11 +3161,7 @@ endtest
 
 `true`, `false`, `nil`, `NaN`
 
-
-
-
-
-# Appendix E — Standard Library Categories
+# Appendix D — Standard Library Categories
 
 Za’s standard library is implemented in the interpreter source as a set of built-in calls registered into `stdlib[...]`.
 
@@ -3419,12 +3745,9 @@ zip_add, zip_create, zip_create_from_dir, zip_extract, zip_extract_file, zip_lis
 - zip_extract_file
 - zip_add
 
-
-
-
 <div style="page-break-after: always;"></div>
 
-# Appendix F — Worked Example: `eg/mon` (annotated)
+# Appendix E — Worked Example: `eg/mon` (annotated)
 
 This appendix is an annotated walkthrough of the shipped example script `eg/mon`. All claims below are grounded in the script itself, with line references.
 
