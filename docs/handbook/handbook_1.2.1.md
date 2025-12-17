@@ -9,24 +9,15 @@ css: za.css
 
 <br/>
 <br/>
-
-### The Za Programming Language
+![ ](title-page.png)
 
 #### A Practical Handbook for System Administrators
 
-<br/>
-
-![ ](title-page.png)
-
-<br/>
-
-**Version 1.2.1**
-
-<br/>
 Daniel Horsley
 <br/>
 
 </div>
+
 
 ---
 
@@ -970,7 +961,7 @@ log_entry $out "/var/log/app.log"
 
 # System administration examples
 # Read configuration
-db_config = json.decode($in "/etc/database/config.json")
+db_config = json_decode($in "/etc/database/config.json")
 
 # Write backup
 current_config $out "/backup/config-{=date()}.json"
@@ -1893,9 +1884,9 @@ A full list of supported style macros can be found with:
 
 ```za
 help colour
-
-
 ```
+
+
 
 ---
 
