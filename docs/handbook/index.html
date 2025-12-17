@@ -1,13 +1,8 @@
 <div style="text-align:center; page-break-after: always;">
-<p><br/> <br/></p>
-<h3 id="the-za-programming-language">The Za Programming Language</h3>
+<p><br/> <br/> <img src="title-page.png" /></p>
 <h4 id="a-practical-handbook-for-system-administrators">A Practical
 Handbook for System Administrators</h4>
-<p><br/></p>
-<p><img src="title-page.png" /></p>
-<p><br/></p>
-<p><strong>Version 1.2.1</strong></p>
-<p><br/> Daniel Horsley <br/></p>
+<p>Daniel Horsley <br/></p>
 </div>
 <hr />
 <h1 id="contents">Contents</h1>
@@ -808,7 +803,7 @@ log_entry $out &quot;/var/log/app.log&quot;
 
 # System administration examples
 # Read configuration
-db_config = json.decode($in &quot;/etc/database/config.json&quot;)
+db_config = json_decode($in &quot;/etc/database/config.json&quot;)
 
 # Write backup
 current_config $out &quot;/backup/config-{=date()}.json&quot;
@@ -1720,9 +1715,7 @@ scheme</li>
 <p>The ANSI macro handling can be enabled/disabled via
 <code>ansi(true|false)</code> and startup flags.</p>
 <p>A full list of supported style macros can be found with:</p>
-<pre class="za"><code>help colour
-
-</code></pre>
+<pre class="za"><code>help colour</code></pre>
 <hr />
 <h1 id="part-x-standard-library-overview">Part X — Standard Library
 Overview</h1>
