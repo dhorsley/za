@@ -225,9 +225,9 @@ The full example startup script in the Za repository demonstrates advanced featu
 - Coloured system banners
 - Complex macros for file listing and system monitoring
 
-# Display welcome message
-```za
+#### Display welcome message
 
+```za
 println "Za REPL ready. Type 'help' for assistance."
 ```
 
