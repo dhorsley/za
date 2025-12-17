@@ -244,12 +244,14 @@ available capabilities.</p>
 <h4 id="line-editing">Line Editing</h4>
 <p>Interactive mode supports UTF-8 characters. Navigation keystrokes
 should be familiar from similar systems:</p>
-<h1 id="standard-arrow-navigation-works-as-expected">Standard arrow
-navigation works as expected</h1>
-<p>ctrl-a # Beginning of line ctrl-e # End of line ctrl-u # Delete to
-beginning ctrl-k # Delete to end ctrl-c # interrupt (interrupt session)
-ctrl-d # end-of-input (end session) ctrl-z # suspend REPL to
-background</p>
+<p>Standard arrow navigation works as expected</p>
+<pre class="za"><code>ctrl-a  # Beginning of line
+ctrl-e  # End of line
+ctrl-u  # Delete to beginning
+ctrl-k  # Delete to end
+ctrl-c  # interrupt (interrupt session)
+ctrl-d  # end-of-input (end session)
+ctrl-z  # suspend REPL to background</code></pre>
 <h3 id="repl-macros">3.5 REPL Macros</h3>
 <p>Macros provide powerful command shortcuts, particularly useful for
 repetitive system administration tasks.</p>
@@ -275,7 +277,7 @@ macro +addall(base, ...) `$base + $1 + $2 + $3`
 # Nested macro expansion
 macro +complex `#addall(10, #ls(&quot;.&quot;), &quot;extra&quot;)`
 
-# Debug macro expansion- Shows expanded code before execution
+# Debug macro expansion - Shows expanded code before execution
 &gt;&gt; #macro_name!</code></pre>
 <h4 id="macro-management">Macro Management</h4>
 <pre class="za"><code># List all macros
@@ -850,10 +852,12 @@ validation, normalization, and ensuring values stay within acceptable
 bounds.</p>
 <h4 id="clamping-syntax">Clamping Syntax</h4>
 <pre class="za"><code>result = value[start:end]</code></pre>
-<p>The expression returns: - <code>start</code> if
-<code>value &lt; start</code> - <code>end</code> if
-<code>value &gt; end</code> - <code>value</code> if
-<code>start ≤ value ≤ end</code></p>
+<p>The expression returns:</p>
+<ul>
+<li><code>start</code> if <code>value &lt; start</code></li>
+<li><code>end</code> if <code>value &gt; end</code></li>
+<li><code>value</code> if <code>start ≤ value ≤ end</code></li>
+</ul>
 <h4 id="type-inference">Type Inference</h4>
 <ul>
 <li>If clamping occurs, <strong>result has the same type as the clamping
@@ -993,19 +997,19 @@ end</code></pre>
 <p><code>return</code> may be used without a value. <code>return</code>
 may also return multiple values (comma separated expressions).</p>
 <p>The return values may also be unpacked on return:</p>
-<div class="sourceCode" id="cb55"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
-<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
-<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>end</span>
-<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
-<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
-<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>end</span>
-<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
-<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
-<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a># or</span>
-<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb56"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
+<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
+<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a># or</span>
+<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
 <h2 id="modules-and-namespaces">24. Modules and namespaces</h2>
 <p>Import a module:</p>
 <pre class="za"><code>module &quot;cron&quot;
@@ -1095,8 +1099,8 @@ troubleshooting.</p>
 <p>Debugging can be enabled in two ways:</p>
 <ul>
 <li><p><strong>Via command line</strong>:</p>
-<div class="sourceCode" id="cb63"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb64"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
 <li><p><strong>From within a script</strong>:</p>
 <pre class="za"><code>debug on</code></pre></li>
 </ul>
@@ -1335,8 +1339,8 @@ breakdowns.</p>
 <p>Enable profiling using either:</p>
 <ul>
 <li><p><strong>Command line</strong>:</p>
-<div class="sourceCode" id="cb70"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
+<div class="sourceCode" id="cb71"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
 </ul>
 <h3 id="profiler-behaviour">29.2 Profiler Behaviour</h3>
 <p>When enabled:</p>
@@ -2341,12 +2345,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb129"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb129-3"><a href="#cb129-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb129-4"><a href="#cb129-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb129-5"><a href="#cb129-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb130"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb130-1"><a href="#cb130-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb130-2"><a href="#cb130-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb130-3"><a href="#cb130-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb130-4"><a href="#cb130-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb130-5"><a href="#cb130-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2422,34 +2426,33 @@ categorization.</p>
 queue management, rotation control, and memory reservation.</p>
 <pre class="za"><code></code></pre>
 <p>Application Logging:</p>
-<p>log “message”,x,y,z # Primary logging statement log level:
-“message”,x,y,z # Level-specific logging</p>
+<pre class="za"><code>log &quot;message&quot;,x,y,z             # Primary logging statement
+log level: &quot;message&quot;,x,y,z      # Level-specific logging</code></pre>
 <p>Basic Control:</p>
-<p>logging on [filepath] - Enable main logging, optionally set log file
-path logging off - Disable main logging logging status - Display
-comprehensive logging configuration and statistics logging quiet -
-Suppress console output from log statements logging loud - Enable
-console output from log statements (default)</p>
+<pre class="za"><code>logging on [filepath]           # Enable main logging, optionally set log file path
+logging off                     # Disable main logging
+logging status                  # Display comprehensive logging configuration and statistics
+logging quiet                   # Suppress console output from log statements
+logging loud                    # Enable console output from log statements (default)</code></pre>
 <p>Format Control:</p>
-<p>logging json on # Enable JSON format for all logs logging json off #
-Use plain text format (default) logging json fields +field value # Add
-custom field to JSON logs logging json fields -field # Remove specific
-field from JSON logs logging json fields - # Clear all custom fields
-logging json fields push # Save current fields to stack logging json
-fields pop # Restore fields from stack</p>
+<pre class="za"><code>logging json on                     # Enable JSON format for all logs
+logging json off                    # Use plain text format (default)
+logging json fields +field value    # Add custom field to JSON logs
+logging json fields -field          # Remove specific field from JSON logs
+logging json fields -               # Clear all custom fields
+logging json fields push            # Save current fields to stack
+logging json fields pop             # Restore fields from stack</code></pre>
 <p>Web Access Logging:</p>
-<p>logging web enable # Enable web access logging logging web disable #
-Disable web access logging logging accessfile <path> # Set web access
-log file location (default: ./za_access.log)</p>
+<pre class="za"><code>logging web enable                  # Enable web access logging
+logging web disable                 # Disable web access logging
+logging accessfile &lt;path&gt;           # Set web access log file location (default: ./za_access.log)</code></pre>
 <p>Advanced Features:</p>
-<p>logging subject <text> # Set prefix for all log entries logging error
-on/off # Enable/disable automatic error logging logging queue size
-<number> # Set background processing queue size (default: 60) logging
-rotate size <bytes> # Set log rotation file size threshold logging
-rotate count <number> # Set number of rotated files to keep logging
-reserve <bytes> # Set emergency memory reserve for logging under
-pressure</p>
-<pre><code></code></pre>
+<pre class="za"><code>logging subject &lt;text&gt;              # Set prefix for all log entries
+logging error on/off                # Enable/disable automatic error logging
+logging queue size &lt;number&gt;         # Set background processing queue size (default: 60)
+logging rotate size &lt;bytes&gt;         # Set log rotation file size threshold
+logging rotate count &lt;number&gt;       # Set number of rotated files to keep
+logging reserve &lt;bytes&gt;             # Set emergency memory reserve for logging under pressure</code></pre>
 <h2 id="infrastructure-design">47.2 Infrastructure Design</h2>
 <p>The logging architecture uses a unified architecture where both
 application code and web server code feed into a common background queue
@@ -2507,18 +2510,18 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb135"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb135-1"><a href="#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb135-2"><a href="#cb135-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
-<span id="cb135-3"><a href="#cb135-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb135-4"><a href="#cb135-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb135-5"><a href="#cb135-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
-<span id="cb135-6"><a href="#cb135-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb135-7"><a href="#cb135-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb135-8"><a href="#cb135-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
-<span id="cb135-9"><a href="#cb135-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb135-10"><a href="#cb135-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
-<span id="cb135-11"><a href="#cb135-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
+<div class="sourceCode" id="cb140"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb140-1"><a href="#cb140-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb140-2"><a href="#cb140-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
+<span id="cb140-3"><a href="#cb140-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb140-4"><a href="#cb140-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb140-5"><a href="#cb140-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
+<span id="cb140-6"><a href="#cb140-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb140-7"><a href="#cb140-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb140-8"><a href="#cb140-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
+<span id="cb140-9"><a href="#cb140-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb140-10"><a href="#cb140-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
+<span id="cb140-11"><a href="#cb140-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
@@ -2626,11 +2629,15 @@ test &quot;user_auth_invalid&quot; GROUP &quot;authentication&quot;
 test &quot;user_permission_check&quot; GROUP &quot;authorization&quot;
 test &quot;database_connection&quot; GROUP &quot;database&quot;
 test &quot;database_query&quot; GROUP &quot;database&quot;</code></pre>
-<p>This organization allows: - <strong>Selective execution</strong>: Run
-specific groups with <code>-G</code> flag - <strong>Clear
-reporting</strong>: Test output organized by functional area -
-<strong>Maintenance</strong>: Easy to locate and update related
-tests</p>
+<p>This organization allows:</p>
+<ul>
+<li><strong>Selective execution</strong>: Run specific groups with
+<code>-G</code> flag</li>
+<li><strong>Clear reporting</strong>: Test output organized by
+functional area</li>
+<li><strong>Maintenance</strong>: Easy to locate and update related
+tests</li>
+</ul>
 <h3 id="error-handling-in-tests">50.2 Error Handling in Tests</h3>
 <p>The <code>ASSERT ERROR</code> syntax handles function call failures
 gracefully:</p>
@@ -2657,46 +2664,39 @@ endtest</code></pre>
     assert order.tax_amount &gt; 0
     assert inventory_updated(order.items)
 endtest</code></pre>
-<p>Expanded DOC statement usage</p>
+<h3 id="expanded-doc-statement-usage">Expanded DOC statement usage</h3>
 <p>The DOC statement is also used to generate HEREDOC content in both
 normal execution and test modes. Some example use cases below:</p>
-<p>DOC Statement Examples from test_doc.za</p>
-<ol type="1">
-<li>Basic DOC with VAR clause</li>
-</ol>
+<h4 id="basic-doc-with-var-clause">Basic DOC with VAR clause</h4>
 <pre class="za"><code>doc var myvar &quot;Hello World&quot;
 println myvar</code></pre>
-<ol start="2" type="1">
-<li>DOC with GEN clause (default delimiter)</li>
-</ol>
+<h4 id="doc-with-gen-clause-default-delimiter">DOC with GEN clause
+(default delimiter)</h4>
 <pre class="za"><code>doc gen
 These lines should be
 captured in test mode.
 Yes?</code></pre>
-<ol start="3" type="1">
-<li>DOC with GEN and custom DELIM clause</li>
-</ol>
+<h4 id="doc-with-gen-and-custom-delim-clause">DOC with GEN and custom
+DELIM clause</h4>
 <pre class="za"><code>doc gen delim TERMINAL
 These [#2]delimited[#-] lines should
 be captured in test mode.
 TERMINAL</code></pre>
-<ol start="4" type="1">
-<li>DOC with custom DELIM and VAR clauses</li>
-</ol>
+<h4 id="doc-with-custom-delim-and-var-clauses">DOC with custom DELIM and
+VAR clauses</h4>
 <pre class="za"><code>doc delim END var multiline
 This is a multi-line
 string with &quot;quotes&quot;
 END
 print multiline</code></pre>
-<ol start="5" type="1">
-<li>DOC with GEN clause and variable interpolation</li>
-</ol>
+<h4 id="doc-with-gen-clause-and-variable-interpolation">DOC with GEN
+clause and variable interpolation</h4>
 <pre class="za"><code>doc gen
 These lines should be
 captured in test mode.
 abc value is {=abc}
 Yes?</code></pre>
-<p>Key Features Demonstrated</p>
+<h3 id="key-features-demonstrated">Key Features Demonstrated</h3>
 <ul>
 <li>VAR clause: Stores content in variable (myvar, multiline)</li>
 <li>GEN clause: Enables test mode documentation capture</li>
@@ -2728,7 +2728,7 @@ reference (summary)</h1>
 <p><code>if else endif</code> <code>for foreach endfor</code>
 <code>case is has contains or endcase</code> <code>while endwhile</code>
 <code>def end return</code> <code>try catch then endtry</code>
-<code>struct endstruct</code> <code>enum endenum</code>
+<code>struct endstruct</code> <code>enum</code>
 <code>module use namespace</code> <code>test endtest assert doc</code>
 <code>async var pause |</code> <code>debug continue break exit</code>
 <code>print println log logging</code>
@@ -2740,12 +2740,11 @@ constants</h1>
 <h1 id="appendix-d-standard-library-categories">Appendix D — Standard
 Library Categories</h1>
 <p>Za’s standard library is implemented in the interpreter source as a
-set of built-in calls registered into <code>stdlib[...]</code>.</p>
-<p>This appendix lists the calls <strong>by category</strong> (category
-= the <code>lib-*.go</code> file they are defined in).</p>
-<p>For each category, all function names are listed, followed by a short
-“commonly used” section that calls out the names most often used in the
-shipped examples/tests.</p>
+set of built-in calls. These library calls do not require any module
+imports.</p>
+<p>This appendix lists the calls <strong>by category</strong>. For each
+category, all function names are listed, followed by a short “commonly
+used” section.</p>
 <blockquote>
 <p>This appendix intentionally does not repeat full per-function
 documentation, because Za can generate function reference pages
