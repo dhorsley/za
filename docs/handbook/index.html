@@ -215,7 +215,7 @@ advanced features including:</p>
 <ul>
 <li>Custom prompts with git status and system information</li>
 <li>Environment-specific AWS profile handling</li>
-<li>Colored system banners</li>
+<li>Coloured system banners</li>
 <li>Complex macros for file listing and system monitoring</li>
 </ul>
 <h1 id="display-welcome-message">Display welcome message</h1>
@@ -899,7 +899,7 @@ priority = nice_level[-20:19]       # Valid nice range
 # Temperature monitoring - not sure why you would enforce this, but...
 temp_celsius = sensor_temp[-40:125] # Operating range for server room</code></pre>
 <p>This clamping syntax reuses Za’s range-like brackets <code>[:]</code>
-but provides distinct behavior for numeric types compared to array
+but provides distinct behaviour for numeric types compared to array
 slicing.</p>
 <h2 id="conditionals">17. Conditionals</h2>
 <p>Block conditional:</p>
@@ -1264,8 +1264,8 @@ Commands</h3>
 </tr>
 </tbody>
 </table>
-<h3 id="debugger-scope-and-behavior">28.5 Debugger Scope and
-Behavior</h3>
+<h3 id="debugger-scope-and-behaviour">28.5 Debugger Scope and
+Behaviour</h3>
 <ul>
 <li>The debugger only affects <strong>the main script thread</strong>.
 Any <code>async</code> tasks or shell commands continue running
@@ -1338,7 +1338,7 @@ breakdowns.</p>
 <div class="sourceCode" id="cb70"><pre
 class="sourceCode bash"><code class="sourceCode bash"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
 </ul>
-<h3 id="profiler-behavior">29.2 Profiler Behavior</h3>
+<h3 id="profiler-behaviour">29.2 Profiler Behaviour</h3>
 <p>When enabled:</p>
 <ul>
 <li>All function calls are instrumented to record their
@@ -1715,6 +1715,10 @@ scheme</li>
 <pre class="za"><code>println &quot;[#bold][#1]ERROR[#-] message&quot;</code></pre>
 <p>The ANSI macro handling can be enabled/disabled via
 <code>ansi(true|false)</code> and startup flags.</p>
+<p>A full list of supported style macros can be found with:</p>
+<pre class="za"><code>help colour
+
+</code></pre>
 <hr />
 <h1 id="part-x-standard-library-overview">Part X — Standard Library
 Overview</h1>
@@ -1976,25 +1980,172 @@ endtry
 Operations</h3>
 <p>YAML operations are essential for managing configuration files in
 modern applications.</p>
+<h4 id="basic-usage">Basic Usage</h4>
+<p>Parse YAML:</p>
+<pre class="za"><code>yaml_str = &quot;name: John\nage: 30\ncity: New York&quot;
+data = yaml_parse(yaml_str)</code></pre>
+<p>Marshal to YAML:</p>
+<pre class="za"><code>data[&quot;name&quot;] = &quot;Alice&quot;
+data[&quot;age&quot;] = 28
+yaml_output = yaml_marshal(data)</code></pre>
+<p>Parse nested structures:</p>
+<pre class="za"><code>yaml3 = &quot;person:\n  name: Jane\n  age: 25\n  hobbies:\n    - reading\n    - swimming&quot;
+result3 = yaml_parse(yaml3)</code></pre>
+<p>Parse lists:</p>
+<pre class="za"><code>yaml2 = &quot;- apple\n- banana\n- orange&quot;
+result2 = yaml_parse(yaml2)</code></pre>
+<h1 id="get-nested-values">Get nested values</h1>
+<pre class="za"><code>host = yaml_get(data, &quot;server.host&quot;)           # returns &quot;localhost&quot;
+debug = yaml_get(data, &quot;server.config.debug&quot;)  # returns true
+port1 = yaml_get(data, &quot;server.ports[0]&quot;)      # returns 8080
+port2 = yaml_get(data, &quot;server.ports[1]&quot;)      # returns 8081</code></pre>
+<h1 id="update-existing-values">Update existing values</h1>
+<pre class="za"><code>data = yaml_set(data, &quot;server.host&quot;, &quot;example.com&quot;)
+data = yaml_set(data, &quot;server.config.debug&quot;, false)
+data = yaml_set(data, &quot;server.ports[0]&quot;, 9090)</code></pre>
+<h1 id="add-new-values">Add new values</h1>
+<pre class="za"><code>data = yaml_set(data, &quot;server.timeout&quot;, 30)</code></pre>
+<h1 id="remove-specific-values">Remove specific values</h1>
+<pre class="za"><code>data = yaml_delete(data, &quot;server.config.debug&quot;)
+data = yaml_delete(data, &quot;server.ports[1]&quot;)  # removes second port</code></pre>
 <p>Please see za_tests/test_yaml.za for a larger example set.</p>
-<h3 id="archive-operations-ziptar">38.10 Archive Operations
-(ZIP/TAR)</h3>
+<h3 id="archive-operations-zip">38.10 Archive Operations (ZIP)</h3>
 <p>Archive operations are useful for backup, deployment, and file
 distribution.</p>
+<p>Create ZIP:</p>
+<pre class="za"><code>files = [&quot;test1.txt&quot;, &quot;test2.txt&quot;]
+result = zip_create(&quot;test_archive.zip&quot;, files)</code></pre>
+<p>List contents:</p>
+<pre class="za"><code>contents = zip_list(&quot;test_archive.zip&quot;)</code></pre>
+<p>Extract all files:</p>
+<pre class="za"><code>result = zip_extract(&quot;test_archive.zip&quot;, extract_dir)</code></pre>
+<p>Extract specific files:</p>
+<pre class="za"><code>result = zip_extract_file(&quot;test_archive.zip&quot;, [&quot;files&quot;,&quot;to&quot;,&quot;extract&quot;], &quot;single_extract_dir&quot;)</code></pre>
+<p>Add files:</p>
+<pre class="za"><code>result = zip_add(&quot;test_archive.zip&quot;, [&quot;files&quot;,&quot;to&quot;,&quot;add])</code></pre>
+<p>Remove files:</p>
+<pre class="za"><code>result = zip_remove(&quot;test_archive.zip&quot;, [&quot;test2.txt&quot;])</code></pre>
 <p>Please see za_tests/test_zip.za for a larger example set.</p>
 <h3 id="regular-expressions-pcre">38.11 Regular Expressions (PCRE)</h3>
 <p>Regular expressions provide powerful pattern matching for text
-processing.</p>
+processing. The reg_* library calls use a PCRE library implementation
+instead of the builtin regular expression engine. Due to this, these
+calls are only available on static linux builds of Za.</p>
+<p>Searching:</p>
+<pre class="za"><code># Tests if string contains regex match:
+reg_match(string, regex)</code></pre>
+<p>Filtering:</p>
+<pre class="za"><code># Returns array of [start_pos, end_pos] match positions:
+reg_filter(string, regex[, count])</code></pre>
+<p>Replacement:</p>
+<pre class="za"><code># Replaces regex matches with replacement string:
+reg_replace(var, regex, replacement[, int_flags])</code></pre>
 <h3 id="checksum-operations">38.12 Checksum Operations</h3>
 <p>Checksum operations are essential for file integrity verification and
 security.</p>
+<pre class="za"><code># Returns MD5 checksum of input string:
+md5sum(string)
+
+ Returns SHA1 checksum of input string
+sha1sum(string)
+
+# Returns SHA224 checksum of input string
+sha224sum(string)
+
+# Returns SHA256 checksum of input string:
+sha256sum(string)
+
+# Returns struct with .sum and .err for S3 ETag comparison:
+s3sum(filename[, blocksize])</code></pre>
+<ul>
+<li>s3sum supports multipart upload calculations with configurable block
+sizes.</li>
+<li>Error codes: 0=ok, 1=single-part warning, 2=file error, 3=checksum
+error</li>
+<li>Auto-selects 8MB blocksize when blocksize=0</li>
+</ul>
+<p>S3 ETag Functionality</p>
+<p>The s3sum function specifically calculates checksums compatible with
+Amazon S3 ETags, including multipart upload format (hash-parts) for
+files larger than the blocksize.</p>
 <h3 id="tui-terminal-user-interface">38.13 TUI (Terminal User
 Interface)</h3>
-<p>TUI operations enable interactive terminal applications for system
-administration:</p>
+<p>Create TUI objects and style:</p>
+<pre class="za"><code># Create TUI options map
+tui_obj = tui_new()
+# Create style with custom borders and colours
+style = tui_new_style()</code></pre>
+<p>Text display with box:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;text&quot;
+tui_obj[&quot;Content&quot;] = &quot;Hello, World!&quot;
+tui_obj[&quot;Row&quot;] = 5
+tui_obj[&quot;Col&quot;] = 10
+tui_obj[&quot;Width&quot;] = 30
+tui_obj[&quot;Height&quot;] = 5
+tui_obj[&quot;Border&quot;] = true
+tui(tui_obj, style)</code></pre>
+<p>Interactive menu:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;menu&quot;
+tui_obj[&quot;Title&quot;] = &quot;Choose an option:&quot;
+tui_obj[&quot;Options&quot;] = [&quot;Option 1&quot;, &quot;Option 2&quot;, &quot;Exit&quot;]
+tui_obj[&quot;Row&quot;] = 10
+tui_obj[&quot;Col&quot;] = 20
+result = tui(tui_obj, style)</code></pre>
+<p>Progress bar:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;progress&quot;
+tui_obj[&quot;Title&quot;] = &quot;Processing...&quot;
+tui_obj[&quot;Value&quot;] = 0.75  # 75% complete
+tui_obj[&quot;Row&quot;] = 15
+tui_obj[&quot;Col&quot;] = 5
+tui_obj[&quot;Width&quot;] = 40
+tui_progress(tui_obj, style)</code></pre>
+<p>Text editor:</p>
+<pre class="za"><code>edited_text = editor(&quot;Initial content&quot;, 80, 24, &quot;Edit Document&quot;)</code></pre>
+<p>Table display:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;table&quot;
+tui_obj[&quot;Data&quot;] = &quot;Name,Age,City\nJohn,30,NYC\nJane,25,LA&quot;
+tui_obj[&quot;Format&quot;] = &quot;csv&quot;
+tui_obj[&quot;Headers&quot;] = true
+tui_table(tui_obj, style)</code></pre>
+<p>Screen buffer switching:</p>
+<pre class="za"><code>tui_screen(0)  # Switch to primary screen
+tui_screen(1)  # Switch to secondary screen</code></pre>
+<p>The TUI system uses maps to configure display properties like
+position (Row, Col), size (Width, Height), content (Content, Data), and
+styling (Border, colours)</p>
 <h3 id="notification-operations">38.14 Notification Operations</h3>
-<p>Notifications enable alerting and communication for system
-events:</p>
+<p>Za provides 7 builtin file system notification library functions.</p>
+<p>Watcher Management Functions</p>
+<pre class="za"><code># Create new watcher, returns [watcher, error_code]
+# - Error codes: 0=success, 1=create_watcher_failed, 2=file_path_failure
+ev_watch(filepath_string)
+
+# Dispose of watcher object
+ev_watch_close(watcher)
+
+# Check if watcher is still available
+ev_exists(watcher)</code></pre>
+<p>Path Management Functions</p>
+<pre class="za"><code># Add a path to existing watcher
+ev_watch_add(watcher, filepath_string)
+
+# Remove a path from watcher
+ev_watch_remove(watcher, filepath_string)</code></pre>
+<p>Event Handling Functions</p>
+<pre class="za"><code># Sample events from watcher, returns notify_event or nil
+ev_event(watcher)
+
+# Test event type, returns filename or nil
+ev_mask(notify_event, str_event_type)</code></pre>
+<p>Event Types</p>
+<p>Supported event types for ev_mask:</p>
+<ul>
+<li>“create” - File/directory creation</li>
+<li>“write” - File write operations</li>
+<li>“remove” - File/directory deletion</li>
+<li>“rename” - File/directory renaming</li>
+<li>“chmod” - Permission changes</li>
+</ul>
 <h3 id="error-handling-and-logging">38.15 Error Handling and
 Logging</h3>
 <p>Robust error handling and logging are essential for reliable system
@@ -2028,8 +2179,8 @@ log warning: &quot;Using default values for missing settings&quot;
 log error: &quot;Failed to connect to database&quot;
 log critical: &quot;System out of memory&quot;
 </code></pre>
-<p>These representative idioms demonstrate the power and flexibility of
-Za’s standard library categories for system administration tasks. Each
+<p>These representative idioms demonstrate the flexibility of Za’s
+standard library categories for system administration tasks. Each
 category provides specialized tools that can be combined to create
 comprehensive automation solutions.</p>
 <hr />
@@ -2041,16 +2192,16 @@ data, avoiding fragile string slicing.</p>
 <pre class="za"><code>t = table(| &quot;df -h&quot;, map(.parse_only true))
 println t.pp</code></pre>
 <h2 id="disk-and-filesystem-checks">40. Disk and filesystem checks</h2>
-<p>Use filter expressions with backticks for clarity:</p>
-<pre class="za"><code>t = table(| &quot;df -h&quot;, map(.parse_only true))
-bad = t ?&gt; `#.UsePercent.replace(&quot;%&quot;,&quot;&quot;).as_int &gt; 90`
+<pre class="za"><code>t = disk_usage()
+bad = t ?&gt; `#.usage_percent &gt; 90`
 foreach r in bad
-    println r.Filesystem, r.MountedOn, r.UsePercent
+    println r.path, r.mounted_path, r.usage
 endfor</code></pre>
 <h2 id="process-and-service-inspection">41. Process and service
 inspection</h2>
 <p>Use system/process library calls where available; otherwise, ingest
-CLI output via <code>table()</code> and operate structurally.</p>
+CLI output via <code>table()</code> where possible and operate
+structurally.</p>
 <h3 id="process-monitoring">41.1 Process Monitoring</h3>
 <pre class="za"><code># Get process list from /proc filesystem
 proc_dirs = dir(&quot;/proc&quot;) ?&gt; `#.name ~ &quot;^[0-9]+$&quot;` -&gt; `#.name`
@@ -2111,10 +2262,10 @@ else
 endif</code></pre>
 <h3 id="port-checking">42.2 Port Checking</h3>
 <pre class="za"><code># Check if ports are open using netcat
-function check_port(host, port)
+def check_port(host, port)
     result = ${nc -z {host} {port} 2&gt;&amp;1}
     return result.len() == 0  # Empty output means port is open
-endfunction
+end
 
 # Test multiple ports
 ports_to_check = [80, 443, 22, 3306]
@@ -2127,7 +2278,7 @@ for port in ports_to_check
 endfor</code></pre>
 <h2 id="parallel-host-probing">43. Parallel host probing</h2>
 <p>Use async fan-out and deterministic collection:</p>
-<pre class="za"><code>define check(h)
+<pre class="za"><code>def check(h)
     return icmp_ping(h, 2)
 end
 
@@ -2180,6 +2331,7 @@ sources</li>
 <p>Za supports both plain text and JSON logging formats:</p>
 <pre class="za"><code># Enable JSON formatting for structured logs
 logging json on
+logging subject &quot;WEBMON&quot;
 
 # Add custom fields to all JSON entries
 logging json fields +service &quot;web-monitor&quot;
@@ -2189,12 +2341,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb100"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb100-2"><a href="#cb100-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb100-3"><a href="#cb100-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb100-4"><a href="#cb100-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb100-5"><a href="#cb100-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb129"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb129-1"><a href="#cb129-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb129-2"><a href="#cb129-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb129-3"><a href="#cb129-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb129-4"><a href="#cb129-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb129-5"><a href="#cb129-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -2221,10 +2373,13 @@ logging rotate count 5
 
 # Set memory reserve for critical logs (1MB)
 logging reserve 1048576</code></pre>
-<p>The rotation system automatically: - Rotates files when they exceed
-the size threshold - Maintains a configurable number of historical files
-- Cleans up old files beyond the retention limit - Uses atomic writes to
-prevent log corruption</p>
+<p>The rotation system automatically:</p>
+<ul>
+<li>Rotates files when they exceed the size threshold</li>
+<li>Maintains a configurable number of historical files</li>
+<li>Cleans up old files beyond the retention limit</li>
+<li>Uses atomic writes to prevent log corruption</li>
+</ul>
 <h3 id="performance-and-monitoring">46.4 Performance and Monitoring</h3>
 <p>Monitor logging system performance:</p>
 <pre class="za"><code># Check logging system status
@@ -2234,12 +2389,17 @@ logging status
 stats = logging_stats()
 println &quot;Queue usage: &quot;, stats.queue_usage, &quot;%&quot;
 println &quot;Processed: &quot;, stats.total_processed, &quot; entries&quot;</code></pre>
-<p>The background queue system provides: - <strong>Configurable queue
-size</strong>: Default 60 entries, adjustable for high-volume scenarios
-- <strong>Overflow handling</strong>: Automatic warnings when queue is
-full - <strong>Priority processing</strong>: Errors get priority over
-normal logs - <strong>Memory awareness</strong>: Graceful degradation
-under memory pressure</p>
+<p>The background queue system provides:</p>
+<ul>
+<li><strong>Configurable queue size</strong>: Default 60 entries,
+adjustable for high-volume scenarios</li>
+<li><strong>Overflow handling</strong>: Automatic warnings when queue is
+full</li>
+<li><strong>Priority processing</strong>: Errors get priority over
+normal logs</li>
+<li><strong>Memory awareness</strong>: Graceful degradation under memory
+pressure</li>
+</ul>
 <h2 id="logging-architecture">47. Logging Architecture</h2>
 <p>Za’s logging system provides a comprehensive infrastructure for both
 application events and web access logging. The system is designed around
@@ -2250,14 +2410,16 @@ performance.</p>
 <p>The logging system supports several categories of statements for
 different logging needs. Application Logging uses the primary log
 statement which writes to both log file and console by default, with
-support for level-specific logging. Basic Control statements enable and
-disable logging, configure output paths, and control console echo
-behavior. Format Control allows switching between plain text and JSON
-formats, managing custom fields for structured logs. Web Access Logging
-provides separate controls for HTTP request logging with configurable
-file locations and automatic status code categorization. Advanced
-Features include subject prefixes, automatic error logging, queue
-management, rotation control, and memory reservation.</p>
+support for level-specific logging.</p>
+<p>Basic Control statements enable and disable logging, configure output
+paths, and control console echo behaviour.</p>
+<p>Format Control allows switching between plain text and JSON formats,
+managing custom fields for structured logs.</p>
+<p>Web Access Logging provides separate controls for HTTP request
+logging with configurable file locations and automatic status code
+categorization.</p>
+<p>Advanced Features include subject prefixes, automatic error logging,
+queue management, rotation control, and memory reservation.</p>
 <pre class="za"><code></code></pre>
 <p>Application Logging:</p>
 <p>log “message”,x,y,z # Primary logging statement log level:
@@ -2289,40 +2451,39 @@ reserve <bytes> # Set emergency memory reserve for logging under
 pressure</p>
 <pre><code></code></pre>
 <h2 id="infrastructure-design">47.2 Infrastructure Design</h2>
-<p>The logging architecture uses a Unified Architecture where both
+<p>The logging architecture uses a unified architecture where both
 application code and web server code feed into a common background queue
 that processes entries through shared formatting and rotation
 pipelines.</p>
 <p>Key Components include background queue processing with configurable
-size and overflow handling, dual destination systems for main logs and
-web access logs, and format management supporting both plain text and
-JSON with custom field capabilities.</p>
+size and overflow handling, dual destinations for main logs and web
+access logs, and format management supporting both plain text and JSON
+with custom field capabilities.</p>
 <p>Format Management handles automatic timestamps and subject prefix
 handling while allowing custom field manipulation for structured logs.
 Log Rotation provides size-based rotation for both main and web access
 logs with configurable file count retention and automatic cleanup of old
 rotated files.</p>
 <p>Memory Management includes an emergency memory reserve system and
-priority-based queue management that favors errors over normal logs
-under pressure. Error Integration automatically logs Za interpreter
+priority-based queue management that favours errors over normal logs
+under pressure. Error integration automatically logs Za interpreter
 errors with enhanced context and HTTP status code tracking for web
 access logs.</p>
 <h2 id="performance-characteristics">47.3 Performance
 Characteristics</h2>
 <p>The logging system is optimized for minimal performance impact
-through Non-blocking I/O for all logging operations, ensuring script
+through non-blocking I/O for all logging operations, ensuring script
 execution never waits on log writes.</p>
-<p>The system implements Memory-aware request dropping for web access
+<p>The system implements memory-aware request dropping for web access
 logs under memory pressure, with automatic warnings when queue capacity
 is exceeded.</p>
-<p>Unified statistics tracking provides comprehensive monitoring of
-logging system performance and health. Cross-platform path validation
-and security ensures safe file operations with appropriate permission
-checks and path sanitization across different operating systems.</p>
+<p>Statistics tracking provides comprehensive monitoring of logging
+system performance and health. Cross-platform path validation and
+security ensures safe file operations with appropriate permission checks
+and path sanitization across different operating systems.</p>
 <p>This design ensures that logging operations provide comprehensive
 coverage of application events while maintaining high performance and
-reliability, making the system suitable for everything from simple
-scripts to high-volume web services.</p>
+reliability.</p>
 <hr />
 <h1 id="part-xiii---testing-1">Part XIII - Testing</h1>
 <h2 id="testing-overview">48. Testing Overview</h2>
@@ -2346,20 +2507,20 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb106"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb106-1"><a href="#cb106-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb106-2"><a href="#cb106-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script.za</span>
-<span id="cb106-3"><a href="#cb106-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb106-4"><a href="#cb106-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb106-5"><a href="#cb106-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script.za</span>
-<span id="cb106-6"><a href="#cb106-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb106-7"><a href="#cb106-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb106-8"><a href="#cb106-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script.za</span>
-<span id="cb106-9"><a href="#cb106-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb106-10"><a href="#cb106-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override assertion values (useful for environment-specific testing)</span></span>
-<span id="cb106-11"><a href="#cb106-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;expected_value&quot;</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb135"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb135-1"><a href="#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb135-2"><a href="#cb135-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
+<span id="cb135-3"><a href="#cb135-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb135-4"><a href="#cb135-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb135-5"><a href="#cb135-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
+<span id="cb135-6"><a href="#cb135-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb135-7"><a href="#cb135-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb135-8"><a href="#cb135-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
+<span id="cb135-9"><a href="#cb135-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb135-10"><a href="#cb135-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
+<span id="cb135-11"><a href="#cb135-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
-<p>Tests use a simple but powerful structure:</p>
+<p>Tests use a simple structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
     # Test setup code
     assert condition [, custom_message ]
@@ -2367,7 +2528,7 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb106-1"><a href
     doc &quot;This test verifies that...&quot;
     # Test execution code
 endtest</code></pre>
-<p>The optional assertion mode controls test behavior: - <strong>ASSERT
+<p>The optional assertion mode controls test behaviour: - <strong>ASSERT
 FAIL</strong> (default): Test execution stops on first assertion failure
 - <strong>ASSERT CONTINUE</strong>: Test continues past assertion
 failures, reporting all failures</p>
@@ -2375,13 +2536,11 @@ failures, reporting all failures</p>
 <h3 id="basic-test-structure">49.1 Basic Test Structure</h3>
 <pre class="za"><code>test &quot;integer_addition&quot; GROUP &quot;math_basics&quot;
     # Test basic arithmetic
-    println &quot;2 + 3 should equal 5&quot;
     result = 2 + 3
-    assert result == 5
+    assert result == 5, &quot;2 + 3 should equal 5&quot;
 
     # Test with different values
-    println &quot;10 + 15 should equal 25&quot;
-    assert (10 + 15) == 25
+    assert (10 + 15) == 25, &quot;10 + 15 should equal 25&quot;
     doc &quot;Verifies basic integer addition operations&quot;
 endtest</code></pre>
 <h3 id="error-handling-tests">49.2 Error Handling Tests</h3>
@@ -2458,7 +2617,7 @@ Tests</h3>
 
     doc &quot;Validates integration with system commands and data parsing&quot;
 endtest</code></pre>
-<h2 id="test-behaviors-and-best-practices">50. Test Behaviors and Best
+<h2 id="test-behaviours-and-best-practices">50. Test Behaviours and Best
 Practices</h2>
 <h3 id="test-organization">50.1 Test Organization</h3>
 <p>Group tests logically by functionality:</p>
@@ -2498,6 +2657,54 @@ endtest</code></pre>
     assert order.tax_amount &gt; 0
     assert inventory_updated(order.items)
 endtest</code></pre>
+<p>Expanded DOC statement usage</p>
+<p>The DOC statement is also used to generate HEREDOC content in both
+normal execution and test modes. Some example use cases below:</p>
+<p>DOC Statement Examples from test_doc.za</p>
+<ol type="1">
+<li>Basic DOC with VAR clause</li>
+</ol>
+<pre class="za"><code>doc var myvar &quot;Hello World&quot;
+println myvar</code></pre>
+<ol start="2" type="1">
+<li>DOC with GEN clause (default delimiter)</li>
+</ol>
+<pre class="za"><code>doc gen
+These lines should be
+captured in test mode.
+Yes?</code></pre>
+<ol start="3" type="1">
+<li>DOC with GEN and custom DELIM clause</li>
+</ol>
+<pre class="za"><code>doc gen delim TERMINAL
+These [#2]delimited[#-] lines should
+be captured in test mode.
+TERMINAL</code></pre>
+<ol start="4" type="1">
+<li>DOC with custom DELIM and VAR clauses</li>
+</ol>
+<pre class="za"><code>doc delim END var multiline
+This is a multi-line
+string with &quot;quotes&quot;
+END
+print multiline</code></pre>
+<ol start="5" type="1">
+<li>DOC with GEN clause and variable interpolation</li>
+</ol>
+<pre class="za"><code>doc gen
+These lines should be
+captured in test mode.
+abc value is {=abc}
+Yes?</code></pre>
+<p>Key Features Demonstrated</p>
+<ul>
+<li>VAR clause: Stores content in variable (myvar, multiline)</li>
+<li>GEN clause: Enables test mode documentation capture</li>
+<li>DELIM clause: Custom terminators (TERMINAL, END)</li>
+<li>Variable interpolation: {=abc} substitution in GEN mode</li>
+<li>Multi-line content: Using custom delimiters for block text</li>
+<li>Default delimiter: “” when no DELIM specified</li>
+</ul>
 <hr />
 <h1 id="appendix-a-operator-reference-summary">Appendix A — Operator
 reference (summary)</h1>
@@ -2530,7 +2737,7 @@ reference (summary)</h1>
 constants</h1>
 <p><code>true</code>, <code>false</code>, <code>nil</code>,
 <code>NaN</code></p>
-<h1 id="appendix-e-standard-library-categories">Appendix E — Standard
+<h1 id="appendix-d-standard-library-categories">Appendix D — Standard
 Library Categories</h1>
 <p>Za’s standard library is implemented in the interpreter source as a
 set of built-in calls registered into <code>stdlib[...]</code>.</p>
@@ -3019,7 +3226,7 @@ zip_extract_file, zip_list, zip_remove</p>
 <div style="page-break-after: always;">
 
 </div>
-<h1 id="appendix-f-worked-example-egmon-annotated">Appendix F — Worked
+<h1 id="appendix-e-worked-example-egmon-annotated">Appendix E — Worked
 Example: <code>eg/mon</code> (annotated)</h1>
 <p>This appendix is an annotated walkthrough of the shipped example
 script <code>eg/mon</code>. All claims below are grounded in the script
