@@ -201,6 +201,8 @@ _=append_to(ref banner,"[#1]··························
 _=append_to(ref banner,"[#1]···"+pad(" {=zainfo().version} ",0,21)+"···│····················································")
 _=append_to(ref banner,"[#1]···························│····················································")
 
+unset c,m,m_available, m_total, amem, tmem, aswap, tswap
+
 # show banner
 p=banner.join("\n")
 println "\n[#5]{p}[#-]"
