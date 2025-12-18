@@ -62,7 +62,7 @@ Daniel Horsley
 22. Searching arrays (`find`, `where`)
 
 ## Part VI - Functions, Modules, and Composition
-23. Functions (`define … end`)
+23. Functions (`def … end`)
 24. Modules and namespaces
 
 ## Part VII - Errors, Debugging, and Safety
@@ -498,7 +498,7 @@ of nested structures without pre-allocation boilerplate.
 To modify a global variable from inside a function, use `@`. Example pattern:
 
 ```za
-define q()
+def q()
     @a = true
 end
 ```
@@ -966,10 +966,7 @@ db_config = json_decode($in "/etc/database/config.json")
 # Write backup
 current_config $out "/backup/config-{=date()}.json"
 
-# Append to log - there are many better ways of doing this:
-"[{=date()}] Service started" $out "/var/log/service.log"
-
-# Process configuration files
+# Process configuration files - you could also use glob() for this
 foreach config_file in dir("/etc/app",".*.conf")
     content = $in config_file.name
     processed = process_config(content)
@@ -1203,7 +1200,7 @@ sel = rows.where(`#.Filesystem~"^/dev"`)
 
 # Part VI — Functions, Modules, and Composition
 
-## 23. Functions (`define … end`)
+## 23. Functions (`def … end`)
 
 ```za
 def f(x)
@@ -1312,7 +1309,7 @@ structured results where available, using exceptions when there is no better alt
 A try block may capture outer variables explicitly with `uses`:
 
 ```za
-try uses captured var [,...,captured_var] [throws category]
+try uses captured_var [,...,captured_var] [throws string_category|ex_enum_category]
     # action
 catch [err] [is category_expr | in list_expr | contains regex]
     # action
@@ -2947,7 +2944,7 @@ endtest
 ```za
 test "function_returns" GROUP "function_validation"
     # Test multiple return values
-    define compute_stats(a, b)
+    def compute_stats(a, b)
         sum = a + b
         diff = a - b
         return sum, diff
