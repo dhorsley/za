@@ -58,7 +58,7 @@ Processing</h2>
 <h2 id="part-vi---functions-modules-and-composition">Part VI -
 Functions, Modules, and Composition</h2>
 <ol start="23" type="1">
-<li>Functions (<code>define … end</code>)</li>
+<li>Functions (<code>def … end</code>)</li>
 <li>Modules and namespaces</li>
 </ol>
 <h2 id="part-vii---errors-debugging-and-safety">Part VII - Errors,
@@ -430,7 +430,7 @@ boilerplate.</p>
 (<code>@</code>)</h3>
 <p>To modify a global variable from inside a function, use
 <code>@</code>. Example pattern:</p>
-<pre class="za"><code>define q()
+<pre class="za"><code>def q()
     @a = true
 end</code></pre>
 <p>Without <code>@</code>, assignment targets local scope.</p>
@@ -807,10 +807,7 @@ db_config = json_decode($in &quot;/etc/database/config.json&quot;)
 # Write backup
 current_config $out &quot;/backup/config-{=date()}.json&quot;
 
-# Append to log - there are many better ways of doing this:
-&quot;[{=date()}] Service started&quot; $out &quot;/var/log/service.log&quot;
-
-# Process configuration files
+# Process configuration files - you could also use glob() for this
 foreach config_file in dir(&quot;/etc/app&quot;,&quot;.*.conf&quot;)
     content = $in config_file.name
     processed = process_config(content)
@@ -983,8 +980,7 @@ sel = rows.where(`#.Filesystem~&quot;^/dev&quot;`)</code></pre>
 <hr />
 <h1 id="part-vi-functions-modules-and-composition">Part VI — Functions,
 Modules, and Composition</h1>
-<h2 id="functions-define-end">23. Functions
-(<code>define … end</code>)</h2>
+<h2 id="functions-def-end">23. Functions (<code>def … end</code>)</h2>
 <pre class="za"><code>def f(x)
     return x*2
 end</code></pre>
@@ -1068,7 +1064,7 @@ maintain.</p>
 (<code>try … catch … then … endtry</code>)</h2>
 <p>A try block may capture outer variables explicitly with
 <code>uses</code>:</p>
-<pre class="za"><code>try uses captured var [,...,captured_var] [throws category]
+<pre class="za"><code>try uses captured_var [,...,captured_var] [throws string_category|ex_enum_category]
     # action
 catch [err] [is category_expr | in list_expr | contains regex]
     # action
@@ -2559,7 +2555,7 @@ endtest</code></pre>
 Tests</h3>
 <pre class="za"><code>test &quot;function_returns&quot; GROUP &quot;function_validation&quot;
     # Test multiple return values
-    define compute_stats(a, b)
+    def compute_stats(a, b)
         sum = a + b
         diff = a - b
         return sum, diff
