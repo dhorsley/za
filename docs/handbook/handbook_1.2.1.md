@@ -3663,7 +3663,7 @@ cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, i
 **Functions (16):**
 
 
-editor, tui, tui_box, tui_clear, tui_input, tui_menu, tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset, tui_radio, tui_screen, tui_table, tui_template, tui_text
+editor, tui, tui_box, tui_clear, tui_input, tui_menu, selector, tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset, tui_radio, tui_screen, tui_table, tui_template, tui_text
 
 
 **Commonly used (from examples/tests):**

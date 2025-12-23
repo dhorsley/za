@@ -1020,7 +1020,6 @@ func tui_box(t tui, s tui_style) {
 /////////////////////////////////////////////////////////////////
 
 func tui_menu(t tui, s tui_style) tui {
-    // pf("\n\n\nentered tui_menu func with:\nt : %+v\ns : %+v\n\n\n",t,s)
     row := t.Row
     col := t.Col
     cursor := t.Cursor
@@ -1048,44 +1047,36 @@ func tui_menu(t tui, s tui_style) tui {
         addhifg = "[#" + hi_fg + "]"
     }
 
+    // scroll if necessary
+    if row+len(t.Options)+6>MH {
+        for ssize:=row+len(t.Options)+6; ssize>MH; ssize-=1 {
+            fmt.Println()
+        }
+        row-=len(t.Options)+6
+    }
+
     // Draw border if requested - border should be drawn around the content area
     if t.Border {
-        tui_box(tui{Title: t.Title, Row: t.Row - 1, Width: t.Width + 2, Col: t.Col - 1, Height: t.Height + 2}, s)
+        tui_box(tui{Title: t.Title, Row: row-1, Width: t.Width + 2, Col: col - 1, Height: t.Height + 2}, s)
     }
 
     pf(addbg)
     pf(addfg)
 
-    absat(row+2, col+2)
-    pf(prompt)
+    offset:=0
+    if prompt!="" {
+        absat(row+2, col+2)
+        pf(prompt)
+        offset+=4
+    }
 
     sel := t.Index
 
-    /*
-       ol:=len(t.Options)
-       key_range = -1
-       // determine shortcut keys per option
-       if t.shortcut {
-           if ol<30 {
-               key_range = ( "1".asc .. "9".asc ) +  ( "a".asc .. "a".asc+ol-10 )
-           } else {
-               if ol<10 {
-                   key_range = "1".asc .. "1".asc+ol-1
-               }
-           }
-       }
-    */
-
     // display menu
     for k, p := range t.Options {
-        absat(row+4+k, col+6)
-        // short_code=" "
-        // if key_range!=nil { short_code=key_range[key_p].char }
+        absat(row+offset+k, col+6)
         pf(p)
-        // "[{=short_code}]{p}"
     }
-
-    // maxchoice=49+len(t.Options)
 
     // input loop
     finished := false
@@ -1093,21 +1084,17 @@ func tui_menu(t tui, s tui_style) tui {
 
     for !finished {
 
-        absat(row+4+sel, col+4)
+        absat(row+offset+sel, col+4)
         pf(cursor)
-        absat(row+4+sel, col+6)
+        absat(row+offset+sel, col+6)
         pf(addhibg + addhifg + t.Options[sel] + "[##][#-]")
         k := wrappedGetCh(0, false)
-        absat(row+4+sel, col+4)
+        absat(row+offset+sel, col+4)
         pf(addbg)
         pf(addfg)
         pf(" ")
-        absat(row+4+sel, col+6)
+        absat(row+offset+sel, col+6)
         pf(t.Options[sel])
-
-        //if k>=49 && k<maxchoice {
-        //    result=k-48
-        //}
 
         if k == 'q' || k == 'Q' {
             t.Cancel = true
@@ -1133,7 +1120,51 @@ func tui_menu(t tui, s tui_style) tui {
     return t
 }
 
-/////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////
+
+func selector(options []string, style *tui_style) tui {
+    // Read global cursor position directly
+    currentRow := row+1 // Access global from main.go
+    currentCol := col // Access global from main.go
+
+    // Calculate optimal dimensions
+    maxWidth := 14 // default = default prompt length
+    for _, option := range options {
+        if len(option) > maxWidth {
+            maxWidth = len(option)
+        }
+    }
+    menuWidth := maxWidth + 10      // padding for cursor and border
+    menuHeight := len(options)-1
+
+    // Build TUI config
+    t := tui{
+        Row:     currentRow+1,
+        Col:     currentCol+1,
+        Title:   "",
+        Height:  menuHeight,
+        Width:   menuWidth,
+        Options: options,
+        Prompt:  "",
+        Cursor:  ">",
+        Index:   0,
+        Border:  true,
+    }
+
+    s := default_tui_style
+    if style != nil {
+        s = *style
+    }
+
+    res:=tui_menu(t,s)
+
+    row+=menuHeight+4
+    col=1
+
+    return res
+}
+
+///////////////////////////////////////////////////////////////
 
 var default_tui_style tui_style
 var default_border_map map[string]string
@@ -1423,6 +1454,40 @@ func buildTuiLib() {
             s = mapToTuiStyle(args[1].(map[string]any))
         }
         return tui_menu(t, s), err
+    }
+
+    slhelp["selector"] = LibHelp{in: "array[,map]", out: "tui_struct", action: "present selection menu at current cursor position"}
+    stdlib["selector"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("selector", args, 4,
+            "1", "[]any",
+            "1", "[]string",
+            "2", "[]any", "map",
+            "2", "[]string","map"); !ok {
+            return nil, err
+        }
+
+        // Convert options array to string slice
+        var options []string
+        switch args[0].(type) {
+        case []any:
+            optionsArray := args[0].([]any)
+            options = make([]string, len(optionsArray))
+            for i, opt := range optionsArray {
+                options[i] = fmt.Sprintf("%v", opt)
+            }
+        default:
+            options = args[0].([]string)
+        }
+
+        // Handle optional style parameter
+        var s *tui_style
+        if len(args) == 2 {
+            styleMap := args[1].(map[string]any)
+            style := mapToTuiStyle(styleMap)
+            s = &style
+        }
+
+        return selector(options, s), err
     }
 
 }

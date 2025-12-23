@@ -232,6 +232,7 @@ syntax match tui_functions   "\(^|.\|\s*\)tui_clear\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_box\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_progress_reset\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_menu\s*("he=e-1
+syntax match tui_functions   "\(^|.\|\s*\)selector\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_table\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_pager\s*("he=e-1
 syntax match tui_functions   "\(^|.\|\s*\)tui_progress\s*("he=e-1
