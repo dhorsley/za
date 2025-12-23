@@ -760,6 +760,7 @@ other
             tui_text            : display text block
             tui_pager           : interactive text pager
             tui_menu            : present options menu
+            selector            : simple at-cursor inline menu
             tui_clear           : empty the area of the element
             tui_input           : get user input
             tui_template        : convert template string+struct to tui_text output

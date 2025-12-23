@@ -612,6 +612,7 @@ local za_functions = {
     "tui_text",
     "tui_pager",
     "tui_menu",
+    "selector",
     "tui_progress",
     "tui_progress_reset",
     "tui_input",
