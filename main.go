@@ -1302,7 +1302,7 @@ func main() {
     logFields = make(map[string]any)
     logFieldsStack = make([]map[string]any, 0)
 
-    // interactive mode support PIG
+    // interactive mode support
     if (*a_program == "" && exec_file_name == "") || interactive {
 
         if MW == -1 {
