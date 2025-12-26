@@ -1,5 +1,0 @@
-println "Hello from bundled app!"
-
-MODULE "./testmod"
-
-println "Module loaded successfully!"
