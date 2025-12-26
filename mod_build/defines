@@ -12,7 +12,7 @@ define progress(s); println "[#4]{s}[#-]"; end
 
 define buildDefault(build_version,build_date)
     print "[#4]Standard build[#-]\n"
-    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-static -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=cgo-static{=strStrip}{=strgt}"' -tags 'osusergo' za
+    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-static -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=cgo-static{=strStrip}"' -tags 'osusergo' za
     r=last()
     on r>0 do print last_err()
     return r
@@ -20,8 +20,8 @@ end
 
 define buildArch(build_version,build_date)
     print "[#4]Arch build[#-]\n"
-    # | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-lpcre -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}{=strgt}"' -tags 'osusergo netgo' -installsuffix netgo
-    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-lpcre -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}{=strgt}"' -tags 'osusergo' za
+    # | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-lpcre -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}"' -tags 'osusergo netgo' -installsuffix netgo
+    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-lpcre -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}"' -tags 'osusergo' za
     r=last()
     on r>0 do print last_err()
     on r==0 do { cp za za.arch }
@@ -30,7 +30,7 @@ enddef
 
 define buildMusl(build_version,build_date)
     print "[#4]musl build (alpine/aws)[#-]\n"
-    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}{=strgt}"' -tags 'osusergo netgo' -installsuffix netgo
+    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}"' -tags 'osusergo netgo' -installsuffix netgo
     r=last()
     on r>0 do print last_err()
     on r==0 do { cp za za.alpine }
