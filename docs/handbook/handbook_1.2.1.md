@@ -1293,6 +1293,46 @@ Example:
 
 ```
 
+### Bundling (v.1.2.1+)
+
+There is an experimental facility for packaging the interpreter with a za script and it's module dependencies into a single executable.
+
+If the -x argument is used, this bundling will be triggered.
+
+That is:
+
+> za -x [ -n test_bundle_name ] script_name
+
+On execution, the bundled version will unpack to a uniquely named directory in /tmp/. The execution path should still be where the bundle was called from, not the extracted directory.
+
+N.B.: due to this, you should avoid the use of the execpath() call inside bundled scripts.
+
+If the -n argument is not provided, the default bundled file is named exec.za.
+
+Example:
+
+    # build the bundle
+    > za -x -n factest eg/fac
+    Rewriting MODULE statements in module: eg/syntax_checks/modules/math.mod
+    RewriteModuleContent called for scriptDir=eg, modulePath=eg/syntax_checks/modules/math.mod
+    - Found 0 MODULE statements in module eg/syntax_checks/modules/math.mod
+    Discovered 1 modules
+    Module: syntax_checks/modules/math.mod -> syntax_checks/modules/math.mod
+    RewriteScript called with 1 modules
+    - Rewriting module: syntax_checks/modules/math.mod -> syntax_checks/modules/math.mod
+    - Replaced 1 instances of MODULE "syntax_checks/modules/math.mod" with "./syntax_checks/modules/math.mod"
+    - zaData size = 6229228, bundleData size = 4096
+    - tarStart = 6229228, tarLength = 4096
+    writing magic bytes: [90 65 66 85 78 68 76 69]
+    Bundle created: factest (6233348 bytes)
+
+    # execute the bundle with arguments
+    > ./factest 5
+    120
+
+The aim of this bundling process is to keep dependencies together and allow for greater portability. There may still be architectural issues with bundles as they copy your local za version into the bundle.
+
+
 ---
 
 # Part VII — Errors, Debugging, and Safety
