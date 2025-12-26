@@ -120,6 +120,46 @@ library changes
 other
 -----
 
+    * (experimental) added a script bundling facility:
+
+        - using the -x cli argument will now try to produce a bundled version
+           of a script that also includes module dependencies and the executed
+           version of the za interpreter binary into a self extracting executable
+           (it extracts to a unique dir name in /tmp/)
+
+        - by default the bundled file is named exec.za
+
+        - the output bundled file can be renamed using the -n <name> option.
+
+        - e.g.: za -x -n test_bundle test_script_name
+
+        - on execution, the execution path should still be where the bundle
+           was called from, not the extracted directory.
+
+           however, due to this, you should avoid the use of the execpath()
+           call inside bundled scripts.
+
+        - simple example:
+
+          # build the bundle
+          > za -x -n factest eg/fac
+            Rewriting MODULE statements in module: eg/syntax_checks/modules/math.mod
+            RewriteModuleContent called for scriptDir=eg, modulePath=eg/syntax_checks/modules/math.mod
+            - Found 0 MODULE statements in module eg/syntax_checks/modules/math.mod
+            Discovered 1 modules
+            Module: syntax_checks/modules/math.mod -> syntax_checks/modules/math.mod
+            RewriteScript called with 1 modules
+            - Rewriting module: syntax_checks/modules/math.mod -> syntax_checks/modules/math.mod
+            - Replaced 1 instances of MODULE "syntax_checks/modules/math.mod" with "./syntax_checks/modules/math.mod"
+            - zaData size = 6229228, bundleData size = 4096
+            - tarStart = 6229228, tarLength = 4096
+            writing magic bytes: [90 65 66 85 78 68 76 69]
+            Bundle created: factest (6233348 bytes)
+
+          # execute the bundle with arguments
+          > ./factest 5
+            120
+
     * added support for set-like operations on maps, this includes:
 
         Operators

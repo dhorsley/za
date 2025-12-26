@@ -706,6 +706,8 @@ func main() {
     var a_test = flag.Bool("t", false, "enable tests")
     var a_test_file = flag.String("o", "za_test.out", "set the test output filename")
     var a_filename = flag.String("f", "", "input filename, when present. default is stdin")
+    var a_bundle_script = flag.Bool("x", false, "create a self-extracting, executable bundle file")
+    var a_bundle_name = flag.String("n", "exec.za", "name of bundled executable")
     var a_program = flag.String("e", "", "program string")
     var a_program_loop = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like")
     var a_program_fs = flag.String("F", "", "provides a field separator for -r")
@@ -799,14 +801,19 @@ func main() {
     }
 
     // source filename
+    var isBundled bool
     if *a_filename != "" {
         exec_file_name = *a_filename
     } else {
-        // try first cmdarg
-        if len(cmdargs) > 0 {
-            exec_file_name = cmdargs[0]
-            if !interactive && *a_program == "" {
-                cmdargs = cmdargs[1:]
+        if IsBundledExecutable() {
+            isBundled=true
+        } else {
+            // try first cmdarg
+            if len(cmdargs) > 0 {
+                exec_file_name = cmdargs[0]
+                if !interactive && *a_program == "" {
+                    cmdargs = cmdargs[1:]
+                }
             }
         }
     }
@@ -833,6 +840,34 @@ func main() {
     if *a_version {
         version()
         os.Exit(0)
+    }
+
+    // bundle creation mode
+    if *a_bundle_script {
+        scriptPath := ""
+
+        // Determine script source (matching Za's existing logic)
+        if exec_file_name != "" {
+            scriptPath = exec_file_name
+        } else {
+            fmt.Fprintf(os.Stderr, "-x flag requires a script file name\n")
+            os.Exit(1)
+        }
+
+        outputPath := *a_bundle_name
+
+        err := CreateBundledExecutable(scriptPath, outputPath)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "Bundle creation failed: %v\n", err)
+            os.Exit(1)
+        }
+        os.Exit(0)
+    }
+
+    // Check if current executable is a bundle
+    if isBundled {
+        ExecuteFromBundle(cmdargs)
+        return // Exit early, skip normal execution
     }
 
     // command separator
