@@ -760,12 +760,13 @@ func help_ops(ns string) {
 func help(ns string, hargs string) {
 
     helppage := `
-[#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W] [-P] [-d] [-a] [-D]  \
-    [-s [#i1]path[#i0]] [-V [#i1]varname[#i0]]                                      \
-    [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]                             \
-    [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]                         \
-    [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]                         \
-    [-T [#i1]time-out[#i0]] [-U [#i1]sep[#i0]] [[-f] [#i1]input_file[#i0]][#-]
+[#1]za [-v] [-h] [-i] [-b] [-m] [-c] [-C] [-Q] [-S] [-W] [-P] [-d] [-a] [-D] \
+    [-s [#i1]path[#i0]] [-V [#i1]varname[#i0]]                      \
+    [-t] [-O [#i1]tval[#i0]] [-N [#i1]name_filter[#i0]]             \
+    [-G [#i1]group_filter[#i0]]  [-o [#i1]output_file[#i0]]         \
+    [-r] [-F "[#i1]sep[#i0]"] [-e [#i1]program_string[#i0]]         \
+    [-T [#i1]time-out[#i0]] [-U [#i1]sep[#i0]] [-I "[#i1]files[#i0]"]         \
+    [-x] [-n [#i1]name[#i0]] [[-f] [#i1]input_file[#i0]][#-]
 
     [#4]-v[#-] : Version
     [#4]-h[#-] : Help
@@ -788,6 +789,9 @@ func help(ns string, hargs string) {
     [#4]-T[#-] : Sets the [#i1]time-out[#i0] duration, in milliseconds, for calls to the co-process shell
     [#4]-W[#-] : Emit errors when addition contains strings mixed with other types
     [#4]-V[#-] : find all references to a variable
+    [#4]-I[#-] : Include additional files/directories in bundle (comma-separated)
+    [#4]-x[#-] : Create a self-extracting, executable bundle file
+    [#4]-n[#-] : Name of bundled executable (default "exec.za")
     [#4]-m[#-] : Mark co-process command progress
     [#4]-U[#-] : Specify system command separator byte (default 30)
     [#4]-D[#-] : Enable line debug output

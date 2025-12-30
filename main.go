@@ -708,6 +708,7 @@ func main() {
     var a_filename = flag.String("f", "", "input filename, when present. default is stdin")
     var a_bundle_script = flag.Bool("x", false, "create a self-extracting, executable bundle file")
     var a_bundle_name = flag.String("n", "exec.za", "name of bundled executable")
+    var a_include_files = flag.String("I", "", "comma-separated list of additional files/directories to include in bundle")
     var a_program = flag.String("e", "", "program string")
     var a_program_loop = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like")
     var a_program_fs = flag.String("F", "", "provides a field separator for -r")
@@ -730,6 +731,15 @@ func main() {
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
     exec_file_name := ""
+
+    // Parse include files from comma-separated string
+    var includeFiles []string
+    if *a_include_files != "" {
+        includeFiles = strings.Split(*a_include_files, ",")
+        for i, file := range includeFiles {
+            includeFiles[i] = strings.TrimSpace(file)
+        }
+    }
 
     // Process ZA_LOG_LEVEL environment variable
     if envLogLevel := os.Getenv("ZA_LOG_LEVEL"); envLogLevel != "" {
@@ -806,7 +816,7 @@ func main() {
         exec_file_name = *a_filename
     } else {
         if IsBundledExecutable() {
-            isBundled=true
+            isBundled = true
         } else {
             // try first cmdarg
             if len(cmdargs) > 0 {
@@ -856,7 +866,14 @@ func main() {
 
         outputPath := *a_bundle_name
 
-        err := CreateBundledExecutable(scriptPath, outputPath)
+        // Process include files
+        extraFiles, err := processIncludeFiles(includeFiles)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "Failed to process include files: %v\n", err)
+            os.Exit(1)
+        }
+
+        err = CreateBundledExecutable(scriptPath, outputPath, extraFiles)
         if err != nil {
             fmt.Fprintf(os.Stderr, "Bundle creation failed: %v\n", err)
             os.Exit(1)
