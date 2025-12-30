@@ -126,7 +126,7 @@ func buildFileLib() {
 
     slhelp["flock"] = LibHelp{in: "file_handle[,lock_type]", out: "error_bool",
         action: "Attempts to place a file lock on [#i1]file_handle[#i0]. Lock type can be \"r\" (read), \"w\" (write) or \"u\" (unlock)\n"+
-        "[#SOL]Returns true if the file could not be locked."
+        "[#SOL]Returns true if the file could not be locked.",
     }
     stdlib["flock"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("flock", args, 2,
