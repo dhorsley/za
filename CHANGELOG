@@ -49,6 +49,8 @@ fixes
     * REPL/Tab completion mode. Updated file/dir completion.
         - Can now roam through local or absolute paths for completions.
 
+    * replaced some wildly incorrect module import logic that was bypassing permit("dupmod")
+
 
 library changes
 ---------------
