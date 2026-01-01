@@ -5289,7 +5289,6 @@ tco_reentry:
 
             // override module name with alias at this point, if provided
             oldModule := parser.namespace
-            // oldModule:=currentModule
             modRealAlias := modGivenPath
             if aliased {
                 modRealAlias = modGivenAlias
@@ -5303,13 +5302,34 @@ tco_reentry:
             // tokenise and parse into a new function space.
 
             //.. error if it has already been defined
-            if fnlookup.lmexists(modRealAlias) && !permit_dupmod {
-                parser.report(inbound.SourceLine, "Module file "+modRealAlias+" already processed once.")
-                finish(false, ERR_SYNTAX)
-                break
+            //pf("DEBUG: permit_dupmod check with alias : %s\n",modRealAlias)
+            //pf("DEBUG: -- current filemap list:\n")
+            is_present:=false
+            fileMap.Range(func(k, v any) bool {
+                // pf("  : %v (ifs:%d)  ",v,k)
+                if v.(string) == moduleloc {
+                    is_present=true
+                    // pf("<--")
+                    return false
+                }
+                // pf("\n")
+                return true
+            })
+
+            if is_present {
+                if !permit_dupmod {
+                    // pf("DEBUG: -- inside !permit\n")
+                    parser.report(inbound.SourceLine, "Module file "+moduleloc+" already processed once.")
+                    finish(false, ERR_SYNTAX)
+                    break
+                } else {
+                    // pf("DEBUG: -- inside permit\n")
+                    // just continue, module already exists
+                    // pf("DEBUG: duplicate module import for %s\n",moduleloc)
+                }
             }
 
-            if !fnlookup.lmexists(modRealAlias) {
+            if !is_present {
 
                 loc, _ := GetNextFnSpace(true, modRealAlias, call_s{prepared: false})
 
