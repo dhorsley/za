@@ -1,0 +1,62 @@
+
+config = ini_read("files/test.ini")
+println "Original sections:"
+println keys(config)
+
+println "\nAdding new section..."
+config = ini_new_section(config, "new_section")
+println keys(config)
+
+println "\nAdding test keys to new_section..."
+ns_meta["type"] = "metadata"
+ns_value["section_order"] = 3
+ns_meta["value"] = ns_value
+
+ns_entry1["type"] = "data"
+ns_entry1["key"] = "test_key1"
+ns_entry1["value"] = "test_value1"
+
+ns_entry2["type"] = "data"
+ns_entry2["key"] = "test_key2"
+ns_entry2["value"] = 123
+
+ns_entry3["type"] = "data"
+ns_entry3["key"] = "test_key3"
+ns_entry3["value"] = [1, 2, 3]
+ns_entry3["format"] = "csv"
+
+new_section_data = [ns_meta, ns_entry1, ns_entry2, ns_entry3]
+
+config["new_section"] = new_section_data
+
+println "\nInserting section at position 2..."
+config = ini_insert_section(config, "inserted_section", 2)
+println keys(config)
+
+println "\nAdding test keys to inserted_section..."
+ins_meta["type"] = "metadata"
+ins_value["section_order"] = 2
+ins_meta["value"] = ins_value
+
+ins_entry1["type"] = "data"
+ins_entry1["key"] = "inserted_key1"
+ins_entry1["value"] = "inserted_value1"
+
+ins_entry2["type"] = "data"
+ins_entry2["key"] = "inserted_key2"
+ins_entry2["value"] = true
+
+ins_entry3["type"] = "data"
+ins_entry3["key"] = "inserted_key3"
+ins_entry3["value"] = ["a", "b", "c"]
+ins_entry3["format"] = "za"
+
+inserted_section_data = [ins_meta, ins_entry1, ins_entry2, ins_entry3]
+config["inserted_section"] = inserted_section_data
+
+println "\nDeleting section2..."
+config = ini_delete_section(config, "section2")
+println keys(config)
+
+config.ini_write("files/new.ini")
+
