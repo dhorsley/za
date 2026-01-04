@@ -118,6 +118,8 @@ library changes
 
     * added named versions of the setwise map operators for |, &, ^ and -
 
+    * (experimental) added lib-ini.go: basic support for .ini files.
+
 
 other
 -----

@@ -1704,6 +1704,8 @@ func accessArray(ident *[]Variable, obj any, field any) any {
         return obj[field.(string)]
     case map[string]uint:
         return obj[field.(string)]
+    case map[string][]any:
+        return obj[field.(string)]
     case map[string]any:
         return obj[field.(string)]
     default:

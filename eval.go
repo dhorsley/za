@@ -1146,7 +1146,7 @@ func (p *leparser) accessArray(left any, right Token) any {
     case []any:
         p.rangelen = len(left)
 
-    case map[string]any, map[string]alloc_info, map[string]tui, map[string]string, map[string]int:
+    case map[string]any, map[string][]any, map[string]alloc_info, map[string]tui, map[string]string, map[string]int:
 
         // check for key
         var mkey string
@@ -2210,6 +2210,9 @@ func vdelete(fs uint32, ident *[]Variable, name string, ename string) {
         case map[string][]string:
             delete(m, ename)
             vset(nil, fs, ident, name, m)
+        case map[string][]any:
+            delete(m, ename)
+            vset(nil, fs, ident, name, m)
         case map[string]string:
             delete(m, ename)
             vset(nil, fs, ident, name, m)
@@ -2436,6 +2439,8 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
         return v[el], ok
     case map[string]bool:
         return v[el], ok
+    case map[string][]any:
+        return v[el], ok
     case map[string]any:
         return v[el], ok
     case map[string][]stackFrame:
@@ -2503,7 +2508,6 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
         switch el.(type) {
         case int:
             key = intToString(el.(int))
-            // key = strconv.FormatInt(int64(el.(int)), 10)
         case float64:
             key = strconv.FormatFloat(el.(float64), 'f', -1, 64)
         case uint:
@@ -2513,6 +2517,22 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
         }
         (*ident)[bin].IValue.(map[string]string)[key] = value.(string)
         // pf("(vse-s) set %v[%v] (key:%v) to %+v\n",name,el,key,(*ident)[bin].IValue.(map[string]string)[key])
+        return
+
+    case map[string][]any:
+        var key string
+        switch el.(type) {
+        case int:
+            key = intToString(el.(int))
+        case float64:
+            key = strconv.FormatFloat(el.(float64), 'f', -1, 64)
+        case uint:
+            key = strconv.FormatUint(uint64(el.(uint)), 10)
+        case string:
+            key = el.(string)
+        }
+        (*ident)[bin].IValue.(map[string][]any)[key] = value.([]any)
+        // pf("(vse-aa) set %v[%v] (key:%v) to %+v\n",name,el,key,(*ident)[bin].IValue.(map[string][]any)[key])
         return
 
     case map[string]any:
