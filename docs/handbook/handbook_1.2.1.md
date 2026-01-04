@@ -2543,6 +2543,147 @@ log critical: "System out of memory"
 
 These representative idioms demonstrate the flexibility of Za's standard library categories for system administration tasks. Each category provides specialized tools that can be combined to create comprehensive automation solutions.
 
+### 38.16 INI Configuration File Operations
+
+INI files provide simple configuration management for applications and services. The INI library, where possible, preserves comments, blank lines, and formatting while reading and writing configuration files.
+
+#### Reading and Writing
+
+Basic read and write operations:
+
+```za
+# Read INI file
+config = ini_read("/etc/app/config.ini")
+
+# Modify configuration and write back
+config.ini_write("/etc/app/config.ini")
+```
+
+#### Section Management
+
+Add, insert, and delete sections:
+
+```za
+# Append new section at end
+config = ini_new_section(config, "logging")
+
+# Insert section at specific position (1-indexed, 0=prepend)
+config = ini_insert_section(config, "cache", 2)
+
+# Delete section by name
+config = ini_delete_section(config, "deprecated_section")
+```
+
+#### Adding Configuration Entries
+
+Create section data with metadata, comments, and values:
+
+```za
+# Section metadata (required)
+section_meta["type"] = "metadata"
+section_value["section_order"] = 1
+section_meta["value"] = section_value
+
+# Data entries
+entry1["type"] = "data"
+entry1["key"] = "host"
+entry1["value"] = "localhost"
+
+entry2["type"] = "data"
+entry2["key"] = "port"
+entry2["value"] = 8080
+
+entry3["type"] = "data"
+entry3["key"] = "debug"
+entry3["value"] = true
+
+# Assemble section
+section_data = [section_meta, comment, entry1, entry2, entry3]
+config["database"] = section_data
+```
+
+Some further library calls will be added to simplify the key/value management over time.
+
+#### Global Section Operations
+
+Access and modify global entries (before any section headers):
+
+```za
+# Get global section entries
+global_entries = ini_get_global(config)
+
+# Set global section entries
+new_global = [
+    map(.type "comment", .comment "# Global settings"),
+    map(.type "data", .key "timeout", .value 30)
+]
+config = ini_set_global(config, new_global)
+```
+
+#### Array Formatting
+
+Control array output format:
+
+```za
+# CSV format: value1,value2,value3
+entry["format"] = "csv"
+entry["value"] = [1, 2, 3]
+
+# Za format: ["value1","value2","value3"]
+entry["format"] = "za"
+entry["value"] = ["a", "b", "c"]
+```
+
+#### Preserving Formatting
+
+The library automatically attempts to preserve blank lines between sections and maintains original formatting:
+
+```za
+# Blank lines are preserved as "space" entries
+blank_line["type"] = "space"
+section_data = [metadata, entry1, blank_line, entry2]
+
+# When writing, sections are separated by blank lines
+config.ini_write("/etc/app/config.ini")
+# Output includes blank line separators between sections
+```
+
+#### Example: Complete Configuration Update
+
+```za
+# Load configuration
+config = ini_read("/etc/myapp/config.ini")
+
+# Add new logging section
+log_meta["type"] = "metadata"
+log_meta["value"] = map(.section_order 4)
+
+log_entry1["type"] = "data"
+log_entry1["key"] = "level"
+log_entry1["value"] = "INFO"
+
+log_entry2["type"] = "data"
+log_entry2["key"] = "file"
+log_entry2["value"] = "/var/log/myapp.log"
+
+logging_section = [log_meta, log_entry1, log_entry2]
+config["logging"] = logging_section
+
+# Update database section
+config["database"]["port"] = 5432
+
+# Remove deprecated section
+config = ini_delete_section(config, "legacy")
+
+# Write updated configuration (preserves formatting and adds blank lines)
+config.ini_write("/etc/myapp/config.ini")
+```
+
+See `eg/initest` for a complete example of INI manipulation.
+
+As stated earlier, indirect key/value manipulation calls will be provided later to simplify this.
+
+
 ---
 
 # Part XI — Sysadmin Cookbook
