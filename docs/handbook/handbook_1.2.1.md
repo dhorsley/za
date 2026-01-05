@@ -2574,7 +2574,7 @@ config = ini_insert_section(config, "cache", 2)
 config = ini_delete_section(config, "deprecated_section")
 ```
 
-#### Adding Configuration Entries
+#### Adding Configuration Entries (direct/manual)
 
 Create section data with metadata, comments, and values:
 
@@ -2602,7 +2602,89 @@ section_data = [section_meta, comment, entry1, entry2, entry3]
 config["database"] = section_data
 ```
 
-Some further library calls will be added to simplify the key/value management over time.
+#### Key/Value Manipulation
+
+You may also use helper calls for simplified access to configuration entries:
+
+```za
+# Add or update keys
+config = ini_add_key(config, "database", "host", "localhost")
+config = ini_set_key(config, "database", "port", 5432)
+
+# Get key values
+host = ini_get_key(config, "database", "host")  # returns "localhost"
+port = ini_get_key(config, "database", "port")  # returns 5432
+
+# Delete keys
+config = ini_delete_key(config, "database", "legacy_field")
+```
+
+These functions provide a more intuitive interface for common configuration management tasks compared to manual map manipulation.
+
+#### Key Inspection and Listing
+
+Check for key existence and list all keys in a section:
+
+```za
+# Check if key exists
+has_host = ini_has_key(config, "database", "host")     # returns true
+has_ssl = ini_has_key(config, "database", "ssl_mode") # returns false
+
+# List all keys in a section
+db_keys = ini_list_keys(config, "database")  # returns ["host", "port", "username"]
+log_keys = ini_list_keys(config, "logging")  # returns ["level", "file", "format"]
+```
+
+These inspection functions are useful for validation, migration scripts, and conditional configuration updates.
+
+#### Section Operations
+
+Retrieve and replace entire sections:
+
+```za
+# Get complete section data
+db_section = ini_get_section(config, "database")
+# Returns: [metadata, entry1, entry2, ...]
+
+# Replace entire section
+new_logging = [
+    map(.type "metadata", .value map(.section_order 3)),
+    map(.type "data", .key "level", .value "DEBUG"),
+    map(.type "data", .key "file", .value "/var/log/app.log")
+]
+config = ini_set_section(config, "logging", new_logging)
+```
+
+Section operations are useful for bulk updates, template-based configuration, and migrating between different configuration formats.
+
+#### Adding Keys with Comments
+
+Add keys with inline comments for documentation:
+
+```za
+# Add key with explanatory comment
+config = ini_add_key_with_comment(config, "database", "max_connections",
+    100, "# Maximum concurrent database connections")
+
+config = ini_add_key_with_comment(config, "logging", "rotation",
+    "daily", "# Rotate logs daily to manage disk space")
+```
+
+Comments are preserved when writing the configuration and help maintain documentation within the configuration file itself.
+
+#### Metadata Updates
+
+Update section metadata for ordering and organization:
+
+```za
+# Update section order for consistent file layout
+config = ini_meta_update(config)
+
+# After operations that modify sections, call ini_meta_update
+# to ensure section_order metadata is consistent
+```
+
+The `ini_meta_update` function automatically updates section ordering metadata after structural changes, ensuring consistent output formatting when the configuration is written to file.
 
 #### Global Section Operations
 
@@ -2680,9 +2762,6 @@ config.ini_write("/etc/myapp/config.ini")
 ```
 
 See `eg/initest` for a complete example of INI manipulation.
-
-As stated earlier, indirect key/value manipulation calls will be provided later to simplify this.
-
 
 ---
 
