@@ -635,7 +635,23 @@ syntax match unsorted_functions "\(^|.\|\s*\)stack\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)wrap_text\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)array_format\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)sys_resources\s*("he=e-1
-
+syntax match unsorted_functions "\(^|.\|\s*\)ini_add_key\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_add_key_with_comment\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_delete_key\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_delete_section\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_get_global\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_get_key\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_get_section\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_has_key\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_insert_section\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_list_keys\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_meta_update\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_new_section\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_read\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_set_global\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_set_key\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_set_section\s*("he=e-1
+syntax match unsorted_functions "\(^|.\|\s*\)ini_write\s*("he=e-1
 
 
 " Za Keywords: {{{1

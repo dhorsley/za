@@ -653,6 +653,25 @@ local za_functions = {
     "yaml_set",
     "yaml_delete",
 
+    -- INI functions
+    "ini_add_key",
+    "ini_add_key_with_comment",
+    "ini_delete_key",
+    "ini_delete_section",
+    "ini_get_global",
+    "ini_get_key",
+    "ini_get_section",
+    "ini_has_key",
+    "ini_insert_section",
+    "ini_list_keys",
+    "ini_meta_update",
+    "ini_new_section",
+    "ini_read",
+    "ini_set_global",
+    "ini_set_key",
+    "ini_set_section",
+    "ini_write",
+
     -- Email functions
     "smtp_send",
     "smtp_send_with_auth",

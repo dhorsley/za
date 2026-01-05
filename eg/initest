@@ -3,60 +3,196 @@ config = ini_read("files/test.ini")
 println "Original sections:"
 println keys(config)
 
+# Add new section using existing function
 println "\nAdding new section..."
 config = ini_new_section(config, "new_section")
 println keys(config)
 
-println "\nAdding test keys to new_section..."
-ns_meta["type"] = "metadata"
-ns_value["section_order"] = 3
-ns_meta["value"] = ns_value
+# Add keys using new ini_add_key function
+println "\nAdding keys to new_section using ini_add_key..."
+config = ini_add_key(config, "new_section", "test_key1", "test_value1")
+config = ini_add_key(config, "new_section", "test_key2", 123)
+config = ini_add_key(config, "new_section", "test_key3", [1, 2, 3])
 
-ns_entry1["type"] = "data"
-ns_entry1["key"] = "test_key1"
-ns_entry1["value"] = "test_value1"
+# Add section with keys for more testing
+println "\nAdding demo_section with keys..."
+config = ini_new_section(config, "demo_section")
+config = ini_add_key_with_comment(config, "demo_section", "host", "localhost", "; database host")
+config = ini_add_key(config, "demo_section", "port", 5432)
+config = ini_add_key(config, "demo_section", "debug", true)
+config = ini_add_key(config, "demo_section", "allowed_hosts", ["localhost", "127.0.0.1"])
 
-ns_entry2["type"] = "data"
-ns_entry2["key"] = "test_key2"
-ns_entry2["value"] = 123
+println "\nCurrent sections:"
+println keys(config)
 
-ns_entry3["type"] = "data"
-ns_entry3["key"] = "test_key3"
-ns_entry3["value"] = [1, 2, 3]
-ns_entry3["format"] = "csv"
+# Test ini_list_keys function
+println "\nListing keys in demo_section:"
+keys_demo = ini_list_keys(config, "demo_section")
+println "Keys in demo_section:", keys_demo
 
-new_section_data = [ns_meta, ns_entry1, ns_entry2, ns_entry3]
+# Test ini_has_key function
+println "\nChecking if keys exist in demo_section:"
+has_host = ini_has_key(config, "demo_section", "host")
+has_port = ini_has_key(config, "demo_section", "port")
+has_missing = ini_has_key(config, "demo_section", "missing_key")
+println "Has 'host':", has_host
+println "Has 'port':", has_port
+println "Has 'missing_key':", has_missing
 
-config["new_section"] = new_section_data
+# Test ini_get_key function
+println "\nGetting key values from demo_section:"
+host_value = ini_get_key(config, "demo_section", "host")
+port_value = ini_get_key(config, "demo_section", "port")
+debug_value = ini_get_key(config, "demo_section", "debug")
+hosts_value = ini_get_key(config, "demo_section", "allowed_hosts")
+println "host =", host_value
+println "port =", port_value
+println "debug =", debug_value
+println "allowed_hosts =", hosts_value
 
-println "\nInserting section at position 2..."
+# Test ini_set_key function (modify existing values)
+println "\nModifying existing keys..."
+config = ini_set_key(config, "demo_section", "host", "new.db.server")
+config = ini_set_key(config, "demo_section", "port", 3306)
+config = ini_set_key(config, "demo_section", "debug", false)
+
+# Verify modifications
+println "\nAfter modifications:"
+new_host = ini_get_key(config, "demo_section", "host")
+new_port = ini_get_key(config, "demo_section", "port")
+new_debug = ini_get_key(config, "demo_section", "debug")
+println "host =", new_host, "(was:", host_value, ")"
+println "port =", new_port, "(was:", port_value, ")"
+println "debug =", new_debug, "(was:", debug_value, ")"
+
+# Test ini_get_section function
+println "\nGetting entire demo_section:"
+section_data = ini_get_section(config, "demo_section")
+println "Section data:", section_data
+
+# Test ini_set_section function (replace section)
+println "\nReplacing demo_section with new data..."
+# Create replacement section manually (preserving metadata)
+replacement_meta["type"] = "metadata"
+replacement_value["section_order"] = 5
+replacement_meta["value"] = replacement_value
+
+replacement_entry1["type"] = "data"
+replacement_entry1["key"] = "replaced_key1"
+replacement_entry1["value"] = "replaced_value1"
+replacement_entry1["comment"] = "; replaced entry"
+
+replacement_entry2["type"] = "data"
+replacement_entry2["key"] = "replaced_key2"
+replacement_entry2["value"] = ["x", "y", "z"]
+replacement_entry2["format"] = "za"
+
+replacement_section = [replacement_meta, replacement_entry1, replacement_entry2]
+config = ini_set_section(config, "demo_section", replacement_section)
+
+# Verify section replacement
+println "\nAfter section replacement:"
+replaced_keys = ini_list_keys(config, "demo_section")
+replaced_entry = ini_get_key(config, "demo_section", "replaced_key1")
+println "Keys in demo_section:", replaced_keys
+println "replaced_key1 =", replaced_entry
+
+# Test ini_delete_key function
+println "\nDeleting individual keys from demo_section..."
+config = ini_delete_key(config, "demo_section", "replaced_key2")
+config = ini_delete_key(config, "new_section", "test_key2")
+
+# Verify deletions
+println "\nAfter key deletions:"
+final_demo_keys = ini_list_keys(config, "demo_section")
+final_new_keys = ini_list_keys(config, "new_section")
+println "Keys in demo_section:", final_demo_keys
+println "Keys in new_section:", final_new_keys
+
+# Test operations on section1 (existing section from test.ini)
+println "\nTesting operations on existing section1..."
+sec1_keys = ini_list_keys(config, "section1")
+println "Keys in section1:", sec1_keys
+
+# Add key to existing section
+config = ini_add_key(config, "section1", "new_key", "new_value")
+updated_sec1_keys = ini_list_keys(config, "section1")
+println "Keys in section1 after adding:", updated_sec1_keys
+
+# Get value from existing section
+existing_key_value = ini_get_key(config, "section1", "key1")
+println "Value of key1 in section1:", existing_key_value
+
+# Update existing key
+config = ini_set_key(config, "section1", "key1", "updated_value1")
+updated_key_value = ini_get_key(config, "section1", "key1")
+println "Updated value of key1 in section1:", updated_key_value
+
+# Delete key from existing section
+config = ini_delete_key(config, "section1", "key2")
+final_sec1_keys = ini_list_keys(config, "section1")
+println "Final keys in section1:", final_sec1_keys
+
+# Test global section operations
+println "\nTesting global section operations..."
+global_keys = ini_list_keys(config, "")
+println "Global section keys:", global_keys
+
+if ini_has_key(config, "", "global_key") then
+    global_value = ini_get_key(config, "", "global_key")
+    println "Current global_key value:", global_value
+
+    # Update global key
+    config = ini_set_key(config, "", "global_key", "updated_global_value")
+    new_global_value = ini_get_key(config, "", "global_key")
+    println "Updated global_key value:", new_global_value
+
+    # Add new global key
+    config = ini_add_key(config, "", "new_global_key", "new_global_value")
+    final_global_keys = ini_list_keys(config, "")
+    println "Final global section keys:", final_global_keys
+endif
+
+# Test section insertion with existing section
+println "\nInserting section at position 1..."
 config = ini_insert_section(config, "inserted_section", 2)
 println keys(config)
 
-println "\nAdding test keys to inserted_section..."
-ins_meta["type"] = "metadata"
-ins_value["section_order"] = 2
-ins_meta["value"] = ins_value
+# Add keys to inserted section using new functions
+config = ini_add_key(config, "inserted_section", "inserted_key1", "inserted_value1")
+config = ini_add_key_with_comment(config, "inserted_section", "inserted_key2", "inserted_value2", "; this is a test")
 
-ins_entry1["type"] = "data"
-ins_entry1["key"] = "inserted_key1"
-ins_entry1["value"] = "inserted_value1"
+# Test error handling
+println "\nTesting error handling..."
+try
+    # This should error - key doesn't exist
+    bad_value = ini_get_key(config, "nonexistent_section", "missing_key")
+    println "ERROR: Should have failed!"
+catch err
+    println "Expected error for missing key:", err
+endtry
 
-ins_entry2["type"] = "data"
-ins_entry2["key"] = "inserted_key2"
-ins_entry2["value"] = true
+try
+    # This should error - section doesn't exist
+    bad_keys = ini_list_keys(config, "nonexistent_section")
+    println "ERROR: Should have failed!"
+catch err
+    println "Expected error for missing section:", err
+endtry
 
-ins_entry3["type"] = "data"
-ins_entry3["key"] = "inserted_key3"
-ins_entry3["value"] = ["a", "b", "c"]
-ins_entry3["format"] = "za"
+try
+    # This should error - duplicate key
+    config = ini_add_key(config, "section1", "new_key", "duplicate_value")
+    println "ERROR: Should have failed!"
+catch err
+    println "Expected error for duplicate key:", err
+endtry
 
-inserted_section_data = [ins_meta, ins_entry1, ins_entry2, ins_entry3]
-config["inserted_section"] = inserted_section_data
-
-println "\nDeleting section2..."
-config = ini_delete_section(config, "section2")
+println "\nFinal sections:"
 println keys(config)
 
+println "\nWriting final config to files/new.ini"
 config.ini_write("files/new.ini")
+
+println "\nINI key-value manipulation test completed!"
 
