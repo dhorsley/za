@@ -1,3 +1,4 @@
+#!/usr/bin/za
 
 config = ini_read("files/test.ini")
 println "Original sections:"
