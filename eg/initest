@@ -170,7 +170,7 @@ try
     bad_value = ini_get_key(config, "nonexistent_section", "missing_key")
     println "ERROR: Should have failed!"
 catch err
-    println "Expected error for missing key:", err
+    println "Expected error for missing key:", err.pp
 endtry
 
 try
@@ -178,7 +178,7 @@ try
     bad_keys = ini_list_keys(config, "nonexistent_section")
     println "ERROR: Should have failed!"
 catch err
-    println "Expected error for missing section:", err
+    println "Expected error for missing section:", err.pp
 endtry
 
 try
@@ -186,7 +186,7 @@ try
     config = ini_add_key(config, "section1", "new_key", "duplicate_value")
     println "ERROR: Should have failed!"
 catch err
-    println "Expected error for duplicate key:", err
+    println "Expected error for duplicate key:", err.pp
 endtry
 
 println "\nFinal sections:"
