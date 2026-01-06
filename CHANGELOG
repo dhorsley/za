@@ -120,6 +120,11 @@ library changes
 
     * (experimental) added lib-ini.go: basic support for .ini files.
 
+    * added sgrep() call for structured grep results directly from file.
+        - this allows you to also capture surrounding context on matches.
+        - returns []map
+        - see za_tests/test_sgrep_comprehensive.za for example usage
+
 
 other
 -----
