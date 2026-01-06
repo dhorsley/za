@@ -1,0 +1,124 @@
+# Test suite for sgrep() .only_matching option
+# Tests grep -o simulation functionality
+
+println "=== sgrep() .only_matching Option Test Suite ==="
+
+# Create test file with various patterns for extraction
+test_content = "2024-01-01 10:00:01 INFO System startup complete
+2024-01-01 10:01:15 ERROR Failed to connect to database: Connection timeout (code: 500)
+2024-01-01 10:02:30 WARN Memory usage above 80% (threshold: 85%)
+2024-01-01 10:03:45 ERROR Authentication failed for user 'admin' (code: 401)
+2024-01-01 10:04:20 INFO Processing user request ID: 12345
+2024-01-01 10:05:35 ERROR Network timeout connecting to API (code: 503)
+2024-01-01 10:06:50 DEBUG Component health check passed
+2024-01-01 10:07:15 INFO Request processed successfully in 150ms
+2024-01-01 10:08:30 ERROR Disk space low (code: 507, available: 100MB)
+2024-01-01 10:09:45 WARN High CPU usage detected (threshold: 95%)"
+
+test_content $out "only_matching_test.log"
+
+# Test 1: Basic error code extraction
+println "\n=== Test 1: Basic error code extraction ==="
+results1 = sgrep(
+    "only_matching_test.log",
+    map(.regex "code: [0-9]+", .only_matching true, .number true)
+)
+println "Found {=len(results1)} error codes:"
+for i = 0 to len(results1)-1
+    result = results1[i]
+    println "  Line ", result.linenum, ": ", result.text
+endfor
+
+# Test 2: Extract all timestamps
+println "\n=== Test 2: Extract all timestamps ==="
+results2 = sgrep("only_matching_test.log", map(.regex "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}", .only_matching true))
+println "Found ", len(results2), " timestamps:"
+for i = 0 to len(results2)-1
+    println "  ", results2[i].text
+endfor
+
+# Test 3: Extract user ID from INFO line
+println "\n=== Test 3: Extract user ID ==="
+results3 = sgrep("only_matching_test.log", map(.regex "ID: [0-9]+", .only_matching true))
+println "Found ", len(results3), " user IDs:"
+for i = 0 to len(results3)-1
+    println "  ", results3[i].text
+endfor
+
+# Test 4: Extract percentages
+println "\n=== Test 4: Extract percentages ==="
+results4 = sgrep("only_matching_test.log", map(.regex "[0-9]+%", .only_matching true))
+println "Found ", len(results4), " percentages:"
+for i = 0 to len(results4)-1
+    println "  ", results4[i].text
+endfor
+
+# Test 5: Multiple matches per line (error codes from line 9)
+println "\n=== Test 5: Multiple matches per line ==="
+results5 = sgrep("only_matching_test.log", map(.regex "[0-9]{3}", .only_matching true, .number true))
+println "Found ", len(results5), " 3-digit numbers:"
+for i = 0 to len(results5)-1
+    result = results5[i]
+    println "  Line ", result.linenum, ": ", result.text
+endfor
+
+# Test 6: Extract log levels
+println "\n=== Test 6: Extract log levels ==="
+results6 = sgrep("only_matching_test.log", map(.regex "(INFO|ERROR|WARN|DEBUG)", .only_matching true))
+println "Found ", len(results6), " log levels:"
+for i = 0 to len(results6)-1
+    println "  ", results6[i].text
+endfor
+
+# Test 7: Extract timing information
+println "\n=== Test 7: Extract timing information ==="
+results7 = sgrep("only_matching_test.log", map(.regex "[0-9]+ms", .only_matching true))
+println "Found ", len(results7), " timing values:"
+for i = 0 to len(results7)-1
+    println "  ", results7[i].text
+endfor
+
+# Test 8: Error handling - invalid .only_matching parameter
+println "\n=== Test 8: Error handling ==="
+try
+    invalid_results = sgrep("only_matching_test.log", map(.regex "ERROR", .only_matching "invalid"))
+    println "ERROR: Should have failed with invalid .only_matching parameter"
+catch e
+    println "Correctly caught error: ", e.pp
+endtry
+
+# Test 9: No matches scenario
+println "\n=== Test 9: No matches scenario ==="
+no_match_results = sgrep("only_matching_test.log", map(.regex "NONEXISTENT", .only_matching true))
+println "Found ", len(no_match_results), " matches for non-existent pattern (expected: 0)"
+
+# Test 10: Regular sgrep() still works (backward compatibility)
+println "\n=== Test 10: Backward compatibility check ==="
+regular_results = sgrep("only_matching_test.log", map(.regex "ERROR", .before 0, .after 0, .number true))
+println "Regular sgrep() found ", len(regular_results), " ERROR lines:"
+for i = 0 to len(regular_results)-1
+    result = regular_results[i]
+    println "  Line ", result.linenum, ": ", result.line
+endfor
+
+# Test 11: Complex regex with capture groups
+println "\n=== Test 11: Complex regex with capture groups ==="
+results11 = sgrep("only_matching_test.log", map(.regex "\([^)]*\)", .only_matching true))
+println "Found ", len(results11), " parenthesized expressions:"
+for i = 0 to len(results11)-1
+    println "  ", results11[i].text
+endfor
+
+# Test 12: Extract usernames from authentication messages
+println "\n=== Test 12: Extract usernames ==="
+results12 = sgrep("only_matching_test.log", map(.regex "user '[^']*'", .only_matching true))
+println "Found ", len(results12), " user references:"
+for i = 0 to len(results12)-1
+    println "  ", results12[i].text
+endfor
+
+delete("only_matching_test.log")
+
+println "\n=== sgrep() .only_matching Test Suite Completed ==="
+
+

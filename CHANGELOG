@@ -121,6 +121,17 @@ library changes
         - this allows you to also capture surrounding context on matches.
         - returns []map
         - see za_tests/test_sgrep_comprehensive.za for example usage
+        - .only_matching option simulates grep -o behavior
+            - extracts only matched substrings instead of full lines
+              - matches stored in .text field per result.
+                e.g.
+                sgrep("/var/log/pacman.log",
+                    map(.only_matching true, .regex "\[ALPM.*\]")
+                ) -> "#.text"
+                # would return []string due to mapping operator.
+
+            - nullifies .before and .after context requests
+            - see za_tests/test_sgrep_only_matching.za for examples
 
 
 other

@@ -1321,8 +1321,8 @@ func buildStringLib() {
 
     }
 
-    slhelp["sgrep"] = LibHelp{in: "filename,options_map", out: "array_of_maps", action: "Search file for regex pattern with context. Options: .regex (required), .before (int), .after (int), .number (bool).\n"+
-    "[#SOL]Returns array of maps with line data and context. (map fields: .line,.linenum,.context_before_count,.context_after_count,.context_before[],.context_after[]"}
+    slhelp["sgrep"] = LibHelp{in: "filename,options_map", out: "array_of_maps", action: "Search file for regex pattern with context. Options: .regex (required), .before (int), .after (int), .number (bool), .only_matching (bool).\n" +
+        "[#SOL]Returns array of maps with line data and context. (map fields: .line,.linenum,.context_before_count,.context_after_count,.context_before[],.context_after[],.text[] when .only_matching=true"}
     stdlib["sgrep"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("sgrep", args, 1, "2", "string", "map"); !ok {
             return nil, err
@@ -1350,6 +1350,7 @@ func buildStringLib() {
         before := 0
         after := 0
         number := false
+        onlyMatching := false
 
         if beforeInterface, hasBefore := options["before"]; hasBefore {
             if beforeVal, ok := beforeInterface.(int); ok && beforeVal >= 0 {
@@ -1375,6 +1376,14 @@ func buildStringLib() {
             }
         }
 
+        if onlyMatchingInterface, hasOnlyMatching := options["only_matching"]; hasOnlyMatching {
+            if onlyMatchingVal, ok := onlyMatchingInterface.(bool); ok {
+                onlyMatching = onlyMatchingVal
+            } else {
+                return nil, fmt.Errorf("sgrep() .only_matching parameter must be a boolean")
+            }
+        }
+
         // Read file content
         fileContent, err := ioutil.ReadFile(filename)
         if err != nil {
@@ -1394,60 +1403,78 @@ func buildStringLib() {
             lines = lines[:len(lines)-1]
         }
 
+        // Compile regex for efficient matching
+        re, err := regexp.Compile(regex)
+        if err != nil {
+            return nil, fmt.Errorf("invalid regex in sgrep() : %s", regex)
+        }
+
         // Find matches and collect context
         var results []map[string]any
         processedLines := make(map[int]bool) // Track lines already included as context
 
         for i, line := range lines {
-            if matched, _ := regexp.MatchString(regex, line); matched {
-                // Calculate context ranges
-                startCtx := i - before
-                if startCtx < 0 {
-                    startCtx = 0
-                }
-                endCtx := i + after
-                if endCtx >= len(lines) {
-                    endCtx = len(lines) - 1
-                }
-
-                // Collect context before
-                var contextBefore []string
-                contextBeforeCount := 0
-                for j := i - 1; j >= startCtx; j-- {
-                    if !processedLines[j] {
-                        contextBefore = append([]string{lines[j]}, contextBefore...)
-                        contextBeforeCount++
-                        processedLines[j] = true
+            if onlyMatching {
+                // Extract all matches from the line
+                matches := re.FindAllString(line, -1)
+                for _, match := range matches {
+                    result := map[string]any{"text": match}
+                    if number {
+                        result["linenum"] = i + 1
                     }
+                    results = append(results, result)
                 }
-
-                // Collect context after
-                var contextAfter []string
-                contextAfterCount := 0
-                for j := i + 1; j <= endCtx; j++ {
-                    if j < len(lines) && !processedLines[j] {
-                        contextAfter = append(contextAfter, lines[j])
-                        contextAfterCount++
-                        processedLines[j] = true
+            } else {
+                if matched, _ := regexp.MatchString(regex, line); matched {
+                    // Calculate context ranges
+                    startCtx := i - before
+                    if startCtx < 0 {
+                        startCtx = 0
                     }
-                }
+                    endCtx := i + after
+                    if endCtx >= len(lines) {
+                        endCtx = len(lines) - 1
+                    }
 
-                // Create result map
-                result := map[string]any{
-                    "line":                 line,
-                    "context_before_count": contextBeforeCount,
-                    "context_after_count":  contextAfterCount,
-                    "context_before":       contextBefore,
-                    "context_after":        contextAfter,
-                }
+                    // Collect context before
+                    var contextBefore []string
+                    contextBeforeCount := 0
+                    for j := i - 1; j >= startCtx; j-- {
+                        if !processedLines[j] {
+                            contextBefore = append([]string{lines[j]}, contextBefore...)
+                            contextBeforeCount++
+                            processedLines[j] = true
+                        }
+                    }
 
-                // Add line number if requested
-                if number {
-                    result["linenum"] = i + 1 // 1-based line numbers
-                }
+                    // Collect context after
+                    var contextAfter []string
+                    contextAfterCount := 0
+                    for j := i + 1; j <= endCtx; j++ {
+                        if j < len(lines) && !processedLines[j] {
+                            contextAfter = append(contextAfter, lines[j])
+                            contextAfterCount++
+                            processedLines[j] = true
+                        }
+                    }
 
-                results = append(results, result)
-                processedLines[i] = true // Mark the matching line as processed
+                    // Create result map
+                    result := map[string]any{
+                        "line":                 line,
+                        "context_before_count": contextBeforeCount,
+                        "context_after_count":  contextAfterCount,
+                        "context_before":       contextBefore,
+                        "context_after":        contextAfter,
+                    }
+
+                    // Add line number if requested
+                    if number {
+                        result["linenum"] = i + 1 // 1-based line numbers
+                    }
+
+                    results = append(results, result)
+                    processedLines[i] = true // Mark the matching line as processed
+                }
             }
         }
 
