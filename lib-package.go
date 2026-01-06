@@ -622,6 +622,8 @@ func service(name string, action string) (bool, error) {
     switch expected {
     case "systemd":
         switch action {
+        case "status":
+            cop = Copper("systemctl status "+name, true)
         case "stop":
             cop = Copper("systemctl stop "+name, true)
         case "start":
@@ -637,6 +639,8 @@ func service(name string, action string) (bool, error) {
         }
     case "upstart":
         switch action {
+        case "status":
+            cop = Copper("service "+name+" status", true)
         case "stop":
             cop = Copper("service "+name+" stop", true)
         case "start":

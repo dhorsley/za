@@ -5,9 +5,6 @@ CHANGE LOG
 1.2.1
 =====
 
-This version will mainly be a bug fix/stability patch. Some additional
-functionality will be added around array operations.
-
 Now considered supported:
 
     * break/continue if
