@@ -3863,7 +3863,7 @@ email_add_header, email_base64_decode, email_base64_encode, email_extract_addres
 **Functions (56):**
 
 
-addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256, fgrgb, field, fields, filter, format, get_value, grep, gsub, has_end, has_start, inset, is_utf8, join, keys, levdist, line_add, line_add_after, line_add_before, line_delete, line_filter, line_head, line_match, line_replace, line_tail, lines, literal, log_sanitise, lower, match, next_match, pad, pos, replace, reverse, rvalid, sanitisation, split, stripansi, stripcc, stripquotes, strpos, substr, tr, trim, upper, values, wrap, wrap_text
+addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256, fgrgb, field, fields, filter, format, get_value, grep, gsub, has_end, has_start, inset, is_utf8, join, keys, levdist, line_add, line_add_after, line_add_before, line_delete, line_filter, line_head, line_match, line_replace, line_tail, lines, literal, log_sanitise, lower, match, next_match, pad, pos, replace, reverse, rvalid, sanitisation, sgrep, split, stripansi, stripcc, stripquotes, strpos, substr, tr, trim, upper, values, wrap, wrap_text
 
 
 **Commonly used (from examples/tests):**
@@ -3881,7 +3881,7 @@ addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256, fgrgb, field, fi
 - fields
 - substr
 - fgrgb
-
+- sgrep
 
 ## sum
 

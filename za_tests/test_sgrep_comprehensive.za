@@ -1,0 +1,175 @@
+# Comprehensive test suite for sgrep() function
+# Tests all features of the new sgrep library call
+
+println "=== sgrep() Function Comprehensive Test Suite ==="
+
+# Create comprehensive test file with various log entries
+test_content = "2024-01-01 10:00:01 INFO System startup complete
+2024-01-01 10:01:15 DEBUG User session started
+2024-01-01 10:02:30 ERROR Failed to connect to database: Connection timeout
+2024-01-01 10:03:45 INFO Processing user request
+2024-01-01 10:04:20 WARN Memory usage above 80%
+2024-01-01 10:05:35 ERROR Authentication failed for user 'admin'
+2024-01-01 10:06:50 DEBUG Cache miss for key: user_123
+2024-01-01 10:07:15 INFO Request processed successfully
+2024-01-01 10:08:30 ERROR Disk space critically low: < 100MB available
+2024-01-01 10:09:45 WARN High CPU usage detected: 95%
+2024-01-01 10:10:00 INFO Regular maintenance task completed
+2024-01-01 10:11:15 DEBUG Component health check passed
+2024-01-01 10:12:30 CRITICAL System shutdown initiated due to errors
+2024-01-01 10:13:45 ERROR Network timeout connecting to external API
+2024-01-01 10:14:60 INFO Backup process started
+2024-01-01 10:15:15 WARN Backup process slower than expected"
+
+write_file("comprehensive_test.log", test_content)
+
+# Test 1: Basic ERROR search with context
+println ""
+println "=== Test 1: Basic ERROR search with context ==="
+results1 = sgrep("comprehensive_test.log", map(.regex "ERROR", .before 1, .after 1, .number true))
+println "Found {=len(results1)} ERROR entries"
+
+for i = 0 to len(results1)-1
+    result = results1[i]
+    println "Line ", result.linenum, " : ", result.line
+    if len(result.context_before) > 0
+        println "  Before: ", join(result.context_before, " | ")
+    endif
+    if len(result.context_after) > 0
+        println "  After : ", join(result.context_after, " | ")
+    endif
+endfor
+
+# Test 2: Search without line numbers (default behavior)
+println ""
+println "=== Test 2: Search without line numbers ==="
+results2 = sgrep("comprehensive_test.log", map(.regex "WARN", .before 0, .after 1))
+println "Found ", len(results2), " WARN entries"
+for i = 0 to len(results2)-1
+    result = results2[i]
+    println "Warning: ", result.line
+    println "  Context after: ", join(result.context_after, " | ")
+endfor
+
+# Test 3: Large context window to test overlapping context handling
+println ""
+println "=== Test 3: Large context window (3 before, 2 after) ==="
+results3 = sgrep("comprehensive_test.log", map(.regex "CRITICAL", .before 3, .after 2, .number true))
+for i = 0 to len(results3)-1
+    result = results3[i]
+    println "Line ", result.linenum, " : ", result.line
+    println "  Before count: ", result.context_before_count, " After count: ", result.context_after_count
+    println "  Before lines: ", join(result.context_before, " | ")
+    println "  After lines : ", join(result.context_after, " | ")
+endfor
+
+# Test 4: Regex pattern matching with anchors
+println ""
+println "=== Test 4: Regex pattern with start anchor (^) ==="
+results4 = sgrep("comprehensive_test.log", map(.regex "^2024-01-01 10:0[1-5].*ERROR", .before 0, .after 0, .number true))
+println "Found ", len(results4), " ERROR entries in early time range"
+for i = 0 to len(results4)-1
+    result = results4[i]
+    println "Line ", result.linenum, " : ", result.line
+endfor
+
+# Test 5: Case-insensitive patterns and complex regex
+println ""
+println "=== Test 5: Complex regex patterns ==="
+results5 = sgrep("comprehensive_test.log", map(.regex "(ERROR|CRITICAL).*timeout", .before 1, .after 0, .number true))
+println "Found ", len(results5), " timeout-related errors"
+for i = 0 to len(results5)-1
+    result = results5[i]
+    println "Line ", result.linenum, " : ", result.line
+    if len(result.context_before) > 0
+        println "  Context: ", result.context_before[0]
+    endif
+endfor
+
+# Test 6: Search for DEBUG entries with minimal context
+println ""
+println "=== Test 6: DEBUG entries with before context only ==="
+results6 = sgrep("comprehensive_test.log", map(.regex "DEBUG", .before 1, .after 0, .number true))
+println "Found ", len(results6), " DEBUG entries"
+for i = 0 to len(results6)-1
+    result = results6[i]
+    println "Line ", result.linenum, " : ", result.line
+    if len(result.context_before) > 0
+        println "  Before: ", result.context_before[0]
+    else
+        println "  Before: (none)"
+    endif
+endfor
+
+# Test 7: No matches scenario
+println ""
+println "=== Test 7: No matches scenario ==="
+results7 = sgrep("comprehensive_test.log", map(.regex "NONEXISTENT", .before 2, .after 2))
+println "Found ", len(results7), " matches for 'NONEXISTENT' pattern"
+
+# Test 8: Edge case - first line match
+println ""
+println "=== Test 8: First line match with context ==="
+results8 = sgrep("comprehensive_test.log", map(.regex "INFO.*startup", .before 2, .after 1, .number true))
+for i = 0 to len(results8)-1
+    result = results8[i]
+    println "Line ", result.linenum, " : ", result.line
+    println "  Before count: ", result.context_before_count, " (should be 0 for first line)"
+    println "  After count: ", result.context_after_count
+endfor
+
+# Test 9: Edge case - last line match
+println ""
+println "=== Test 9: Last line match with context ==="
+results9 = sgrep("comprehensive_test.log", map(.regex "slower than expected", .before 1, .after 2, .number true))
+for i = 0 to len(results9)-1
+    result = results9[i]
+    println "Line ", result.linenum, " : ", result.line
+    println "  Before count: ", result.context_before_count
+    println "  After count: ", result.context_after_count, " (should be 0 for last line)"
+endfor
+
+# Test 10: Test error handling with invalid regex
+println ""
+println "=== Test 10: Invalid regex error handling ==="
+try
+    results10 = sgrep("comprehensive_test.log", map(.regex "[invalid", .before 1, .after 1))
+    println "ERROR: Should have failed with invalid regex!"
+catch err
+    println "Correctly caught error for invalid regex:", err.pp
+endtry
+
+# Test 11: Test missing required parameter
+println ""
+println "=== Test 11: Missing required .regex parameter ==="
+try
+    results11 = sgrep("comprehensive_test.log", map(.before 1, .after 1))
+    println "ERROR: Should have failed without .regex parameter!"
+catch err
+    println "Correctly caught error for missing .regex:", err.pp
+endtry
+
+# Test 12: Test invalid parameter types
+println ""
+println "=== Test 12: Invalid parameter types ==="
+try
+    results12 = sgrep("comprehensive_test.log", map(.regex "INFO", .before "invalid", .after 1))
+    println "ERROR: Should have failed with invalid .before type!"
+catch err
+    println "Correctly caught error for invalid .before type:", err.pp
+endtry
+
+# Cleanup
+println ""
+println "=== Cleaning up test files ==="
+try
+    delete("comprehensive_test.log")
+    println "Test file cleaned up successfully"
+catch err
+    println "Warning: Could not clean up test file:", err.pp
+endtry
+
+println ""
+println "=== sgrep() Comprehensive Test Suite Completed ==="
+println "All tests executed. Verify output above for correctness."
+

@@ -401,6 +401,7 @@ local za_functions = {
     "line_match",
     "line_filter",
     "grep",
+    "sgrep",
     "line_head",
     "line_tail",
     "is_utf8",
