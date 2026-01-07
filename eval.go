@@ -102,6 +102,8 @@ func (p *leparser) peek() Token {
 
 func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
 
+    // pf("[dparse] recv expr : %+v\n",p.tokens)
+    //
     // Add recover() for ?? operator error routing
     defer func() {
         if r := recover(); r != nil {
@@ -254,7 +256,6 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
     ct := &p.tokens[p.pos]
 
     if p.prectable[ct.tokType] == PrecedenceInvalid {
-        // fmt.Printf("token not allowed, panic called : %s\n",tokNames[ct.tokType])
         panic(fmt.Errorf("Token '%s' is not allowed in expressions", ct.tokText))
     }
 
@@ -1763,10 +1764,24 @@ func (p *leparser) map_literal(tok *Token) (any, bool) {
                     key += p.peek().tokText
                     p.next() // consume identifier/keyword
 
+                    if p.peek().tokType == SYM_COLON {
+                        // allow an optional colon, to avoid the
+                        // negative number value issue below
+                        p.next()
+                        break
+                    }
                     if p.pos >= p.len || p.peek().tokType != O_Minus {
                         // pf("broke on not minus/len\n")
                         break
                     }
+                    if p.peek().tokType == O_Minus {
+                        if p.tokens[p.pos+2].tokType == NumericLiteral {
+                            // force a break here, otherwise negative numbers
+                            // in the value will not be recognised properly
+                            break
+                        }
+                    }
+
                     key += "-"
                     p.next() // consume -
                 }

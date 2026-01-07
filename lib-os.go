@@ -11,6 +11,7 @@ import (
     "os/user"
     "path/filepath"
     "regexp"
+    "strings"
     "syscall"
 )
 
@@ -54,14 +55,16 @@ func buildOsLib() {
         "user_info", "group_info"}
     // "fileabs", "filebase" - replaced by operator
 
-    slhelp["dir"] = LibHelp{in: "[filepath[,filter]]",
-        out: "[]structs",
+    slhelp["dir"] = LibHelp{in: "[filepath[,filter[,options_map]]",
+        out: "[]structs|[]string",
         action: "Returns an array containing file information on path [#i1]filepath[#i0].\n[#SOL]" +
             "[#i1]filter[#i0] can be specified, as a regex, to narrow results.\n[#SOL]" +
-            "Each array element contains name,mode,size,mtime and is_dir fields.\n[#SOL]" +
-            "These specify filename, file mode, file size, modification time and directory status respectively."}
+            "[#i1]options_map[#i0] supports: .depth(int), .names(bool), .exclude(str), .absolute(bool).\n[#SOL]" +
+            "Each array element contains name,path,depth,mode,size,mtime and is_dir fields.\n[#SOL]" +
+            "These specify filename, full path, recursion depth, file mode, file size, modification time and directory status respectively."}
     stdlib["dir"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("dir", args, 3,
+        if ok, err := expect_args("dir", args, 4,
+            "3", "string", "string", "map",
             "2", "string", "string",
             "1", "string",
             "0"); !ok {
@@ -70,43 +73,119 @@ func buildOsLib() {
 
         dir := "."
         filter := "^.*$"
+        depth := 0         // current directory only
+        namesOnly := false // return []dirent
+        exclude := ""      // no exclusion
+        absolute := false  // relative paths
+
         if len(args) > 0 {
             dir = args[0].(string)
         }
         if len(args) > 1 {
             filter = args[1].(string)
         }
+        if len(args) > 2 {
+            if opts, ok := args[2].(map[string]any); ok {
+                if d, exists := opts["depth"]; exists {
+                    if depthVal, errored := GetAsInt(d); !errored {
+                        depth = depthVal
+                    }
+                }
+                if n, exists := opts["names"]; exists {
+                    if namesVal, ok := n.(bool); ok {
+                        namesOnly = namesVal
+                    }
+                }
+                if e, exists := opts["exclude"]; exists {
+                    if exclVal, ok := e.(string); ok {
+                        exclude = exclVal
+                    }
+                }
+                if a, exists := opts["absolute"]; exists {
+                    if absVal, ok := a.(bool); ok {
+                        absolute = absVal
+                    }
+                }
+            }
+        }
 
         if !regexWillCompile(filter) {
             return nil, fmt.Errorf("invalid regex in dir() : %s", filter)
         }
 
-        // get file list
-        f, err := os.Open(dir)
-        if err != nil {
-            return []dirent{}, nil
-        } // errors.New("Path not found in dir()") }
-
-        files, err := f.Readdir(-1)
-        f.Close()
-        if err != nil {
-            return []dirent{}, nil
-        } // errors.New("Could not complete directory listing in dir()") }
-
-        var dl []dirent
-        for _, file := range files {
-            if match, _ := regexp.MatchString(filter, file.Name()); !match {
-                continue
-            }
-            var fs dirent
-            fs.Name = file.Name()
-            fs.Size = file.Size()
-            fs.Mode = int(file.Mode())
-            fs.Mtime = file.ModTime().Unix()
-            fs.Is_dir = file.IsDir()
-            dl = append(dl, fs)
+        if exclude != "" && !regexWillCompile(exclude) {
+            return nil, fmt.Errorf("invalid exclude regex in dir() : %s", exclude)
         }
 
+        var dl []dirent
+        var el []string
+
+        // Recursive directory traversal
+        err = filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+            if err != nil {
+                return nil // skip on error
+            }
+
+            // Calculate depth relative to base directory
+            relPath, err := filepath.Rel(dir, path)
+            if err != nil {
+                return nil
+            }
+
+            currentDepth := len(strings.Split(relPath, string(filepath.Separator))) - 1
+            if depth >= 0 && currentDepth > depth {
+                if info.IsDir() {
+                    return filepath.SkipDir
+                }
+                return nil
+            }
+
+            // Skip the base directory itself
+            if path == dir {
+                return nil
+            }
+
+            // Apply inclusion filter
+            if match, _ := regexp.MatchString(filter, info.Name()); !match {
+                return nil
+            }
+
+            // Apply exclusion filter
+            if exclude != "" {
+                if match, _ := regexp.MatchString(exclude, path); match {
+                    return nil
+                }
+            }
+
+            // Build result path
+            var resultPath string
+            if absolute {
+                resultPath, _ = filepath.Abs(path)
+            } else {
+                resultPath = relPath
+            }
+
+            var fs dirent
+            fs.Name = info.Name()
+            fs.Path = resultPath
+            fs.Depth = currentDepth
+            fs.Size = info.Size()
+            fs.Mode = int(info.Mode())
+            fs.Mtime = info.ModTime().Unix()
+            fs.Is_dir = info.IsDir()
+
+            if namesOnly {
+                el = append(el, resultPath)
+            } else {
+                dl = append(dl, fs)
+            }
+
+            return nil
+        })
+
+        if namesOnly {
+            return el, nil
+        }
         return dl, nil
     }
 
@@ -254,7 +333,7 @@ func buildOsLib() {
         "Returns full paths to all matching files and directories."}
     stdlib["glob"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("glob", args, 2,
-            "2", "string","string",
+            "2", "string", "string",
             "1", "string"); !ok {
             return nil, err
         }

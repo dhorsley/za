@@ -1,0 +1,125 @@
+# Enhanced dir() function - Final Summary Test
+
+println "=== Enhanced dir() Function - FINAL SUMMARY ==="
+
+# Backwards Compatibility
+println "\n1. Backwards Compatibility:"
+basic = dir()
+println "  dir() works: ", len(basic), " files"
+println "  Equivalent: find . -maxdepth 0"
+
+# Directory Argument
+println "\n2. Directory Argument:"
+dir_arg = dir("za_tests")
+println "  dir(\"za_tests\"): ", len(dir_arg), " files"
+println "  Equivalent: find za_tests -maxdepth 0"
+
+# Filter Argument
+println "\n3. Filter Argument:"
+filter_arg = dir("za_tests", ".*\.za$")
+println `  dir("za_tests", ".*\\.za$"): `, len(filter_arg), " files"
+println "  Equivalent: find za_tests -name '*.za' -maxdepth 0"
+
+# Simple Depth Option
+println "\n4. Depth Option:"
+depth_opt = dir(".", "", map(.depth -1))
+println `  dir(".", "", map(.depth -1)): `, len(depth_opt), " files"
+println "  Equivalent: find . -maxdepth -1"
+
+# Names Only Option
+println "\n5. Names Only Option:"
+names_opt = dir(".", "", map(.depth 1, .names true))
+println "  Names only: ", len(names_opt), " files"
+println "  Equivalent: find . -maxdepth 1 -printf '%f\\n'"
+
+# Absolute Paths Option
+println "\n6. Absolute Paths Option:"
+abs_opt = dir(".", "", map(.depth 1, .absolute true, .names true))
+println "  Absolute paths: ", len(abs_opt), " files"
+if len(abs_opt) > 0
+    println "  Example: ", abs_opt[0]
+endif
+println "  Equivalent: find . -maxdepth 1 -printf '%p\\n'"
+
+# Exclusion Option
+println "\n7. Exclusion Option:"
+exclude_opt = dir(".", "", map(.depth 1, .exclude "test"))
+println "  Excluding 'test': ", len(exclude_opt), " files"
+println "  Equivalent: find . -path './test*' -prune -o -print"
+
+# Combined Options
+println "\n8. Combined Options:"
+combined_opt = dir("za_tests", ".*\.za$", map(.depth 1, .names true))
+println "  All options: ", len(combined_opt), " files"
+println "  Equivalent: find za_tests -name '*.za' -maxdepth 1 -printf '%f\\n'"
+
+# Enhanced dirent Fields
+println "\n9. Enhanced dirent Fields:"
+dirent_sample = dir(".", "", map(.depth 1))
+if len(dirent_sample) > 0
+    sample = dirent_sample[0]
+    println "  Name: ", sample.Name
+    println "  Path: ", sample.Path
+    println "  Depth: ", sample.Depth
+    println "  Size: ", sample.Size
+    println "  Is_dir: ", sample.Is_dir
+endif
+println "  Equivalent: find . -maxdepth 1 -printf '%f %p %d %s %y\\n'"
+
+# Filter Integration (?> operator)
+println "\n10. Filter Operator Integration:"
+all_dirents = dir(".", "", map(.depth 1))
+dirs_only = all_dirents ?> "#.Is_dir"
+dir_names = dirs_only -> "#.Name"
+println "  Directories only: ", len(dir_names), " directories"
+println "  Equivalent: find . -maxdepth 1 -type d"
+
+# Map Integration (-> operator)
+println "\n11. Map Operator Integration:"
+all_files = dir(".", "", map(.depth 1))
+file_names = all_files -> "#.Name"
+println "  Extracted names: ", len(file_names), " names"
+println "  Equivalent: find . -maxdepth 1 -printf '%f\\n'"
+
+# Complex Find-like Examples
+println "\n12. Complex Find-like Examples:"
+
+# Find Go files recursively
+go_files = dir(".", ".*\.go$", map(.depth 2))
+println "  Go files depth 2: ", len(go_files), " files"
+println "  Equivalent: find . -name '*.go' -maxdepth 2"
+
+# Find files by size
+all_files = dir(".", "", map(.depth 1))
+non_dirs = all_files ?> "!#.Is_dir"
+large_files = non_dirs ?> "#.Size > 5120"
+println "  Large files (>5KB): ", len(large_files), " files"
+println "  Equivalent: find . -size +5k -maxdepth 1"
+
+# Find directories by depth
+all_dirs = dir(".", "", map(.depth 3))
+dirs_only = all_dirs ?> "#.Is_dir"
+deep_dirs = dirs_only ?> "#.Depth > 1"
+println "  Deep directories (>depth 1): ", len(deep_dirs), " directories"
+println "  Equivalent: find . -mindepth 2 -type d -maxdepth 3"
+
+# Combined criteria
+all_simple = dir(".", "", map(.depth 1))
+non_dirs_simple = all_simple ?> "!#.Is_dir"
+println "  Non-directory files: ", len(non_dirs_simple), " files"
+println "  Equivalent: find . -type f -maxdepth 1"
+
+# Exclusion with pattern
+exclude_test = dir(".", "", map(.depth 1, .exclude "test|vendor"))
+println "  Excluding test/vendor: ", len(exclude_test), " files"
+println "  Equivalent: find . -path './test*' -prune -o -path './vendor*' -prune -o -print -maxdepth 1"
+
+# Error Handling
+println "\n13. Error Handling:"
+try
+    bad = dir(".", "[invalid")
+    println "  ERROR: Should have failed!"
+catch err
+    println "  Correctly caught error: ",err.pp
+endtry
+
