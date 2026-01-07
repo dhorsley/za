@@ -198,6 +198,8 @@ type Pane struct {
 
 type dirent struct {
     Name   string
+    Path   string // relative or absolute path
+    Depth  int    // recursion depth
     Size   int64
     Mode   int // from uint32
     Mtime  int64

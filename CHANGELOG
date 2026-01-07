@@ -31,6 +31,13 @@ fixes
     * change made to ensure structs are addressable in pp()
         - test script created at za_tests/test_pp.za
 
+    * now allowing an optional colon suffix on map literal key names.
+        - this is because dashes are allowed in key names and this
+          may be used in the event of an explicit edge case should
+          the dashes cause problems.
+        - we now also automatically terminate the key name when a
+          dash is followed by a numeric literal. (that was one such problem)
+
     * added per element array(a) + scalar(b) ;or scalar(a) + array(b) to replace array concatenation using plus operator.
         - this completes the basic +,-,*,/,%,** operator overload for arrays
 
@@ -53,6 +60,15 @@ library changes
 ---------------
 
     * added glob() call for returning []string file globbing results
+
+    * updated dir() to add more find-like utility:
+        - dir(filepath,[,inclusion_filter[,options_map]])
+          options map keys:
+          .depth (int) : max depth (-1 unlimited, default 0)
+          .names (bool) : return []string instead of []dirent, containing filepaths
+          .exclude (string) : set an exclusion regex
+          .absolute (bool) : relative/absolute file paths returned
+        - see example at za_tests/test_dir_summary.za
 
     * added log_sanitise() call to remove some common risk exposures from strings.
         - this will need improvement over time. it is only really intended to look
