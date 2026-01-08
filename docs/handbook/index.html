@@ -1,3 +1,670 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Daniel Horsley" />
+  <title>Za — The Za Programming Language Handbook</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="za.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Za — The Za Programming Language Handbook</h1>
+<p class="author">Daniel Horsley</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#contents" id="toc-contents">Contents</a>
+<ul>
+<li><a href="#preface" id="toc-preface">Preface</a></li>
+<li><a href="#part-i---getting-oriented"
+id="toc-part-i---getting-oriented">Part I - Getting Oriented</a></li>
+<li><a href="#part-ii---language-fundamentals"
+id="toc-part-ii---language-fundamentals">Part II - Language
+Fundamentals</a></li>
+<li><a href="#part-iii---data-types-and-structures"
+id="toc-part-iii---data-types-and-structures">Part III - Data Types and
+Structures</a></li>
+<li><a href="#part-iv---expressions-and-control-flow"
+id="toc-part-iv---expressions-and-control-flow">Part IV - Expressions
+and Control Flow</a></li>
+<li><a href="#part-v---functional-data-processing"
+id="toc-part-v---functional-data-processing">Part V - Functional Data
+Processing</a></li>
+<li><a href="#part-vi---functions-modules-and-composition"
+id="toc-part-vi---functions-modules-and-composition">Part VI -
+Functions, Modules, and Composition</a></li>
+<li><a href="#part-vii---errors-debugging-and-safety"
+id="toc-part-vii---errors-debugging-and-safety">Part VII - Errors,
+Debugging, and Safety</a></li>
+<li><a href="#part-viii---concurrency"
+id="toc-part-viii---concurrency">Part VIII - Concurrency</a></li>
+<li><a href="#part-ix---output-and-presentation"
+id="toc-part-ix---output-and-presentation">Part IX - Output and
+Presentation</a></li>
+<li><a href="#part-x---standard-library-overview"
+id="toc-part-x---standard-library-overview">Part X - Standard Library
+Overview</a></li>
+<li><a href="#part-xi---sysadmin-cookbook"
+id="toc-part-xi---sysadmin-cookbook">Part XI - Sysadmin
+Cookbook</a></li>
+<li><a href="#part-xii---logging" id="toc-part-xii---logging">Part XII -
+Logging</a></li>
+<li><a href="#part-xiii---testing" id="toc-part-xiii---testing">Part
+XIII - Testing</a></li>
+<li><a href="#appendices" id="toc-appendices">Appendices</a></li>
+</ul></li>
+<li><a href="#preface-1" id="toc-preface-1">Preface</a>
+<ul>
+<li><a href="#about-this-book" id="toc-about-this-book">About this
+book</a></li>
+<li><a href="#who-this-book-is-for" id="toc-who-this-book-is-for">Who
+this book is for</a></li>
+<li><a href="#version-coverage" id="toc-version-coverage">Version
+coverage</a></li>
+</ul></li>
+<li><a href="#part-i-getting-oriented"
+id="toc-part-i-getting-oriented">Part I — Getting Oriented</a>
+<ul>
+<li><a href="#what-za-is-and-is-not" id="toc-what-za-is-and-is-not">1.
+What Za is (and is not)</a></li>
+<li><a href="#running-za" id="toc-running-za">2. Running Za</a></li>
+<li><a href="#the-repl" id="toc-the-repl">3. The REPL</a>
+<ul>
+<li><a href="#repl-overview" id="toc-repl-overview">3.1 REPL
+Overview</a></li>
+<li><a href="#getting-started" id="toc-getting-started">3.2 Getting
+Started</a></li>
+<li><a href="#discovery-and-help" id="toc-discovery-and-help">3.3
+Discovery and Help</a></li>
+<li><a href="#interactive-features" id="toc-interactive-features">3.4
+Interactive Features</a></li>
+<li><a href="#repl-macros" id="toc-repl-macros">3.5 REPL Macros</a></li>
+<li><a href="#repl-workflow-examples"
+id="toc-repl-workflow-examples">3.6 REPL Workflow Examples</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#part-ii-language-fundamentals"
+id="toc-part-ii-language-fundamentals">Part II — Language
+Fundamentals</a>
+<ul>
+<li><a href="#lexical-structure" id="toc-lexical-structure">4. Lexical
+structure</a></li>
+<li><a href="#literals-and-constants" id="toc-literals-and-constants">5.
+Literals and constants</a>
+<ul>
+<li><a href="#strings" id="toc-strings">5.1 Strings</a></li>
+<li><a href="#numeric-literals" id="toc-numeric-literals">5.2 Numeric
+literals</a></li>
+<li><a href="#built-in-constants" id="toc-built-in-constants">5.3
+Built-in constants</a></li>
+</ul></li>
+<li><a href="#variables-and-assignment"
+id="toc-variables-and-assignment">6. Variables and assignment</a>
+<ul>
+<li><a href="#implicit-creation" id="toc-implicit-creation">6.1 Implicit
+creation</a></li>
+<li><a href="#auto-vivification-assignment-driven"
+id="toc-auto-vivification-assignment-driven">6.2 Auto-vivification
+(assignment-driven)</a></li>
+<li><a href="#global-mutation-is-explicit"
+id="toc-global-mutation-is-explicit">6.3 Global mutation is explicit
+(<code>@</code>)</a></li>
+</ul></li>
+<li><a href="#typed-declarations-with-var"
+id="toc-typed-declarations-with-var">7. Typed declarations with
+<code>var</code></a>
+<ul>
+<li><a href="#scalars-and-structs" id="toc-scalars-and-structs">7.1
+Scalars and structs</a></li>
+<li><a href="#fixed-size-arrays-usual-pattern"
+id="toc-fixed-size-arrays-usual-pattern">7.2 Fixed-size arrays (usual
+pattern)</a></li>
+<li><a href="#multi-dimensional-dynamic-arrays"
+id="toc-multi-dimensional-dynamic-arrays">7.3 Multi-dimensional dynamic
+arrays</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#part-iii-data-types-and-structures"
+id="toc-part-iii-data-types-and-structures">Part III — Data Types and
+Structures</a>
+<ul>
+<li><a href="#scalar-types" id="toc-scalar-types">8. Scalar
+types</a></li>
+<li><a href="#arrays-and-multi-dimensional-data"
+id="toc-arrays-and-multi-dimensional-data">9. Arrays and
+multi-dimensional data</a></li>
+<li><a href="#maps" id="toc-maps">10. Maps</a></li>
+<li><a href="#maps-as-sets" id="toc-maps-as-sets">11. Maps as
+sets</a></li>
+<li><a href="#structs-and-anonymous-structs"
+id="toc-structs-and-anonymous-structs">12. Structs and anonymous
+structs</a>
+<ul>
+<li><a href="#defining-structs" id="toc-defining-structs">12.1 Defining
+structs</a></li>
+<li><a href="#struct-literals" id="toc-struct-literals">12.2 Struct
+literals</a></li>
+<li><a href="#anonymous-structs" id="toc-anonymous-structs">12.3
+Anonymous structs</a></li>
+</ul></li>
+<li><a href="#struct-associated-functions-and-self"
+id="toc-struct-associated-functions-and-self">13. Struct-associated
+functions and <code>self</code></a></li>
+<li><a href="#enums" id="toc-enums">14. Enums</a></li>
+</ul></li>
+<li><a href="#part-iv-expressions-and-control-flow"
+id="toc-part-iv-expressions-and-control-flow">Part IV — Expressions and
+Control Flow</a>
+<ul>
+<li><a href="#expressions-and-precedence"
+id="toc-expressions-and-precedence">15. Expressions and
+precedence</a></li>
+<li><a href="#operators-overview" id="toc-operators-overview">16.
+Operators (overview)</a>
+<ul>
+<li><a href="#arithmetic-operators" id="toc-arithmetic-operators">16.1
+Arithmetic Operators</a></li>
+<li><a href="#comparison-operators" id="toc-comparison-operators">16.2
+Comparison Operators</a></li>
+<li><a href="#boolean-operators" id="toc-boolean-operators">16.3 Boolean
+Operators</a></li>
+<li><a href="#bitwise-operators" id="toc-bitwise-operators">16.4 Bitwise
+Operators</a></li>
+<li><a href="#set-operators-on-maps" id="toc-set-operators-on-maps">16.5
+Set Operators on Maps</a></li>
+<li><a href="#range-operator" id="toc-range-operator">16.6 Range
+Operator</a></li>
+<li><a href="#regex-match-operators" id="toc-regex-match-operators">16.7
+Regex Match Operators</a></li>
+<li><a href="#path-unary-operators" id="toc-path-unary-operators">16.8
+Path Unary Operators</a></li>
+<li><a href="#string-transform-operators"
+id="toc-string-transform-operators">16.9 String Transform
+Operators</a></li>
+<li><a href="#file-io-operators" id="toc-file-io-operators">16.10 File
+I/O Operators</a></li>
+<li><a href="#shell-execution-operators"
+id="toc-shell-execution-operators">16.11 Shell Execution
+Operators</a></li>
+<li><a href="#numeric-clamping-with-startend"
+id="toc-numeric-clamping-with-startend">16.1 Numeric Clamping with
+<code>[start:end]</code></a></li>
+</ul></li>
+<li><a href="#conditionals" id="toc-conditionals">17.
+Conditionals</a></li>
+<li><a href="#loops" id="toc-loops">18. Loops</a></li>
+<li><a href="#case-statements" id="toc-case-statements">19. Case
+statements</a></li>
+</ul></li>
+<li><a href="#part-v-functional-data-processing"
+id="toc-part-v-functional-data-processing">Part V — Functional Data
+Processing</a>
+<ul>
+<li><a href="#expression-strings-and-idx"
+id="toc-expression-strings-and-idx">20. Expression strings,
+<code>#</code>, and <code>$idx</code></a></li>
+<li><a href="#map-and-filter-operators"
+id="toc-map-and-filter-operators">21. Map and filter operators</a></li>
+<li><a href="#searching-arrays-find-where"
+id="toc-searching-arrays-find-where">22. Searching arrays
+(<code>find</code>, <code>where</code>)</a></li>
+</ul></li>
+<li><a href="#part-vi-functions-modules-and-composition"
+id="toc-part-vi-functions-modules-and-composition">Part VI — Functions,
+Modules, and Composition</a>
+<ul>
+<li><a href="#functions-def-end" id="toc-functions-def-end">23.
+Functions (<code>def … end</code>)</a></li>
+<li><a href="#modules-and-namespaces"
+id="toc-modules-and-namespaces">24. Modules and namespaces</a>
+<ul>
+<li><a href="#bundling-v.1.2.1" id="toc-bundling-v.1.2.1">Bundling
+(v.1.2.1+)</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#part-vii-errors-debugging-and-safety"
+id="toc-part-vii-errors-debugging-and-safety">Part VII — Errors,
+Debugging, and Safety</a>
+<ul>
+<li><a href="#error-handling-philosophy"
+id="toc-error-handling-philosophy">25. Error handling
+philosophy</a></li>
+<li><a href="#exceptions-try-catch-then-endtry"
+id="toc-exceptions-try-catch-then-endtry">26. Exceptions
+(<code>try … catch … then … endtry</code>)</a></li>
+<li><a href="#enhanced-error-handling-trap-error_"
+id="toc-enhanced-error-handling-trap-error_">27. Enhanced error handling
+(<code>trap</code>, <code>error_*</code>)</a></li>
+<li><a href="#debugger" id="toc-debugger">28. Debugger</a>
+<ul>
+<li><a href="#enabling-the-debugger" id="toc-enabling-the-debugger">28.1
+Enabling the Debugger</a></li>
+<li><a href="#debugger-activation" id="toc-debugger-activation">28.2
+Debugger Activation</a></li>
+<li><a href="#setting-breakpoints" id="toc-setting-breakpoints">28.3
+Setting Breakpoints</a></li>
+<li><a href="#debugger-prompt-and-commands"
+id="toc-debugger-prompt-and-commands">28.4 Debugger Prompt and
+Commands</a></li>
+<li><a href="#debugger-scope-and-behaviour"
+id="toc-debugger-scope-and-behaviour">28.5 Debugger Scope and
+Behaviour</a></li>
+<li><a href="#practical-debugging-examples"
+id="toc-practical-debugging-examples">28.6 Practical Debugging
+Examples</a></li>
+</ul></li>
+<li><a href="#profiler" id="toc-profiler">29. Profiler</a>
+<ul>
+<li><a href="#enabling-the-profiler" id="toc-enabling-the-profiler">29.1
+Enabling the Profiler</a></li>
+<li><a href="#profiler-behaviour" id="toc-profiler-behaviour">29.2
+Profiler Behaviour</a></li>
+<li><a href="#viewing-and-interpreting-results"
+id="toc-viewing-and-interpreting-results">29.3 Viewing and Interpreting
+Results</a></li>
+<li><a href="#performance-analysis-patterns"
+id="toc-performance-analysis-patterns">29.4 Performance Analysis
+Patterns</a></li>
+<li><a href="#profiler-best-practices"
+id="toc-profiler-best-practices">29.5 Profiler Best Practices</a></li>
+</ul></li>
+<li><a href="#security-controls-permit"
+id="toc-security-controls-permit">30. Security controls
+(<code>permit</code>)</a>
+<ul>
+<li><a href="#security-checklist" id="toc-security-checklist">30.1
+Security Checklist</a></li>
+<li><a href="#runtime-security-with-permit"
+id="toc-runtime-security-with-permit">30.2 Runtime Security with
+<code>permit()</code></a></li>
+<li><a href="#input-validation-and-sanitization"
+id="toc-input-validation-and-sanitization">30.3 Input Validation and
+Sanitization</a></li>
+</ul></li>
+<li><a href="#common-async-patterns" id="toc-common-async-patterns">31.
+Common async patterns</a>
+<ul>
+<li><a href="#fan-outfan-in-host-probing"
+id="toc-fan-outfan-in-host-probing">31.1 Fan-out/Fan-in Host
+Probing</a></li>
+<li><a href="#parallel-service-checks"
+id="toc-parallel-service-checks">31.2 Parallel Service Checks</a></li>
+<li><a href="#parallel-data-processing"
+id="toc-parallel-data-processing">31.3 Parallel Data Processing</a></li>
+<li><a href="#isolated-failure-handling"
+id="toc-isolated-failure-handling">31.4 Isolated Failure
+Handling</a></li>
+<li><a href="#partial-completion-collection"
+id="toc-partial-completion-collection">31.5 Partial Completion
+Collection</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#part-ix-output-and-presentation"
+id="toc-part-ix-output-and-presentation">Part IX — Output and
+Presentation</a>
+<ul>
+<li><a href="#program-output-print-println"
+id="toc-program-output-print-println">32. Program output
+(<code>print</code>, <code>println</code>)</a></li>
+<li><a href="#inspection-pp-and-tables-table"
+id="toc-inspection-pp-and-tables-table">33. Inspection (<code>pp</code>)
+and tables (<code>table</code>)</a></li>
+<li><a href="#array-display-controls-array_format-array_colours"
+id="toc-array-display-controls-array_format-array_colours">34. Array
+display controls (<code>array_format</code>,
+<code>array_colours</code>)</a></li>
+<li><a href="#ansi-colourstyle-macros"
+id="toc-ansi-colourstyle-macros">35. ANSI colour/style macros</a></li>
+</ul></li>
+<li><a href="#part-x-standard-library-overview"
+id="toc-part-x-standard-library-overview">Part X — Standard Library
+Overview</a>
+<ul>
+<li><a href="#library-categories-and-discovery"
+id="toc-library-categories-and-discovery">36. Library categories and
+discovery</a></li>
+<li><a href="#category-tour-representative-idioms"
+id="toc-category-tour-representative-idioms">37. Category tour
+(representative idioms)</a></li>
+<li><a href="#category-samples" id="toc-category-samples">38. Category
+samples</a>
+<ul>
+<li><a href="#string-operations" id="toc-string-operations">38.1 String
+Operations</a></li>
+<li><a href="#list-and-array-operations"
+id="toc-list-and-array-operations">38.2 List and Array
+Operations</a></li>
+<li><a href="#map-operations" id="toc-map-operations">38.3 Map
+Operations</a></li>
+<li><a href="#type-conversion" id="toc-type-conversion">38.4 Type
+Conversion</a></li>
+<li><a href="#file-operations" id="toc-file-operations">38.5 File
+Operations</a></li>
+<li><a href="#os-and-system-operations"
+id="toc-os-and-system-operations">38.6 OS and System Operations</a></li>
+<li><a href="#network-operations" id="toc-network-operations">38.7
+Network Operations</a></li>
+<li><a href="#database-operations" id="toc-database-operations">38.8
+Database Operations</a></li>
+<li><a href="#yaml-and-configuration-operations"
+id="toc-yaml-and-configuration-operations">38.9 YAML and Configuration
+Operations</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#get-nested-values" id="toc-get-nested-values">Get nested
+values</a></li>
+<li><a href="#update-existing-values"
+id="toc-update-existing-values">Update existing values</a></li>
+<li><a href="#add-new-values" id="toc-add-new-values">Add new
+values</a></li>
+<li><a href="#remove-specific-values"
+id="toc-remove-specific-values">Remove specific values</a>
+<ul>
+<li><a href="#archive-operations-zip"
+id="toc-archive-operations-zip">38.10 Archive Operations (ZIP)</a></li>
+<li><a href="#regular-expressions-pcre"
+id="toc-regular-expressions-pcre">38.11 Regular Expressions
+(PCRE)</a></li>
+<li><a href="#checksum-operations" id="toc-checksum-operations">38.12
+Checksum Operations</a></li>
+<li><a href="#tui-terminal-user-interface"
+id="toc-tui-terminal-user-interface">38.13 TUI (Terminal User
+Interface)</a></li>
+<li><a href="#notification-operations"
+id="toc-notification-operations">38.14 Notification Operations</a></li>
+<li><a href="#error-handling-and-logging"
+id="toc-error-handling-and-logging">38.15 Error Handling and
+Logging</a></li>
+<li><a href="#ini-configuration-file-operations"
+id="toc-ini-configuration-file-operations">38.16 INI Configuration File
+Operations</a></li>
+</ul></li>
+<li><a href="#part-xi-sysadmin-cookbook"
+id="toc-part-xi-sysadmin-cookbook">Part XI — Sysadmin Cookbook</a>
+<ul>
+<li><a href="#cli-data-ingestion-with-table"
+id="toc-cli-data-ingestion-with-table">39. CLI data ingestion with
+<code>table()</code></a></li>
+<li><a href="#disk-and-filesystem-checks"
+id="toc-disk-and-filesystem-checks">40. Disk and filesystem
+checks</a></li>
+<li><a href="#process-and-service-inspection"
+id="toc-process-and-service-inspection">41. Process and service
+inspection</a>
+<ul>
+<li><a href="#process-monitoring" id="toc-process-monitoring">41.1
+Process Monitoring</a></li>
+<li><a href="#service-status-via-cli"
+id="toc-service-status-via-cli">41.2 Service Status via CLI</a></li>
+</ul></li>
+<li><a href="#network-diagnostics" id="toc-network-diagnostics">42.
+Network diagnostics</a>
+<ul>
+<li><a href="#basic-network-testing" id="toc-basic-network-testing">42.1
+Basic Network Testing</a></li>
+<li><a href="#port-checking" id="toc-port-checking">42.2 Port
+Checking</a></li>
+</ul></li>
+<li><a href="#parallel-host-probing" id="toc-parallel-host-probing">43.
+Parallel host probing</a></li>
+<li><a href="#drift-detection-and-set-based-reasoning"
+id="toc-drift-detection-and-set-based-reasoning">44. Drift detection and
+set-based reasoning</a></li>
+</ul></li>
+<li><a href="#part-xii---logging-1" id="toc-part-xii---logging-1">Part
+XII - Logging</a>
+<ul>
+<li><a href="#logging-overview" id="toc-logging-overview">45. Logging
+Overview</a>
+<ul>
+<li><a href="#logging-philosophy" id="toc-logging-philosophy">45.1
+Logging Philosophy</a></li>
+</ul></li>
+<li><a href="#logging-configuration" id="toc-logging-configuration">46.
+Logging Configuration</a>
+<ul>
+<li><a href="#format-control" id="toc-format-control">46.1 Format
+Control</a></li>
+<li><a href="#web-access-logging" id="toc-web-access-logging">46.2 Web
+Access Logging</a></li>
+<li><a href="#rotation-and-resource-management"
+id="toc-rotation-and-resource-management">46.3 Rotation and Resource
+Management</a></li>
+<li><a href="#performance-and-monitoring"
+id="toc-performance-and-monitoring">46.4 Performance and
+Monitoring</a></li>
+</ul></li>
+<li><a href="#logging-architecture" id="toc-logging-architecture">47.
+Logging Architecture</a></li>
+<li><a href="#logging-statement-types"
+id="toc-logging-statement-types">47.1 Logging Statement Types</a></li>
+<li><a href="#infrastructure-design" id="toc-infrastructure-design">47.2
+Infrastructure Design</a></li>
+<li><a href="#performance-characteristics"
+id="toc-performance-characteristics">47.3 Performance
+Characteristics</a></li>
+</ul></li>
+<li><a href="#part-xiii---testing-1" id="toc-part-xiii---testing-1">Part
+XIII - Testing</a>
+<ul>
+<li><a href="#testing-overview" id="toc-testing-overview">48. Testing
+Overview</a>
+<ul>
+<li><a href="#testing-philosophy" id="toc-testing-philosophy">48.1
+Testing Philosophy</a></li>
+<li><a href="#test-execution-modes" id="toc-test-execution-modes">48.2
+Test Execution Modes</a></li>
+<li><a href="#test-structure" id="toc-test-structure">48.3 Test
+Structure</a></li>
+</ul></li>
+<li><a href="#test-blocks" id="toc-test-blocks">49. Test Blocks</a>
+<ul>
+<li><a href="#basic-test-structure" id="toc-basic-test-structure">49.1
+Basic Test Structure</a></li>
+<li><a href="#error-handling-tests" id="toc-error-handling-tests">49.2
+Error Handling Tests</a></li>
+<li><a href="#function-return-value-tests"
+id="toc-function-return-value-tests">49.3 Function Return Value
+Tests</a></li>
+<li><a href="#data-structure-tests" id="toc-data-structure-tests">49.4
+Data Structure Tests</a></li>
+<li><a href="#integration-and-system-tests"
+id="toc-integration-and-system-tests">49.5 Integration and System
+Tests</a></li>
+</ul></li>
+<li><a href="#test-behaviours-and-best-practices"
+id="toc-test-behaviours-and-best-practices">50. Test Behaviours and Best
+Practices</a>
+<ul>
+<li><a href="#test-organization" id="toc-test-organization">50.1 Test
+Organization</a></li>
+<li><a href="#error-handling-in-tests"
+id="toc-error-handling-in-tests">50.2 Error Handling in Tests</a></li>
+<li><a href="#documentation-integration"
+id="toc-documentation-integration">50.3 Documentation
+Integration</a></li>
+<li><a href="#expanded-doc-statement-usage"
+id="toc-expanded-doc-statement-usage">Expanded DOC statement
+usage</a></li>
+<li><a href="#key-features-demonstrated"
+id="toc-key-features-demonstrated">Key Features Demonstrated</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#appendix-a-operator-reference-summary"
+id="toc-appendix-a-operator-reference-summary">Appendix A — Operator
+reference (summary)</a></li>
+<li><a href="#appendix-b-keywords-summary"
+id="toc-appendix-b-keywords-summary">Appendix B — Keywords
+(summary)</a></li>
+<li><a href="#appendix-c-built-in-constants"
+id="toc-appendix-c-built-in-constants">Appendix C — Built-in
+constants</a></li>
+<li><a href="#appendix-d-standard-library-categories"
+id="toc-appendix-d-standard-library-categories">Appendix D — Standard
+Library Categories</a>
+<ul>
+<li><a href="#array" id="toc-array">array</a></li>
+<li><a href="#conversion" id="toc-conversion">conversion</a></li>
+<li><a href="#cron" id="toc-cron">cron</a></li>
+<li><a href="#date" id="toc-date">date</a></li>
+<li><a href="#db" id="toc-db">db</a></li>
+<li><a href="#error" id="toc-error">error</a></li>
+<li><a href="#file-unix" id="toc-file-unix">file (unix)</a></li>
+<li><a href="#file-windows" id="toc-file-windows">file
+(windows)</a></li>
+<li><a href="#html" id="toc-html">html</a></li>
+<li><a href="#image" id="toc-image">image</a></li>
+<li><a href="#internal" id="toc-internal">internal</a></li>
+<li><a href="#list" id="toc-list">list</a></li>
+<li><a href="#math" id="toc-math">math</a></li>
+<li><a href="#network" id="toc-network">network</a></li>
+<li><a href="#notify" id="toc-notify">notify</a></li>
+<li><a href="#os" id="toc-os">os</a></li>
+<li><a href="#package" id="toc-package">package</a></li>
+<li><a href="#pcre" id="toc-pcre">pcre</a></li>
+<li><a href="#smtp" id="toc-smtp">smtp</a></li>
+<li><a href="#string" id="toc-string">string</a></li>
+<li><a href="#sum" id="toc-sum">sum</a></li>
+<li><a href="#system" id="toc-system">system</a></li>
+<li><a href="#tui" id="toc-tui">tui</a></li>
+<li><a href="#web" id="toc-web">web</a></li>
+<li><a href="#yaml" id="toc-yaml">yaml</a></li>
+<li><a href="#zip" id="toc-zip">zip</a></li>
+</ul></li>
+<li><a href="#appendix-e-worked-example-egmon-annotated"
+id="toc-appendix-e-worked-example-egmon-annotated">Appendix E — Worked
+Example: <code>eg/mon</code> (annotated)</a>
+<ul>
+<li><a href="#e.1-what-egmon-is" id="toc-e.1-what-egmon-is">E.1 What
+<code>eg/mon</code> is</a></li>
+<li><a href="#e.2-core-drawing-primitives"
+id="toc-e.2-core-drawing-primitives">E.2 Core drawing primitives</a>
+<ul>
+<li><a href="#vertical-and-horizontal-bars"
+id="toc-vertical-and-horizontal-bars">Vertical and horizontal
+bars</a></li>
+</ul></li>
+<li><a href="#e.3-small-utility-helpers"
+id="toc-e.3-small-utility-helpers">E.3 Small utility helpers</a></li>
+<li><a href="#e.4-built-in-unit-test-embedded-in-the-script"
+id="toc-e.4-built-in-unit-test-embedded-in-the-script">E.4 Built-in unit
+test embedded in the script</a></li>
+<li><a href="#e.5-environment-pane-showenv"
+id="toc-e.5-environment-pane-showenv">E.5 Environment pane
+(<code>showEnv</code>)</a></li>
+<li><a href="#e.6-filesinodes-pane-showfiles"
+id="toc-e.6-filesinodes-pane-showfiles">E.6 Files/inodes pane
+(<code>showFiles</code>)</a></li>
+<li><a href="#e.7-memory-pane-showmem"
+id="toc-e.7-memory-pane-showmem">E.7 Memory pane
+(<code>showMem</code>)</a></li>
+<li><a href="#e.8-process-pane-showprocs"
+id="toc-e.8-process-pane-showprocs">E.8 Process pane
+(<code>showProcs</code>)</a></li>
+<li><a href="#e.9-cpu-pane-showcpu" id="toc-e.9-cpu-pane-showcpu">E.9
+CPU pane (<code>showCpu</code>)</a></li>
+<li><a href="#e.10-disk-pane-showhdd"
+id="toc-e.10-disk-pane-showhdd">E.10 Disk pane
+(<code>showHdd</code>)</a></li>
+<li><a href="#e.11-network-pane-shownet"
+id="toc-e.11-network-pane-shownet">E.11 Network pane
+(<code>showNet</code>)</a></li>
+<li><a href="#e.12-pane-layout-redef_layout"
+id="toc-e.12-pane-layout-redef_layout">E.12 Pane layout
+(<code>redef_layout</code>)</a></li>
+<li><a href="#e.13-main-loop-and-key-handling"
+id="toc-e.13-main-loop-and-key-handling">E.13 Main loop and key
+handling</a></li>
+</ul></li>
+</ul>
+</nav>
 <div style="text-align:center; page-break-after: always;">
 <p><br/> <br/> <img src="title-page.png" /></p>
 <h4 id="a-practical-handbook-for-system-administrators">A Practical
@@ -3307,8 +3974,8 @@ has_start, inset, is_utf8, join, keys, levdist, line_add,
 line_add_after, line_add_before, line_delete, line_filter, line_head,
 line_match, line_replace, line_tail, lines, literal, log_sanitise,
 lower, match, next_match, pad, pos, replace, reverse, rvalid,
-sanitisation, split, stripansi, stripcc, stripquotes, strpos, substr,
-tr, trim, upper, values, wrap, wrap_text</p>
+sanitisation, sgrep, split, stripansi, stripcc, stripquotes, strpos,
+substr, tr, trim, upper, values, wrap, wrap_text</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>format</li>
@@ -3323,6 +3990,7 @@ tr, trim, upper, values, wrap, wrap_text</p>
 <li>fields</li>
 <li>substr</li>
 <li>fgrgb</li>
+<li>sgrep</li>
 </ul>
 <h2 id="sum">sum</h2>
 <p><strong>Functions (5):</strong></p>
@@ -3604,3 +4272,5 @@ interface (<code>i</code>), process filter (<code>f</code>), timeout
 redraw on Ctrl‑L (<code>k==12</code>) (lines 800–834).</p>
 <p>On exit it restores terminal state and turns the cursor back on
 (lines 841–844).</p>
+</body>
+</html>

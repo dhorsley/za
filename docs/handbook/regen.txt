@@ -1,2 +1,0 @@
-
-pandoc handbook_1.2.1.md --toc -o index.html
