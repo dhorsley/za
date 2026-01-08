@@ -1,3 +1,2 @@
 #!/usr/bin/bash
-version=$(cat ../../VERSION)
-pandoc handbook_${version}.md -s --toc -o index.html
+pandoc handbook.md -s -o index.html
