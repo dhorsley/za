@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-pandoc handbook.md -s -o index.html
+pandoc handbook.md -s -V title:"" -o index.html

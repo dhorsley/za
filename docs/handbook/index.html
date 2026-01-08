@@ -1,0 +1,3723 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Daniel Horsley" />
+  <title>Za - The Za Programming Language Handbook</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="za.css" />
+</head>
+<body>
+<div style="text-align:center; page-break-after: always;">
+<p><br/> <br/> <img src="title-page.png" /></p>
+<h4 id="a-practical-handbook-for-system-administrators">A Practical
+Handbook for System Administrators</h4>
+<p>Daniel Horsley <br/></p>
+</div>
+<hr />
+<h1 id="contents">Contents</h1>
+<h2 id="preface">Preface</h2>
+<ul>
+<li>About this book</li>
+<li>Who this book is for</li>
+<li>Conventions used</li>
+<li>Version coverage</li>
+</ul>
+<h2 id="part-i---getting-oriented">Part I - Getting Oriented</h2>
+<ol type="1">
+<li><a href="#what-za-is-and-is-not">What Za is (and is not)</a></li>
+<li><a href="#running-za">Running Za</a></li>
+<li><a href="#the-repl">The REPL</a></li>
+</ol>
+<h2 id="part-ii---language-fundamentals">Part II - Language
+Fundamentals</h2>
+<ol start="4" type="1">
+<li><a href="#lexical-structure">Lexical structure</a></li>
+<li><a href="#literals-and-constants">Literals and constants</a></li>
+<li><a href="#variables-and-assignment">Variables and
+assignment</a></li>
+<li><a href="#typed-declarations-with-var">Typed declarations with
+<code>var</code></a></li>
+</ol>
+<h2 id="part-iii---data-types-and-structures">Part III - Data Types and
+Structures</h2>
+<ol start="8" type="1">
+<li><a href="#scalar-types">Scalar types</a></li>
+<li><a href="#arrays-and-multi-dimensional-data">Arrays and
+multi-dimensional data</a></li>
+<li><a href="#maps">Maps</a></li>
+<li><a href="#maps-as-sets">Maps as sets</a></li>
+<li><a href="#structs-and-anonymous-structs">Structs and anonymous
+structs</a></li>
+<li><a href="#struct-associated-functions-and-self">Struct-associated
+functions and <code>self</code></a></li>
+<li><a href="#enums">Enums</a></li>
+</ol>
+<h2 id="part-iv---expressions-and-control-flow">Part IV - Expressions
+and Control Flow</h2>
+<ol start="15" type="1">
+<li><a href="#expressions-and-precedence">Expressions and operator
+precedence</a></li>
+<li><a href="#operators-overview">Operators Overview</a></li>
+<li><a href="#conditionals">Conditionals</a></li>
+<li><a href="#loops">Loops</a></li>
+<li><a href="#case-statements">Case statements</a></li>
+</ol>
+<h2 id="part-v---functional-data-processing">Part V - Functional Data
+Processing</h2>
+<ol start="20" type="1">
+<li><a href="#expression-strings-and-idx">Expression strings,
+<code>#</code>, and <code>$idx</code></a></li>
+<li><a href="#map-and-filter-operators">Map and filter operators
+(<code>-&gt;</code>, <code>?&gt;</code>)</a></li>
+<li><a href="#searching-arrays-find-where">Searching arrays
+(<code>find</code>, <code>where</code>)</a></li>
+</ol>
+<h2 id="part-vi---functions-modules-and-composition">Part VI -
+Functions, Modules, and Composition</h2>
+<ol start="23" type="1">
+<li><a href="#functions-def-end">Functions
+(<code>def … end</code>)</a></li>
+<li><a href="#modules-and-namespaces">Modules and namespaces</a></li>
+</ol>
+<h2 id="part-vii---errors-debugging-and-safety">Part VII - Errors,
+Debugging, and Safety</h2>
+<ol start="25" type="1">
+<li><a href="#error-handling-philosophy">Error handling
+philosophy</a></li>
+<li><a href="#exceptions-try-catch-then-endtry">Exceptions
+(<code>try … catch … then … endtry</code>)</a></li>
+<li><a href="#enhanced-error-handling-trap-error_">Enhanced error
+handling (<code>trap</code>, <code>error_*</code>)</a></li>
+<li><a href="#debugger">Debugger (how to use it)</a></li>
+<li><a href="#profiler">Profiler (how to interpret output)</a></li>
+<li><a href="#security-controls-permit">Security controls
+(<code>permit</code>)</a></li>
+</ol>
+<h2 id="part-viii---concurrency">Part VIII - Concurrency</h2>
+<ol start="31" type="1">
+<li><a href="#common-async-patterns">Async execution
+(<code>async</code>, <code>await</code>)</a></li>
+</ol>
+<h2 id="part-ix---output-and-presentation">Part IX - Output and
+Presentation</h2>
+<ol start="32" type="1">
+<li><a href="#program-output-print-println">Program output
+(<code>print</code>, <code>println</code>)</a></li>
+<li><a href="#inspection-pp-and-tables-table">Inspection
+(<code>pp</code>) and tables (<code>table</code>)</a></li>
+<li><a href="#array-display-controls-array_format-array_colours">Array
+display controls (<code>array_format</code>,
+<code>array_colours</code>)</a></li>
+<li><a href="#ansi-colourstyle-macros">ANSI colour/style macros</a></li>
+</ol>
+<h2 id="part-x---standard-library-overview">Part X - Standard Library
+Overview</h2>
+<ol start="36" type="1">
+<li><a href="#library-categories-and-discovery">Library categories and
+discovery (<code>help</code>, <code>func</code>)</a></li>
+<li><a href="#category-tour-representative-idioms">Category tour
+(representative idioms)</a></li>
+<li><a href="#category-samples">Category samples</a></li>
+</ol>
+<h2 id="part-xi---sysadmin-cookbook">Part XI - Sysadmin Cookbook</h2>
+<ol start="39" type="1">
+<li><a href="#cli-data-ingestion">CLI data ingestion</a></li>
+<li><a href="#disk-and-filesystem-checks">Disk and filesystem
+checks</a></li>
+<li><a href="#process-and-service-inspection">Process and service
+inspection</a></li>
+<li><a href="#network-diagnostics">Network diagnostics</a></li>
+<li><a href="#parallel-host-probing">Parallel host probing</a></li>
+<li><a href="#drift-detection-and-set-based-reasoning">Drift detection
+and set-based reasoning</a></li>
+</ol>
+<h2 id="part-xii---logging">Part XII - Logging</h2>
+<ol start="45" type="1">
+<li><a href="#logging-overview">Logging Overview</a></li>
+<li><a href="#logging-configuration">Logging Configuration</a></li>
+<li><a href="#logging-architecture">Logging Architecture</a></li>
+</ol>
+<h2 id="part-xiii---testing">Part XIII - Testing</h2>
+<ol start="48" type="1">
+<li><a href="#testing-overview">Testing Overview</a></li>
+<li><a href="#test-blocks">Test Blocks</a></li>
+<li><a href="#test-behaviours">Test Behaviours</a></li>
+</ol>
+<h2 id="appendices">Appendices</h2>
+<p>A. <a href="#appendix-a-operator-reference">Appendix A - Operator
+Reference</a></p>
+<p>B. <a href="#appendix-b-keywords-summary">Appendix B - Keywords
+Summary</a></p>
+<p>C. <a href="#appendix-c-built-in-constants">Appendix C - Built-in
+Constants</a></p>
+<p>D. <a href="#appendix-d-standard-library-categories">Appendix D -
+Standard Library Categories</a></p>
+<p>E. <a href="#appendix-e-worked-example-script">Appendix E - Worked
+Example Script</a></p>
+<div style="page-break-after: always;">
+
+</div>
+<h1 id="preface-1">Preface</h1>
+<h2 id="about-this-book">About this book</h2>
+<p>Za is an interpreted language aimed primarily at:</p>
+<ul>
+<li>system administration</li>
+<li>diagnostics and inspection</li>
+<li>testing and harnessing tools</li>
+<li>one-off operational automation</li>
+</ul>
+<p>Za is stable enough to run in production, but it is not designed as a
+framework language or a long-running service runtime. Its strengths are
+readability and portability.</p>
+<h2 id="who-this-book-is-for">Who this book is for</h2>
+<p>The intended readership is <strong>Linux system
+administrators</strong>, from novice to expert. Existing programmers
+should also be able to use this book as a reliable syntax and behaviour
+reference.</p>
+<h2 id="version-coverage">Version coverage</h2>
+<p>This text is written for <strong>Za 1.2.1</strong>.</p>
+<hr />
+<h1 id="part-i-getting-oriented">Part I — Getting Oriented</h1>
+<h2 id="what-za-is-and-is-not">1. What Za is (and is not)</h2>
+<p>Za is a scripting language for people who need to maintain and
+monitor systems. It can be used for glue scripts, test rigs, ad-hoc
+reporting, monitoring and many small tasks that are in the scope of
+system administrators, SREs, developers and others who are regularly
+expected to probe issues and generate state information.</p>
+<p>It prioritises:</p>
+<ul>
+<li><strong>ease of maintenance</strong></li>
+<li><strong>rapid prototyping</strong></li>
+<li><strong>portability</strong></li>
+</ul>
+<p>Za does not attempt to replace a general-purpose language for large
+services and should be used cautiously in production environments.</p>
+<h2 id="running-za">2. Running Za</h2>
+<p>Za runs scripts and also provides interactive tooling.</p>
+<p>Za is available for Linux-, BSD- and Windows-variants. The same
+features are available across all platforms where allowed by the OS.</p>
+<p>The interpreter also has a REPL with interactive help features.</p>
+<h2 id="the-repl">3. The REPL</h2>
+<p>The REPL is a workflow tool designed for prototyping, data
+exploration and system inspection.</p>
+<p>You can use it as a shell, if desired, but this is not the intent of
+this interactive mode.</p>
+<h3 id="repl-overview">3.1 REPL Overview</h3>
+<p>The REPL provides several key capabilities that make it particularly
+effective for system administration tasks:</p>
+<ul>
+<li><strong>State persistence</strong>: Variables and functions defined
+in one command remain available in subsequent commands</li>
+<li><strong>Inspectability</strong>: You can examine any variable or
+expression at any time using built-in inspection tools</li>
+<li><strong>Integrated help</strong>: Both general help and targeted
+library search are available without leaving the REPL</li>
+<li><strong>Macro support</strong>: Create reusable command shortcuts
+for common operations</li>
+<li><strong>Startup configuration</strong>: Customize your environment
+with automatic script execution</li>
+<li><strong>Shell integration</strong>: Direct access to system commands
+while maintaining Za’s data structures</li>
+</ul>
+<h3 id="getting-started">3.2 Getting Started</h3>
+<p>Starting the REPL is simple:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za</span></code></pre></div>
+<p>Upon startup, you’ll see the default prompt:</p>
+<pre class="za"><code>&gt;&gt;</code></pre>
+<h4 id="customizing-your-environment">Customizing Your Environment</h4>
+<p>A useful REPL feature is the startup script. Create a file at
+<code>~/.zarc</code> to automatically configure your session. Here’s a
+simplified one:</p>
+<pre class="za"><code>
+# Set a basic prompt
+prompt=&quot;&gt;&gt; &quot;
+
+# Define helpful macros
+macro +ll `ls -la`
+macro +df `df -h`
+
+# Enable command fallback - this allows execution of shell commands
+_=permit(&quot;cmdfallback&quot;,true)</code></pre>
+<p>The full example startup script in the Za repository demonstrates
+advanced features including:</p>
+<ul>
+<li>Custom prompts with git status and system information</li>
+<li>Environment-specific AWS profile handling</li>
+<li>Coloured system banners</li>
+<li>Complex macros for file listing and system monitoring</li>
+</ul>
+<h4 id="display-welcome-message">Display welcome message</h4>
+<pre class="za"><code>println &quot;Za REPL ready. Type &#39;help&#39; for assistance.&quot;</code></pre>
+<p>Now when you start <code>za</code>, your environment is automatically
+configured with your preferred prompt, modules, and helper macros.</p>
+<h3 id="discovery-and-help">3.3 Discovery and Help</h3>
+<p>Za provides built-in help and discovery mechanisms. Use the
+command-line help to see available options:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> za <span class="at">-h</span></span></code></pre></div>
+<p>For discovering available functions and modules, examine the standard
+library source files and examples in the <code>eg/</code> directory. The
+language documentation and examples provide comprehensive coverage of
+available capabilities.</p>
+<h3 id="interactive-features">3.4 Interactive Features</h3>
+<h4 id="command-history">Command History</h4>
+<p>The REPL maintains a persistent command history across sessions:</p>
+<pre class="za"><code># History is automatically saved to ~/.za_history
+# Navigate with up/down arrows
+# Search history with ctrl-r (reverse search)
+&gt;&gt; ctrl-r
+(search): `ls`:
+# Type to search, use arrows to navigate results</code></pre>
+<h4 id="line-editing">Line Editing</h4>
+<p>Interactive mode supports UTF-8 characters. Navigation keystrokes
+should be familiar from similar systems:</p>
+<p>Standard arrow navigation works as expected</p>
+<pre class="za"><code>ctrl-a  # Beginning of line
+ctrl-e  # End of line
+ctrl-u  # Delete to beginning
+ctrl-k  # Delete to end
+ctrl-c  # interrupt (interrupt session)
+ctrl-d  # end-of-input (end session)
+ctrl-z  # suspend REPL to background</code></pre>
+<h3 id="repl-macros">3.5 REPL Macros</h3>
+<p>Macros provide powerful command shortcuts, particularly useful for
+repetitive system administration tasks.</p>
+<h4 id="basic-macro-definition">Basic Macro Definition</h4>
+<pre class="za"><code># Simple text replacement
+macro +ps `ps aux | grep -v grep`
+
+# Use in commands
+&gt;&gt; #ps
+# Expands to: ps aux | grep -v grep</code></pre>
+<h4 id="parameterized-macros">Parameterized Macros</h4>
+<pre class="za"><code># Macro with parameters
+macro +ls(path) `ls -la {path}`
+
+# Usage
+&gt;&gt; #ls(&quot;/etc&quot;)
+&gt;&gt; #ls(&quot;~&quot;)  # Home directory expansion works</code></pre>
+<h4 id="varargs-and-advanced-features">Varargs and Advanced
+Features</h4>
+<pre class="za"><code># Variable arguments with ...
+macro +addall(base, ...) `$base + $1 + $2 + $3`
+
+# Nested macro expansion
+macro +complex `#addall(10, #ls(&quot;.&quot;), &quot;extra&quot;)`
+
+# Debug macro expansion - Shows expanded code before execution
+&gt;&gt; #macro_name!</code></pre>
+<h4 id="macro-management">Macro Management</h4>
+<pre class="za"><code># List all macros
+macro
+
+# Remove specific macro
+macro -ls
+
+# Remove all macros
+macro -
+
+# Verbose operations (when logging enabled, shows confirmation messages)
+macro ! +test `echo &quot;debug&quot;`
+# Output: Macro &#39;test&#39; defined</code></pre>
+<h3 id="repl-workflow-examples">3.6 REPL Workflow Examples</h3>
+<p>The REPL is ideal for prototyping and interactive data exploration.
+Test your commands interactively before incorporating them into
+scripts.</p>
+<pre class="za"><code># Filter system data for interesting entries
+&gt;&gt; high_usage = disk_usage() ?&gt; `#.usage_percent &gt; 50`
+
+# Examine results
+&gt;&gt; println high_usage.pp
+[
+  {
+    &quot;available&quot;: 65881,
+    &quot;mounted_path&quot;: &quot;/sys/firmware/efi/efivars&quot;,
+    &quot;path&quot;: &quot;efivarfs&quot;,
+    &quot;size&quot;: 151464,
+    &quot;usage_percent&quot;: 56.50385570168489,
+    &quot;used&quot;: 85583
+  }
+]
+
+# Create a quick report
+&gt;&gt; foreach item in high_usage
+&gt;&gt;     println &quot;ALERT: {=item.path} at {=item.mounted_path} is {=item.usage_percent}&quot;
+&gt;&gt; endfor
+ALERT: /dev/sda1 at /boot is 92%
+ALERT: /dev/sda2 at / is 87%</code></pre>
+<pre><code></code></pre>
+<h4 id="system-inspection-workflow">System Inspection Workflow</h4>
+<pre class="za"><code># Quick system overview
+&gt;&gt; println sys_resources().pp
+{
+  &quot;CPUCount&quot;: 20,
+  &quot;LoadAverage&quot;: [
+    0.59,
+    0.32,
+    0.28
+  ],
+  &quot;MemoryTotal&quot;: 32889544704,
+  &quot;MemoryUsed&quot;: 3189137408,
+  &quot;MemoryFree&quot;: 25005395968,
+  &quot;MemoryCached&quot;: 4691128320,
+  &quot;SwapTotal&quot;: 4294963200,
+  &quot;SwapUsed&quot;: 0,
+  &quot;SwapFree&quot;: 4294963200,
+  &quot;Uptime&quot;: 12977.04
+}
+
+# Network interface check
+&gt;&gt; println pp(net_devices() ?&gt; `#.name ~ &quot;wlan&quot;`)
+[
+  {
+    &quot;device_type&quot;: &quot;1&quot;,
+    &quot;duplex&quot;: &quot;&quot;,
+    &quot;enabled&quot;: true,
+    &quot;gateway&quot;: &quot;192.168.1.1&quot;,
+    &quot;ip_addresses&quot;: [
+      &quot;192.168.1.16&quot;,
+      &quot;fe80::869e:56ff:fe34:d39d&quot;
+    ],
+    &quot;link_speed&quot;: &quot;&quot;,
+    &quot;mac_address&quot;: &quot;84:9e:56:34:d3:9d&quot;,
+    &quot;name&quot;: &quot;wlan0&quot;,
+    &quot;operstate&quot;: &quot;up&quot;
+  }
+]</code></pre>
+<p>These patterns demonstrate how the REPL enables iterative development
+with immediate feedback, making it ideal for the exploratory nature of
+system administration work.</p>
+<hr />
+<h1 id="part-ii-language-fundamentals">Part II — Language
+Fundamentals</h1>
+<h2 id="lexical-structure">4. Lexical structure</h2>
+<ul>
+<li>Comments begin with <code>#</code>.</li>
+<li>Identifiers are used for variables, functions, and type names.</li>
+<li>Whitespace is mostly insignificant, except in string literals.</li>
+</ul>
+<h2 id="literals-and-constants">5. Literals and constants</h2>
+<h3 id="strings">5.1 Strings</h3>
+<p>Za supports <strong>double-quoted</strong> strings and
+<strong>backtick</strong> strings. Both may span multiple source lines
+and may contain interpolation.</p>
+<p>Backticks are especially useful when you want to avoid escaping
+double quotes inside expression strings:</p>
+<pre class="za"><code>expr = `#.replace(&quot;%&quot;,&quot;&quot;).as_int &gt; 80`</code></pre>
+<p>You can also escape characters such as quotes/backticks within string
+literals. Similarly, control codes such as line feed, tab and others may
+be expressed using escape sequences, in the usual manner for C-like
+sprintf formatting.</p>
+<p>Za also supports interpolation forms such as <code>{...}</code> and
+<code>{=...}</code> (interpolation can be enabled/disabled via policy
+controls).</p>
+<h3 id="numeric-literals">5.2 Numeric literals</h3>
+<p>Numeric literal type is determined by suffix and decimal point:</p>
+<ul>
+<li><code>10</code> → int</li>
+<li><code>10.0</code> or <code>10f</code> → float (64-bit)</li>
+<li><code>10n</code> → bigi</li>
+<li><code>10.5n</code> → bigf</li>
+</ul>
+<p>Integer base prefixes are supported:</p>
+<ul>
+<li><code>x = 0xFF</code></li>
+<li><code>y = 0o755</code></li>
+<li><code>z = 0b1010</code></li>
+</ul>
+<h3 id="built-in-constants">5.3 Built-in constants</h3>
+<p>Za provides only:</p>
+<ul>
+<li><code>true</code>, <code>false</code></li>
+<li><code>nil</code></li>
+<li><code>NaN</code></li>
+</ul>
+<h2 id="variables-and-assignment">6. Variables and assignment</h2>
+<h3 id="implicit-creation">6.1 Implicit creation</h3>
+<p>Most variables are created by assignment:</p>
+<pre class="za"><code>x = 10
+name = &quot;db1&quot;</code></pre>
+<p>With implicit creation, there is no fixed type for the variable, but
+using it in invalid combinations with operators will report run-time
+errors.</p>
+<p>In the event that you wish to catch these type errors earlier, you
+can also declare a variable using the VAR statement: e.g.</p>
+<pre class="za"><code>var x int = 10</code></pre>
+<p>Using VAR in this way will:</p>
+<ul>
+<li>fix the type and, optionally, set the value.</li>
+<li>raise an error if the value assigned (during declaration or after)
+is of an incompatible type.</li>
+<li>prevent re-typing of the variable (and report if this is
+attempted).</li>
+</ul>
+<p>To re-type that variable locally you would first have to UNSET the
+variable.</p>
+<h3 id="auto-vivification-assignment-driven">6.2 Auto-vivification
+(assignment-driven)</h3>
+<p>Auto-vivification is an assignment feature: assigning through an
+access path creates intermediate containers as needed. This enables
+concise construction of nested structures without pre-allocation
+boilerplate.</p>
+<h3 id="global-mutation-is-explicit">6.3 Global mutation is explicit
+(<code>@</code>)</h3>
+<p>To modify a global variable from inside a function, use
+<code>@</code>. Example pattern:</p>
+<pre class="za"><code>def q()
+    @a = true
+end</code></pre>
+<p>Without <code>@</code>, assignment targets local scope.</p>
+<h2 id="typed-declarations-with-var">7. Typed declarations with
+<code>var</code></h2>
+<p>Za is dynamically typed by default. <code>var</code> is used when you
+want explicit intent:</p>
+<h3 id="scalars-and-structs">7.1 Scalars and structs</h3>
+<pre class="za"><code>var z int
+var user struct_user
+var cow,pig,sheep animal</code></pre>
+<p>Namespaced struct types are supported:</p>
+<pre class="za"><code>var x ea::type_struct</code></pre>
+<h3 id="fixed-size-arrays-usual-pattern">7.2 Fixed-size arrays (usual
+pattern)</h3>
+<p>Fixed-size arrays use:</p>
+<pre class="za"><code>var arr [1000] int</code></pre>
+<p>Multi-dimensional fixed arrays are also supported:</p>
+<pre class="za"><code>var grid [2][3]int</code></pre>
+<h3 id="multi-dimensional-dynamic-arrays">7.3 Multi-dimensional dynamic
+arrays</h3>
+<pre class="za"><code>var matrix [][]int
+var cube [][][]string</code></pre>
+<p>Dynamic arrays will be resized on demand on out-of-bounds
+assignment.</p>
+<hr />
+<h1 id="part-iii-data-types-and-structures">Part III — Data Types and
+Structures</h1>
+<h2 id="scalar-types">8. Scalar types</h2>
+<p>Za provides the scalar types used most often in operational
+scripting:</p>
+<ul>
+<li><code>int</code>, <code>uint</code>, <code>byte</code></li>
+<li><code>float</code></li>
+<li><code>bigi</code>, <code>bigf</code></li>
+<li><code>string</code>, <code>bool</code></li>
+<li><code>any</code></li>
+</ul>
+<h2 id="arrays-and-multi-dimensional-data">9. Arrays and
+multi-dimensional data</h2>
+<p>Arrays may be dynamic or fixed-size. Nested arrays represent
+multi-dimensional data. Matrix-style helpers exist in the array library
+(e.g., identity/trace/determinant/inverse), operating on nested arrays
+with consistent dimensions.</p>
+<h2 id="maps">10. Maps</h2>
+<p>Map literals use a dotted-key form:</p>
+<pre class="za"><code>m = map(.host &quot;localhost&quot;, .port 5432)</code></pre>
+<p>Maps are used for:</p>
+<ul>
+<li>configuration/data storage</li>
+<li>options to library calls</li>
+<li>semi-structured records</li>
+<li>sets (keys only)</li>
+</ul>
+<h2 id="maps-as-sets">11. Maps as sets</h2>
+<p>A map can represent a set using its keys. Set algebra operators apply
+to maps, which may be hierarchical or flat:</p>
+<ul>
+<li>union: <code>|</code></li>
+<li>intersection: <code>&amp;</code></li>
+<li>difference: <code>-</code></li>
+<li>symmetric difference: <code>^</code></li>
+</ul>
+<p>Predicate functions for relationships:</p>
+<ul>
+<li><code>is_subset(a, b)</code></li>
+<li><code>is_superset(a, b)</code></li>
+<li><code>is_disjoint(a, b)</code></li>
+</ul>
+<p>Use operators when you want a resulting set, and predicate functions
+when you want a relationship test.</p>
+<h2 id="structs-and-anonymous-structs">12. Structs and anonymous
+structs</h2>
+<h3 id="defining-structs">12.1 Defining structs</h3>
+<pre class="za"><code>struct person
+    name string [ = &quot;default_value&quot; ]
+    age  int    [ = default_value ]
+endstruct</code></pre>
+<p>Field names are normalised (you do not need to capitalise struct
+field names).</p>
+<p>You may declare a variable of a struct type using</p>
+<p><code>var variable_name struct_name</code></p>
+<p>The variable will receive any default values you set during struct
+definition (or zero-like defaults if no defaults were provided).</p>
+<p>You can manipulate fields of the struct through dotted access,
+e.g.:</p>
+<pre class="za"><code>var p person
+p.name = &quot;Billy&quot;
+p.age  = 42</code></pre>
+<h3 id="struct-literals">12.2 Struct literals</h3>
+<p>Struct instances may also be created using constructor-style syntax
+and field initialisers (as shown in examples):</p>
+<pre class="za"><code>p1 = person(&quot;Alice&quot;,30)
+p2 = person(.name &quot;Bob&quot;, .age 21)</code></pre>
+<h3 id="anonymous-structs">12.3 Anonymous structs</h3>
+<p>Anonymous structs are created with <code>anon(...)</code>:</p>
+<pre class="za"><code>x = anon(.device device, .usage usage)</code></pre>
+<p>Use them when you want record-like data without declaring a named
+struct type.</p>
+<h2 id="struct-associated-functions-and-self">13. Struct-associated
+functions and <code>self</code></h2>
+<p>Structs may contain function definitions, supporting a lightweight
+method-like scheme.</p>
+<p>Inside a struct-associated function, <code>self</code> refers to the
+current instance, and fields may be read/updated via
+<code>self.field</code>.</p>
+<h2 id="enums">14. Enums</h2>
+<p>Za has an <code>enum</code> statement for defining enums at global or
+module scope. There is one predefined enum: <code>ex</code>, containing
+default exception categories.</p>
+<p>An enum is defined like this:</p>
+<pre class="za"><code>enum enum_name ( enum_name_1 [ = value1 ] [ , ... , enum_name_N [ = valueN ] ] )</code></pre>
+<p>Setting a value with = sets the current auto-incrementing value. This
+means that you should always set a value for non-integer enum
+values.</p>
+<hr />
+<h1 id="part-iv-expressions-and-control-flow">Part IV — Expressions and
+Control Flow</h1>
+<h2 id="expressions-and-precedence">15. Expressions and precedence</h2>
+<p>Za defines operator precedence in the interpreter. Notable
+points:</p>
+<ul>
+<li>arithmetic binds tighter than comparisons</li>
+<li>comparisons bind tighter than boolean <code>and/or</code></li>
+<li>mapping/filtering (<code>-&gt;</code>, <code>?&gt;</code>) bind
+relatively loosely (near assignment), which is intentional for
+readability of pipelines</li>
+<li>you may occasionally need to avoid UFCS syntax due to this</li>
+</ul>
+<h2 id="operators-overview">16. Operators (overview)</h2>
+<p><strong>Comprehensive operator coverage for system administration
+tasks.</strong></p>
+<p>Za provides a rich set of operators that cover everything from basic
+arithmetic to advanced string manipulation and file operations. These
+operators are designed to make common system administration tasks
+concise and readable.</p>
+<h3 id="arithmetic-operators">16.1 Arithmetic Operators</h3>
+<p>The standard arithmetic operators work with both integers and
+floating-point numbers:</p>
+<pre class="za"><code># Basic arithmetic
+result = 10 + 5        # 15
+difference = 20 - 8    # 12
+product = 6 * 7        # 42
+quotient = 15 / 3      # 5.0
+remainder = 17 % 5     # 2
+power = 2 ** 8         # 256
+
+# Floating-point operations
+pi_approx = 22 / 7     # 3.142857...
+area = 3.14159 * radius ** 2
+
+# System administration examples
+cpu_cores = 4
+total_threads = cpu_cores * 2  # Hyperthreading
+memory_gb = 16
+memory_mb = memory_gb * 1024    # Convert to MB
+disk_usage_percent = as_float(used_space / total_space) * 100</code></pre>
+<h3 id="comparison-operators">16.2 Comparison Operators</h3>
+<p>Comparison operators return boolean values and are essential for
+conditional logic:</p>
+<pre class="za"><code># Numeric comparisons
+if cpu_usage &gt; 80.0
+    alert(&quot;High CPU usage&quot;)
+endif
+
+if memory_available &lt; 1024  # Less than 1GB
+    alert(&quot;Low memory&quot;)
+endif
+
+# String comparisons
+if hostname == &quot;web-server-01&quot;
+    role = &quot;web&quot;
+endif
+
+if version != &quot;latest&quot;
+    update_available = true
+endif
+
+# System administration examples
+if disk_usage_percent &gt;= 90
+    cleanup_old_logs()
+endif
+
+if response_time &lt;= 100  # milliseconds
+    service_status = &quot;good&quot;
+endif
+
+if load_average &gt;= cpu_cores
+    scale_horizontal()
+endif</code></pre>
+<h3 id="boolean-operators">16.3 Boolean Operators</h3>
+<p>Za provides both word-based and symbol-based boolean operators:</p>
+<pre class="za"><code># Word-based operators (more readable)
+if user_exists and password_valid
+    grant_access()
+endif
+
+on backup_failed or disk_full do send_alert()
+
+if not service_running
+    start_service()
+endif
+
+# Symbol-based operators (concise)
+user = get_env(&quot;USER&quot;)
+pass = get_env(&quot;PASSWORD&quot;)
+debug = get_env(&quot;DEBUG&quot;)
+verbose = get_env(&quot;VERBOSE&quot;)
+
+if user != &quot;&quot; &amp;&amp; pass != &quot;&quot;
+    authenticate()
+endif
+
+if debug == &quot;true&quot; || verbose == &quot;true&quot;
+    enable_logging()
+endif
+
+service_active = get_env(&quot;SERVICE_ACTIVE&quot;)
+if service_active != &quot;true&quot;
+    restart_service()
+endif
+
+# System administration examples
+if file_exists(config) and permissions_ok(config)
+    load_config(config)
+endif
+
+if morning_hours or weekend
+    backup_mode = &quot;full&quot;
+else
+    backup_mode = &quot;incremental&quot;
+endif</code></pre>
+<h3 id="bitwise-operators">16.4 Bitwise Operators</h3>
+<p>Bitwise operators are useful for working with file permissions,
+network masks, and flags:</p>
+<pre class="za"><code># File permission manipulation
+read_write = 0o666
+executable = read_write | 0o111  # Add execute permission
+
+# Permission checking
+if file_mode &amp; 0o111  # Check if executable
+    file_type = &quot;executable&quot;
+endif
+
+# Network operations
+network_mask = 0xFFFFFF00
+network_part = ip_address &amp; network_mask
+
+# Flag operations
+backup_flags = 0
+backup_flags = backup_flags | 0x01  # Enable compression
+backup_flags = backup_flags | 0x02  # Enable encryption
+
+if backup_flags &amp; 0x01
+    use_compression = true
+endif</code></pre>
+<h3 id="set-operators-on-maps">16.5 Set Operators on Maps</h3>
+<p>Set operators work on maps to combine, intersect, and subtract
+key-value pairs:</p>
+<pre class="za"><code># Configuration merging
+default_config = map(.port 8080, .timeout 30, .debug false)
+user_config = map(.timeout 60, .debug true)
+final_config = default_config | user_config
+# Result: {&quot;port&quot;: 8080, &quot;timeout&quot;: 60, &quot;debug&quot;: true}
+
+# Finding common configuration
+required_keys = map(.host &quot;localhost&quot;, .port 8080)
+provided_keys = map(.host &quot;localhost&quot;, .port 8080, .ssl true)
+common = required_keys &amp; provided_keys
+# Result: {&quot;host&quot;: &quot;localhost&quot;, &quot;port&quot;: 8080}
+
+# Removing unwanted settings
+base_config = map(.user &quot;admin&quot;, .pass &quot;secret&quot;, .host &quot;db&quot;)
+sanitized = base_config - map(.pass &quot;secret&quot;)
+# Result: {&quot;user&quot;: &quot;admin&quot;, &quot;host&quot;: &quot;db&quot;}
+
+# System administration examples
+server_defaults = map(.cpu_limit &quot;2&quot;, .memory &quot;4G&quot;, .disk &quot;20G&quot;)
+override_config = map(.memory &quot;8G&quot;, .disk &quot;50G&quot;)
+final_config = server_defaults | override_config</code></pre>
+<h3 id="range-operator">16.6 Range Operator</h3>
+<p>The range operator <code>..</code> creates numeric ranges useful for
+loops and indexing:</p>
+<pre class="za"><code># Basic ranges
+numbers = 1..10        # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+# System administration examples
+#  - many of these can be done in alternate ways
+
+# Port checking using shell commands (you would normally use a lib call for this)
+open_ports=[]
+foreach port in 8000..8005
+    port_check = ${nc -z localhost {port} 2&gt;&amp;1}
+    # Empty output means port is open
+    on port_check.len == 0 do open_ports=concat(open_ports,port)
+endfor
+
+# Process multiple log files
+foreach day in 1..31
+    log_file = &quot;/var/log/app-{day}.log&quot;
+    on is_file(log_file) do process_log(log_file)
+endfor
+
+# Generate server names
+foreach i in 1..5
+    server_name = &quot;web-server-{i}&quot;
+    create_server(server_name)
+endfor</code></pre>
+<h3 id="regex-match-operators">16.7 Regex Match Operators</h3>
+<p>Za provides several regex operators for pattern matching:</p>
+<pre class="za"><code># Case-sensitive match (for this you would normally just do file_type = $pe filename)
+if filename ~ &quot;\\.log$&quot;
+    file_type = &quot;log&quot;
+endif
+
+# Case-insensitive match
+if hostname ~i &quot;^web&quot;
+    server_role = &quot;web&quot;
+endif
+
+# System administration examples
+if log_line ~ &quot;ERROR&quot;
+    error_count += 1
+endif
+
+if user_agent ~i &quot;bot|crawler|spider&quot;
+    traffic_type = &quot;automated&quot;
+endif</code></pre>
+<h3 id="path-unary-operators">16.8 Path Unary Operators</h3>
+<p>Path operators provide convenient file system path manipulation:</p>
+<pre class="za"><code>filepath = &quot;/home/user/documents/report.txt&quot;
+
+# $pa - absolute path
+path = $pa filepath        # &quot;/home/user/documents&quot;
+
+# $pp - parent path
+parent = $pp filepath          # &quot;/home/user&quot;
+
+# $pb - Base name (filename)
+basename = $pb filepath       # &quot;report.txt&quot;
+
+# $pn - Name without extension
+name = $pn filepath           # &quot;report&quot;
+
+# $pe - Extension
+extension = $pe filepath      # &quot;txt&quot;</code></pre>
+<h3 id="string-transform-operators">16.9 String Transform Operators</h3>
+<p>String operators provide common text transformations:</p>
+<pre class="za"><code>text = &quot;Hello World&quot;
+
+# $uc - Uppercase
+upper = $uc text              # &quot;HELLO WORLD&quot;
+
+# $lc - Lowercase
+lower = $lc text              # &quot;hello world&quot;
+
+# $st - String trim (both ends)
+trimmed = $st &quot;   spaced   &quot;      # &quot;spaced&quot;
+# $lt and $rt also exist for left trim and right trim</code></pre>
+<h3 id="file-io-operators">16.10 File I/O Operators</h3>
+<p>File operators make reading and writing files concise:</p>
+<pre class="za"><code># $in - Read file contents
+config_content = $in &quot;/etc/app/config.json&quot;
+log_data = $in &quot;/var/log/system.log&quot;
+
+# $out - Write to file
+&quot;New config content&quot; $out &quot;/tmp/new_config.json&quot;
+log_entry $out &quot;/var/log/app.log&quot;
+
+# System administration examples
+# Read configuration
+db_config = json_decode($in &quot;/etc/database/config.json&quot;)
+
+# Write backup
+current_config $out &quot;/backup/config-{=date()}.json&quot;
+
+# Process configuration files - you could also use glob() for this
+foreach config_file in dir(&quot;/etc/app&quot;,&quot;.*.conf&quot;)
+    content = $in config_file.name
+    processed = process_config(content)
+    processed $out &quot;/tmp/processed_{=$pb config_file}&quot;
+endfor</code></pre>
+<h3 id="shell-execution-operators">16.11 Shell Execution Operators</h3>
+<p>Shell operators enable system command execution:</p>
+<pre class="za"><code># | - Pipe to shell (discard output)
+| mkdir -p /tmp/backup
+
+# Capture output
+files =| ls -la /var/log
+disk_usage =| df -h /
+
+# Process monitoring - there are other ways of doing this
+if ${pgrep mysqld} == &quot;&quot;
+    | systemctl start mysql
+endif
+
+# Log analysis
+error_count = ${grep -c ERROR /var/log/app.log} . as_int
+if error_count &gt; 100
+    send_alert(&quot;Too many errors in logs&quot;)
+endif</code></pre>
+<p>These operators provide a comprehensive toolkit for system
+administration tasks, making Za scripts concise, readable, and powerful
+for managing complex system operations.</p>
+<h3 id="numeric-clamping-with-startend">16.1 Numeric Clamping with
+<code>[start:end]</code></h3>
+<p>Za provides a clamping operator for constraining numeric values
+within specified ranges. This is particularly useful for data
+validation, normalization, and ensuring values stay within acceptable
+bounds.</p>
+<h4 id="clamping-syntax">Clamping Syntax</h4>
+<pre class="za"><code>result = value[start:end]</code></pre>
+<p>The expression returns:</p>
+<ul>
+<li><code>start</code> if <code>value &lt; start</code></li>
+<li><code>end</code> if <code>value &gt; end</code></li>
+<li><code>value</code> if <code>start ≤ value ≤ end</code></li>
+</ul>
+<h4 id="type-inference">Type Inference</h4>
+<ul>
+<li>If clamping occurs, <strong>result has the same type as the clamping
+bound</strong> (<code>start</code> or <code>end</code>)</li>
+<li>If <code>value</code> lies within range, result has the same type as
+<code>value</code></li>
+</ul>
+<h4 id="partial-clamping">Partial Clamping</h4>
+<p>Either bound may be omitted:</p>
+<pre class="za"><code># Only upper bound
+percentage = score[:100]
+
+# Only lower bound
+temperature = [-10:]
+
+# No clamping (full range)
+normal_range = [0:100]</code></pre>
+<h4 id="practical-examples">Practical Examples</h4>
+<pre class="za"><code># Basic clamping
+sensor_reading = 127
+normalized = sensor_reading[0:255]  # Clamps to 0-255 range
+percentage = 85[0:100]              # Stays at 85
+overflow = 300[0:255]               # Clamped to 255
+
+# Type handling
+float_value = 4.7[3.0:5.0]          # Result: 4.7 (within range)
+int_clamped = 5.7[3:5]              # Result: 5 (int, clamped to upper bound)
+
+# Configuration bounds
+cpu_usage = current_cpu[0f:100f]  # Normalize CPU percentage
+memory_usage = current_mem[0f:1f] # Normalize to 0-100% range</code></pre>
+<h4 id="use-cases-for-system-administration">Use Cases for System
+Administration</h4>
+<pre class="za"><code># Network latency normalization
+latency_ms = ping_time[0:5000]      # Clamp to reasonable network range
+
+# File size validation
+file_size_mb = file_size[0:10240]   # Max 10GB in MB
+
+# Process priority adjustment
+priority = nice_level[-20:19]       # Valid nice range
+
+# Temperature monitoring - not sure why you would enforce this, but...
+temp_celsius = sensor_temp[-40:125] # Operating range for server room</code></pre>
+<p>This clamping syntax reuses Za’s range-like brackets <code>[:]</code>
+but provides distinct behaviour for numeric types compared to array
+slicing.</p>
+<h2 id="conditionals">17. Conditionals</h2>
+<p>Block conditional:</p>
+<pre class="za"><code>if condition
+    # action
+[ else
+    # action ]
+endif</code></pre>
+<p>Single-statement guard:</p>
+<pre class="za"><code>on condition1 do break
+on condition2 do println &quot;ok&quot;
+# etc</code></pre>
+<p><code>on … do</code> executes exactly one statement when condition is
+true.</p>
+<h2 id="loops">18. Loops</h2>
+<p>Counted loop:</p>
+<pre class="za"><code>for i=0 to 10
+    println i
+endfor</code></pre>
+<p>-or-</p>
+<pre class="za"><code># c-like for construct - each term is optional
+for i=0, i&lt;=10, i++
+    println i
+endfor</code></pre>
+<p>Container iteration:</p>
+<pre class="za"><code>foreach item in items
+    println item
+endfor</code></pre>
+<p>Loop control:</p>
+<pre class="za"><code>break [ construct_type ]
+break if condition
+continue
+continue if condition</code></pre>
+<h2 id="case-statements">19. Case statements</h2>
+<p>The CASE construct is written as a switch-like variant. It also
+allows for pattern matching:</p>
+<pre class="za"><code>case [expression]
+[is expression_value
+    # action
+    ]
+[has condition_expression
+    # action
+    ]
+[contains &quot;regex_match&quot;
+    # action
+    ]
+    .
+    .
+[or
+    # default action
+    ]
+endcase</code></pre>
+<hr />
+<h1 id="part-v-functional-data-processing">Part V — Functional Data
+Processing</h1>
+<h2 id="expression-strings-and-idx">20. Expression strings,
+<code>#</code>, and <code>$idx</code></h2>
+<p>Za uses expression strings in several places:</p>
+<ul>
+<li>filter operator <code>?&gt;</code></li>
+<li>map operator <code>-&gt;</code></li>
+<li>array search functions <code>find()</code> and
+<code>where()</code></li>
+</ul>
+<p>Substitution phrases:</p>
+<ul>
+<li><code>#</code> → current element value</li>
+<li><code>$idx</code> → index/key (for maps, <code>$idx</code> is always
+a string; map keys are always strings)</li>
+</ul>
+<p>Use backticks for clarity when the expression contains quotes.</p>
+<h2 id="map-and-filter-operators">21. Map and filter operators</h2>
+<p>Filter:</p>
+<pre class="za"><code>bad = rows ?&gt; `#.UsePercent.replace(&quot;%&quot;,&quot;&quot;).as_int &gt; 80`</code></pre>
+<p>Map:</p>
+<pre class="za"><code>names = users -&gt; `#.name`</code></pre>
+<h2 id="searching-arrays-find-where">22. Searching arrays
+(<code>find</code>, <code>where</code>)</h2>
+<p>Because the same expression engine is re-used, you can write
+consistent predicates:</p>
+<pre class="za"><code>idx = rows.find(`#.MountedOn==&quot;/&quot;`)
+sel = rows.where(`#.Filesystem~&quot;^/dev&quot;`)</code></pre>
+<hr />
+<h1 id="part-vi-functions-modules-and-composition">Part VI — Functions,
+Modules, and Composition</h1>
+<h2 id="functions-def-end">23. Functions (<code>def … end</code>)</h2>
+<pre class="za"><code>def f(x)
+    return x*2
+end</code></pre>
+<p><code>return</code> may be used without a value. <code>return</code>
+may also return multiple values (comma separated expressions).</p>
+<p>The return values may also be unpacked on return:</p>
+<div class="sourceCode" id="cb56"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>def f<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b<span class="op">,</span>c<span class="op">,</span>a</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>def g<span class="op">(</span>a<span class="op">,</span>b<span class="op">,</span>c<span class="op">)</span></span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">[</span>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">]</span></span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>end</span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>f<span class="op">(</span><span class="dv">1</span><span class="op">,</span><span class="dv">2</span><span class="op">,</span><span class="dv">3</span><span class="op">)</span></span>
+<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a>b<span class="op">,</span>c<span class="op">,</span>a<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span></span>
+<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a># or</span>
+<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>vals<span class="op">=</span>g<span class="op">(</span><span class="dv">4</span><span class="op">,</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">)</span> # vals<span class="op">=[</span><span class="dv">5</span><span class="op">,</span><span class="dv">6</span><span class="op">,</span><span class="dv">4</span><span class="op">]</span></span></code></pre></div>
+<h2 id="modules-and-namespaces">24. Modules and namespaces</h2>
+<p>Import a module:</p>
+<pre class="za"><code>module &quot;cron&quot;
+module &quot;util&quot; as u</code></pre>
+<p>Namespaced types and values are referenced with <code>::</code>:</p>
+<pre class="za"><code>var x u::struct_example</code></pre>
+<p>The USE statement</p>
+<p>This statement is used to indicate the order in which namespaces are
+processed by the interpreter.</p>
+<p>Syntax:</p>
+<pre class="za"><code>    USE -           # empties the use_chain internal array
+    USE + name      # adds name to the use_chain namespace list (if unique)
+    USE - name      # removes name from use_chain namespace list
+    USE ^ name      # places namespace name at the top of the use_chain namespace list (pushes rest down)
+                    # new name: inserts, existing name: moves
+    USE PUSH        # push current chain on chain stack
+    USE POP         # pop chain from top of chain stack
+                    # push and pop would be used to completely isolate namespacing in a module.</code></pre>
+<p>The current namespace is always either main:: or the module
+name/alias. If you want to use a different namespace then you need to
+create a new file and import it with MODULE.</p>
+<p>The use_chain array will be consulted, when not empty, on function
+calls, enum references and struct references for matches ahead of the
+default behaviour, if no explicit name is supplied:</p>
+<pre><code>1. explicit namespace (name::)
+2. use_chain match
+3. current namespace (no :: ref), then
+4. main:: (global namespace)</code></pre>
+<p>Example:</p>
+<pre class="za"><code>    # global ns / main program
+    MODULE &quot;modpath/time&quot; AS tm
+
+    tm::string_date()       # call function string_date in module time with explicit alias &#39;tm&#39;
+    string_date()           # tries to call (non-existant) function string_date in main:: namespace (current namespace)
+                            # which should error as undefined.
+
+    USE +tm
+
+    string_date()           # check if string_date() exists in tm namespace and call it if found.
+
+                            # if not found (even though this one would be) then try to call it in current namespace (main::)
+                            #  which should error as undefined.
+
+                            # whenever there are conflicting names then the first match takes precedence.
+                            #  i.e.
+                            # explicit name &gt; use_chain &gt; current namespace &gt; main
+</code></pre>
+<h3 id="bundling-v.1.2.1">Bundling (v.1.2.1+)</h3>
+<p>There is an experimental facility for packaging the interpreter with
+a za script and it’s module dependencies into a single executable.</p>
+<p>If the -x argument is used, this bundling will be triggered.</p>
+<p>That is:</p>
+<blockquote>
+<p>za -x [ -n test_bundle_name ] script_name</p>
+</blockquote>
+<p>On execution, the bundled version will unpack to a uniquely named
+directory in /tmp/. The execution path should still be where the bundle
+was called from, not the extracted directory.</p>
+<p>N.B.: due to this, you should avoid the use of the execpath() call
+inside bundled scripts.</p>
+<p>If the -n argument is not provided, the default bundled file is named
+exec.za.</p>
+<p>Example:</p>
+<pre><code># build the bundle
+&gt; za -x -n factest eg/fac
+Rewriting MODULE statements in module: eg/syntax_checks/modules/math.mod
+RewriteModuleContent called for scriptDir=eg, modulePath=eg/syntax_checks/modules/math.mod
+- Found 0 MODULE statements in module eg/syntax_checks/modules/math.mod
+Discovered 1 modules
+Module: syntax_checks/modules/math.mod -&gt; syntax_checks/modules/math.mod
+RewriteScript called with 1 modules
+- Rewriting module: syntax_checks/modules/math.mod -&gt; syntax_checks/modules/math.mod
+- Replaced 1 instances of MODULE &quot;syntax_checks/modules/math.mod&quot; with &quot;./syntax_checks/modules/math.mod&quot;
+- zaData size = 6229228, bundleData size = 4096
+- tarStart = 6229228, tarLength = 4096
+writing magic bytes: [90 65 66 85 78 68 76 69]
+Bundle created: factest (6233348 bytes)
+
+# execute the bundle with arguments
+&gt; ./factest 5
+120</code></pre>
+<p>The aim of this bundling process is to keep dependencies together and
+allow for greater portability. There may still be architectural issues
+with bundles as they copy your local za version into the bundle.</p>
+<hr />
+<h1 id="part-vii-errors-debugging-and-safety">Part VII — Errors,
+Debugging, and Safety</h1>
+<h2 id="error-handling-philosophy">25. Error handling philosophy</h2>
+<p>Exceptions exist, but are not intended as a primary, idiomatic
+error-handling scheme. You should prefer explicit return values and
+structured results where available, using exceptions when there is no
+better alternative or when you choose that style deliberately.</p>
+<p><strong>Important Note:</strong> Avoid using <code>try...catch</code>
+blocks for routine error handling. Reserve exceptions for truly
+exceptional circumstances that cannot be handled through normal return
+value patterns. Overuse of exceptions makes code harder to read and
+maintain.</p>
+<h2 id="exceptions-try-catch-then-endtry">26. Exceptions
+(<code>try … catch … then … endtry</code>)</h2>
+<p>A try block may capture outer variables explicitly with
+<code>uses</code>:</p>
+<pre class="za"><code>try uses captured_var [,...,captured_var] [throws string_category|ex_enum_category]
+    # action
+catch [err] [is category_expr | in list_expr | contains regex]
+    # action
+endtry</code></pre>
+<p>Catches may use predicates (example pattern):</p>
+<pre class="za"><code>catch err is &quot;invalid&quot;
+    println &quot;invalid:&quot;, err</code></pre>
+<p><code>then</code> is the cleanup/finally section and runs regardless
+of whether an exception occurred.</p>
+<h2 id="enhanced-error-handling-trap-error_">27. Enhanced error handling
+(<code>trap</code>, <code>error_*</code>)</h2>
+<p>Za supports registering an error trap and introspecting error context
+inside the handler using <code>error_*</code> functions. Use this to
+produce better diagnostics (message, source location, source context,
+call stack, locals/globals) than the default handler when needed.</p>
+<h2 id="debugger">28. Debugger</h2>
+<p>Za includes an interactive debugger that supports step execution,
+expression inspection, tracing, and runtime introspection. The debugger
+is designed for both development debugging and operational
+troubleshooting.</p>
+<h3 id="enabling-the-debugger">28.1 Enabling the Debugger</h3>
+<p>Debugging can be enabled in two ways:</p>
+<ul>
+<li><p><strong>Via command line</strong>:</p>
+<div class="sourceCode" id="cb65"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-D</span> script.za</span></code></pre></div></li>
+<li><p><strong>From within a script</strong>:</p>
+<pre class="za"><code>debug on</code></pre></li>
+</ul>
+<p>Disable it using: <code>za   debug off</code></p>
+<h3 id="debugger-activation">28.2 Debugger Activation</h3>
+<p>When enabled, the debugger can pause execution at:</p>
+<ul>
+<li><strong>Manual breakpoints</strong> using
+<code>debug break</code></li>
+<li><strong>Interpreter startup</strong> (<code>za -D</code>)</li>
+<li><strong>External signals</strong>:
+<ul>
+<li><strong>UNIX</strong>: <code>SIGUSR1</code></li>
+<li><strong>Windows</strong>: <code>CTRL+BREAK</code> or
+<code>SIGBREAK</code></li>
+</ul></li>
+</ul>
+<blockquote>
+<p>⚠️ The debugger does <strong>not</strong> automatically trigger on
+unhandled errors or exceptions.</p>
+</blockquote>
+<h3 id="setting-breakpoints">28.3 Setting Breakpoints</h3>
+<p>Use breakpoints to pause execution at specific points:</p>
+<pre class="za"><code>def complex_calculation(x, y)
+    debug break  # Pause execution here
+    result = x * y + sqrt(x + y)
+    debug break  # Or here to inspect intermediate result
+    return result
+end</code></pre>
+<h3 id="debugger-prompt-and-commands">28.4 Debugger Prompt and
+Commands</h3>
+<p>When paused, Za shows an interactive prompt:</p>
+<pre><code>[scope main : line 0012 : idx 0008] debug&gt; _</code></pre>
+<h4 id="essential-debugger-commands">Essential Debugger Commands</h4>
+<table>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>c</code>, <code>continue</code></td>
+<td>Resume execution</td>
+</tr>
+<tr class="even">
+<td><code>s</code>, <code>step</code></td>
+<td>Step into next statement or function</td>
+</tr>
+<tr class="odd">
+<td><code>n</code>, <code>next</code></td>
+<td>Step to next statement in current function</td>
+</tr>
+<tr class="even">
+<td><code>l</code>, <code>list</code></td>
+<td>Show current statement tokens</td>
+</tr>
+<tr class="odd">
+<td><code>v</code>, <code>vars</code></td>
+<td>Dump local variables</td>
+</tr>
+<tr class="even">
+<td><code>p &lt;var&gt;</code>, <code>print &lt;var&gt;</code></td>
+<td>Print value of a variable</td>
+</tr>
+<tr class="odd">
+<td><code>bt</code>, <code>where</code></td>
+<td>Show call chain backtrace</td>
+</tr>
+<tr class="even">
+<td><code>w &lt;var&gt;</code>, <code>watch &lt;var&gt;</code></td>
+<td>Add variable to watch list</td>
+</tr>
+<tr class="odd">
+<td><code>e &lt;expr&gt;</code>, <code>eval &lt;expr&gt;</code></td>
+<td>Evaluate expression in current scope</td>
+</tr>
+</tbody>
+</table>
+<h4 id="advanced-debugger-commands">Advanced Debugger Commands</h4>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 59%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>ctx</code></td>
+<td>Set line context size for <code>list</code></td>
+</tr>
+<tr class="even">
+<td><code>mvars</code></td>
+<td>Dump module/global variables</td>
+</tr>
+<tr class="odd">
+<td><code>gvars</code></td>
+<td>Dump system/global variables</td>
+</tr>
+<tr class="even">
+<td><code>sf</code>, <code>showf</code></td>
+<td>Show all defined functions</td>
+</tr>
+<tr class="odd">
+<td><code>ss</code>, <code>shows</code></td>
+<td>Show all defined structs</td>
+</tr>
+<tr class="even">
+<td><code>b</code>, <code>breakpoints</code></td>
+<td>List all breakpoints</td>
+</tr>
+<tr class="odd">
+<td><code>b+</code>, <code>ba</code></td>
+<td>Add a breakpoint interactively</td>
+</tr>
+<tr class="even">
+<td><code>b-</code>, <code>br</code></td>
+<td>Remove a breakpoint</td>
+</tr>
+<tr class="odd">
+<td><code>d</code>, <code>dis</code></td>
+<td>Disassemble current statement tokens</td>
+</tr>
+<tr class="even">
+<td><code>uw &lt;var&gt;</code>, <code>unwatch &lt;var&gt;</code></td>
+<td>Remove variable from watch list</td>
+</tr>
+<tr class="odd">
+<td><code>wl</code>, <code>watchlist</code></td>
+<td>Show all watched variables</td>
+</tr>
+<tr class="even">
+<td><code>fn</code>, <code>file</code></td>
+<td>Show current file name</td>
+</tr>
+<tr class="odd">
+<td><code>ton</code>, <code>traceon</code></td>
+<td>Enable line-by-line execution trace</td>
+</tr>
+<tr class="even">
+<td><code>toff</code>, <code>traceoff</code></td>
+<td>Disable execution trace</td>
+</tr>
+<tr class="odd">
+<td><code>fs</code>, <code>functionspace</code></td>
+<td>Show current debug entrypoint and functionspace</td>
+</tr>
+<tr class="even">
+<td><code>cls</code></td>
+<td>Clear debugger screen</td>
+</tr>
+<tr class="odd">
+<td><code>q</code>, <code>quit</code>, <code>exit</code></td>
+<td>Exit interpreter completely</td>
+</tr>
+<tr class="even">
+<td><code>h</code>, <code>help</code></td>
+<td>Show this help message</td>
+</tr>
+</tbody>
+</table>
+<h3 id="debugger-scope-and-behaviour">28.5 Debugger Scope and
+Behaviour</h3>
+<ul>
+<li>The debugger only affects <strong>the main script thread</strong>.
+Any <code>async</code> tasks or shell commands continue running
+independently.</li>
+<li>Variable commands (<code>vars</code>, <code>mvars</code>,
+<code>gvars</code>) rely on standard library debug functions.</li>
+<li>Line tracing (<code>traceon</code>) shows execution flow at a
+fine-grained level.</li>
+<li>The debugger maintains separate watch lists for different variable
+scopes.</li>
+</ul>
+<h3 id="practical-debugging-examples">28.6 Practical Debugging
+Examples</h3>
+<h4 id="debugging-function-calls">Debugging Function Calls</h4>
+<pre class="za"><code>def calculate_discount(price, category)
+    debug break  # Inspect inputs
+    if category == &quot;premium&quot;
+        discount = 0.20
+    else
+        discount = 0.10
+    endif
+    debug break  # Check calculation logic
+    final_price = price * (1 - discount)
+    debug break  # Verify result
+    return final_price
+end
+
+# Usage
+price = calculate_discount(100.0, &quot;premium&quot;)
+# Debugger pauses at each debug break for inspection</code></pre>
+<h4 id="debugging-data-processing">Debugging Data Processing</h4>
+<pre class="za"><code># Complex data transformation
+data = table(${ps aux}, map(.parse_only true))
+cpu_intensive = data ?&gt; `#[2].as_float &gt; 0.5`
+
+debug break  # Inspect filtering results
+
+# Process high-CPU processes
+foreach proc in cpu_intensive
+    debug break  # Examine each process
+    println &quot;Killing process, name : &quot;, proc[10]
+    | kill -9 {=proc[1]}
+endfor</code></pre>
+<h4 id="debugging-system-integration">Debugging System Integration</h4>
+<pre class="za"><code># Network service debugging
+def check_service(host, port)
+    debug break  # Check connection parameters
+    result = tcp_ping(host, port, 5000)  # 5 second timeout
+    debug break  # Examine connection result
+
+    if not result.okay
+        log error: &quot;Cannot reach&quot;, host, &quot;:&quot;, port
+        return false
+    endif
+
+    debug break  # Verify success path
+    return true
+end
+
+# Test with debugger
+reachable = check_service(&quot;db.example.com&quot;, 5432)</code></pre>
+<h2 id="profiler">29. Profiler</h2>
+<p>Za includes a built-in function-level profiler that records execution
+times for each function and optionally provides detailed call-chain
+breakdowns.</p>
+<h3 id="enabling-the-profiler">29.1 Enabling the Profiler</h3>
+<p>Enable profiling using either:</p>
+<ul>
+<li><p><strong>Command line</strong>:</p>
+<div class="sourceCode" id="cb72"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-P</span> script.za</span></code></pre></div></li>
+</ul>
+<h3 id="profiler-behaviour">29.2 Profiler Behaviour</h3>
+<p>When enabled:</p>
+<ul>
+<li>All function calls are instrumented to record their
+<strong>inclusive durations</strong></li>
+<li>The profiler records:
+<ul>
+<li>Total time spent in each function</li>
+<li>Recursive call depth (when detected)</li>
+<li>Per-caller breakdowns for detailed path analysis</li>
+</ul></li>
+</ul>
+<p>Profiling incurs minimal overhead but is best used for performance
+debugging and analysis.</p>
+<h3 id="viewing-and-interpreting-results">29.3 Viewing and Interpreting
+Results</h3>
+<p>After script execution completes, a summary is printed to standard
+output:</p>
+<pre class="za"><code>Profile Summary
+
+main:
+  parse: 360.182µs
+  enum_names: 15.696µs
+  execution time: 13.345043ms
+
+  main &gt; x11:
+    execution time: 57.649µs
+
+x11::fg:
+  enum_names: 287.404µs
+  eval: 717.135µs
+  execution time: 3.801211ms</code></pre>
+<h4 id="interpreting-output">Interpreting Output</h4>
+<ul>
+<li><strong>Entries show</strong> fully qualified function name and
+<strong>total inclusive time</strong></li>
+<li><strong>Recursive paths</strong> are grouped under caller chains:
+<ul>
+<li>Example: <code>main &gt; main::compute</code></li>
+</ul></li>
+<li><strong>Recursive timings</strong> are flagged as
+<code>[unreliable]</code> since inclusive durations may be inflated by
+self-calls</li>
+<li><strong>Function path tracking</strong> helps identify
+<strong>expensive call chains</strong> and <strong>inefficient
+recursion</strong></li>
+</ul>
+<h3 id="performance-analysis-patterns">29.4 Performance Analysis
+Patterns</h3>
+<h4 id="finding-bottlenecks">Finding Bottlenecks</h4>
+<pre class="za"><code># Profile this script
+za -P data_processing.za
+
+# Sample output shows:
+data_processing:
+  load_data: 2.3s
+  parse_records: 8.7s
+  validate_data: 15.2s
+  transform_data: 45.6s  # &lt;-- Bottleneck
+  save_results: 1.1s</code></pre>
+<pre><code>
+#### Analyzing Recursive Performance
+
+**Note:** The following example is illustrative only - actual profiling output may differ.
+
+```za
+# Recursive function with profiling
+def factorial(n)
+    on n &lt;= 1 do return 1
+    return n * factorial(n - 1)
+end
+
+# Profile to analyze recursion depth
+za -P recursive_test.za
+# Look for performance patterns in actual output</code></pre>
+<h3 id="profiler-best-practices">29.5 Profiler Best Practices</h3>
+<ul>
+<li><strong>Use for specific performance investigation</strong>, not
+continuous monitoring</li>
+<li><strong>Focus on total time</strong> rather than individual call
+counts for optimization</li>
+<li><strong>Pay attention to recursive paths</strong> - they may
+indicate algorithmic improvements</li>
+<li><strong>Combine with debugger</strong> for detailed analysis of slow
+functions</li>
+<li><strong>Profile realistic data</strong> - artificial test data may
+not reveal real bottlenecks</li>
+</ul>
+<h2 id="security-controls-permit">30. Security controls
+(<code>permit</code>)</h2>
+<p><code>permit()</code> controls runtime capabilities such as allowing
+shell execution, eval, interpolation, macros, and strictness for
+uninitialised variables.</p>
+<p><strong>Comprehensive security best practices for Za
+scripts.</strong></p>
+<p>If you are going to use Za in situations it was not designed for,
+then work through the checklist below:</p>
+<h3 id="security-checklist">30.1 Security Checklist</h3>
+<p>Use this checklist for security review:</p>
+<p><strong>Input Validation:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />All external inputs are
+validated</label></li>
+<li><label><input type="checkbox" />File paths are sanitized against
+directory traversal</label></li>
+<li><label><input type="checkbox" />Numeric inputs are
+range-checked</label></li>
+<li><label><input type="checkbox" />String inputs are checked for
+injection patterns</label></li>
+</ul>
+<p><strong>File Operations:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />File permissions are checked before
+access</label></li>
+<li><label><input type="checkbox" />Sensitive files have restricted
+permissions</label></li>
+<li><label><input type="checkbox" />Temporary files are properly cleaned
+up</label></li>
+<li><label><input type="checkbox" />File paths are validated and
+canonicalized</label></li>
+</ul>
+<p><strong>Command Execution:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Commands are validated against
+allowlist</label></li>
+<li><label><input type="checkbox" />Shell injection vulnerabilities are
+prevented</label></li>
+<li><label><input type="checkbox" />Command output is properly
+handled</label></li>
+</ul>
+<p><strong>Network Security:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />URLs are validated for protocol and
+format</label></li>
+<li><label><input type="checkbox" />Server-side request forgery is
+prevented</label></li>
+<li><label><input type="checkbox" />API keys and secrets are properly
+handled</label></li>
+<li><label><input type="checkbox" />HTTPS is used for sensitive
+communications</label></li>
+</ul>
+<p><strong>Logging and Monitoring:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Sensitive data is not
+logged</label></li>
+<li><label><input type="checkbox" />Security events are properly
+logged</label></li>
+<li><label><input type="checkbox" />Error messages are sanitized for
+external display</label></li>
+<li><label><input type="checkbox" />Log files have appropriate
+permissions</label></li>
+</ul>
+<p><strong>Code Integrity:</strong></p>
+<ul class="task-list">
+<li><label><input type="checkbox" />Script files have appropriate
+permissions</label></li>
+<li><label><input type="checkbox" />Configuration files are
+validated</label></li>
+<li><label><input type="checkbox" />Code signing/integrity checks are
+implemented</label></li>
+<li><label><input type="checkbox" />Dependencies are from trusted
+sources</label></li>
+</ul>
+<p>By following these security practices and using <code>permit()</code>
+to control runtime capabilities, you can write Za scripts that are
+robust, maintainable, and secure against common vulnerabilities. It does
+not mean that you should though.</p>
+<p>Handle errors without exposing sensitive information:</p>
+<h3 id="runtime-security-with-permit">30.2 Runtime Security with
+<code>permit()</code></h3>
+<p>The <code>permit()</code> function controls runtime capabilities such
+as allowing shell execution, eval, interpolation, macros, and strictness
+for uninitialised variables. For hardened scripts, disable what you
+don’t need and re-enable only deliberately.</p>
+<pre class="za"><code># Disable all potentially dangerous features
+permit(&quot;shell&quot;, false)
+permit(&quot;eval&quot;, false)
+permit(&quot;interpol&quot;, false)
+permit(&quot;macro&quot;, false)
+
+# Enable strict variable checking
+permit(&quot;uninit&quot;, false)
+
+# Later, selectively re-enable what&#39;s needed
+permit(&quot;shell&quot;, true)
+permit(&quot;sanitisation&quot;, false)</code></pre>
+<h3 id="input-validation-and-sanitization">30.3 Input Validation and
+Sanitization</h3>
+<p>Always validate and sanitize external inputs to prevent injection
+attacks and data corruption.</p>
+<h2 id="common-async-patterns">31. Common async patterns</h2>
+<p><strong>Parallel execution patterns for system
+administration.</strong></p>
+<p>Za’s async capabilities enable efficient parallel processing of
+multiple hosts, services, or data sources.</p>
+<h3 id="fan-outfan-in-host-probing">31.1 Fan-out/Fan-in Host
+Probing</h3>
+<pre class="za"><code># Define async check function
+def check_host(host_id)
+    pause rand(500)  # Simulate network delay
+    return host_id % 3 == 0 ? &quot;up&quot; : &quot;down&quot;
+end
+
+# Fan-out: check multiple hosts in parallel
+hosts = [1, 2, 3, 4, 5, 6]
+var handles map
+
+for x = 0 to len(hosts)-1
+    async handles check_host(hosts[x]) x  # Use index as key
+endfor
+
+# Fan-in: collect all results
+results = await(ref handles, true)
+for e = 0 to len(hosts)-1
+    println &quot;Host {=hosts[e]} -&gt; {=results[e]}&quot;
+endfor
+
+# Filter up hosts
+up_hosts = hosts ?&gt; `results[#] == &quot;up&quot;`
+println &quot;Up hosts:&quot;, up_hosts</code></pre>
+<h3 id="parallel-service-checks">31.2 Parallel Service Checks</h3>
+<pre class="za"><code># Service status checking
+def check_service(service_name)
+    In real usage: status = ${systemctl is-active {service_name}}
+    return service_name ~ &quot;nginx|mysql&quot; ? &quot;running&quot; : &quot;stopped&quot;
+end
+
+# Check multiple services in parallel
+services = [&quot;nginx&quot;, &quot;mysql&quot;, &quot;redis&quot;, &quot;postgresql&quot;]
+var service_handles map
+
+for x = 0 to len(services)-1
+    async service_handles check_service(services[x]) x  # Use index as key
+endfor
+
+service_results = await(ref service_handles, true)
+for e = 0 to len(services)-1
+    println &quot;Service {=services[e]} -&gt; {=service_results[e]}&quot;
+endfor
+
+# Filter running services
+running_services = services ?&gt; `service_results[#] == &quot;running&quot;`
+println &quot;Running services:&quot;, running_services</code></pre>
+<h3 id="parallel-data-processing">31.3 Parallel Data Processing</h3>
+<pre class="za"><code># Process multiple data items in parallel
+def process_data(item)
+    pause rand(500)  # Simulate processing time
+    return item * 2  # Simple transformation
+end
+
+# Process array in parallel
+data = [10, 20, 30, 40, 50]
+var data_handles map
+
+for x = 0 to len(data)-1
+    async data_handles process_data(data[x]) x  # Use index as key
+endfor
+
+processed_results = await(ref data_handles, true)
+for e = 0 to len(data)-1
+    println &quot;Input: {=data[e]} -&gt; Output: {=processed_results[e]}&quot;
+endfor
+
+# Filter results
+high_values = processed_results ?&gt; `# &gt; 50`
+println &quot;High values:&quot;, high_values</code></pre>
+<h3 id="isolated-failure-handling">31.4 Isolated Failure Handling</h3>
+<pre class="za"><code># Network checks with isolated failures
+def check_network(host)
+    pause rand(500)  # Simulate network timeout
+    # Simulate different failure modes
+    case host
+    is &quot;8.8.8.8&quot;
+        return &quot;up&quot;
+    is &quot;1.1.1.1&quot;
+        return &quot;timeout&quot;
+    or
+        return &quot;down&quot;
+    endcase
+end
+
+# Check multiple network hosts
+network_hosts = [&quot;8.8.8.8&quot;, &quot;1.1.1.1&quot;, &quot;gateway.company.com&quot;]
+var net_handles map
+
+for x = 0 to len(network_hosts)-1
+    async net_handles check_network(network_hosts[x]) x  # Use index as key
+endfor
+
+network_results = await(ref net_handles, true)
+for e = 0 to len(network_hosts)-1
+    println &quot;Host {=network_hosts[e]} -&gt; {=network_results[e]}&quot;
+endfor
+
+# Process results even if some failed
+up_hosts = network_hosts ?&gt; `network_results[#] == &quot;up&quot;`
+problem_hosts = network_hosts ?&gt; `network_results[#] != &quot;up&quot;`
+
+println &quot;Up hosts:&quot;, up_hosts
+println &quot;Problem hosts:&quot;, problem_hosts</code></pre>
+<h3 id="partial-completion-collection">31.5 Partial Completion
+Collection</h3>
+<pre class="za"><code># Database connectivity with partial success handling
+def check_database(db_name)
+    pause rand(800)  # Simulate connection attempt
+    # Simulate different connection outcomes
+    case db_name
+    is &quot;primary&quot;
+        return &quot;connected&quot;
+    is &quot;replica&quot;
+        return &quot;connected&quot;
+    is &quot;cache&quot;
+        return &quot;timeout&quot;
+    or
+        return &quot;error&quot;
+    endcase
+end
+
+# Database configurations
+databases = [&quot;primary&quot;, &quot;replica&quot;, &quot;cache&quot;, &quot;backup&quot;]
+
+# Check all databases in parallel
+var db_handles map
+for x = 0 to len(databases)-1
+    async db_handles check_database(databases[x]) x  # Use index as key
+endfor
+
+db_results = await(ref db_handles, true)
+for e = 0 to len(databases)-1
+    println &quot;Database {=databases[e]} -&gt; {=db_results[e]}&quot;
+endfor
+
+# Count successful connections
+connected_dbs = databases ?&gt; `db_results[#] == &quot;connected&quot;`
+total_dbs = len(databases)
+
+println &quot;Connected: {=len(connected_dbs)}/{total_dbs} databases&quot;
+
+if len(connected_dbs) &lt; total_dbs
+    failed_dbs = databases ?&gt; `db_results[#] != &quot;connected&quot;`
+    println &quot;Failed databases:&quot;, failed_dbs
+endif</code></pre>
+<p>These async patterns enable efficient parallel processing while
+maintaining robust error handling and partial result collection.</p>
+<hr />
+<h1 id="part-ix-output-and-presentation">Part IX — Output and
+Presentation</h1>
+<h2 id="program-output-print-println">32. Program output
+(<code>print</code>, <code>println</code>)</h2>
+<p>Use <code>print</code>/<code>println</code> for ordinary output and
+examples not related to logging.</p>
+<h2 id="inspection-pp-and-tables-table">33. Inspection (<code>pp</code>)
+and tables (<code>table</code>)</h2>
+<p>UFCS calling forms are equivalent mechanisms for the same call:</p>
+<ul>
+<li><code>pp(x)</code> and <code>x.pp</code></li>
+<li><code>table(x, opts)</code> and <code>x.table(opts)</code></li>
+</ul>
+<p><code>table()</code> is used heavily for formatting record-like data
+and for importing CLI output when parsing is enabled via options.</p>
+<h2 id="array-display-controls-array_format-array_colours">34. Array
+display controls (<code>array_format</code>,
+<code>array_colours</code>)</h2>
+<p>These are <strong>configuration functions</strong>, not
+formatters:</p>
+<ul>
+<li><code>array_format(true|false)</code> toggles array pretty-print
+mode (interpreter-wide)</li>
+<li><code>array_colours([...])</code> sets the nesting depth colour
+scheme used by pretty array printing and returns the previous
+scheme</li>
+</ul>
+<h2 id="ansi-colourstyle-macros">35. ANSI colour/style macros</h2>
+<p>Za strings supports inline style macros like:</p>
+<pre class="za"><code>println &quot;[#bold][#1]ERROR[#-] message&quot;</code></pre>
+<p>The ANSI macro handling can be enabled/disabled via
+<code>ansi(true|false)</code> and startup flags.</p>
+<p>A full list of supported style macros can be found with:</p>
+<pre class="za"><code>help colour</code></pre>
+<hr />
+<h1 id="part-x-standard-library-overview">Part X — Standard Library
+Overview</h1>
+<h2 id="library-categories-and-discovery">36. Library categories and
+discovery</h2>
+<p>Za groups standard library calls into categories. For further
+information about library calls use:</p>
+<pre class="za"><code>HELP [statement_name|function_name]
+funcs(&quot;partial-function-name|category-name&quot;)</code></pre>
+<h2 id="category-tour-representative-idioms">37. Category tour
+(representative idioms)</h2>
+<p><strong>Comprehensive examples from Za’s standard library
+categories.</strong></p>
+<p>Za’s standard library is organized into functional categories that
+provide ready-to-use tools for common system administration tasks. This
+section showcases representative idioms from each category to
+demonstrate practical usage patterns.</p>
+<h2 id="category-samples">38. Category samples</h2>
+<h3 id="string-operations">38.1 String Operations</h3>
+<p>String manipulation is fundamental for processing logs, configuration
+files, and user input:</p>
+<pre class="za"><code># Basic string operations
+text = &quot;  System Log Entry  &quot;
+trimmed = text.trim                      # &quot;System Log Entry&quot;
+upper = text.upper                       # &quot;  SYSTEM LOG ENTRY  &quot;
+lower = text.lower                       # &quot;  system log entry  &quot;
+
+# String splitting and joining
+log_line = &quot;2023-12-01 10:30:15 ERROR: Database connection failed&quot;
+parts = log_line.split(&quot; &quot;)              # [&quot;2023-12-01&quot;, &quot;10:30:15&quot;, &quot;ERROR:&quot;, &quot;Database&quot;, &quot;connection&quot;, &quot;failed&quot;]
+timestamp = parts[0] + &quot; &quot; + parts[1]    # &quot;2023-12-01 10:30:15&quot;
+message = parts[3:].join(&quot; &quot;)            # &quot;Database connection failed&quot;
+
+# Pattern matching and replacement
+config_line = &quot;port=8080&quot;
+if config_line ~ &quot;port&quot;
+    port_value = config_line.split(&quot;=&quot;)[1].trim
+    port_num = int(port_value)
+endif
+
+# Regular expressions for log parsing
+log_entry = &quot;192.168.1.100 - - [01/Dec/2023:10:30:15] \&quot;GET /api/users HTTP/1.1\&quot; 200 1234&quot;
+ip_match = log_entry.match(&quot;^(\\d+\\.\\d+\\.\\d+\\.\\d+)&quot;)
+if ip_match
+    client_ip = ip_match[0]
+endif
+
+# String formatting for reports
+report = &quot;Server: {0}, CPU: {1}%, Memory: {2}%&quot;.format(hostname, cpu_usage, memory_usage)</code></pre>
+<h3 id="list-and-array-operations">38.2 List and Array Operations</h3>
+<p>Lists and arrays are essential for managing collections of servers,
+files, or data points:</p>
+<pre class="za"><code># Creating and manipulating lists
+servers = [&quot;web-01&quot;, &quot;web-02&quot;, &quot;db-01&quot;, &quot;cache-01&quot;]
+web_servers = servers ?&gt; `has_start(&quot;web-&quot;)`     # [&quot;web-01&quot;, &quot;web-02&quot;]
+
+# List transformations
+port_numbers = [80, 443, 8080, 3000]
+secure_ports = port_numbers -&gt; `as_int(#+1)`              # [81, 444, 8081, 3001]
+
+# List aggregation
+response_times = [120, 85, 200, 95, 150]
+avg_response = response_times.sum / response_times.len    # Average response time
+max_response = response_times.max                         # 200
+min_response = response_times.min                         # 85
+
+# Array operations for numeric data
+cpu_readings = [45.2, 67.8, 89.1, 34.5, 78.9]
+high_cpu_periods = cpu_readings ?&gt; `#&gt;80`                 # [89.1]
+
+# Multi-dimensional arrays for metrics
+hourly_metrics = [
+    [10, 15, 12, 8],
+    [20, 25, 18, 22],
+    [30, 35, 28, 32]
+] # Hour 0-3, 4-7, 8-11
+morning_avg = hourly_metrics[1].sum / 4                # Average for hours 4-7</code></pre>
+<h3 id="map-operations">38.3 Map Operations</h3>
+<p>Maps are perfect for configuration management, key-value stores, and
+structured data:</p>
+<pre class="za"><code># Configuration management
+server_config = map(
+    .host &quot;localhost&quot;,
+    .port 8080,
+    .ssl true,
+    .timeout 30
+)
+
+# Accessing and modifying
+if server_config.ssl is bool and server_config.ssl
+    protocol = &quot;https&quot;
+else
+    protocol = &quot;http&quot;
+endif
+
+# Merging configurations
+default_config = map(.timeout 60, .retries 3, .debug false)
+user_config = map(.timeout 120, .debug true)
+final_config = default_config.merge(user_config)
+# Result: {&quot;timeout&quot;: 120, &quot;retries&quot;: 3, &quot;debug&quot;: true}
+
+# Map operations for system inventory
+server_info = map(
+    .web-01 map(.cpu 4, .memory 8, .disk 100),
+    .web-02 map(.cpu 4, .memory 8, .disk 100),
+    .db-01  map(.cpu 8, .memory 32,.disk 500)
+)
+
+# Extract specific information
+total_memory = (server_info . values -&gt; `#.memory`) . sum  # 48 GB
+high_cpu_servers = server_info ?&gt; `#.cpu&gt;4`                # {&quot;db-01&quot;: {...}}
+
+# Dynamic map building - not real functions!
+for server in server_list
+    cpu = get_cpu_usage(server)
+    memory = get_memory_usage(server)
+    metrics[server] = map(.cpu cpu, .memory memory)
+endfor</code></pre>
+<h3 id="type-conversion">38.4 Type Conversion</h3>
+<p>Conversion between data types is crucial for data processing and
+validation:</p>
+<pre class="za"><code># String to number conversion
+port_str = &quot;8080&quot;
+port_num = port_str.as_int                     # 8080
+memory_str = &quot;4.5 GB&quot;
+memory_gb = as_float(memory_str.split(&quot; &quot;)[0]) # 4.5
+
+# Number to string conversion
+cpu_percent = 75.5
+cpu_str = as_string(cpu_percent)               # &quot;75.5&quot;
+status_code = 200
+status_str = as_string(status_code)            # &quot;200&quot;
+
+# JSON conversion
+config_map = map(.host &quot;localhost, .port 8080)
+config_json = config_map.pp                 # &#39;{&quot;host&quot;:&quot;localhost&quot;,&quot;port&quot;:8080}&#39;
+parsed_config = json_decode(config_json)    # Back to map
+
+# Base64 encoding/decoding - don&#39;t do this
+secret_data = &quot;user:password&quot;
+encoded = secret_data.base64e        # &quot;dXNlcjpwYXNzd29yZA==&quot;
+decoded = encoded.base64d            # &quot;user:password&quot;</code></pre>
+<h3 id="file-operations">38.5 File Operations</h3>
+<p>File operations are essential for configuration management, log
+processing, and data persistence:</p>
+<pre class="za"><code># Reading files
+config_content = read_file(&quot;/etc/app/config.json&quot;)
+
+# Writing files
+backup_content = &quot;Backup created at &quot; + date()
+write_file(&quot;/backup/config-{=date()}.bak&quot;, backup_content)
+
+# File existence and properties
+if is_file(&quot;/etc/app/config&quot;)
+    stat = stat(&quot;/etc/app/config&quot;)
+    size_mb = stat.size / (1024f * 1024)
+    modified = stat.modtime
+endif
+
+# Directory operations
+config_files = dir(&quot;/etc/app&quot;,&quot;.*.conf&quot;)  # List all .conf files
+foreach config_file in config_files
+    if config_file.size &gt; 0
+        process_config(config_file.name)
+    endif
+endfor</code></pre>
+<h3 id="os-and-system-operations">38.6 OS and System Operations</h3>
+<p>System operations enable interaction with the operating system for
+monitoring and control:</p>
+<pre class="za"><code># Environment variables
+user = get_env(&quot;USER&quot;) or &quot;unknown&quot;
+home_dir = get_env(&quot;HOME&quot;) or &quot;/tmp&quot;
+path_list = get_env(&quot;PATH&quot;).split(&quot;:&quot;)
+
+# System information
+hostname = hostname()
+os_type = os()
+pid = pid()
+
+# Directory operations
+if not is_dir(file)
+    | mkdir &quot;{file}&quot;
+    | chmod 755 {file}
+endif
+
+cd(&quot;/var/log&quot;)
+current_dir = cwd()
+
+# Process management
+current_pid = pid()
+parent_pid = ppid()
+process_info = ps_info(current_pid)
+
+# User and group information
+current_user = user()
+current_uid = user_info(current_user).UID
+current_gid = user_info(current_user).GID</code></pre>
+<h3 id="network-operations">38.7 Network Operations</h3>
+<p>Network operations provide tools for connectivity testing, HTTP
+requests, and network monitoring:</p>
+<pre class="za"><code># HTTP requests
+response = web_get(&quot;https://api.example.com/status&quot;)
+if response.code == 200
+    status_data = json_decode(response.result)
+endif
+
+# POST request with data
+data = map(.message &quot;Server backup completed&quot;)
+headers = map(.Content-Type &quot;application/json&quot;)
+response = web_raw_send(&quot;POST&quot;, https://hooks.slack.com/webhook&quot;, headers, data)
+
+# Network connectivity testing
+if icmp_ping(&quot;8.8.8.8&quot;)
+    internet_available = true
+endif
+
+# Port checking
+if port_scan(&quot;localhost&quot;, [80], 2) . 80
+    web_server_running = true
+endif
+
+# DNS resolution
+ip_address = dns_resolve(&quot;example.com&quot;)
+if ip_address.records.len&gt;0
+    println &quot;example.com resolves to: &quot; + ip_address.records[0]
+endif
+
+# Network interface information
+for interface in net_interfaces_detailed()
+    if interface.up and not interface.name == &quot;lo&quot;
+        println &quot;Interface: &quot;, interface.name, &quot; IP: &quot;, interface.ips
+    endif
+endfor</code></pre>
+<h3 id="database-operations">38.8 Database Operations</h3>
+<p>Database operations enable interaction with various database systems
+for data storage and retrieval:</p>
+<pre class="za"><code>
+set_env(&quot;ZA_DB_ENGINE&quot;,&quot;sqlite3&quot;)
+
+try
+    h=db_init(execpath()+&quot;/files/test.db&quot;)
+    res=h.db_query(&quot;select * from users&quot;,map(.format &quot;map&quot;))
+    h.db_close
+    # first 30
+    println res[:30].table(
+        map(
+            .border_style &quot;unicode&quot;,
+            .colours map(
+                .header     fgrgb(200,100,0),
+                .data       fgrgb(10,100,200)
+            ),
+            .column_order [&quot;id&quot;,&quot;name&quot;,&quot;email&quot;]
+        )
+    )
+endtry
+</code></pre>
+<h3 id="yaml-and-configuration-operations">38.9 YAML and Configuration
+Operations</h3>
+<p>YAML operations are essential for managing configuration files in
+modern applications.</p>
+<h4 id="basic-usage">Basic Usage</h4>
+<p>Parse YAML:</p>
+<pre class="za"><code>yaml_str = &quot;name: John\nage: 30\ncity: New York&quot;
+data = yaml_parse(yaml_str)</code></pre>
+<p>Marshal to YAML:</p>
+<pre class="za"><code>data[&quot;name&quot;] = &quot;Alice&quot;
+data[&quot;age&quot;] = 28
+yaml_output = yaml_marshal(data)</code></pre>
+<p>Parse nested structures:</p>
+<pre class="za"><code>yaml3 = &quot;person:\n  name: Jane\n  age: 25\n  hobbies:\n    - reading\n    - swimming&quot;
+result3 = yaml_parse(yaml3)</code></pre>
+<p>Parse lists:</p>
+<pre class="za"><code>yaml2 = &quot;- apple\n- banana\n- orange&quot;
+result2 = yaml_parse(yaml2)</code></pre>
+<h1 id="get-nested-values">Get nested values</h1>
+<pre class="za"><code>host = yaml_get(data, &quot;server.host&quot;)           # returns &quot;localhost&quot;
+debug = yaml_get(data, &quot;server.config.debug&quot;)  # returns true
+port1 = yaml_get(data, &quot;server.ports[0]&quot;)      # returns 8080
+port2 = yaml_get(data, &quot;server.ports[1]&quot;)      # returns 8081</code></pre>
+<h1 id="update-existing-values">Update existing values</h1>
+<pre class="za"><code>data = yaml_set(data, &quot;server.host&quot;, &quot;example.com&quot;)
+data = yaml_set(data, &quot;server.config.debug&quot;, false)
+data = yaml_set(data, &quot;server.ports[0]&quot;, 9090)</code></pre>
+<h1 id="add-new-values">Add new values</h1>
+<pre class="za"><code>data = yaml_set(data, &quot;server.timeout&quot;, 30)</code></pre>
+<h1 id="remove-specific-values">Remove specific values</h1>
+<pre class="za"><code>data = yaml_delete(data, &quot;server.config.debug&quot;)
+data = yaml_delete(data, &quot;server.ports[1]&quot;)  # removes second port</code></pre>
+<p>Please see za_tests/test_yaml.za for a larger example set.</p>
+<h3 id="archive-operations-zip">38.10 Archive Operations (ZIP)</h3>
+<p>Archive operations are useful for backup, deployment, and file
+distribution.</p>
+<p>Create ZIP:</p>
+<pre class="za"><code>files = [&quot;test1.txt&quot;, &quot;test2.txt&quot;]
+result = zip_create(&quot;test_archive.zip&quot;, files)</code></pre>
+<p>List contents:</p>
+<pre class="za"><code>contents = zip_list(&quot;test_archive.zip&quot;)</code></pre>
+<p>Extract all files:</p>
+<pre class="za"><code>result = zip_extract(&quot;test_archive.zip&quot;, extract_dir)</code></pre>
+<p>Extract specific files:</p>
+<pre class="za"><code>result = zip_extract_file(&quot;test_archive.zip&quot;, [&quot;files&quot;,&quot;to&quot;,&quot;extract&quot;], &quot;single_extract_dir&quot;)</code></pre>
+<p>Add files:</p>
+<pre class="za"><code>result = zip_add(&quot;test_archive.zip&quot;, [&quot;files&quot;,&quot;to&quot;,&quot;add])</code></pre>
+<p>Remove files:</p>
+<pre class="za"><code>result = zip_remove(&quot;test_archive.zip&quot;, [&quot;test2.txt&quot;])</code></pre>
+<p>Please see za_tests/test_zip.za for a larger example set.</p>
+<h3 id="regular-expressions-pcre">38.11 Regular Expressions (PCRE)</h3>
+<p>Regular expressions provide powerful pattern matching for text
+processing. The reg_* library calls use a PCRE library implementation
+instead of the builtin regular expression engine. Due to this, these
+calls are only available on static linux builds of Za.</p>
+<p>Searching:</p>
+<pre class="za"><code># Tests if string contains regex match:
+reg_match(string, regex)</code></pre>
+<p>Filtering:</p>
+<pre class="za"><code># Returns array of [start_pos, end_pos] match positions:
+reg_filter(string, regex[, count])</code></pre>
+<p>Replacement:</p>
+<pre class="za"><code># Replaces regex matches with replacement string:
+reg_replace(var, regex, replacement[, int_flags])</code></pre>
+<h3 id="checksum-operations">38.12 Checksum Operations</h3>
+<p>Checksum operations are essential for file integrity verification and
+security.</p>
+<pre class="za"><code># Returns MD5 checksum of input string:
+md5sum(string)
+
+ Returns SHA1 checksum of input string
+sha1sum(string)
+
+# Returns SHA224 checksum of input string
+sha224sum(string)
+
+# Returns SHA256 checksum of input string:
+sha256sum(string)
+
+# Returns struct with .sum and .err for S3 ETag comparison:
+s3sum(filename[, blocksize])</code></pre>
+<ul>
+<li>s3sum supports multipart upload calculations with configurable block
+sizes.</li>
+<li>Error codes: 0=ok, 1=single-part warning, 2=file error, 3=checksum
+error</li>
+<li>Auto-selects 8MB blocksize when blocksize=0</li>
+</ul>
+<p>S3 ETag Functionality</p>
+<p>The s3sum function specifically calculates checksums compatible with
+Amazon S3 ETags, including multipart upload format (hash-parts) for
+files larger than the blocksize.</p>
+<h3 id="tui-terminal-user-interface">38.13 TUI (Terminal User
+Interface)</h3>
+<p>Create TUI objects and style:</p>
+<pre class="za"><code># Create TUI options map
+tui_obj = tui_new()
+# Create style with custom borders and colours
+style = tui_new_style()</code></pre>
+<p>Text display with box:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;text&quot;
+tui_obj[&quot;Content&quot;] = &quot;Hello, World!&quot;
+tui_obj[&quot;Row&quot;] = 5
+tui_obj[&quot;Col&quot;] = 10
+tui_obj[&quot;Width&quot;] = 30
+tui_obj[&quot;Height&quot;] = 5
+tui_obj[&quot;Border&quot;] = true
+tui(tui_obj, style)</code></pre>
+<p>Interactive menu:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;menu&quot;
+tui_obj[&quot;Title&quot;] = &quot;Choose an option:&quot;
+tui_obj[&quot;Options&quot;] = [&quot;Option 1&quot;, &quot;Option 2&quot;, &quot;Exit&quot;]
+tui_obj[&quot;Row&quot;] = 10
+tui_obj[&quot;Col&quot;] = 20
+result = tui(tui_obj, style)</code></pre>
+<p>Progress bar:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;progress&quot;
+tui_obj[&quot;Title&quot;] = &quot;Processing...&quot;
+tui_obj[&quot;Value&quot;] = 0.75  # 75% complete
+tui_obj[&quot;Row&quot;] = 15
+tui_obj[&quot;Col&quot;] = 5
+tui_obj[&quot;Width&quot;] = 40
+tui_progress(tui_obj, style)</code></pre>
+<p>Text editor:</p>
+<pre class="za"><code>edited_text = editor(&quot;Initial content&quot;, 80, 24, &quot;Edit Document&quot;)</code></pre>
+<p>Table display:</p>
+<pre class="za"><code>tui_obj[&quot;Action&quot;] = &quot;table&quot;
+tui_obj[&quot;Data&quot;] = &quot;Name,Age,City\nJohn,30,NYC\nJane,25,LA&quot;
+tui_obj[&quot;Format&quot;] = &quot;csv&quot;
+tui_obj[&quot;Headers&quot;] = true
+tui_table(tui_obj, style)</code></pre>
+<p>Screen buffer switching:</p>
+<pre class="za"><code>tui_screen(0)  # Switch to primary screen
+tui_screen(1)  # Switch to secondary screen</code></pre>
+<p>The TUI system uses maps to configure display properties like
+position (Row, Col), size (Width, Height), content (Content, Data), and
+styling (Border, colours)</p>
+<h3 id="notification-operations">38.14 Notification Operations</h3>
+<p>Za provides 7 builtin file system notification library functions.</p>
+<p>Watcher Management Functions</p>
+<pre class="za"><code># Create new watcher, returns [watcher, error_code]
+# - Error codes: 0=success, 1=create_watcher_failed, 2=file_path_failure
+ev_watch(filepath_string)
+
+# Dispose of watcher object
+ev_watch_close(watcher)
+
+# Check if watcher is still available
+ev_exists(watcher)</code></pre>
+<p>Path Management Functions</p>
+<pre class="za"><code># Add a path to existing watcher
+ev_watch_add(watcher, filepath_string)
+
+# Remove a path from watcher
+ev_watch_remove(watcher, filepath_string)</code></pre>
+<p>Event Handling Functions</p>
+<pre class="za"><code># Sample events from watcher, returns notify_event or nil
+ev_event(watcher)
+
+# Test event type, returns filename or nil
+ev_mask(notify_event, str_event_type)</code></pre>
+<p>Event Types</p>
+<p>Supported event types for ev_mask:</p>
+<ul>
+<li>“create” - File/directory creation</li>
+<li>“write” - File write operations</li>
+<li>“remove” - File/directory deletion</li>
+<li>“rename” - File/directory renaming</li>
+<li>“chmod” - Permission changes</li>
+</ul>
+<h3 id="error-handling-and-logging">38.15 Error Handling and
+Logging</h3>
+<p>Robust error handling and logging are essential for reliable system
+administration:</p>
+<pre class="za"><code># Structured error handling
+try
+    config = load_configuration(&quot;/etc/app/config.json&quot;)
+    validate_config(config)
+    apply_config(config)
+catch config_error
+    log error: &quot;Configuration error: &quot; + config_error.message
+catch validation_error
+    log error: &quot;Validation failed: &quot; + validation_error.message
+    rollback_config()
+catch system_error
+    log critical: &quot;System error: &quot; + system_error.message
+    emergency_shutdown()
+finally
+    cleanup_temp_files()
+endtry
+
+# Custom exception types
+exreg(&quot;ConfigError&quot;, &quot;error&quot;)
+exreg(&quot;NetworkError&quot;, &quot;warning&quot;)
+exreg(&quot;DatabaseError&quot;, &quot;critical&quot;)
+
+# Logging with different levels
+log debug: &quot;Starting configuration process&quot;
+log info: &quot;Loading configuration from &quot; + config_file
+log warning: &quot;Using default values for missing settings&quot;
+log error: &quot;Failed to connect to database&quot;
+log critical: &quot;System out of memory&quot;
+</code></pre>
+<p>These representative idioms demonstrate the flexibility of Za’s
+standard library categories for system administration tasks. Each
+category provides specialized tools that can be combined to create
+comprehensive automation solutions.</p>
+<h3 id="ini-configuration-file-operations">38.16 INI Configuration File
+Operations</h3>
+<p>INI files provide simple configuration management for applications
+and services. The INI library, where possible, preserves comments, blank
+lines, and formatting while reading and writing configuration files.</p>
+<h4 id="reading-and-writing">Reading and Writing</h4>
+<p>Basic read and write operations:</p>
+<pre class="za"><code># Read INI file
+config = ini_read(&quot;/etc/app/config.ini&quot;)
+
+# Modify configuration and write back
+config.ini_write(&quot;/etc/app/config.ini&quot;)</code></pre>
+<h4 id="section-management">Section Management</h4>
+<p>Add, insert, and delete sections:</p>
+<pre class="za"><code># Append new section at end
+config = ini_new_section(config, &quot;logging&quot;)
+
+# Insert section at specific position (1-indexed, 0=prepend)
+config = ini_insert_section(config, &quot;cache&quot;, 2)
+
+# Delete section by name
+config = ini_delete_section(config, &quot;deprecated_section&quot;)</code></pre>
+<h4 id="adding-configuration-entries-directmanual">Adding Configuration
+Entries (direct/manual)</h4>
+<p>Create section data with metadata, comments, and values:</p>
+<pre class="za"><code># Section metadata (required)
+section_meta[&quot;type&quot;] = &quot;metadata&quot;
+section_value[&quot;section_order&quot;] = 1
+section_meta[&quot;value&quot;] = section_value
+
+# Data entries
+entry1[&quot;type&quot;] = &quot;data&quot;
+entry1[&quot;key&quot;] = &quot;host&quot;
+entry1[&quot;value&quot;] = &quot;localhost&quot;
+
+entry2[&quot;type&quot;] = &quot;data&quot;
+entry2[&quot;key&quot;] = &quot;port&quot;
+entry2[&quot;value&quot;] = 8080
+
+entry3[&quot;type&quot;] = &quot;data&quot;
+entry3[&quot;key&quot;] = &quot;debug&quot;
+entry3[&quot;value&quot;] = true
+
+# Assemble section
+section_data = [section_meta, comment, entry1, entry2, entry3]
+config[&quot;database&quot;] = section_data</code></pre>
+<h4 id="keyvalue-manipulation">Key/Value Manipulation</h4>
+<p>You may also use helper calls for simplified access to configuration
+entries:</p>
+<pre class="za"><code># Add or update keys
+config = ini_add_key(config, &quot;database&quot;, &quot;host&quot;, &quot;localhost&quot;)
+config = ini_set_key(config, &quot;database&quot;, &quot;port&quot;, 5432)
+
+# Get key values
+host = ini_get_key(config, &quot;database&quot;, &quot;host&quot;)  # returns &quot;localhost&quot;
+port = ini_get_key(config, &quot;database&quot;, &quot;port&quot;)  # returns 5432
+
+# Delete keys
+config = ini_delete_key(config, &quot;database&quot;, &quot;legacy_field&quot;)</code></pre>
+<p>These functions provide a more intuitive interface for common
+configuration management tasks compared to manual map manipulation.</p>
+<h4 id="key-inspection-and-listing">Key Inspection and Listing</h4>
+<p>Check for key existence and list all keys in a section:</p>
+<pre class="za"><code># Check if key exists
+has_host = ini_has_key(config, &quot;database&quot;, &quot;host&quot;)     # returns true
+has_ssl = ini_has_key(config, &quot;database&quot;, &quot;ssl_mode&quot;) # returns false
+
+# List all keys in a section
+db_keys = ini_list_keys(config, &quot;database&quot;)  # returns [&quot;host&quot;, &quot;port&quot;, &quot;username&quot;]
+log_keys = ini_list_keys(config, &quot;logging&quot;)  # returns [&quot;level&quot;, &quot;file&quot;, &quot;format&quot;]</code></pre>
+<p>These inspection functions are useful for validation, migration
+scripts, and conditional configuration updates.</p>
+<h4 id="section-operations">Section Operations</h4>
+<p>Retrieve and replace entire sections:</p>
+<pre class="za"><code># Get complete section data
+db_section = ini_get_section(config, &quot;database&quot;)
+# Returns: [metadata, entry1, entry2, ...]
+
+# Replace entire section
+new_logging = [
+    map(.type &quot;metadata&quot;, .value map(.section_order 3)),
+    map(.type &quot;data&quot;, .key &quot;level&quot;, .value &quot;DEBUG&quot;),
+    map(.type &quot;data&quot;, .key &quot;file&quot;, .value &quot;/var/log/app.log&quot;)
+]
+config = ini_set_section(config, &quot;logging&quot;, new_logging)</code></pre>
+<p>Section operations are useful for bulk updates, template-based
+configuration, and migrating between different configuration
+formats.</p>
+<h4 id="adding-keys-with-comments">Adding Keys with Comments</h4>
+<p>Add keys with inline comments for documentation:</p>
+<pre class="za"><code># Add key with explanatory comment
+config = ini_add_key_with_comment(config, &quot;database&quot;, &quot;max_connections&quot;,
+    100, &quot;# Maximum concurrent database connections&quot;)
+
+config = ini_add_key_with_comment(config, &quot;logging&quot;, &quot;rotation&quot;,
+    &quot;daily&quot;, &quot;# Rotate logs daily to manage disk space&quot;)</code></pre>
+<p>Comments are preserved when writing the configuration and help
+maintain documentation within the configuration file itself.</p>
+<h4 id="metadata-updates">Metadata Updates</h4>
+<p>Update section metadata for ordering and organization:</p>
+<pre class="za"><code># Update section order for consistent file layout
+config = ini_meta_update(config)
+
+# After operations that modify sections, call ini_meta_update
+# to ensure section_order metadata is consistent</code></pre>
+<p>The <code>ini_meta_update</code> function automatically updates
+section ordering metadata after structural changes, ensuring consistent
+output formatting when the configuration is written to file.</p>
+<h4 id="global-section-operations">Global Section Operations</h4>
+<p>Access and modify global entries (before any section headers):</p>
+<pre class="za"><code># Get global section entries
+global_entries = ini_get_global(config)
+
+# Set global section entries
+new_global = [
+    map(.type &quot;comment&quot;, .comment &quot;# Global settings&quot;),
+    map(.type &quot;data&quot;, .key &quot;timeout&quot;, .value 30)
+]
+config = ini_set_global(config, new_global)</code></pre>
+<h4 id="array-formatting">Array Formatting</h4>
+<p>Control array output format:</p>
+<pre class="za"><code># CSV format: value1,value2,value3
+entry[&quot;format&quot;] = &quot;csv&quot;
+entry[&quot;value&quot;] = [1, 2, 3]
+
+# Za format: [&quot;value1&quot;,&quot;value2&quot;,&quot;value3&quot;]
+entry[&quot;format&quot;] = &quot;za&quot;
+entry[&quot;value&quot;] = [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]</code></pre>
+<h4 id="preserving-formatting">Preserving Formatting</h4>
+<p>The library automatically attempts to preserve blank lines between
+sections and maintains original formatting:</p>
+<pre class="za"><code># Blank lines are preserved as &quot;space&quot; entries
+blank_line[&quot;type&quot;] = &quot;space&quot;
+section_data = [metadata, entry1, blank_line, entry2]
+
+# When writing, sections are separated by blank lines
+config.ini_write(&quot;/etc/app/config.ini&quot;)
+# Output includes blank line separators between sections</code></pre>
+<h4 id="example-complete-configuration-update">Example: Complete
+Configuration Update</h4>
+<pre class="za"><code># Load configuration
+config = ini_read(&quot;/etc/myapp/config.ini&quot;)
+
+# Add new logging section
+log_meta[&quot;type&quot;] = &quot;metadata&quot;
+log_meta[&quot;value&quot;] = map(.section_order 4)
+
+log_entry1[&quot;type&quot;] = &quot;data&quot;
+log_entry1[&quot;key&quot;] = &quot;level&quot;
+log_entry1[&quot;value&quot;] = &quot;INFO&quot;
+
+log_entry2[&quot;type&quot;] = &quot;data&quot;
+log_entry2[&quot;key&quot;] = &quot;file&quot;
+log_entry2[&quot;value&quot;] = &quot;/var/log/myapp.log&quot;
+
+logging_section = [log_meta, log_entry1, log_entry2]
+config[&quot;logging&quot;] = logging_section
+
+# Update database section
+config[&quot;database&quot;][&quot;port&quot;] = 5432
+
+# Remove deprecated section
+config = ini_delete_section(config, &quot;legacy&quot;)
+
+# Write updated configuration (preserves formatting and adds blank lines)
+config.ini_write(&quot;/etc/myapp/config.ini&quot;)</code></pre>
+<p>See <code>eg/initest</code> for a complete example of INI
+manipulation.</p>
+<hr />
+<h1 id="part-xi-sysadmin-cookbook">Part XI — Sysadmin Cookbook</h1>
+<h2 id="cli-data-ingestion">39. CLI data ingestion</h2>
+<p>Use <code>table()</code> to turn columnar CLI output into structured
+data, avoiding fragile string slicing.</p>
+<pre class="za"><code>t = table(| &quot;df -h&quot;, map(.parse_only true))
+println t.pp</code></pre>
+<h2 id="disk-and-filesystem-checks">40. Disk and filesystem checks</h2>
+<pre class="za"><code>t = disk_usage()
+bad = t ?&gt; `#.usage_percent &gt; 90`
+foreach r in bad
+    println r.path, r.mounted_path, r.usage
+endfor</code></pre>
+<h2 id="process-and-service-inspection">41. Process and service
+inspection</h2>
+<p>Use system/process library calls where available; otherwise, ingest
+CLI output via <code>table()</code> where possible and operate
+structurally.</p>
+<h3 id="process-monitoring">41.1 Process Monitoring</h3>
+<pre class="za"><code># Get process list from /proc filesystem
+proc_dirs = dir(&quot;/proc&quot;) ?&gt; `#.name ~ &quot;^[0-9]+$&quot;` -&gt; `#.name`
+println &quot;Found processes:&quot;, len(proc_dirs)
+
+# Read process information
+if len(proc_dirs) &gt; 0
+    first_pid = proc_dirs[0]
+    stat_file = &quot;/proc/&quot; + first_pid + &quot;/stat&quot;
+    if is_file(stat_file)
+        stat_content = $in stat_file
+        parts = split(stat_content, &quot; &quot;)
+        if len(parts) &gt; 1
+            println &quot;PID:&quot;, first_pid, &quot;Process:&quot;, parts[1]
+        endif
+    endif
+endif
+
+# Filter processes by criteria
+test_pids = proc_dirs[0:10]  # First 10 processes
+filtered_pids = test_pids ?&gt; `int(#) &gt; 100`
+println &quot;High PIDs:&quot;, filtered_pids</code></pre>
+<h3 id="service-status-via-cli">41.2 Service Status via CLI</h3>
+<pre class="za"><code># Parse service status using table()
+service_output = ${systemctl list-units --type=service --state=running}
+services = table(service_output, map(.parse_only true))
+
+# Filter services by name
+web_services = services ?&gt; `#.0 ~ &quot;nginx|apache|httpd&quot;`
+println &quot;Web services:&quot;, web_services
+
+# Check specific service status
+nginx_status = ${systemctl is-active nginx}
+if $st nginx_status == &quot;active&quot;
+    println &quot;Nginx is running&quot;
+else
+    println &quot;Nginx is not running&quot;
+endif</code></pre>
+<h2 id="network-diagnostics">42. Network diagnostics</h2>
+<p>Za provides network helpers for common tasks (reachability, DNS, port
+checks). Prefer structured results over parsing external tool
+output.</p>
+<h3 id="basic-network-testing">42.1 Basic Network Testing</h3>
+<pre class="za"><code># Test connectivity using ping
+ping_result = ${ping -c 1 8.8.8.8}
+if ping_result ~ &quot;1 received&quot;
+    println &quot;Internet connectivity OK&quot;
+else
+    println &quot;Internet connectivity failed&quot;
+endif
+
+# DNS resolution test
+dns_result = ${nslookup google.com}
+if dns_result ~ &quot;Address:&quot;
+    println &quot;DNS resolution working&quot;
+else
+    println &quot;DNS resolution failed&quot;
+endif</code></pre>
+<h3 id="port-checking">42.2 Port Checking</h3>
+<pre class="za"><code># Check if ports are open using netcat
+def check_port(host, port)
+    result = ${nc -z {host} {port} 2&gt;&amp;1}
+    return result.len() == 0  # Empty output means port is open
+end
+
+# Test multiple ports
+ports_to_check = [80, 443, 22, 3306]
+for port in ports_to_check
+    if check_port(&quot;localhost&quot;, port)
+        println &quot;Port&quot;, port, &quot;is open&quot;
+    else
+        println &quot;Port&quot;, port, &quot;is closed&quot;
+    endif
+endfor</code></pre>
+<h2 id="parallel-host-probing">43. Parallel host probing</h2>
+<p>Use async fan-out and deterministic collection:</p>
+<pre class="za"><code>def check(h)
+    return icmp_ping(h, 2)
+end
+
+var handles map
+foreach h in hosts
+    async handles check(h) h
+endfor
+res = await(ref handles, true)
+println res.pp</code></pre>
+<h2 id="drift-detection-and-set-based-reasoning">44. Drift detection and
+set-based reasoning</h2>
+<p>Represent key sets as maps and use set operators/predicates:</p>
+<pre class="za"><code>changed = before ^ after
+on changed.len &gt; 0 do println changed.pp</code></pre>
+<hr />
+<h1 id="part-xii---logging-1">Part XII - Logging</h1>
+<h2 id="logging-overview">45. Logging Overview</h2>
+<p>Za provides a unified logging system designed for operational
+monitoring and debugging. The system supports both application logging
+and web access logging through a single, coherent infrastructure that
+handles background processing, rotation, and multiple output
+formats.</p>
+<h3 id="logging-philosophy">45.1 Logging Philosophy</h3>
+<p>The logging system is built around several key principles:</p>
+<ul>
+<li><strong>Non-blocking operations</strong>: All logging happens in the
+background to avoid impacting script performance</li>
+<li><strong>Unified architecture</strong>: Both application logs and web
+access logs share the same processing pipeline</li>
+<li><strong>Graceful degradation</strong>: Under memory pressure, the
+system prioritizes critical logs and drops less important ones</li>
+<li><strong>Flexible output</strong>: Support for both plain text and
+structured JSON formatting</li>
+<li><strong>Automatic rotation</strong>: Size-based log rotation with
+configurable retention policies</li>
+</ul>
+<p>The basic logging configuration provides:</p>
+<ul>
+<li><strong>File output</strong>: Logs are written to the specified file
+with automatic rotation</li>
+<li><strong>Console echo</strong>: By default, log entries also appear
+on console (can be suppressed)</li>
+<li><strong>Timestamp handling</strong>: Automatic timestamps added to
+all entries</li>
+<li><strong>Subject prefixes</strong>: Optional prefixes to identify log
+sources</li>
+</ul>
+<h2 id="logging-configuration">46. Logging Configuration</h2>
+<h3 id="format-control">46.1 Format Control</h3>
+<p>Za supports both plain text and JSON logging formats:</p>
+<pre class="za"><code># Enable JSON formatting for structured logs
+logging json on
+logging subject &quot;WEBMON&quot;
+
+# Add custom fields to all JSON entries
+logging json fields +service &quot;web-monitor&quot;
+logging json fields +version &quot;1.2.1&quot;
+
+# Use plain text for human-readable logs
+logging json off</code></pre>
+<p>JSON logging provides structured data that’s easier to parse and
+analyze:</p>
+<div class="sourceCode" id="cb143"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb143-1"><a href="#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb143-2"><a href="#cb143-2" aria-hidden="true" tabindex="-1"></a><span class="er">2023-10-15</span> <span class="er">14:23:11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="er">15</span> <span class="er">Oct</span> <span class="er">23</span> <span class="er">14:23:11</span> <span class="er">+0000</span></span>
+<span id="cb143-3"><a href="#cb143-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb143-4"><a href="#cb143-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb143-5"><a href="#cb143-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<h3 id="web-access-logging">46.2 Web Access Logging</h3>
+<p>For scripts that use Za’s built-in web server, you can enable
+separate access logging:</p>
+<pre class="za"><code># Enable web access logging
+logging web enable
+
+# Set custom access log location
+logging accessfile &quot;/var/log/za_access.log&quot;
+
+# Configure web-specific settings
+logging web enable
+log &quot;Web server started on port: &quot;, port</code></pre>
+<p>Web access logs capture HTTP requests, response codes, and client
+information with automatic status code categorization (3xx=WARNING,
+4xx/5xx=ERROR).</p>
+<h3 id="rotation-and-resource-management">46.3 Rotation and Resource
+Management</h3>
+<p>Configure log rotation to manage disk space:</p>
+<pre class="za"><code># Rotate when files reach 10MB
+logging rotate size 10485760
+
+# Keep 5 rotated files
+logging rotate count 5
+
+# Set memory reserve for critical logs (1MB)
+logging reserve 1048576</code></pre>
+<p>The rotation system automatically:</p>
+<ul>
+<li>Rotates files when they exceed the size threshold</li>
+<li>Maintains a configurable number of historical files</li>
+<li>Cleans up old files beyond the retention limit</li>
+<li>Uses atomic writes to prevent log corruption</li>
+</ul>
+<h3 id="performance-and-monitoring">46.4 Performance and Monitoring</h3>
+<p>Monitor logging system performance:</p>
+<pre class="za"><code># Check logging system status
+logging status
+
+# View detailed statistics
+stats = logging_stats()
+println &quot;Queue usage: &quot;, stats.queue_usage, &quot;%&quot;
+println &quot;Processed: &quot;, stats.total_processed, &quot; entries&quot;</code></pre>
+<p>The background queue system provides:</p>
+<ul>
+<li><strong>Configurable queue size</strong>: Default 60 entries,
+adjustable for high-volume scenarios</li>
+<li><strong>Overflow handling</strong>: Automatic warnings when queue is
+full</li>
+<li><strong>Priority processing</strong>: Errors get priority over
+normal logs</li>
+<li><strong>Memory awareness</strong>: Graceful degradation under memory
+pressure</li>
+</ul>
+<h2 id="logging-architecture">47. Logging Architecture</h2>
+<p>Za’s logging system provides a comprehensive infrastructure for both
+application events and web access logging. The system is designed around
+non-blocking operations, unified processing, and graceful resource
+management to ensure reliable logging without impacting script
+performance.</p>
+<h2 id="logging-statement-types">47.1 Logging Statement Types</h2>
+<p>The logging system supports several categories of statements for
+different logging needs. Application Logging uses the primary log
+statement which writes to both log file and console by default, with
+support for level-specific logging.</p>
+<p>Basic Control statements enable and disable logging, configure output
+paths, and control console echo behaviour.</p>
+<p>Format Control allows switching between plain text and JSON formats,
+managing custom fields for structured logs.</p>
+<p>Web Access Logging provides separate controls for HTTP request
+logging with configurable file locations and automatic status code
+categorization.</p>
+<p>Advanced Features include subject prefixes, automatic error logging,
+queue management, rotation control, and memory reservation.</p>
+<pre class="za"><code></code></pre>
+<p>Application Logging:</p>
+<pre class="za"><code>log &quot;message&quot;,x,y,z             # Primary logging statement
+log level: &quot;message&quot;,x,y,z      # Level-specific logging</code></pre>
+<p>Basic Control:</p>
+<pre class="za"><code>logging on [filepath]           # Enable main logging, optionally set log file path
+logging off                     # Disable main logging
+logging status                  # Display comprehensive logging configuration and statistics
+logging quiet                   # Suppress console output from log statements
+logging loud                    # Enable console output from log statements (default)</code></pre>
+<p>Format Control:</p>
+<pre class="za"><code>logging json on                     # Enable JSON format for all logs
+logging json off                    # Use plain text format (default)
+logging json fields +field value    # Add custom field to JSON logs
+logging json fields -field          # Remove specific field from JSON logs
+logging json fields -               # Clear all custom fields
+logging json fields push            # Save current fields to stack
+logging json fields pop             # Restore fields from stack</code></pre>
+<p>Web Access Logging:</p>
+<pre class="za"><code>logging web enable                  # Enable web access logging
+logging web disable                 # Disable web access logging
+logging accessfile &lt;path&gt;           # Set web access log file location (default: ./za_access.log)</code></pre>
+<p>Advanced Features:</p>
+<pre class="za"><code>logging subject &lt;text&gt;              # Set prefix for all log entries
+logging error on/off                # Enable/disable automatic error logging
+logging queue size &lt;number&gt;         # Set background processing queue size (default: 60)
+logging rotate size &lt;bytes&gt;         # Set log rotation file size threshold
+logging rotate count &lt;number&gt;       # Set number of rotated files to keep
+logging reserve &lt;bytes&gt;             # Set emergency memory reserve for logging under pressure</code></pre>
+<h2 id="infrastructure-design">47.2 Infrastructure Design</h2>
+<p>The logging architecture uses a unified architecture where both
+application code and web server code feed into a common background queue
+that processes entries through shared formatting and rotation
+pipelines.</p>
+<p>Key Components include background queue processing with configurable
+size and overflow handling, dual destinations for main logs and web
+access logs, and format management supporting both plain text and JSON
+with custom field capabilities.</p>
+<p>Format Management handles automatic timestamps and subject prefix
+handling while allowing custom field manipulation for structured logs.
+Log Rotation provides size-based rotation for both main and web access
+logs with configurable file count retention and automatic cleanup of old
+rotated files.</p>
+<p>Memory Management includes an emergency memory reserve system and
+priority-based queue management that favours errors over normal logs
+under pressure. Error integration automatically logs Za interpreter
+errors with enhanced context and HTTP status code tracking for web
+access logs.</p>
+<h2 id="performance-characteristics">47.3 Performance
+Characteristics</h2>
+<p>The logging system is optimized for minimal performance impact
+through non-blocking I/O for all logging operations, ensuring script
+execution never waits on log writes.</p>
+<p>The system implements memory-aware request dropping for web access
+logs under memory pressure, with automatic warnings when queue capacity
+is exceeded.</p>
+<p>Statistics tracking provides comprehensive monitoring of logging
+system performance and health. Cross-platform path validation and
+security ensures safe file operations with appropriate permission checks
+and path sanitization across different operating systems.</p>
+<p>This design ensures that logging operations provide comprehensive
+coverage of application events while maintaining high performance and
+reliability.</p>
+<hr />
+<h1 id="part-xiii---testing-1">Part XIII - Testing</h1>
+<h2 id="testing-overview">48. Testing Overview</h2>
+<p>Za provides a built-in testing framework designed for both
+development verification and operational validation. The testing system
+supports assertions, documentation integration, and flexible execution
+modes that make it suitable for everything from unit tests to
+operational checks.</p>
+<h3 id="testing-philosophy">48.1 Testing Philosophy</h3>
+<p>The testing framework follows these principles:</p>
+<ul>
+<li><strong>Integrated testing</strong>: Tests are part of the source
+code, not separate files</li>
+<li><strong>Documentation coupling</strong>: Tests can include embedded
+documentation that appears in test output</li>
+<li><strong>Flexible assertions</strong>: Support for both value
+assertions and error handling validation</li>
+<li><strong>Group organization</strong>: Tests can be grouped for
+selective execution and reporting</li>
+<li><strong>Production safety</strong>: Test blocks are ignored during
+normal script execution</li>
+</ul>
+<h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
+<div class="sourceCode" id="cb153"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb153-1"><a href="#cb153-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb153-2"><a href="#cb153-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
+<span id="cb153-3"><a href="#cb153-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb153-4"><a href="#cb153-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb153-5"><a href="#cb153-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
+<span id="cb153-6"><a href="#cb153-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb153-7"><a href="#cb153-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb153-8"><a href="#cb153-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
+<span id="cb153-9"><a href="#cb153-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb153-10"><a href="#cb153-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
+<span id="cb153-11"><a href="#cb153-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
+<h3 id="test-structure">48.3 Test Structure</h3>
+<p>Tests use a simple structure:</p>
+<pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
+    # Test setup code
+    assert condition [, custom_message ]
+    # Additional assertions
+    doc &quot;This test verifies that...&quot;
+    # Test execution code
+endtest</code></pre>
+<p>The optional assertion mode controls test behaviour: - <strong>ASSERT
+FAIL</strong> (default): Test execution stops on first assertion failure
+- <strong>ASSERT CONTINUE</strong>: Test continues past assertion
+failures, reporting all failures</p>
+<h2 id="test-blocks">49. Test Blocks</h2>
+<h3 id="basic-test-structure">49.1 Basic Test Structure</h3>
+<pre class="za"><code>test &quot;integer_addition&quot; GROUP &quot;math_basics&quot;
+    # Test basic arithmetic
+    result = 2 + 3
+    assert result == 5, &quot;2 + 3 should equal 5&quot;
+
+    # Test with different values
+    assert (10 + 15) == 25, &quot;10 + 15 should equal 25&quot;
+    doc &quot;Verifies basic integer addition operations&quot;
+endtest</code></pre>
+<h3 id="error-handling-tests">49.2 Error Handling Tests</h3>
+<pre class="za"><code>test &quot;file_error_handling&quot; GROUP &quot;io_operations&quot; ASSERT CONTINUE
+    # Test file not found error
+    try
+        content = read_file(&quot;/nonexistent/file.txt&quot;)
+    catch err
+        println &quot;error type : &quot;,err.pp
+    endtry
+
+    # Test permission error handling
+    try
+        write_file(&quot;/root/protected.txt&quot;, &quot;test&quot;)
+    catch err
+        println &quot;error type : &quot;,err.pp
+    endtry
+
+    doc &quot;Tests file operation error detection and categorization&quot;
+endtest</code></pre>
+<h3 id="function-return-value-tests">49.3 Function Return Value
+Tests</h3>
+<pre class="za"><code>test &quot;function_returns&quot; GROUP &quot;function_validation&quot;
+    # Test multiple return values
+    def compute_stats(a, b)
+        sum = a + b
+        diff = a - b
+        return sum, diff
+    end
+
+    result_sum, result_diff = compute_stats(10, 3)
+    assert result_sum == 13
+    assert result_diff == 7
+
+    # Test single return value unpacking
+    values = compute_stats(5, 2)
+    assert values == [7, 3]
+
+    doc &quot;Validates function return value handling&quot;
+endtest</code></pre>
+<h3 id="data-structure-tests">49.4 Data Structure Tests</h3>
+<pre class="za"><code>test &quot;map_operations&quot; GROUP &quot;data_structures&quot;
+    # Test map creation and access
+    config = map(.host &quot;localhost&quot;, .port 5432, .ssl true)
+    assert config.host == &quot;localhost&quot;
+    assert config.port == 5432
+    assert config.ssl == true
+
+    # Test map as set operations
+    set_a = map(.a 1, .b 2, .c 3)
+    set_b = map(.b 2, .c 3, .d 4)
+
+    intersection = set_a &amp; set_b
+    assert intersection.len == 2
+    assert intersection.c == 2
+    assert intersection.b == 2
+
+    doc &quot;Tests map literal syntax and set operations&quot;
+endtest</code></pre>
+<h3 id="integration-and-system-tests">49.5 Integration and System
+Tests</h3>
+<pre class="za"><code>test &quot;system_integration&quot; GROUP &quot;integration&quot;
+    # Test system call integration
+    result =| &quot;echo &#39;test output&#39;&quot;
+    assert result.okay
+    assert result.out ~ &quot;test output&quot;
+
+    # Test table parsing
+    df_data = table(${echo &#39;Filesystem 1K-blocks Used Available Use% Mounted on&#39;},
+                   map(.parse_only true)
+    )
+    assert df_data.len == 1
+    assert df_data[0].Filesystem == &quot;Filesystem&quot;
+
+    doc &quot;Validates integration with system commands and data parsing&quot;
+endtest</code></pre>
+<h2 id="test-behaviours">50. Test Behaviours</h2>
+<h3 id="test-organization">50.1 Test Organization</h3>
+<p>Group tests logically by functionality:</p>
+<pre class="za"><code>test &quot;user_auth_valid&quot; GROUP &quot;authentication&quot;
+test &quot;user_auth_invalid&quot; GROUP &quot;authentication&quot;
+test &quot;user_permission_check&quot; GROUP &quot;authorization&quot;
+test &quot;database_connection&quot; GROUP &quot;database&quot;
+test &quot;database_query&quot; GROUP &quot;database&quot;</code></pre>
+<p>This organization allows:</p>
+<ul>
+<li><strong>Selective execution</strong>: Run specific groups with
+<code>-G</code> flag</li>
+<li><strong>Clear reporting</strong>: Test output organized by
+functional area</li>
+<li><strong>Maintenance</strong>: Easy to locate and update related
+tests</li>
+</ul>
+<h3 id="error-handling-in-tests">50.2 Error Handling in Tests</h3>
+<p>The <code>ASSERT ERROR</code> syntax handles function call failures
+gracefully:</p>
+<pre class="za"><code>test &quot;robust_function_calls&quot; GROUP &quot;error_handling&quot;
+    # This continues execution even if connect() fails
+    assert error connect(&quot;invalid_host&quot;)
+    doc &quot;Tests error handling with ASSERT ERROR syntax&quot;
+endtest</code></pre>
+<h3 id="documentation-integration">50.3 Documentation Integration</h3>
+<p>Use <code>doc</code> statements to provide test context:</p>
+<pre class="za"><code>test &quot;complex_business_logic&quot; GROUP &quot;business_rules&quot;
+    # Setup complex scenario
+    customer = create_test_customer()
+    order = process_order(customer, test_items)
+
+    # Document the test purpose
+    doc &quot;Verifies that order processing correctly applies business rules:
+         1. Customer discount applied correctly
+         2. Tax calculations accurate
+         3. Inventory updated appropriately&quot;
+
+    # Assertions for each rule
+    assert order.discount_applied
+    assert order.tax_amount &gt; 0
+    assert inventory_updated(order.items)
+endtest</code></pre>
+<h3 id="expanded-doc-statement-usage">Expanded DOC statement usage</h3>
+<p>The DOC statement is also used to generate HEREDOC content in both
+normal execution and test modes. Some example use cases below:</p>
+<h4 id="basic-doc-with-var-clause">Basic DOC with VAR clause</h4>
+<pre class="za"><code>doc var myvar &quot;Hello World&quot;
+println myvar</code></pre>
+<h4 id="doc-with-gen-clause-default-delimiter">DOC with GEN clause
+(default delimiter)</h4>
+<pre class="za"><code>doc gen
+These lines should be
+captured in test mode.
+Yes?</code></pre>
+<h4 id="doc-with-gen-and-custom-delim-clause">DOC with GEN and custom
+DELIM clause</h4>
+<pre class="za"><code>doc gen delim TERMINAL
+These [#2]delimited[#-] lines should
+be captured in test mode.
+TERMINAL</code></pre>
+<h4 id="doc-with-custom-delim-and-var-clauses">DOC with custom DELIM and
+VAR clauses</h4>
+<pre class="za"><code>doc delim END var multiline
+This is a multi-line
+string with &quot;quotes&quot;
+END
+print multiline</code></pre>
+<h4 id="doc-with-gen-clause-and-variable-interpolation">DOC with GEN
+clause and variable interpolation</h4>
+<pre class="za"><code>doc gen
+These lines should be
+captured in test mode.
+abc value is {=abc}
+Yes?</code></pre>
+<h3 id="key-features-demonstrated">Key Features Demonstrated</h3>
+<ul>
+<li>VAR clause: Stores content in variable (myvar, multiline)</li>
+<li>GEN clause: Enables test mode documentation capture</li>
+<li>DELIM clause: Custom terminators (TERMINAL, END)</li>
+<li>Variable interpolation: {=abc} substitution in GEN mode</li>
+<li>Multi-line content: Using custom delimiters for block text</li>
+<li>Default delimiter: “” when no DELIM specified</li>
+</ul>
+<hr />
+<h1 id="appendix-a-operator-reference">Appendix A — Operator
+reference</h1>
+<ul>
+<li>Arithmetic: <code>+ - * / % **</code></li>
+<li>Assignment: <code>= += -= *= /= %=</code></li>
+<li>Boolean: <code>and or not</code>, <code>&amp;&amp; || !</code></li>
+<li>Bitwise: <code>&amp; | ^ &lt;&lt; &gt;&gt;</code></li>
+<li>Set (maps): <code>| &amp; - ^</code></li>
+<li>Range: <code>..</code></li>
+<li>Regex: <code>~ ~i ~f</code></li>
+<li>Map/filter: <code>-&gt; ?&gt;</code></li>
+<li>Path unary: <code>$pa $pp $pb $pn $pe</code></li>
+<li>String unary: <code>$uc $lc $lt $rt $st</code></li>
+<li>File read unary: <code>$in</code></li>
+<li>File write: <code>$out</code></li>
+<li>Shell: <code>|</code> and <code>=|</code></li>
+</ul>
+<h1 id="appendix-b-keywords-summary">Appendix B — Keywords Summary</h1>
+<p><code>if else endif</code> <code>for foreach endfor</code>
+<code>case is has contains or endcase</code> <code>while endwhile</code>
+<code>def end return</code> <code>try catch then endtry</code>
+<code>struct endstruct</code> <code>enum</code>
+<code>module use namespace</code> <code>test endtest assert doc</code>
+<code>async var pause |</code> <code>debug continue break exit</code>
+<code>print println log logging</code>
+<code>cls at pane input prompt</code> <code>on do</code></p>
+<h1 id="appendix-c-built-in-constants">Appendix C — Built-in
+constants</h1>
+<p><code>true</code>, <code>false</code>, <code>nil</code>,
+<code>NaN</code></p>
+<h1 id="appendix-d-standard-library-categories">Appendix D — Standard
+Library Categories</h1>
+<p>Za’s standard library is implemented in the interpreter source as a
+set of built-in calls. These library calls do not require any module
+imports.</p>
+<p>This appendix lists the calls <strong>by category</strong>. For each
+category, all function names are listed, followed by a short “commonly
+used” section.</p>
+<blockquote>
+<p>This appendix intentionally does not repeat full per-function
+documentation, because Za can generate function reference pages
+automatically and the REPL supports <code>help</code> and
+<code>func(...)</code> lookups.</p>
+</blockquote>
+<h2 id="array">array</h2>
+<p><strong>Functions (23):</strong></p>
+<p>argmax, argmin, concatenate, det, det_big, find, flatten, identity,
+inverse, inverse_big, mean, median, ones, prod, rank, reshape, squeeze,
+stack, std, trace, variance, where, zeros</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>find</li>
+<li>where</li>
+<li>inverse_big</li>
+<li>det_big</li>
+<li>argmax</li>
+<li>mean</li>
+<li>identity</li>
+<li>argmin</li>
+<li>stack</li>
+<li>inverse</li>
+<li>concatenate</li>
+<li>prod</li>
+</ul>
+<h2 id="conversion">conversion</h2>
+<p><strong>Functions (35):</strong></p>
+<p>as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string,
+as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n,
+is_number, itob, json_decode, json_format, json_query, kind, m2s,
+maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, table,
+to_typed, write_struct</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>as_float</li>
+<li>pp</li>
+<li>as_int</li>
+<li>as_string</li>
+<li>kind</li>
+<li>json_query</li>
+<li>char</li>
+<li>to_typed</li>
+<li>table</li>
+<li>btoi</li>
+<li>as_bool</li>
+<li>is_number</li>
+</ul>
+<h2 id="cron">cron</h2>
+<p><strong>Functions (4):</strong></p>
+<p>cron_next, cron_parse, cron_validate, quartz_to_cron</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>cron_parse</li>
+<li>quartz_to_cron</li>
+<li>cron_next</li>
+<li>cron_validate</li>
+</ul>
+<h2 id="date">date</h2>
+<p><strong>Functions (17):</strong></p>
+<p>date, date_human, epoch_nano_time, epoch_time, format_date,
+format_time, time_diff, time_dom, time_dow, time_hours, time_minutes,
+time_month, time_nanos, time_seconds, time_year, time_zone,
+time_zone_offset</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>epoch_nano_time</li>
+<li>epoch_time</li>
+<li>time_diff</li>
+<li>date</li>
+<li>date_human</li>
+<li>time_seconds</li>
+<li>time_minutes</li>
+<li>time_hours</li>
+<li>time_year</li>
+<li>time_nanos</li>
+<li>time_month</li>
+<li>time_dow</li>
+</ul>
+<h2 id="db">db</h2>
+<p><strong>Functions (3):</strong></p>
+<p>db_close, db_init, db_query</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>db_query</li>
+<li>db_init</li>
+<li>db_close</li>
+</ul>
+<h2 id="error">error</h2>
+<p><strong>Functions (15):</strong></p>
+<p>error_call_chain, error_call_stack, error_default_handler,
+error_emergency_exit, error_extend, error_filename,
+error_global_variables, error_local_variables, error_message,
+error_source_context, error_source_line_numbers, error_source_location,
+error_style, log_exception, log_exception_with_stack</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>error_extend</li>
+<li>error_emergency_exit</li>
+<li>error_source_location</li>
+<li>error_source_context</li>
+<li>error_message</li>
+<li>error_local_variables</li>
+<li>error_global_variables</li>
+<li>error_call_stack</li>
+<li>error_call_chain</li>
+<li>error_style</li>
+<li>error_source_line_numbers</li>
+</ul>
+<h2 id="file-unix">file (unix)</h2>
+<p><strong>Functions (17):</strong></p>
+<p>fclose, feof, fflush, file_mode, file_size, flock, fopen, fread,
+fseek, ftell, fwrite, is_dir, is_file, perms, read_file, stat,
+write_file</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>is_file</li>
+<li>read_file</li>
+<li>write_file</li>
+<li>is_dir</li>
+<li>fopen</li>
+<li>fread</li>
+<li>fclose</li>
+<li>feof</li>
+<li>fwrite</li>
+<li>file_size</li>
+<li>stat</li>
+<li>fseek</li>
+</ul>
+<h2 id="file-windows">file (windows)</h2>
+<p><strong>Functions (17):</strong></p>
+<p>fclose, feof, fflush, file_mode, file_size, flock, fopen, fread,
+fseek, ftell, fwrite, is_dir, is_file, perms, read_file, stat,
+write_file</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>is_file</li>
+<li>read_file</li>
+<li>write_file</li>
+<li>is_dir</li>
+<li>fopen</li>
+<li>fread</li>
+<li>fclose</li>
+<li>feof</li>
+<li>fwrite</li>
+<li>file_size</li>
+<li>stat</li>
+<li>fseek</li>
+</ul>
+<h2 id="html">html</h2>
+<p><strong>Functions (22):</strong></p>
+<p>wa, wbody, wdiv, wh1, wh2, wh3, wh4, wh5, whead, wimg, wli, wlink,
+wol, wp, wpage, wtable, wtbody, wtd, wth, wthead, wtr, wul</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>wdiv</li>
+<li>wtr</li>
+<li>wthead</li>
+<li>wth</li>
+<li>wtd</li>
+<li>wtable</li>
+<li>wpage</li>
+<li>wlink</li>
+<li>wimg</li>
+<li>whead</li>
+<li>wbody</li>
+<li>wa</li>
+</ul>
+<h2 id="image">image</h2>
+<p><strong>Functions (22):</strong></p>
+<p>svg_circle, svg_def, svg_def_end, svg_desc, svg_ellipse, svg_end,
+svg_grid, svg_group, svg_group_end, svg_image, svg_line, svg_link,
+svg_link_end, svg_plot, svg_polygon, svg_polyline, svg_rect,
+svg_roundrect, svg_square, svg_start, svg_text, svg_title</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>svg_line</li>
+<li>svg_title</li>
+<li>svg_text</li>
+<li>svg_start</li>
+<li>svg_square</li>
+<li>svg_roundrect</li>
+<li>svg_rect</li>
+<li>svg_polyline</li>
+<li>svg_polygon</li>
+<li>svg_plot</li>
+<li>svg_link_end</li>
+<li>svg_link</li>
+</ul>
+<h2 id="internal">internal</h2>
+<p><strong>Functions (105):</strong></p>
+<p>ansi, argc, argv, array_colours, array_format, ast, await,
+bash_versinfo, bash_version, capture_shell, clear_line, clktck,
+cmd_version, conclear, conread, conset, conwrite, coproc, cursoroff,
+cursoron, cursorx, difference, dinfo, dump, dup, echo, enum_all,
+enum_names, eval, exception_strictness, exec, execpath, expect, exreg,
+feed, format_stack_trace, func_categories, func_descriptions,
+func_inputs, func_outputs, funcref, funcs, gdump, get_col, get_cores,
+get_mem, get_row, has_colour, has_shell, has_term, home, hostname,
+interpol, interpolate, intersect, is_disjoint, is_subset, is_superset,
+key, keypress, lang, last, last_err, len, local, log_queue_status,
+logging_stats, mdump, merge, os, pane_c, pane_h, pane_r, pane_w, panic,
+permit, pid, powershell_version, ppid, release_id, release_name,
+release_version, rlen, set_depth, shell_pid, sizeof, suppress_prompt,
+symmetric_difference, system, sysvar, term, term_h, term_w, thisfunc,
+thisref, tokens, trap, unmap, user, utf8supported, varbind, wininfo,
+winterm, zainfo, zsh_version</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>len</li>
+<li>term_w</li>
+<li>term_h</li>
+<li>exreg</li>
+<li>cursoroff</li>
+<li>keypress</li>
+<li>cursoron</li>
+<li>key</li>
+<li>interpol</li>
+<li>permit</li>
+<li>pid</li>
+<li>execpath</li>
+</ul>
+<h2 id="list">list</h2>
+<p><strong>Functions (35):</strong></p>
+<p>alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen,
+esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool,
+list_fill, list_float, list_int, list_int64, list_string, max, min,
+msplit, peek, pop, push_front, remove, scan_left, sort, ssort, sum,
+tail, uniq, zip</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>append</li>
+<li>append_to</li>
+<li>sum</li>
+<li>min</li>
+<li>sort</li>
+<li>max</li>
+<li>avg</li>
+<li>list_int</li>
+<li>fieldsort</li>
+<li>col</li>
+<li>tail</li>
+<li>remove</li>
+</ul>
+<h2 id="math">math</h2>
+<p><strong>Functions (38):</strong></p>
+<p>abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot,
+e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma,
+phi, pi, pow, prec, rad2deg, rand, randf, round, seed, sin, sinh, tan,
+tanh, transpose, ubin8, uhex32</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>rand</li>
+<li>pi</li>
+<li>seed</li>
+<li>abs</li>
+<li>sin</li>
+<li>randf</li>
+<li>cos</li>
+<li>numcomma</li>
+<li>logn</li>
+<li>e</li>
+<li>deg2rad</li>
+<li>transpose</li>
+</ul>
+<h2 id="network">network</h2>
+<p><strong>Functions (31):</strong></p>
+<p>dns_resolve, has_privileges, http_benchmark, http_headers, icmp_ping,
+icmp_traceroute, net_interfaces_detailed, netstat, netstat_established,
+netstat_interface, netstat_listen, netstat_process, netstat_protocol,
+netstat_protocol_info, netstat_protocols, network_stats, open_files,
+port_scan, ssl_cert_install_help, ssl_cert_validate, tcp_available,
+tcp_client, tcp_close, tcp_ping, tcp_receive, tcp_send, tcp_server,
+tcp_server_accept, tcp_server_stop, tcp_traceroute, traceroute</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>dns_resolve</li>
+<li>http_headers</li>
+<li>tcp_ping</li>
+<li>port_scan</li>
+<li>traceroute</li>
+<li>tcp_server_stop</li>
+<li>tcp_server</li>
+<li>tcp_send</li>
+<li>tcp_close</li>
+<li>tcp_client</li>
+<li>tcp_available</li>
+<li>ssl_cert_validate</li>
+</ul>
+<h2 id="notify">notify</h2>
+<p><strong>Functions (7):</strong></p>
+<p>ev_event, ev_exists, ev_mask, ev_watch, ev_watch_add, ev_watch_close,
+ev_watch_remove</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>ev_mask</li>
+<li>ev_watch_close</li>
+<li>ev_watch</li>
+<li>ev_exists</li>
+<li>ev_event</li>
+</ul>
+<h2 id="os">os</h2>
+<p><strong>Functions (37):</strong></p>
+<p>can_read, can_write, cd, chroot, copy, cwd, delete, dir, env,
+fileabs, filebase, get_env, glob, group_add, group_del, group_info,
+group_list, group_membership, group_mod, groupname, is_device, is_pipe,
+is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename,
+set_env, umask, user_add, user_del, user_info, user_list, user_mod,
+username</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>dir</li>
+<li>set_env</li>
+<li>get_env</li>
+<li>delete</li>
+<li>env</li>
+<li>username</li>
+<li>parent</li>
+<li>groupname</li>
+<li>cwd</li>
+<li>can_read</li>
+<li>is_symlink</li>
+<li>is_socket</li>
+</ul>
+<h2 id="package">package</h2>
+<p><strong>Functions (5):</strong></p>
+<p>install, is_installed, service, uninstall, vcmp</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>is_installed</li>
+<li>install</li>
+</ul>
+<h2 id="pcre">pcre</h2>
+<p><strong>Functions (3):</strong></p>
+<p>reg_filter, reg_match, reg_replace</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>reg_replace</li>
+<li>reg_filter</li>
+<li>reg_match</li>
+</ul>
+<h2 id="smtp">smtp</h2>
+<p><strong>Functions (13):</strong></p>
+<p>email_add_header, email_base64_decode, email_base64_encode,
+email_extract_addresses, email_get_attachments, email_get_body,
+email_parse_headers, email_process_template, email_remove_header,
+email_validate, smtp_send, smtp_send_with_attachments,
+smtp_send_with_auth</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>email_parse_headers</li>
+<li>email_get_body</li>
+<li>email_get_attachments</li>
+<li>smtp_send</li>
+<li>email_validate</li>
+<li>email_remove_header</li>
+<li>email_process_template</li>
+<li>email_extract_addresses</li>
+<li>email_base64_encode</li>
+<li>email_base64_decode</li>
+<li>email_add_header</li>
+</ul>
+<h2 id="string">string</h2>
+<p><strong>Functions (56):</strong></p>
+<p>addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256,
+fgrgb, field, fields, filter, format, get_value, grep, gsub, has_end,
+has_start, inset, is_utf8, join, keys, levdist, line_add,
+line_add_after, line_add_before, line_delete, line_filter, line_head,
+line_match, line_replace, line_tail, lines, literal, log_sanitise,
+lower, match, next_match, pad, pos, replace, reverse, rvalid,
+sanitisation, sgrep, split, stripansi, stripcc, stripquotes, strpos,
+substr, tr, trim, upper, values, wrap, wrap_text</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>format</li>
+<li>tr</li>
+<li>pad</li>
+<li>replace</li>
+<li>join</li>
+<li>split</li>
+<li>field</li>
+<li>match</li>
+<li>count</li>
+<li>fields</li>
+<li>substr</li>
+<li>fgrgb</li>
+<li>sgrep</li>
+</ul>
+<h2 id="sum">sum</h2>
+<p><strong>Functions (5):</strong></p>
+<p>md5sum, s3sum, sha1sum, sha224sum, sha256sum</p>
+<p><strong>Commonly used:</strong> (no occurrences found in
+<code>eg/</code> or <code>za_tests/</code> for this category in the
+uploaded tree)</p>
+<h2 id="system">system</h2>
+<p><strong>Functions (23):</strong></p>
+<p>cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info,
+gw_interface, iodiff, mem_info, mount_info, net_devices, nio, ps_info,
+ps_list, ps_map, ps_tree, resource_usage, sys_load, sys_resources,
+top_cpu, top_dio, top_mem, top_nio</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>sys_resources</li>
+<li>gw_interface</li>
+<li>gw_info</li>
+<li>gw_address</li>
+<li>cpu_info</li>
+<li>ps_list</li>
+<li>ps_info</li>
+<li>nio</li>
+<li>net_devices</li>
+<li>mem_info</li>
+<li>disk_usage</li>
+</ul>
+<h2 id="tui">tui</h2>
+<p><strong>Functions (16):</strong></p>
+<p>editor, tui, tui_box, tui_clear, tui_input, tui_menu, selector,
+tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset,
+tui_radio, tui_screen, tui_table, tui_template, tui_text</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>tui_clear</li>
+<li>tui_screen</li>
+<li>tui_table</li>
+<li>tui_text</li>
+<li>tui_template</li>
+<li>tui_radio</li>
+<li>tui_progress_reset</li>
+<li>tui_progress</li>
+<li>tui_pager</li>
+<li>tui_menu</li>
+<li>tui_input</li>
+</ul>
+<h2 id="web">web</h2>
+<p><strong>Functions (28):</strong></p>
+<p>download, html_escape, html_unescape, net_interfaces,
+web_cache_cleanup_interval, web_cache_enable, web_cache_max_age,
+web_cache_max_memory, web_cache_max_size, web_cache_purge,
+web_cache_stats, web_custom, web_display, web_download, web_get,
+web_gzip_enable, web_head, web_max_clients, web_post, web_raw_send,
+web_serve_decode, web_serve_log, web_serve_log_throttle, web_serve_path,
+web_serve_start, web_serve_stop, web_serve_up, web_template</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>web_serve_path</li>
+<li>web_serve_start</li>
+<li>web_serve_stop</li>
+<li>web_get</li>
+<li>web_serve_up</li>
+<li>web_serve_decode</li>
+<li>web_serve_log_throttle</li>
+<li>web_gzip_enable</li>
+<li>web_display</li>
+<li>web_custom</li>
+<li>web_cache_stats</li>
+<li>web_cache_max_size</li>
+</ul>
+<h2 id="yaml">yaml</h2>
+<p><strong>Functions (5):</strong></p>
+<p>yaml_delete, yaml_get, yaml_marshal, yaml_parse, yaml_set</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>yaml_parse</li>
+<li>yaml_marshal</li>
+</ul>
+<h2 id="zip">zip</h2>
+<p><strong>Functions (7):</strong></p>
+<p>zip_add, zip_create, zip_create_from_dir, zip_extract,
+zip_extract_file, zip_list, zip_remove</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>zip_create</li>
+<li>zip_list</li>
+<li>zip_extract</li>
+<li>zip_remove</li>
+<li>zip_extract_file</li>
+<li>zip_add</li>
+</ul>
+<div style="page-break-after: always;">
+
+</div>
+<h1 id="appendix-e-worked-example-script">Appendix E — Worked Example
+Script</h1>
+<p>This appendix is an annotated walkthrough of the shipped example
+script <code>eg/mon</code>. All claims below are grounded in the script
+itself, with line references.</p>
+<h2 id="e.1-what-egmon-is">E.1 What <code>eg/mon</code> is</h2>
+<p>The file identifies itself as a test/diagnostic script: it describes
+itself as a “Test script for za” and says it displays “key system
+resource information” in a summary view (lines 3–9).</p>
+<h2 id="e.2-core-drawing-primitives">E.2 Core drawing primitives</h2>
+<p>Before it gathers any system information, the script defines a small
+set of terminal-drawing helpers.</p>
+<p><code>clear(lstart,lend,column)</code> clears a range of lines by
+calling <code>clear_line</code> in a counted loop (lines 15–19).</p>
+<p><code>header(t)</code> draws a coloured underline across the pane
+width, then prints a title at the top (lines 21–28). You can see it
+iterating from 0 to <code>pane_w()-2</code> and printing a coloured
+underscore (lines 23–25).</p>
+<h3 id="vertical-and-horizontal-bars">Vertical and horizontal bars</h3>
+<p>The script implements its own bar widgets using block characters.</p>
+<ul>
+<li><p><code>vbar(...)</code> draws a vertical bar for a percentage
+value, with optional label rendering (lines 30–71). It computes unit
+size <code>us = vsize / 100f</code> and uses that to derive the filled
+height (lines 45–48).</p></li>
+<li><p><code>chart(...)</code> draws a series of vertical bars by
+calling <code>vbar</code> for each value in <code>series</code> (lines
+74–82). Notice that it derives a per-bar colour by substituting into a
+template string and evaluating it (line 76).</p></li>
+<li><p><code>bar(...)</code> draws a horizontal progress bar using
+partial block characters for quarter steps (lines 84–102).</p></li>
+</ul>
+<h2 id="e.3-small-utility-helpers">E.3 Small utility helpers</h2>
+<p>Several short helpers support later panes:</p>
+<ul>
+<li><p><code>interface_ip(ip_in)</code> scans <code>net_devices()</code>
+and returns the first IP address of the matching interface name (lines
+104–109).</p></li>
+<li><p><code>negreg(inp,matcher)</code> filters out lines that match a
+pattern using <code>continue if match(...)</code> (lines
+111–118).</p></li>
+<li><p><code>shorten(s,l)</code> truncates long strings and uses an
+ellipsis if UTF‑8 is supported (lines 126–129).</p></li>
+</ul>
+<h2 id="e.4-built-in-unit-test-embedded-in-the-script">E.4 Built-in unit
+test embedded in the script</h2>
+<p><code>eg/mon</code> includes a small unit test section:</p>
+<ul>
+<li><p><code>logging testfile "mon.test.out"</code> sets a test log file
+(line 120).</p></li>
+<li><p>A <code>test ... et</code> block named <code>"fn_ip"</code>
+asserts that the loopback interface IP starts with <code>127.0.0.</code>
+(lines 121–124).</p></li>
+</ul>
+<h2 id="e.5-environment-pane-showenv">E.5 Environment pane
+(<code>showEnv</code>)</h2>
+<p><code>showEnv()</code> selects the <code>envs</code> pane, redraws
+its line colour, prints a header, clears a region, and prints system
+facts such as hostname, user, OS, locale, and distribution information
+(lines 131–149).</p>
+<p>A small OS-specific clause is shown via <code>case os()</code> where
+it prints the bash version only for Linux (lines 145–148).</p>
+<h2 id="e.6-filesinodes-pane-showfiles">E.6 Files/inodes pane
+(<code>showFiles</code>)</h2>
+<p><code>showFiles()</code> is guarded to avoid Windows terminal mode:
+it runs only when <code>!winterm()</code> (lines 155–185).</p>
+<p>It reads Linux kernel counters directly from <code>/proc</code> using
+<code>$in</code> (lines 160–162), then parses them using string helpers
+such as <code>field</code>, <code>tr</code>, and <code>as_float</code>
+(lines 171–183).</p>
+<p>If either <code>/proc/sys/fs/file-nr</code> or
+<code>/proc/sys/fs/inode-nr</code> could not be read, it returns early
+(line 163).</p>
+<h2 id="e.7-memory-pane-showmem">E.7 Memory pane
+(<code>showMem</code>)</h2>
+<p><code>showMem()</code> shows two important things:</p>
+<p>First, it gathers memory information from <strong>built-in
+calls</strong>: it calls <code>mem_info()</code> (line 216) and
+<code>sys_resources()</code> (line 252), then pulls named fields such as
+<code>MemoryTotal</code>, <code>MemoryFree</code>,
+<code>MemoryCached</code>, <code>SwapFree</code>, and
+<code>SwapTotal</code> (lines 253–259).</p>
+<p>Second, it optionally computes “slab” usage details when it has
+privileges (<code>access</code>) (lines 210–212, 290–313). It iterates
+<code>mem_detailed.Slab</code> and derives MB sizes from object counts
+and sizes (lines 224–228), then sorts via <code>fieldsort</code> (line
+237).</p>
+<p>For display, it uses <code>mdisplay(...)</code> which draws a bar and
+prints a compact size using <code>smallprint</code> (lines 189–199,
+270–281).</p>
+<p>It also displays Za’s own memory usage via
+<code>get_mem().alloc</code> and <code>get_mem().system</code> (lines
+283–287).</p>
+<h2 id="e.8-process-pane-showprocs">E.8 Process pane
+(<code>showProcs</code>)</h2>
+<p><code>showProcs(ct, uptime)</code> calls
+<code>ps_list(map(.include_cmdline true))</code> to obtain process info
+(line 324).</p>
+<p>It builds <code>proc_list</code> as a map keyed by PID, storing a
+small array of derived metrics including computed CPU percentages (lines
+326–352).</p>
+<p>To present the “top” entries, it serialises rows into a string
+(<code>shellout</code>), sorts with
+<code>fieldsort(..., "n", true)</code> and takes lines
+(<code>lines(":17")</code>) before applying <code>uniq</code> (lines
+358–365).</p>
+<p>The display loop uses <code>fields(p," ")</code> and the resulting
+<code>F[...]</code> fields for formatted printing. It supports filtering
+with a regex against <code>proc_filter</code> (lines 374–387).</p>
+<h2 id="e.9-cpu-pane-showcpu">E.9 CPU pane (<code>showCpu</code>)</h2>
+<p><code>showCpu(...)</code> pulls per-core usage from
+<code>cpu_info().Usage["cores"]</code> (line 424) and uses
+<code>prev</code>/<code>diff</code> maps to compute deltas over time
+(lines 427–451).</p>
+<p>If the script is still in its initial warm-up period
+(<code>sample_start_in--&gt;0</code>), it prints a message and returns
+the updated counter (lines 453–457).</p>
+<p>Core names are sorted alphanumerically
+(<code>cpuinfo.keys.sort(map(.alphanumeric true))</code>, line 460).</p>
+<p>The pane can show: - detailed per-activity counters (lines 472–481),
+- a coloured bar row built from repeated activity glyphs (lines
+483–497), - and an optional totals column (lines 499–506).</p>
+<h2 id="e.10-disk-pane-showhdd">E.10 Disk pane
+(<code>showHdd</code>)</h2>
+<p><code>showHdd()</code> uses <code>disk_usage()</code> directly (line
+521). It then filters out unwanted devices using regex conditions under
+a <code>case os()</code> block and continues early for skipped entries
+(lines 534–542).</p>
+<p>It assembles a sortable list of anonymous structs containing
+<code>usage_pct</code> from the <code>usage_percent</code> field and the
+mounted path (lines 543–552).</p>
+<p>It sorts with <code>ssort(sorted_disks, "usage_pct", false)</code>
+(line 555) and prints a limited number of rows (lines 557–582).</p>
+<p>Sizes are formatted using the local <code>hobbitsize(...)</code>
+helper (lines 399–404) and strings are truncated with
+<code>shorten(...)</code> (lines 126–129, 576–579).</p>
+<h2 id="e.11-network-pane-shownet">E.11 Network pane
+(<code>showNet</code>)</h2>
+<p><code>showNet(...)</code> selects the network pane, prints the chosen
+interface and its IP, then scans <code>nio()</code> for that interface
+(lines 586–598).</p>
+<p>It keeps previous byte counters (<code>prev_rbytes</code>,
+<code>prev_tbytes</code>) and maintains history lists
+<code>rblist</code> and <code>tblist</code> by shifting and appending
+new deltas (lines 610–619).</p>
+<p>The charts are plotted by mapping the history list through an
+expression string using <code>-&gt;</code> and then converting to
+integers with <code>.list_int</code> (lines 628–629). The expression
+clamps values with <code>[0f:100f]</code> inside the string.</p>
+<p>Finally it prints averaged RX/TX rates using
+<code>humansize(...)</code> scaled by the sampling timeout (lines
+635–641).</p>
+<h2 id="e.12-pane-layout-redef_layout">E.12 Pane layout
+(<code>redef_layout</code>)</h2>
+<p><code>redef_layout(cpu_count,pfilter)</code> defines the pane grid
+using repeated <code>pane define</code> calls (lines 647–659).</p>
+<p>It also initialises the network history lists to a fixed length
+(<code>net_sample_count = 40</code>, lines 660–668) and draws an origin
+line for the network chart using a UTF‑8 glyph when supported (lines
+672–681).</p>
+<h2 id="e.13-main-loop-and-key-handling">E.13 Main loop and key
+handling</h2>
+<p>The script exits early if there is no output channel
+(<code>term_h()==-1</code>, line 690).</p>
+<p>It sets up timing (<code>key_timeout=1000</code>, lines 695–697),
+determines the gateway interface (<code>gw_interface()</code>, line
+701), and detects privilege level (<code>access=has_privileges()</code>,
+line 716).</p>
+<p>It computes CPU tick rate via <code>clktck()</code> and aborts if
+unavailable (lines 706–709).</p>
+<p>Panes are created by calling
+<code>redef_layout(cpu_count,pfilter)</code> after discovering core
+count (<code>get_cores()</code>, lines 721–728).</p>
+<p>Inside the main <code>while !quit</code> loop (line 752), it redraws
+on window changes, captures uptime (<code>sys_resources().Uptime</code>,
+line 765), and calls the pane renderers (lines 768–774).</p>
+<p>The bottom status line prints a human date
+(<code>date_human(...)</code>) and frame time based on
+<code>epoch_nano_time()</code> deltas (lines 783–795).</p>
+<p>User input is handled with <code>keypress(key_timeout)</code> and a
+<code>case char(k)</code> dispatch (lines 798–834). It supports changing
+interface (<code>i</code>), process filter (<code>f</code>), timeout
+(<code>t</code>), toggling CPU sections (<code>D</code>, <code>B</code>,
+<code>T</code>), help (<code>h</code>), quit (<code>q</code>), and
+redraw on Ctrl‑L (<code>k==12</code>) (lines 800–834).</p>
+<p>On exit it restores terminal state and turns the cursor back on
+(lines 841–844).</p>
+</body>
+</html>
