@@ -1,10 +1,9 @@
 ---
-title: "Za — The Za Programming Language Handbook"
+title: "Za - The Za Programming Language Handbook"
 author: "Daniel Horsley"
 version: "1.2.1"
 css: za.css
 ---
-
 <div style="text-align:center; page-break-after: always;">
 
 <br/>
@@ -30,92 +29,92 @@ Daniel Horsley
 - Version coverage
 
 ## Part I - Getting Oriented
-1. What Za is (and is not)
-2. Running Za
-3. The REPL
+1. [What Za is (and is not)](#what-za-is-and-is-not)
+2. [Running Za](#running-za)
+3. [The REPL](#the-repl)
 
 ## Part II - Language Fundamentals
-4. Lexical structure
-5. Literals and constants
-6. Variables and assignment
-7. Typed declarations with `var`
+4. [Lexical structure](#lexical-structure)
+5. [Literals and constants](#literals-and-constants)
+6. [Variables and assignment](#variables-and-assignment)
+7. [Typed declarations with `var`](#typed-declarations-with-var)
 
 ## Part III - Data Types and Structures
-8. Scalar types
-9. Arrays and multi-dimensional data
-10. Maps
-11. Maps as sets
-12. Structs and anonymous structs
-13. Struct-associated functions and `self`
-14. Enums
+8. [Scalar types](#scalar-types)
+9. [Arrays and multi-dimensional data](#arrays-and-multi-dimensional-data)
+10. [Maps](#maps)
+11. [Maps as sets](#maps-as-sets)
+12. [Structs and anonymous structs](#structs-and-anonymous-structs)
+13. [Struct-associated functions and `self`](#struct-associated-functions-and-self)
+14. [Enums](#enums)
 
 ## Part IV - Expressions and Control Flow
-15. Expressions and operator precedence
-16. Operators (arithmetic, boolean, bitwise, set, path, string)
-17. Conditionals
-18. Loops
-19. Case statements
+15. [Expressions and operator precedence](#expressions-and-precedence)
+16. [Operators Overview](#operators-overview)
+17. [Conditionals](#conditionals)
+18. [Loops](#loops)
+19. [Case statements](#case-statements)
 
 ## Part V - Functional Data Processing
-20. Expression strings, `#`, and `$idx`
-21. Map and filter operators (`->`, `?>`)
-22. Searching arrays (`find`, `where`)
+20. [Expression strings, `#`, and `$idx`](#expression-strings-and-idx)
+21. [Map and filter operators (`->`, `?>`)](#map-and-filter-operators)
+22. [Searching arrays (`find`, `where`)](#searching-arrays-find-where)
 
 ## Part VI - Functions, Modules, and Composition
-23. Functions (`def … end`)
-24. Modules and namespaces
+23. [Functions (`def … end`)](#functions-def-end)
+24. [Modules and namespaces](#modules-and-namespaces)
 
 ## Part VII - Errors, Debugging, and Safety
-25. Error handling philosophy
-26. Exceptions (`try … catch … then … endtry`)
-27. Enhanced error handling (`trap`, `error_*`)
-28. Debugger (how to use it)
-29. Profiling (how to interpret output)
-30. Security controls (`permit`)
+25. [Error handling philosophy](#error-handling-philosophy)
+26. [Exceptions (`try … catch … then … endtry`)](#exceptions-try-catch-then-endtry)
+27. [Enhanced error handling (`trap`, `error_*`)](#enhanced-error-handling-trap-error_)
+28. [Debugger (how to use it)](#debugger)
+29. [Profiler (how to interpret output)](#profiler)
+30. [Security controls (`permit`)](#security-controls-permit)
 
 ## Part VIII - Concurrency
-31. Async execution (`async`, `await`)
+31. [Async execution (`async`, `await`)](#common-async-patterns)
 
 ## Part IX - Output and Presentation
-32. Program output (`print`, `println`)
-33. Inspection (`pp`) and tables (`table`)
-34. Array display controls (`array_format`, `array_colours`)
-35. ANSI colour/style macros
+32. [Program output (`print`, `println`)](#program-output-print-println)
+33. [Inspection (`pp`) and tables (`table`)](#inspection-pp-and-tables-table)
+34. [Array display controls (`array_format`, `array_colours`)](#array-display-controls-array_format-array_colours)
+35. [ANSI colour/style macros](#ansi-colourstyle-macros)
 
 ## Part X - Standard Library Overview
-36. Library categories and discovery (`help`, `func`)
-37. Category tour (representative calls and idioms)
-38. Category samples
+36. [Library categories and discovery (`help`, `func`)](#library-categories-and-discovery)
+37. [Category tour (representative idioms)](#category-tour-representative-idioms)
+38. [Category samples](#category-samples)
 
 ## Part XI - Sysadmin Cookbook
-39. CLI data ingestion
-40. Disk and filesystem checks
-41. Process and service inspection
-42. Network diagnostics
-43. Parallel host probing
-44. Drift detection and set-based reasoning
+39. [CLI data ingestion](#cli-data-ingestion)
+40. [Disk and filesystem checks](#disk-and-filesystem-checks)
+41. [Process and service inspection](#process-and-service-inspection)
+42. [Network diagnostics](#network-diagnostics)
+43. [Parallel host probing](#parallel-host-probing)
+44. [Drift detection and set-based reasoning](#drift-detection-and-set-based-reasoning)
 
 ## Part XII - Logging
-45. Overview
-46. Configuration
-47. Architecture
+45. [Logging Overview](#logging-overview)
+46. [Logging Configuration](#logging-configuration)
+47. [Logging Architecture](#logging-architecture)
 
 ## Part XIII - Testing
-48. Overview
-49. Test blocks
-50. Behaviours
+48. [Testing Overview](#testing-overview)
+49. [Test Blocks](#test-blocks)
+50. [Test Behaviours](#test-behaviours)
 
 ## Appendices
 
-A. Operator reference (summary)
+A. [Appendix A - Operator Reference](#appendix-a-operator-reference)
 
-B. Keywords (summary)
+B. [Appendix B - Keywords Summary](#appendix-b-keywords-summary)
 
-C. Built-in constants
+C. [Appendix C - Built-in Constants](#appendix-c-built-in-constants)
 
-D. Standard library reference
+D. [Appendix D - Standard Library Categories](#appendix-d-standard-library-categories)
 
-E. Worked example script
+E. [Appendix E - Worked Example Script](#appendix-e-worked-example-script)
 
 
 <div style="page-break-after: always;"></div>
@@ -2767,7 +2766,7 @@ See `eg/initest` for a complete example of INI manipulation.
 
 # Part XI — Sysadmin Cookbook
 
-## 39. CLI data ingestion with `table()`
+## 39. CLI data ingestion
 
 Use `table()` to turn columnar CLI output into structured data, avoiding fragile string slicing.
 
@@ -3265,7 +3264,7 @@ test "system_integration" GROUP "integration"
 endtest
 ```
 
-## 50. Test Behaviours and Best Practices
+## 50. Test Behaviours
 
 ### 50.1 Test Organization
 
@@ -3381,7 +3380,7 @@ Yes?
 
 ---
 
-# Appendix A — Operator reference (summary)
+# Appendix A — Operator reference
 
 - Arithmetic: `+ - * / % **`
 - Assignment: `= += -= *= /= %=`
@@ -3397,7 +3396,7 @@ Yes?
 - File write: `$out`
 - Shell: `|` and `=|`
 
-# Appendix B — Keywords (summary)
+# Appendix B — Keywords Summary
 
 `if else endif`
 `for foreach endfor`
@@ -4002,7 +4001,7 @@ zip_add, zip_create, zip_create_from_dir, zip_extract, zip_extract_file, zip_lis
 
 <div style="page-break-after: always;"></div>
 
-# Appendix E — Worked Example: `eg/mon` (annotated)
+# Appendix E — Worked Example Script
 
 This appendix is an annotated walkthrough of the shipped example script `eg/mon`. All claims below are grounded in the script itself, with line references.
 
