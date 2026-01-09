@@ -239,7 +239,7 @@ macro +nic          `net_interfaces_detailed().table(map(
 
 macro +disk         `
                     unset data
-                    data=disk_usage() ?> \`#.size>0 and #.path != "tmpfs"\`
+                    data=disk_usage() ?> \`#.size>0 and not #.path ~ "(tmpfs|/loop)"\`
                     foreach d in data
                         d.usage_percent=format("%.2f",d.usage_percent).as_float
                         d.used=humansize(d.used)
