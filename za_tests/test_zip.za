@@ -281,14 +281,6 @@ try
         endif
     endfor
     
-    # Remove test directories
-    foreach dirname in ["extracted_files", "extracted_nested", "integrity_extract"]
-        if is_dir(dirname)
-            # Note: No built-in directory removal function, so we'll just note this
-            println "Note: Directory ", dirname, " should be removed manually"
-        endif
-    endfor
-    
     # Remove performance test files
     for i = 1 to 50
         filename = "perf_file_" + i + ".txt"
@@ -305,3 +297,4 @@ endtry
 | rm -fR *.zip extracted_nested integrity_extract single_extract_dir dir1 extracted_files
 
 println "\n=== ZIP Library Tests Complete ===" 
+
