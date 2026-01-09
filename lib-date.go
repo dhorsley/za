@@ -11,7 +11,7 @@ func buildDateLib() {
 
     features["date"] = Feature{version: 1, category: "date"}
     categories["date"] = []string{"date", "epoch_time", "epoch_nano_time", "time_diff", "date_human",
-        "time_hours", "time_minutes", "time_seconds", "time_nanos",
+        "time_hours", "time_minutes", "time_seconds", "time_nanos", "now",
         "time_dow", "time_dom", "time_month", "time_year", "time_zone", "time_zone_offset",
         "format_date", "format_time"}
 
@@ -49,6 +49,14 @@ func buildDateLib() {
             return time.Unix(int64(args[0].(int)), 0).Format(time.RFC822Z), nil
         }
         return time.Now().Format(time.RFC822Z), nil
+    }
+
+    slhelp["now"] = LibHelp{in: "", out: "integer", action: "Returns the current epoch (Unix) time in seconds."}
+    stdlib["now"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("epoch_time", args, 0); !ok {
+            return nil, err
+        }
+        return int(time.Now().Unix()), err
     }
 
     slhelp["epoch_time"] = LibHelp{in: "[string]", out: "integer", action: "Returns the current epoch (Unix) time in seconds. If the optional [#i1]string[#i0] is present, then this is converted to epoch int format from RFC3339 format."}
