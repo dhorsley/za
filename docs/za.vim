@@ -60,6 +60,7 @@ syn keyword assignStatements    var setglob input nextgroup=folVarLHS skipwhite
 " ==========
 
 syntax match time_functions "\(^|.\|\s*\)date\s*("he=e-1
+syntax match time_functions "\(^|.\|\s*\)now\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)epoch_time\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)epoch_nano_time\s*("he=e-1
 syntax match time_functions "\(^|.\|\s*\)time_diff\s*("he=e-1

@@ -3499,7 +3499,7 @@ cron_next, cron_parse, cron_validate, quartz_to_cron
 **Functions (17):**
 
 
-date, date_human, epoch_nano_time, epoch_time, format_date, format_time, time_diff, time_dom, time_dow, time_hours, time_minutes, time_month, time_nanos, time_seconds, time_year, time_zone, time_zone_offset
+date, date_human, epoch_nano_time, epoch_time, format_date, format_time, now, time_diff, time_dom, time_dow, time_hours, time_minutes, time_month, time_nanos, time_seconds, time_year, time_zone, time_zone_offset
 
 
 **Commonly used (from examples/tests):**
@@ -3508,6 +3508,7 @@ date, date_human, epoch_nano_time, epoch_time, format_date, format_time, time_di
 - epoch_nano_time
 - epoch_time
 - time_diff
+- now
 - date
 - date_human
 - time_seconds

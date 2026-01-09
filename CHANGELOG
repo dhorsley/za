@@ -6,6 +6,10 @@ CHANGE LOG
 =====
 
 
+library changes
+---------------
+
+  * added now() to lib-date.go (time in seconds since epoch)
 
 
 1.2.1

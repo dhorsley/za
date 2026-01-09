@@ -34,7 +34,7 @@ return "[#{=1+sp}]"+spin[sp]+"[#-]"
 end
 
 cursoroff()
-seed(epoch_time())
+seed(-1)
 
 for i=0 to rep.as_int-1
     row=get_row()
