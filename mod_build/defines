@@ -63,4 +63,13 @@ define buildWin(build_version,build_date)
     return r
 enddef
 
+define buildNoFFI(build_version,build_date)
+    print "[#4]No-FFI build (minimal, no C library or PCRE support)[#-]\n"
+    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=noffi{=strStrip}"' -tags 'osusergo netgo noffi' -installsuffix netgo
+    r=last()
+    on r>0 do println last_err()
+    on r==0 do { cp za za.noffi }
+    return r
+enddef
+
 

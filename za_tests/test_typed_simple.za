@@ -1,0 +1,14 @@
+# Simple test for typed functions
+
+println "Test: Simple typed function"
+
+def add(a:int, b:int) -> int
+    println "  Inside add: a=", a, " b=", b
+    c = a + b
+    println "  c = ", c
+    return c
+end
+
+println "Calling add(3, 5)..."
+result = add(3, 5)
+println "Result: ", result

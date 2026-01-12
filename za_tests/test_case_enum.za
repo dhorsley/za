@@ -1,0 +1,87 @@
+# Test script for enhanced CASE with enum support
+
+println "[#4]Testing Enhanced CASE with Enum Support[#-]"
+println "=============================================="
+
+# Define test enum
+enum Status (pending, running, completed, failed)
+
+# Test 1: Basic CASE without full (should work as normal)
+println "\n[#6]Test 1: Basic CASE (no full modifier)[#-]"
+
+task_status = Status.running
+
+case task_status
+is Status.pending
+    println "  Status: pending"
+is Status.running
+    println "  Status: running"
+or
+    println "  Status: other"
+endcase
+println "  Test 1 passed"
+
+# Test 2: WITH ENUM + full (exhaustive, all members covered)
+println "\n[#6]Test 2: WITH ENUM + full (exhaustive, complete)[#-]"
+
+task_status = Status.completed
+
+with enum Status
+    case task_status full
+    is pending
+        println "  Status: pending"
+    is running
+        println "  Status: running"
+    is completed
+        println "  Status: completed"
+    is failed
+        println "  Status: failed"
+    endcase
+endwith
+println "  Test 2 passed"
+
+# Test 3: Explicit enum syntax + full (exhaustive, all members covered)
+println "\n[#6]Test 3: Explicit enum syntax + full (exhaustive, complete)[#-]"
+
+task_status = Status.failed
+
+case task_status full
+is Status.pending
+    println "  Status: pending"
+is Status.running
+    println "  Status: running"
+is Status.completed
+    println "  Status: completed"
+is Status.failed
+    println "  Status: failed"
+endcase
+println "  Test 3 passed"
+
+# Test 4: Basic enum matching
+println "\n[#6]Test 4: Basic enum value matching[#-]"
+
+enum Colour (red=1, green=2, blue=3)
+my_colour = Colour.green
+
+matched = false
+case my_colour
+is Colour.red
+    println "  Colour: red"
+is Colour.green
+    println "  Colour: green"
+    matched = true
+is Colour.blue
+    println "  Colour: blue"
+endcase
+
+assert matched == true, "Should have matched green"
+println "  Test 4 passed"
+
+println "\n[#2]All basic enum CASE tests passed![#-]"
+
+# Note: Error condition tests are in separate files to test one error at a time
+# - test_case_enum_err_full_or.za: Tests full + OR error
+# - test_case_enum_err_missing.za: Tests non-exhaustive error
+# - test_case_enum_err_mixed.za: Tests mixed enum error
+
+println "\n[#2]Enum CASE implementation complete![#-]"

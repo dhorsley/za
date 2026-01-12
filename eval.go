@@ -1291,6 +1291,13 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
                 name = useName
             }
             isFunc = fnlookup.lmexists(name)
+
+            // Check for C functions as fallback (before panic)
+            if !isFunc {
+                if namespace := FindCFunction(name); namespace != "" {
+                    isFunc = true
+                }
+            }
         }
 
         if !isFunc {
@@ -2067,7 +2074,7 @@ func (p *leparser) command() string {
 
 func (p *leparser) identifier(token *Token) (any, error) {
 
-    // pf("(identifier) got token -> %#v)\n",token)
+    // pf("(identifier) got token -> %#v)\n", token)
 
     /*
        if token.tokType != Identifier {
@@ -2088,8 +2095,10 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
     // filter for functions here. this also sets the subtype for funcs defined late.
     if p.pos+1 != p.len && p.tokens[p.pos+1].tokType == LParen {
+        // fmt.Printf("[DEBUG] identifier: checking if '%s' is a function (next token is LParen: %v)\n", token.tokText, p.pos+1 < p.len && p.tokens[p.pos+1].tokType == LParen)
+        // pf("(identifier) inside pos length and lparen check.\n")
         if _, isFunc := stdlib[token.tokText]; !isFunc {
-            // pf("(identifier) inside isFunc? check. not a standard library function '%s'\n",token.tokText)
+            // pf("(identifier) inside isFunc? check. not a standard library function '%s'\n", token.tokText)
             var useName string
             if p.prev.tokType != SYM_DoubleColon {
                 if found := uc_match_func(token.tokText); found != "" {
@@ -2102,18 +2111,36 @@ func (p *leparser) identifier(token *Token) (any, error) {
                     }
                 }
             }
-            // pf("  -- checking for name %s::%s in:\n%#v\n",useName,token.tokText,fnlookup.lmshow())
+            // pf("  -- checking for name %s::%s in:\n%#v\n", useName, token.tokText, fnlookup.lmshow())
             if fnlookup.lmexists(useName + "::" + token.tokText) {
                 p.tokens[p.pos].subtype = subtypeUser
                 return token.tokText, nil
             }
+
+            // pf("  -- checking for c function name %s::%s in:\n%#v\n", useName, token.tokText, fnlookup.lmshow())
+            // Check C functions as fallback (highest overhead, lowest priority)
+            namespaceName := FindCFunction(token.tokText)
+            // fmt.Printf("[DEBUG] FindCFunction('%s') returned namespace: '%s'\n", token.tokText, namespaceName)
+            if namespaceName != "" {
+                // fmt.Printf("[DEBUG] C function found: %s::%s - setting subtypeUser\n", namespaceName, token.tokText)
+                p.tokens[p.pos].subtype = subtypeUser
+                return token.tokText, nil
+            } else {
+                // For namespaced calls, check if namespace matches a C library
+                if p.prev.tokType == SYM_DoubleColon {
+                    // fmt.Printf("[DEBUG] Namespaced call detected, namespace: '%s'\n", namespaceName)
+                    p.tokens[p.pos].subtype = subtypeUser
+                    return token.tokText, nil
+                }
+            }
         } else {
-            // pf("(identifier) inside isFunc? check else clause. is a standard library function '%s'\n",token.tokText)
+            // pf("(identifier) inside isFunc? check else clause. is a standard library function '%s'\n", token.tokText)
             p.tokens[p.pos].subtype = subtypeStandard
             // pf("(identifier) returning from identifier() at the isFunc? check else clause.\n")
             return token.tokText, nil
         }
     }
+    // pf("(identifier) reached past func checks.\n")
 
     // local variable lookup:
     bin := token.bindpos
@@ -2162,6 +2189,16 @@ func (p *leparser) identifier(token *Token) (any, error) {
     if enum[ename] != nil {
         // pf("(eval) permitting enum name %s\n",ename)
         return nil, nil
+    }
+
+    // Handle WITH ENUM context: resolve unqualified enum member names
+    if p.inside_with_enum {
+        fullEnumName := p.namespace + "::" + p.with_enum_name
+        if enumDef, exists := enum[fullEnumName]; exists {
+            if memberVal, memberExists := enumDef.members[token.tokText]; memberExists {
+                return memberVal, nil
+            }
+        }
     }
 
     // permit references to uninitialised variables

@@ -40,5 +40,6 @@ func buildStandardLib() {
     buildZipLib()
     buildSmtpLib()
     buildCronLib()
+    buildFfiLib()
 
 }

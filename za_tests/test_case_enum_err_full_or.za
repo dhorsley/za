@@ -1,0 +1,10 @@
+# Test: full + OR should error
+enum Status (pending, running, completed, failed)
+task_status = Status.running
+
+case task_status full
+is Status.pending
+    println "pending"
+or
+    println "other"
+endcase

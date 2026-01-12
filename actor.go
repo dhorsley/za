@@ -1510,7 +1510,24 @@ tco_reentry:
         if s, ok := value.(string); ok {
             value = interpolate(currentModule, ifs, ident, s)
         }
+
         vset(nil, ifs, ident, argName, value)
+
+        // Set up typed parameter AFTER vset (vset with nil tok overwrites the Variable)
+        if len(functionArgs[source_base].argTypes) > q && functionArgs[source_base].argTypes[q] != "" {
+            argType := functionArgs[source_base].argTypes[q]
+            bin := bind_int(ifs, argName)
+            t := &(*ident)[bin]
+            t.ITyped = true
+            t.Kind_override = argType
+            // Type validation: check if value matches expected type
+            if !isCompatibleType(value, argType, currentModule) {
+                farglock.RUnlock()
+                parser.report(-1, sf("Type mismatch for parameter '%s': expected %s, got %T", argName, argType, value))
+                finish(false, ERR_SYNTAX)
+                return
+            }
+        }
     }
 
     farglock.RUnlock()
@@ -4496,9 +4513,11 @@ tco_reentry:
             }
 
         case C_Help:
-            hargs := ""
-            if inbound.TokenCount == 2 {
-                hargs = inbound.Tokens[1].tokText
+            var hargs []string
+            if inbound.TokenCount > 1 {
+                for _, ht := range inbound.Tokens[1:] {
+                    hargs = append(hargs, ht.tokText)
+                }
             }
             ihelp(currentModule, hargs)
 
@@ -4817,22 +4836,41 @@ tco_reentry:
                 // loc, _ := GetNextFnSpace(true, definitionName, call_s{prepared: false})
                 loc, _ := GetNextFnSpace(true, definitionName, call_s{prepared: true, base: source_base, caller: ifs, gc: false, gcShyness: 100})
                 var dargs []string
+                var argTypes []string
                 var hasDefault []bool
                 var defaults []any
+                var returnTypes []string
+                hasReturnTypes := false
 
                 if inbound.TokenCount > 2 {
                     // process tokens directly (no string splitting!)
                     tokens := inbound.Tokens[2:]
 
-                    // remove outer parens if present
-                    if tokens[0].tokType == LParen && tokens[len(tokens)-1].tokType == RParen {
-                        tokens = tokens[1 : len(tokens)-1]
+                    // Check for -> return type(s) FIRST, before removing parens
+                    paramTokens := tokens
+                    mapPos := -1
+                    for i, tok := range tokens {
+                        if tok.tokType == O_Map {
+                            mapPos = i
+                            break
+                        }
+                    }
+                    if mapPos != -1 {
+                        paramTokens = tokens[:mapPos]
+                        returnTokens := tokens[mapPos+1:]
+                        hasReturnTypes = true
+                        returnTypes = parseReturnTypes(returnTokens)
+                    }
+
+                    // Now remove outer parens from parameter tokens if present
+                    if len(paramTokens) > 0 && paramTokens[0].tokType == LParen && paramTokens[len(paramTokens)-1].tokType == RParen {
+                        paramTokens = paramTokens[1 : len(paramTokens)-1]
                     }
 
                     var currentArgTokens []Token
-                    for _, tok := range tokens {
+                    for _, tok := range paramTokens {
                         if tok.tokType == O_Comma {
-                            parser.processArgumentTokens(currentArgTokens, &dargs, &hasDefault, &defaults, loc, ifs, ident)
+                            parser.processArgumentTokens(currentArgTokens, &dargs, &argTypes, &hasDefault, &defaults, loc, ifs, ident)
                             currentArgTokens = nil
                         } else {
                             currentArgTokens = append(currentArgTokens, tok)
@@ -4840,7 +4878,7 @@ tco_reentry:
                     }
                     // process the final argument
                     if len(currentArgTokens) > 0 {
-                        parser.processArgumentTokens(currentArgTokens, &dargs, &hasDefault, &defaults, loc, ifs, ident)
+                        parser.processArgumentTokens(currentArgTokens, &dargs, &argTypes, &hasDefault, &defaults, loc, ifs, ident)
                     }
                 }
 
@@ -4876,8 +4914,11 @@ tco_reentry:
 
                 farglock.Lock()
                 functionArgs[loc].args = dargs
+                functionArgs[loc].argTypes = argTypes
                 functionArgs[loc].hasDefault = hasDefault
                 functionArgs[loc].defaults = defaults
+                functionArgs[loc].returnTypes = returnTypes
+                functionArgs[loc].hasReturnTypes = hasReturnTypes
                 farglock.Unlock()
 
                 // pf("defining new function %s (%d)\n",definitionName,loc)
@@ -5025,6 +5066,27 @@ tco_reentry:
                     break
                 }
             }
+
+            // Validate return types if specified
+            farglock.RLock()
+            if functionArgs[source_base].hasReturnTypes {
+                expectedTypes := functionArgs[source_base].returnTypes
+                if len(expectedTypes) != int(retval_count) {
+                    farglock.RUnlock()
+                    parser.report(inbound.SourceLine, sf("Return count mismatch: expected %d value(s), got %d", len(expectedTypes), retval_count))
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+                for i, retValue := range retvalues {
+                    if expectedTypes[i] != "" && !isCompatibleType(retValue, expectedTypes[i], currentModule) {
+                        farglock.RUnlock()
+                        parser.report(inbound.SourceLine, sf("Return type mismatch at position %d: expected %s, got %T", i+1, expectedTypes[i], retValue))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                }
+            }
+            farglock.RUnlock()
             // pf("call() #%d : rv -> [%+v]\n",ifs,retvalues)
 
             // If we're in a try block and executing a return, pack the return values
@@ -5240,6 +5302,125 @@ tco_reentry:
                 break
             }
 
+            // Check if this is a C library (shared object file)
+            // Supports .so (Linux/BSD), .dll (Windows), .dylib (macOS)
+            isSharedLib := strings.HasSuffix(modGivenPath, ".so") ||
+                strings.Contains(modGivenPath, ".so.") ||
+                strings.HasSuffix(modGivenPath, ".dll") ||
+                strings.HasSuffix(modGivenPath, ".dylib")
+
+            if isSharedLib {
+                // Save current namespace before potentially changing it
+
+                var modRealAlias string
+                if aliased {
+                    modRealAlias = modGivenAlias
+                    currentModule = modRealAlias
+                } else {
+                    currentModule = filepath.Base(modGivenPath)
+                    // Remove library extensions and version suffixes
+                    if strings.HasSuffix(currentModule, ".dll") {
+                        currentModule = str.TrimSuffix(currentModule, ".dll")
+                    } else if strings.HasSuffix(currentModule, ".dylib") {
+                        currentModule = str.TrimSuffix(currentModule, ".dylib")
+                    } else if strings.HasSuffix(currentModule, ".so") {
+                        currentModule = str.TrimSuffix(currentModule, ".so")
+                    } else {
+                        // Remove everything after .so to handle versioned libs like .so.6
+                        soIndex := strings.Index(currentModule, ".so")
+                        if soIndex > 0 {
+                            currentModule = currentModule[:soIndex]
+                        }
+                    }
+                    // Strip common library prefixes
+                    currentModule = str.TrimPrefix(currentModule, "lib")
+                    modRealAlias = currentModule
+                }
+
+                // Handle C library loading - always try system paths for C libraries
+                var err error
+                var libPath string
+
+                // Check if path contains directory separator (either / or \)
+                hasPathSep := str.Contains(modGivenPath, "/") || str.Contains(modGivenPath, "\\")
+
+                if !hasPathSep {
+                    // Try common system library paths based on OS
+                    var systemPaths []string
+                    if runtime.GOOS == "windows" {
+                        // Windows system paths
+                        systemPaths = []string{
+                            "C:\\Windows\\System32\\" + modGivenPath,
+                            "C:\\Windows\\SysWOW64\\" + modGivenPath,
+                        }
+                        // Also check PATH directories
+                        if pathEnv := os.Getenv("PATH"); pathEnv != "" {
+                            for _, dir := range strings.Split(pathEnv, ";") {
+                                systemPaths = append(systemPaths, filepath.Join(dir, modGivenPath))
+                            }
+                        }
+                    } else {
+                        // Unix/Linux/macOS system paths
+                        systemPaths = []string{
+                            "/usr/lib/" + modGivenPath,
+                            "/usr/lib/x86_64-linux-gnu/" + modGivenPath,
+                            "/usr/local/lib/" + modGivenPath,
+                            "/lib/" + modGivenPath,
+                            "/lib/x86_64-linux-gnu/" + modGivenPath,
+                            "/usr/lib64/" + modGivenPath,
+                        }
+                    }
+
+                    for _, path := range systemPaths {
+                        libPath = path
+                        _, err = LoadCLibrary(path)
+                        if err == nil {
+                            break
+                        }
+                    }
+
+                    if err != nil {
+                        parser.report(inbound.SourceLine, sf("Failed to load C library '%s': %v", modGivenPath, err))
+                        finish(false, ERR_MODULE)
+                        break
+                    }
+                } else {
+                    libPath = modGivenPath
+                    lib, err := LoadCLibraryWithAlias(libPath, currentModule)
+
+                    if err != nil {
+                        parser.report(inbound.SourceLine, sf("Failed to load C library '%s': %v", modGivenPath, err))
+                        finish(false, ERR_MODULE)
+                        break
+                    }
+
+                    // Store library reference for help system
+                    if lib != nil {
+                        loadedCLibraries[currentModule] = lib
+                    }
+                }
+
+                // Discover symbols in the C library
+                existingLib, _ := loadedCLibraries[currentModule]
+                symbols, err := DiscoverSymbolsWithAlias(libPath, currentModule, existingLib)
+                if err != nil {
+                    parser.report(inbound.SourceLine, sf("Failed to discover C library symbols: %v", err))
+                    finish(false, ERR_MODULE)
+                    break
+                }
+                // Register all discovered symbols
+                for _, symbol := range symbols {
+                    RegisterCSymbol(symbol)
+                }
+
+                // Add C library to use chain for namespace resolution
+                uc_add(currentModule)
+
+                modlist[currentModule] = true
+
+                // pf("C library '%s' loaded with %d symbols", currentModule, len(symbols))
+            }
+
             //.. set file location
 
             moduleloc = ""
@@ -5304,11 +5485,11 @@ tco_reentry:
             //.. error if it has already been defined
             //pf("DEBUG: permit_dupmod check with alias : %s\n",modRealAlias)
             //pf("DEBUG: -- current filemap list:\n")
-            is_present:=false
+            is_present := false
             fileMap.Range(func(k, v any) bool {
                 // pf("  : %v (ifs:%d)  ",v,k)
                 if v.(string) == moduleloc {
-                    is_present=true
+                    is_present = true
                     // pf("<--")
                     return false
                 }
@@ -5393,7 +5574,6 @@ tco_reentry:
                 calltable[ifs].gcShyness = 20
                 calltable[ifs].gc = true
                 calllock.Unlock()
-
                 currentModule = oldModule
                 parser.namespace = oldModule
 
@@ -5425,8 +5605,21 @@ tco_reentry:
                 break
             }
 
-            if inbound.TokenCount > 1 {
-                we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[1:])
+            // Check for CASE expr full syntax (exhaustive enum matching)
+            isExhaustive := false
+            exprEnd := inbound.TokenCount
+
+            if inbound.TokenCount > 2 {
+                lastTok := inbound.Tokens[inbound.TokenCount-1]
+                if lastTok.tokType == Identifier && lastTok.tokText == "full" {
+                    isExhaustive = true
+                    exprEnd = inbound.TokenCount - 1
+                }
+            }
+
+            // Evaluate expression (excluding "full" if present)
+            if exprEnd > 1 {
+                we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[1:exprEnd])
                 if we.evalError {
                     parser.report(inbound.SourceLine, sf("could not evaluate the CASE condition\n%+v", we.errVal))
                     finish(false, ERR_EVAL)
@@ -5436,12 +5629,26 @@ tco_reentry:
 
             // create storage for CASE details and increase the nesting level
 
-            if inbound.TokenCount == 1 {
+            if exprEnd == 1 {
                 we.result = true
             }
 
+            // Get enum context from WITH ENUM block (if active)
+            enumName := ""
+            if parser.inside_with_enum {
+                enumName = parser.namespace + "::" + parser.with_enum_name
+            }
+
             wccount += 1
-            wc[wccount] = caseCarton{endLine: parser.pc + enddistance, value: we.result, performed: false, dodefault: true}
+            wc[wccount] = caseCarton{
+                endLine:        parser.pc + enddistance,
+                value:          we.result,
+                performed:      false,
+                dodefault:      true,
+                isExhaustive:   isExhaustive,
+                enumName:       enumName,
+                coveredMembers: []string{},
+            }
             depth += 1
             lastConstruct = append(lastConstruct, C_Case)
 
@@ -5454,6 +5661,64 @@ tco_reentry:
             }
 
             carton := wc[wccount]
+
+            // For C_Or with exhaustive mode: error
+            if statement == C_Or && carton.isExhaustive {
+                parser.report(inbound.SourceLine, "CASE 'full' modifier cannot be used with OR clause")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            // Track enum members for exhaustive checking FIRST (before performed check)
+            // This ensures we track all IS clauses in source code, not just executed ones
+            if statement == C_Is && carton.isExhaustive {
+                memberName := ""
+                detectedEnum := ""
+
+                if parser.inside_with_enum {
+                    // Inside WITH ENUM: IS clause has just member name
+                    if inbound.TokenCount == 2 {
+                        memberName = inbound.Tokens[1].tokText
+                        detectedEnum = parser.namespace + "::" + parser.with_enum_name
+                    }
+                } else {
+                    // Outside WITH: IS clause has EnumName.member pattern
+                    // Look for pattern: IS Identifier DOT Identifier
+                    if inbound.TokenCount >= 4 && inbound.Tokens[2].tokType == SYM_DOT {
+                        detectedEnum = parser.namespace + "::" + inbound.Tokens[1].tokText
+                        memberName = inbound.Tokens[3].tokText
+                    }
+                }
+
+                if memberName != "" {
+                    // Set or validate enum name
+                    if carton.enumName == "" {
+                        carton.enumName = detectedEnum
+                    } else if carton.enumName != detectedEnum {
+                        parser.report(inbound.SourceLine,
+                            sf("Mixed enums in exhaustive CASE: expected '%s', got '%s'",
+                                carton.enumName, detectedEnum))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+
+                    // Validate member exists and track coverage
+                    globlock.RLock()
+                    if enumDef, exists := enum[carton.enumName]; exists {
+                        if _, memberExists := enumDef.members[memberName]; memberExists {
+                            carton.coveredMembers = append(carton.coveredMembers, memberName)
+                            wc[wccount] = carton
+                        } else {
+                            globlock.RUnlock()
+                            parser.report(inbound.SourceLine,
+                                sf("'%s' is not a member of enum '%s'", memberName, carton.enumName))
+                            finish(false, ERR_SYNTAX)
+                            break
+                        }
+                    }
+                    globlock.RUnlock()
+                }
+            }
 
             if carton.performed {
                 // already matched and executed a CASE case so jump to ENDCASE
@@ -5581,6 +5846,36 @@ tco_reentry:
                 parser.report(inbound.SourceLine, "Not currently in a CASE block.")
                 finish(false, ERR_SYNTAX)
                 break
+            }
+
+            // Check exhaustiveness if required
+            carton := wc[wccount]
+            if carton.isExhaustive && carton.enumName != "" {
+                globlock.RLock()
+                if enumDef, exists := enum[carton.enumName]; exists {
+                    // Build set of covered members
+                    coveredSet := make(map[string]bool)
+                    for _, member := range carton.coveredMembers {
+                        coveredSet[member] = true
+                    }
+
+                    // Check all enum members are covered
+                    var missing []string
+                    for memberName := range enumDef.members {
+                        if !coveredSet[memberName] {
+                            missing = append(missing, memberName)
+                        }
+                    }
+
+                    if len(missing) > 0 {
+                        globlock.RUnlock()
+                        parser.report(inbound.SourceLine,
+                            sf("Non-exhaustive CASE: missing enum members: %v", missing))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                }
+                globlock.RUnlock()
             }
 
             breakIn = Error
@@ -8028,9 +8323,14 @@ func joinTokens(tokens []Token) string {
     return str.Trim(sb.String(), " \t")
 }
 
-func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, hasDefault *[]bool, defaults *[]any, loc uint32, ifs uint32, ident *[]Variable) {
+func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, argTypes *[]string, hasDefault *[]bool, defaults *[]any, loc uint32, ifs uint32, ident *[]Variable) {
+    // Find positions of : and = tokens
+    colonPos := -1
     eqPos := -1
     for i, t := range tokens {
+        if t.tokType == SYM_COLON && colonPos == -1 {
+            colonPos = i
+        }
         if t.tokType == O_Assign {
             eqPos = i
             break
@@ -8038,13 +8338,47 @@ func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, h
     }
 
     var argName string
+    var argType string
 
-    if eqPos != -1 {
-        // Default value present
+    // Parse patterns:
+    // param              -> argType = ""
+    // param:type         -> argType = "type"
+    // param=default      -> argType = ""
+    // param:type=default -> argType = "type"
+
+    if colonPos != -1 {
+        // Type annotation present
+        argName = joinTokens(tokens[0:colonPos])
+        if eqPos > colonPos {
+            // param:type=default
+            argType = joinTokens(tokens[colonPos+1 : eqPos])
+            defaultExprTokens := tokens[eqPos+1:]
+
+            evaluated := parser.wrappedEval(ifs, ident, ifs, ident, defaultExprTokens)
+            if evaluated.evalError {
+                parser.report(-1, sf("Error evaluating default for argument '%s': %v", argName, evaluated.errVal))
+                finish(false, ERR_EVAL)
+                return
+            }
+
+            *dargs = append(*dargs, argName)
+            *argTypes = append(*argTypes, argType)
+            *hasDefault = append(*hasDefault, true)
+            *defaults = append(*defaults, evaluated.result)
+        } else {
+            // param:type (no default)
+            argType = joinTokens(tokens[colonPos+1:])
+
+            *dargs = append(*dargs, argName)
+            *argTypes = append(*argTypes, argType)
+            *hasDefault = append(*hasDefault, false)
+            *defaults = append(*defaults, nil)
+        }
+    } else if eqPos != -1 {
+        // Default value present, no type
         argName = joinTokens(tokens[0:eqPos])
         defaultExprTokens := tokens[eqPos+1:]
 
-        // Evaluate
         evaluated := parser.wrappedEval(ifs, ident, ifs, ident, defaultExprTokens)
         if evaluated.evalError {
             parser.report(-1, sf("Error evaluating default for argument '%s': %v", argName, evaluated.errVal))
@@ -8053,18 +8387,262 @@ func (parser *leparser) processArgumentTokens(tokens []Token, dargs *[]string, h
         }
 
         *dargs = append(*dargs, argName)
+        *argTypes = append(*argTypes, "") // any/untyped
         *hasDefault = append(*hasDefault, true)
         *defaults = append(*defaults, evaluated.result)
     } else {
-        // No default
+        // No type, no default
         argName = joinTokens(tokens)
         *dargs = append(*dargs, argName)
+        *argTypes = append(*argTypes, "") // any/untyped
         *hasDefault = append(*hasDefault, false)
         *defaults = append(*defaults, nil)
     }
 
     // Bind argument name to local scope
     bind_int(loc, argName)
+}
+
+// setupTypedParameter initializes a typed parameter variable before assignment
+// This sets up ITyped, IKind, Kind_override and IValue so that vset() can do type checking
+func setupTypedParameter(fs uint32, ident *[]Variable, name string, typeStr string, namespace string) {
+    bin := bind_int(fs, name)
+    if bin >= uint64(len(*ident)) {
+        newident := make([]Variable, bin+identGrowthSize)
+        copy(newident, *ident)
+        *ident = newident
+    }
+
+    t := &(*ident)[bin]
+    t.IName = name
+    t.ITyped = true
+    t.declared = true
+    t.Kind_override = typeStr
+
+    // Check if it's a struct type (with namespace resolution)
+    sname := typeStr
+    if !str.Contains(typeStr, "::") {
+        sname = namespace + "::" + typeStr
+    }
+
+    structmapslock.RLock()
+    _, isStruct := structmaps[sname]
+    structmapslock.RUnlock()
+
+    if isStruct {
+        // Struct type - Kind_override already set, ITyped handled by struct system
+        t.Kind_override = sname
+        t.ITyped = false // Let struct system handle this
+        return
+    }
+
+    // Set IKind and initialize IValue based on type string
+    if str.HasPrefix(typeStr, "[]") {
+        switch typeStr {
+        case "[]bool":
+            t.IKind = ksbool
+            t.IValue = []bool{}
+        case "[]int":
+            t.IKind = ksint
+            t.IValue = []int{}
+        case "[]int64":
+            t.IKind = ksint64
+            t.IValue = []int64{}
+        case "[]uint":
+            t.IKind = ksuint
+            t.IValue = []uint{}
+        case "[]uint64":
+            t.IKind = ksuint64
+            t.IValue = []uint64{}
+        case "[]float":
+            t.IKind = ksfloat
+            t.IValue = []float64{}
+        case "[]string":
+            t.IKind = ksstring
+            t.IValue = []string{}
+        case "[]bigi":
+            t.IKind = ksbigi
+            t.IValue = []*big.Int{}
+        case "[]bigf":
+            t.IKind = ksbigf
+            t.IValue = []*big.Float{}
+        case "[]any", "[]mixed", "[]":
+            t.IKind = ksany
+            t.IValue = []any{}
+        default:
+            // Complex multi-dimensional - use dynamic type
+            t.IKind = kdynamic
+            reflectType := parseAndConstructType(typeStr)
+            if reflectType != nil {
+                t.IValue = reflect.New(reflectType).Elem().Interface()
+            }
+        }
+        return
+    }
+
+    // Base types - set IKind and IValue
+    switch typeStr {
+    case "nil":
+        t.IKind = knil
+        t.IValue = nil
+    case "bool":
+        t.IKind = kbool
+        t.IValue = false
+    case "int":
+        t.IKind = kint
+        t.IValue = 0
+    case "int64":
+        t.IKind = kint64
+        t.IValue = int64(0)
+    case "uint":
+        t.IKind = kuint
+        t.IValue = uint(0)
+    case "uint64", "uxlong":
+        t.IKind = kuint64
+        t.IValue = uint64(0)
+    case "uint8", "byte":
+        t.IKind = kbyte
+        t.IValue = uint8(0)
+    case "float":
+        t.IKind = kfloat
+        t.IValue = 0.0
+    case "string":
+        t.IKind = kstring
+        t.IValue = ""
+    case "bigi":
+        t.IKind = kbigi
+        t.IValue = big.NewInt(0)
+    case "bigf":
+        t.IKind = kbigf
+        t.IValue = big.NewFloat(0)
+    case "any", "mixed":
+        t.IKind = kany
+        t.ITyped = false // any type doesn't need type checking
+    case "map":
+        t.IKind = kmap
+        t.IValue = make(map[string]any)
+    default:
+        // Unknown type - might be a struct or complex type
+        // Don't enable strict type checking for unknown types
+        t.ITyped = false
+    }
+}
+
+// parseReturnTypes parses comma-separated return type tokens into a slice of type strings
+func parseReturnTypes(tokens []Token) []string {
+    var types []string
+    var currentTokens []Token
+
+    for _, tok := range tokens {
+        if tok.tokType == O_Comma {
+            if len(currentTokens) > 0 {
+                types = append(types, joinTokens(currentTokens))
+                currentTokens = nil
+            }
+        } else {
+            currentTokens = append(currentTokens, tok)
+        }
+    }
+
+    // Handle the last type (or single type)
+    if len(currentTokens) > 0 {
+        types = append(types, joinTokens(currentTokens))
+    }
+
+    return types
+}
+
+// isCompatibleType checks if a value is compatible with the expected type string
+func isCompatibleType(value any, expectedType string, namespace string) bool {
+    if expectedType == "" || expectedType == "any" || expectedType == "mixed" {
+        return true // any type accepted
+    }
+
+    // Check for struct type
+    sname := expectedType
+    if !str.Contains(expectedType, "::") {
+        sname = namespace + "::" + expectedType
+    }
+
+    structmapslock.RLock()
+    _, isStructType := structmaps[sname]
+    structmapslock.RUnlock()
+
+    if isStructType {
+        // Use struct_match to check if value matches the struct type
+        matchedName, count := struct_match(value)
+        if count == 1 && matchedName == sname {
+            return true
+        }
+        return false
+    }
+
+    // Check for slice types
+    if str.HasPrefix(expectedType, "[]") {
+        if value == nil {
+            return true // nil is valid for slice types
+        }
+        vt := reflect.TypeOf(value)
+        if vt == nil {
+            return true
+        }
+        if vt.Kind() != reflect.Slice && vt.Kind() != reflect.Array {
+            return false
+        }
+        // For now, accept any slice/array for slice types
+        // More specific type checking could be added later
+        return true
+    }
+
+    // Check for map type
+    if expectedType == "map" || str.HasPrefix(expectedType, "map[") {
+        if value == nil {
+            return true
+        }
+        vt := reflect.TypeOf(value)
+        if vt == nil {
+            return true
+        }
+        return vt.Kind() == reflect.Map
+    }
+
+    // Check built-in types
+    switch expectedType {
+    case "bool":
+        _, ok := value.(bool)
+        return ok
+    case "int":
+        _, ok := value.(int)
+        return ok
+    case "int64":
+        _, ok := value.(int64)
+        return ok
+    case "uint":
+        _, ok := value.(uint)
+        return ok
+    case "uint64":
+        _, ok := value.(uint64)
+        return ok
+    case "uint8", "byte":
+        _, ok := value.(uint8)
+        return ok
+    case "float":
+        _, ok := value.(float64)
+        return ok
+    case "string":
+        _, ok := value.(string)
+        return ok
+    case "bigi":
+        _, ok := value.(*big.Int)
+        return ok
+    case "bigf":
+        _, ok := value.(*big.Float)
+        return ok
+    case "nil":
+        return value == nil
+    }
+
+    return true // Unknown type, accept
 }
 
 func handleTestResult(ifs uint32, passed bool, sourceLine int16, exprText string, msg string) {

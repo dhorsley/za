@@ -1,87 +1,86 @@
 package main
 
 import (
-    "sync"
     "slices"
+    "sync"
 )
 
-var chainlock = &sync.RWMutex{}  // chain access lock
+var chainlock = &sync.RWMutex{} // chain access lock
 
-var uchain = make([]string,0)
-var ustack = make([][]string,0)
+var uchain = make([]string, 0)
+var ustack = make([][]string, 0)
 
-
-func uc_add(s string) (bool) {
+func uc_add(s string) bool {
     chainlock.Lock()
     defer chainlock.Unlock()
 
-    if slices.Contains(uchain,s) {
+    if slices.Contains(uchain, s) {
         return false
     }
 
-    uchain=append(uchain,s)
+    uchain = append(uchain, s)
     return true
 }
 
-func uc_remove(s string) (bool) {
+func uc_remove(s string) bool {
     chainlock.Lock()
     defer chainlock.Unlock()
-    for p:=0; p<len(uchain); p+=1 {
-        if uchain[p]==s {
-            na:=make([]string,len(uchain)-1)
-            if p!=0 {
-                copy(na,uchain[:p])
+    for p := 0; p < len(uchain); p += 1 {
+        if uchain[p] == s {
+            na := make([]string, len(uchain)-1)
+            if p != 0 {
+                copy(na, uchain[:p])
             }
-            if p<len(uchain)-1 {
-                na=append(na[:p],uchain[p+1:]...)
+            if p < len(uchain)-1 {
+                na = append(na[:p], uchain[p+1:]...)
             }
-            uchain=na
+            uchain = na
             return true
         }
     }
     return false
 }
 
-func uc_top(s string) (bool) {
+func uc_top(s string) bool {
     uc_remove(s)
     chainlock.Lock()
     defer chainlock.Unlock()
-    na:=make([]string,0,len(uchain)+1)
-    na=append(na,s)
-    for p:=0; p<len(uchain); p+=1 {
-        na=append(na,uchain[p])
+    na := make([]string, 0, len(uchain)+1)
+    na = append(na, s)
+    for p := 0; p < len(uchain); p += 1 {
+        na = append(na, uchain[p])
     }
-    uchain=na
+    uchain = na
     return true
 }
 
 func uc_reset() {
     chainlock.Lock()
     defer chainlock.Unlock()
-    na:=make([]string,0)
-    uchain=na
+    na := make([]string, 0)
+    uchain = na
 }
 
-func ucs_push() (bool) {
+func ucs_push() bool {
     chainlock.Lock()
     defer chainlock.Unlock()
-    na:=make([][]string,0,len(ustack))
-    na=append(na,uchain)
-    for p:=0; p<len(ustack); p+=1 {
-        na=append(na,ustack[p])
+    na := make([][]string, 0, len(ustack))
+    na = append(na, uchain)
+    for p := 0; p < len(ustack); p += 1 {
+        na = append(na, ustack[p])
     }
-    ustack=na
+    ustack = na
     return true
 }
 
-func ucs_pop() (bool) {
+func ucs_pop() bool {
     chainlock.Lock()
     defer chainlock.Unlock()
-    if len(ustack)==0 {
+    if len(ustack) == 0 {
         return false
     }
-    uchain=ustack[0]
-    ustack=ustack[1:]
+    uchain = ustack[0]
+    ustack = ustack[1:]
     return true
 }
 
@@ -89,49 +88,70 @@ func uc_show() {
     chainlock.RLock()
     defer chainlock.RUnlock()
     pf("USE chain\n")
-    if len(uchain)==0 {
+    if len(uchain) == 0 {
         pf("[#2]Empty[#-]\n")
     }
-    for p:=0; p<len(uchain); p+=1 {
-        pf("[%2d] %s\n",p,uchain[p])
+    for p := 0; p < len(uchain); p += 1 {
+        pf("[%2d] %s\n", p, uchain[p])
     }
 }
 
-func uc_match_func(s string) (string) {
+func uc_match_func(s string) string {
     chainlock.RLock()
     defer chainlock.RUnlock()
-    for p:=0; p<len(uchain); p+=1 {
-        if fnlookup.lmexists(uchain[p]+"::"+s) {
+    for p := 0; p < len(uchain); p += 1 {
+        if fnlookup.lmexists(uchain[p] + "::" + s) {
             return uchain[p]
+        }
+        // Check if this is a C library module and has the function
+        if lib, exists := loadedCLibraries[uchain[p]]; exists {
+            if _, symbolExists := lib.Symbols[s]; symbolExists {
+                return uchain[p]
+            }
         }
     }
     return ""
 }
 
-func uc_match_enum(s string) (string) {
+func uc_match_enum(s string) string {
     chainlock.RLock()
     globlock.RLock()
     defer globlock.RUnlock()
     defer chainlock.RUnlock()
-    for p:=0; p<len(uchain); p+=1 {
-        if _,found:=enum[uchain[p]+"::"+s]; found {
+    for p := 0; p < len(uchain); p += 1 {
+        if _, found := enum[uchain[p]+"::"+s]; found {
             return uchain[p]
         }
     }
     return ""
 }
 
-func uc_match_struct(s string) (string) {
+func uc_match_struct(s string) string {
+    chainlock.RLock()
+    globlock.RLock()
+    defer globlock.RUnlock()
+    defer chainlock.RUnlock()
+    for p := 0; p < len(uchain); p += 1 {
+        structmapslock.RLock()
+        if _, exists := structmaps[uchain[p]+"::"+s]; exists {
+            structmapslock.RUnlock()
+            return uchain[p]
+        }
+        structmapslock.RUnlock()
+    }
+    return ""
+}
+
+func uc_match_c_func(s string) string {
     chainlock.RLock()
     defer chainlock.RUnlock()
-        structmapslock.RLock()
-        defer structmapslock.RUnlock()
-    for p:=0; p<len(uchain); p+=1 {
-        if _,found:=structmaps[uchain[p]+"::"+s]; found {
-            return uchain[p]
+    for p := 0; p < len(uchain); p += 1 {
+        // Check if this is a C library module
+        if lib, exists := loadedCLibraries[uchain[p]]; exists {
+            if _, symbolExists := lib.Symbols[s]; symbolExists {
+                return uchain[p]
+            }
         }
     }
     return ""
 }
-
-

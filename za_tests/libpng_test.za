@@ -1,0 +1,118 @@
+# libpng FFI Test Script
+# Generates a simple PNG file using libpng through Za's FFI
+
+println "[#4]libpng FFI Test - PNG Generation[#-]"
+println "======================================"
+
+# Load libpng
+println "\n[#6]Loading libpng...[#-]"
+MODULE "/usr/lib/libpng16.so.16" as png
+use +png
+
+# Get and display version
+println "  libpng loaded successfully"
+ver = png::png_access_version_number()
+println "  Version number: ", ver
+
+# PNG constants - these are C preprocessor #define macros in png.h,
+# NOT symbols in the .so file, so they cannot be imported via FFI.
+# They must be defined manually based on the header file values.
+PNG_COLOR_TYPE_RGB = 2
+PNG_COLOR_TYPE_RGBA = 6
+PNG_INTERLACE_NONE = 0
+PNG_COMPRESSION_TYPE_DEFAULT = 0
+PNG_FILTER_TYPE_DEFAULT = 0
+
+# Image dimensions
+WIDTH = 256
+HEIGHT = 256
+BIT_DEPTH = 8
+
+# Output file
+OUTPUT_FILE = "/tmp/za_test_output.png"
+
+println "\n[#6]Creating PNG file: {OUTPUT_FILE}[#-]"
+println "  Dimensions: {WIDTH}x{HEIGHT}"
+println "  Color type: RGB"
+println "  Bit depth: {BIT_DEPTH}"
+
+# Open output file using c_fopen (not Za's fopen) because libpng's
+# png_init_io() requires a C FILE* pointer, not a Za file handle.
+fp = c_fopen(OUTPUT_FILE, "wb")
+if c_ptr_is_null(fp)
+    println "[#1]Error: Could not open output file[#-]"
+    exit 1
+endif
+println "  File opened successfully"
+
+# Create PNG write struct
+null_ptr = c_null()
+png_ptr = png::png_create_write_struct("1.6.0", null_ptr, null_ptr, null_ptr)
+if c_ptr_is_null(png_ptr)
+    println "[#1]Error: Could not create PNG write struct[#-]"
+    c_fclose(fp)
+    exit 1
+endif
+println "  PNG write struct created"
+
+# Create info struct
+info_ptr = png::png_create_info_struct(png_ptr)
+if c_ptr_is_null(info_ptr)
+    println "[#1]Error: Could not create PNG info struct[#-]"
+    c_fclose(fp)
+    exit 1
+endif
+println "  PNG info struct created"
+
+# Initialize IO
+png::png_init_io(png_ptr, fp)
+println "  IO initialized"
+
+# Set image header
+png::png_set_IHDR(png_ptr, info_ptr, WIDTH, HEIGHT, BIT_DEPTH, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT)
+println "  Image header set"
+
+# Write header
+png::png_write_info(png_ptr, info_ptr)
+println "  Header written"
+
+# Generate and write image data (simple gradient pattern)
+println "  Writing pixel data..."
+ROW_SIZE = WIDTH * 3  # 3 bytes per pixel (RGB)
+
+for y = 0 to HEIGHT - 1
+    row = c_alloc(ROW_SIZE)
+
+    for x = 0 to WIDTH - 1
+        offset = x * 3
+        # Create a colorful gradient pattern
+        r = (x + y) % 256
+        g = (x * 2) % 256
+        b = (y * 2) % 256
+
+        c_set_byte(row, offset, r)
+        c_set_byte(row, offset + 1, g)
+        c_set_byte(row, offset + 2, b)
+    endfor
+
+    # Write the row
+    png::png_write_row(png_ptr, row)
+    c_free(row)
+
+    # Progress indicator every 64 rows
+    if y % 64 == 0
+        print "."
+    endif
+endfor
+println " done"
+
+# Write end
+png::png_write_end(png_ptr, info_ptr)
+println "  End marker written"
+
+# Cleanup
+c_fclose(fp)
+println "  File closed"
+
+println "\n[#2]PNG file created successfully: {OUTPUT_FILE}[#-]"
+println "You can view it with: display {OUTPUT_FILE}"
