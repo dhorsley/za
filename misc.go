@@ -806,7 +806,7 @@ func help(ns string, hargs string) {
 }
 
 // interactive mode help
-func ihelp(ns string, hargs string) {
+func ihelp(ns string, hargs []string) {
 
     switch len(hargs) {
     case 0:
@@ -826,7 +826,7 @@ func ihelp(ns string, hargs string) {
         foundCommand := false
         foundFunction := false
 
-        cmd := str.ToLower(hargs)
+        cmd := str.ToLower(hargs[0])
         var cmdMatchList []string
         funcMatchList := ""
 
@@ -846,6 +846,16 @@ func ihelp(ns string, hargs string) {
             fallthrough
         case "colours":
             help_colour(ns)
+
+        case "plugin":
+            fallthrough
+        case "plugins":
+            // Extract library name from rest of the command
+            if len(hargs) > 1 {
+                help_plugin(ns, hargs[1])
+            } else {
+                help_plugin(ns, "")
+            }
 
         default:
 
@@ -2045,5 +2055,83 @@ func processMacroPhrase(phrase Phrase) {
         }
         name := strings.Join(nameParts, "")
         macroUndefine(name)
+    }
+}
+
+// ihelpPlugin handles "help plugin" command
+func ihelpPlugin(args ...string) {
+    if len(args) != 1 {
+        gpf("", "Usage: help plugin <library_name>")
+        return
+    }
+    help_plugin("", args[0])
+}
+
+// help_plugin displays information about loaded C libraries
+func help_plugin(ns string, libraryName string) {
+    if libraryName == "" {
+        // List all loaded C libraries
+        if len(loadedCLibraries) == 0 {
+            gpf(ns, "[#1]No C libraries currently loaded.[#-]")
+            return
+        }
+
+        gpf(ns, "[#4]Loaded C libraries:[#-]")
+        for libName, lib := range loadedCLibraries {
+            symbolCount := len(lib.Symbols)
+            gpf(ns, sf("  [#6]%s[#-] [#dim](%d symbols)[#-]", libName, symbolCount))
+        }
+        gpf(ns, "\nUse '[#4]help plugin <library_name>[#-]' for detailed information.")
+        return
+    }
+
+    // Show specific library information
+    lib, exists := loadedCLibraries[libraryName]
+    if !exists {
+        gpf(ns, sf("[#1]C library '%s' not found.[#-]", libraryName))
+        return
+    }
+
+    gpf(ns, sf("[#4]C Library: %s[#-]", libraryName))
+    gpf(ns, sf("Symbols found: [#6]%d[#-]\n", len(lib.Symbols)))
+
+    if len(lib.Symbols) == 0 {
+        gpf(ns, "[#dim]No symbols discovered in this library.[#-]")
+        return
+    }
+
+    // Categorize symbols using the new signature system
+    var functions []*CSymbol
+    var constants []*CSymbol
+    var unsupported []*CSymbol
+
+    for _, symbol := range lib.Symbols {
+        if symbol.IsFunction {
+            functions = append(functions, symbol)
+        } else {
+            if len(symbol.SupportNotes) > 0 && symbol.SupportNotes[0] == "[SUPPORTED: Constants will be available in future version]" {
+                constants = append(constants, symbol)
+            } else {
+                unsupported = append(unsupported, symbol)
+            }
+        }
+    }
+
+    // Display functions
+    if len(functions) > 0 {
+        gpf(ns, "[#2]Functions:[#-]")
+        for _, fn := range functions {
+            gpf(ns, sf("  [#6]%s[#-]", GetCFunctionSignature(fn)))
+        }
+        gpf(ns, "\n")
+    }
+
+    // Display unsupported items
+    if len(unsupported) > 0 {
+        gpf(ns, "[#1]Unsupported Features:[#-]")
+        for _, item := range unsupported {
+            gpf(ns, sf("  [#dim]%s[#-]", item))
+        }
+        pf("\n")
     }
 }

@@ -5,11 +5,71 @@ CHANGE LOG
 1.2.2
 =====
 
+fixes
+-----
+
 
 library changes
 ---------------
 
   * added now() to lib-date.go (time in seconds since epoch)
+
+  * added stdlib functions for C pointer manipulation
+      - c_null() - returns null C pointer
+      - c_fopen(path, mode) - opens file, returns C FILE* pointer
+      - c_fclose(fp) - closes C FILE* pointer
+      - c_ptr_is_null(ptr) - checks if pointer is null
+      - c_alloc(size) - allocates byte buffer
+      - c_free(ptr) - frees allocated pointer
+      - c_set_byte(ptr, offset, value) - sets byte in buffer
+      - c_get_symbol(lib, name) - reads data symbol from library
+
+
+language changes
+----------------
+
+  * (experimental) (VERY) added C Foreign Function Interface (FFI) for dynamic library integration
+      - MODULE extension: module "libfoo.so" as foo
+      - automatic function discovery via ELF symbol table parsing
+      - GNU IFUNC and symbol versioning (@@GLIBC) support
+      - basic type conversion between Za and C types
+      - opaque pointer handling via CPointerValue
+      - return type heuristics for unknown signatures
+      - help plugin support for discovered functions
+      - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
+      - test script at za_tests/test_ffi_libpng.za
+      - current limitations:
+          - return types guessed via heuristics (may be incorrect)
+          - no parameter type information from symbols
+          - constants (#define macros) not discoverable from .so files
+          - structs only usable as opaque pointers
+          - no callback support (C calling Za functions)
+          - no varargs function support (printf, etc.)
+          - Windows implementation is stubbed only
+
+  * (experimental) added optional type specifications to function definitions
+      - typed parameters: def func(a:int, b:string)
+      - mixed typing: def func(a:int, b, c:string) - untyped params remain 'any'
+      - typed with defaults: def func(a:int=42, b:string="hello")
+      - return types: def func(a:int) -> int
+      - multiple return types: def func(x:int) -> int, string, bool
+      - array types: def func(items:[]int) -> []int
+      - full backward compatibility with existing untyped functions
+      - test script at za_tests/test_typed_functions.za
+      - current limitations:
+          - type checking occurs at call-time, not parse-time
+          - varargs (...args) always remain untyped
+
+  * added exhaustive enum matching to CASE statements
+      - 'full' modifier: case value full ... endcase
+        - validates all enum members are covered at ENDCASE
+        - errors on: full+OR, mixed enums, missing members
+      - integrates with WITH ENUM blocks for cleaner syntax
+      - test script at za_tests/test_case_enum.za
+      - current limitations:
+          - requires WITH ENUM block or explicit EnumName.member syntax
+          - exhaustiveness only applies to IS clauses (not HAS/CONTAINS)
+          - enum values carry no source-enum metadata once assigned to variables
 
 
 1.2.1

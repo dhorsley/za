@@ -16,7 +16,7 @@ for a = 1 to argc()
     input do_what optarg a
     case $lc do_what
         is "help"
-            exit 0,`\n./build [libc|win|arch|alpine] [upx] [strip] [-path "install_path"]\n`
+            exit 0,`\n./build [libc|win|arch|alpine|noffi] [upx] [strip] [-path "install_path"]\n`
         is "upx"    ; upx_enable=true
         is "strip"  ; strip_enable=true
         is "arch"   ; tgt="arch"
@@ -24,6 +24,7 @@ for a = 1 to argc()
         is "bsd"    ; tgt="bsd"
         is "libc"   ; tgt="libc"
         is "win"    ; tgt="win"
+        is "noffi"  ; tgt="noffi"
         is "beta"   ; gobin="gobe"
         is "-path"
             ipath=argv()[a]
@@ -64,10 +65,12 @@ if ! os() ~ "^freebsd"
     is "libc"
         on buildLibc(bvers,bdate)!=0 do exit e.build,"Failed to build libc version."
     is "bsd"
-    on buildFreeBSD(bvers,bdate) != 0 do exit e.build,"Failed to build bsd version."
+        on buildFreeBSD(bvers,bdate) != 0 do exit e.build,"Failed to build bsd version."
     is "win"
         on strip_enable do "Windows build does not strip!".warning
         on buildWin(bvers,bdate) != 0 do exit e.build,"Failed to build windows version."
+    is "noffi"
+        on buildNoFFI(bvers,bdate) != 0 do exit e.build,"Failed to build no-FFI version."
     or
         exit e.notfound,"Target type unknown."
     endcase
@@ -99,7 +102,7 @@ endif
 
 
 case tgt
-contains "^(default|alpine|arch|libc)$"
+contains "^(default|alpine|arch|libc|noffi)$"
     "Installing {tgt} build to {ipath}".progress
     | sudo cp -f za {ipath}
     on last()!=0 do "sudo copy failed.".warning

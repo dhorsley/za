@@ -1,0 +1,106 @@
+# Test script for typed function parameters and return types
+
+println "[#4]Testing Typed Function Definitions[#-]"
+println "========================================"
+
+# Test 1: Basic typed parameters
+println "\n[#6]Test 1: Basic typed parameters[#-]"
+
+def add_ints(a:int, b:int) -> int
+    return a + b
+end
+
+result = add_ints(3, 5)
+println "  add_ints(3, 5) = ", result
+assert result == 8, "add_ints should return 8"
+
+# Test 2: Mixed typed and untyped parameters
+println "\n[#6]Test 2: Mixed typed and untyped parameters[#-]"
+
+def mixed_params(a:int, b, c:string)
+    println "    a (int): ", a, " kind: ", kind(a)
+    println "    b (any): ", b, " kind: ", kind(b)
+    println "    c (string): ", c, " kind: ", kind(c)
+    return a
+end
+
+mixed_params(42, "hello", "world")
+println "  Mixed params test passed"
+
+# Test 3: Typed parameters with defaults
+println "\n[#6]Test 3: Typed parameters with defaults[#-]"
+
+def with_defaults(a:int=10, b:string="default")
+    println "    a = ", a
+    println "    b = ", b
+    return a
+end
+
+with_defaults()
+with_defaults(20)
+with_defaults(30, "custom")
+println "  Defaults test passed"
+
+# Test 4: Return type validation
+println "\n[#6]Test 4: Return type validation[#-]"
+
+def get_string() -> string
+    return "hello"
+end
+
+s = get_string()
+println "  get_string() = ", s
+assert s == "hello", "get_string should return 'hello'"
+
+# Test 5: Multiple return types
+println "\n[#6]Test 5: Multiple return types[#-]"
+
+def multi_return(x:int) -> int, string, bool
+    return x * 2, "result", x > 0
+end
+
+a, b, c = multi_return(5)
+println "  multi_return(5) = ", a, ", ", b, ", ", c
+assert a == 10, "first return should be 10"
+assert b == "result", "second return should be 'result'"
+assert c == true, "third return should be true"
+
+# Test 6: Array types
+println "\n[#6]Test 6: Array/slice types[#-]"
+
+def process_list(items:[]int) -> []int
+    var result []int
+    foreach i in items
+        result = append(result, i * 2)
+    endfor
+    return result
+end
+
+my_input = [1, 2, 3]
+output = process_list(my_input)
+println "  process_list([1,2,3]) = ", output
+assert len(output) == 3, "output should have 3 elements"
+
+# Test 7: Backward compatibility - untyped functions still work
+println "\n[#6]Test 7: Backward compatibility[#-]"
+
+def untyped_func(a, b, c)
+    return a + b + c
+end
+
+res = untyped_func(1, 2, 3)
+println "  untyped_func(1, 2, 3) = ", res
+assert res == 6, "untyped function should still work"
+
+# Test 8: Float types
+println "\n[#6]Test 8: Float types[#-]"
+
+def calc_area(radius:float) -> float
+    return 3.14159 * radius * radius
+end
+
+area = calc_area(2.0)
+println "  calc_area(2.0) = ", area
+assert area > 12.5 && area < 12.6, "area should be approximately 12.566"
+
+println "\n[#2]All typed function tests passed![#-]"

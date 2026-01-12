@@ -2194,9 +2194,46 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             }
 
         } else {
-            return nil, true, nil, nil
+
+            // Check for C library functions as final fallback
+            // fmt.Printf("[DEBUG] callFunctionExt received name: '%s'\n", name)
+            if str.Contains(name, "::") {
+                // fmt.Printf("[DEBUG] Detected namespaced function name\n")
+                parts := str.SplitN(name, "::", 2)
+                if len(parts) == 2 {
+                    libraryName := parts[0]
+                    functionName := parts[1]
+
+                    // fmt.Printf("[DEBUG] Calling C function: library='%s', function='%s'\n", libraryName, functionName)
+                    result, notes := CallCFunction(libraryName, functionName, args)
+                    // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
+                    if len(notes) > 0 && str.Contains(notes[0], "[ERROR:") {
+                        return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
+                    }
+                    return result, false, nil, nil
+                }
+            } else {
+                // fmt.Printf("[DEBUG] Checking unqualified function name: '%s'\n", name)
+                if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
+                    // fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
+                    result, notes := CallCFunction(foundNamespace, name, args)
+                    // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
+                    if len(notes) > 0 && str.Contains(notes[0], "[ERROR:") {
+                        return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
+                    }
+                    return result, false, nil, nil
+                }
+                if foundNamespace := uc_match_func(name); foundNamespace != "" {
+                    // fmt.Printf("[DEBUG] Found user function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
+                }
+
+                // fmt.Printf("[DEBUG] Returning function not found error for name: '%s'\n", name)
+                return nil, true, nil, nil
+            }
         }
+
     } else {
+
         // call standard library function
         p.std_call = true
 
@@ -2299,6 +2336,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             return res, err != nil, method_result, nil
         }
     }
+    return nil, true, nil, nil
 }
 
 // handleStdlibError handles stdlib function errors like user function errors
@@ -2355,7 +2393,7 @@ func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
             line:       int(p.line) + 1,
             function:   calltable[p.fs].fs,
             fs:         p.fs,
-            stackTrace:  generateStackTrace(calltable[p.fs].fs, p.fs, int16(p.line) + 1),
+            stackTrace: generateStackTrace(calltable[p.fs].fs, p.fs, int16(p.line)+1),
             source:     "stdlib",
         }
 
@@ -2364,8 +2402,6 @@ func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
 
         // Set catch matched to false so try/catch blocks can see the exception
         atomic.StoreInt32(&calltable[p.fs].currentCatchMatched, 0)
-
-
 
         // Return with exception state for try/catch handling
         return true

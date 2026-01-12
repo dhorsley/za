@@ -1,0 +1,48 @@
+# FFI Test Script
+# Tests loading C libraries and calling functions
+
+println "[#4]Za FFI Test Suite[#-]"
+println "===================="
+
+# Test 1: Load libm (math library)
+println "\n[#6]Test 1: Loading libm.so.6[#-]"
+MODULE "/usr/lib/libm.so.6" as m
+use +m
+
+println "  Library loaded successfully"
+
+# Test 2: Check available symbols via help
+println "\n[#6]Test 2: Checking loaded libraries[#-]"
+help plugin
+
+# Test 3: Call sqrt function (double -> double)
+println "\n[#6]Test 3: Calling sqrt(16.0)[#-]"
+result = m::sqrt(16.0)
+println "  sqrt(16.0) = ", result
+
+# Test 4: Call pow function (double, double -> double)
+println "\n[#6]Test 4: Calling pow(2.0, 8.0)[#-]"
+result = m::pow(2.0, 8.0)
+println "  pow(2.0, 8.0) = ", result
+
+# Test 5: Call floor function
+println "\n[#6]Test 5: Calling floor(3.7)[#-]"
+result = m::floor(3.7)
+println "  floor(3.7) = ", result
+
+# Test 6: Call ceil function
+println "\n[#6]Test 6: Calling ceil(3.2)[#-]"
+result = m::ceil(3.2)
+println "  ceil(3.2) = ", result
+
+# Test 7: Call sin function
+println "\n[#6]Test 7: Calling sin(0.0)[#-]"
+result = m::sin(0.0)
+println "  sin(0.0) = ", result
+
+# Test 8: Call cos function
+println "\n[#6]Test 8: Calling cos(0.0)[#-]"
+result = m::cos(0.0)
+println "  cos(0.0) = ", result
+
+println "\n[#2]All tests completed![#-]"

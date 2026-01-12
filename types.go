@@ -45,10 +45,13 @@ type Debugger struct {
 }
 
 type fa_s struct { // function args struct
-    module     int
-    args       []string
-    defaults   []any
-    hasDefault []bool
+    module         int
+    args           []string
+    argTypes       []string // "" = any/untyped, non-empty = type constraint
+    defaults       []any
+    hasDefault     []bool
+    returnTypes    []string // "" = any/untyped, non-empty = type constraint
+    hasReturnTypes bool
 }
 
 // ExpressionFunction can be called from within expressions.
@@ -142,6 +145,11 @@ type caseCarton struct {
     performed bool  // set to true by the matching clause
     dodefault bool  // set false when another clause has been active
     value     any   // the value should only ever be a string, int or float. IN only works with numbers.
+
+    // enum exhaustiveness tracking
+    isExhaustive   bool     // true if "full" modifier was used
+    enumName       string   // full enum name (namespace::EnumName)
+    coveredMembers []string // members covered by IS clauses
 }
 
 // holds an expression to be evaluated and its result

@@ -1,0 +1,13 @@
+# Test: Non-exhaustive CASE should error (missing 'failed')
+enum Status (pending, running, completed, failed)
+task_status = Status.running
+
+case task_status full
+is Status.pending
+    println "pending"
+is Status.running
+    println "running"
+is Status.completed
+    println "completed"
+# missing: is Status.failed
+endcase

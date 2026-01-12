@@ -39,4 +39,5 @@ func buildStandardLib() {
     buildSmtpLib()
     buildCronLib()
     buildSystemLib()
+    buildFfiLib()
 }
