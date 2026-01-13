@@ -116,6 +116,8 @@ D. [Appendix D - Standard Library Categories](#appendix-d-standard-library-categ
 
 E. [Appendix E - Worked Example Script](#appendix-e-worked-example-script)
 
+F. [Appendix F - C Library Imports (FFI)](#appendix-f-c-library-imports-ffi)
+
 
 <div style="page-break-after: always;"></div>
 
@@ -4138,4 +4140,817 @@ The bottom status line prints a human date (`date_human(...)`) and frame time ba
 User input is handled with `keypress(key_timeout)` and a `case char(k)` dispatch (lines 798–834). It supports changing interface (`i`), process filter (`f`), timeout (`t`), toggling CPU sections (`D`, `B`, `T`), help (`h`), quit (`q`), and redraw on Ctrl‑L (`k==12`) (lines 800–834).
 
 On exit it restores terminal state and turns the cursor back on (lines 841–844).
+
+
+# Appendix F — C Library Imports (FFI)
+
+## F.1 Introduction and Use Cases
+
+Za's Foreign Function Interface (FFI) is an experimental feature that enables direct calling of C library functions from Za scripts without requiring custom Go bindings. This allows you to leverage the vast ecosystem of existing C libraries for specialized tasks.
+
+**When to use FFI:**
+
+- Accessing functionality not available in Za's standard library (compression, graphics, specialized formats)
+- Interfacing with system libraries (ncurses for terminal UI, libcurl for HTTP)
+- Working with existing C-based tools and data formats (SQLite, JSON-C)
+- Performance-critical operations implemented in optimized C code
+
+**When NOT to use FFI:**
+
+- Za's standard library already provides the functionality
+- Shell commands are simpler and sufficient for the task
+- The overhead of C interop outweighs benefits
+
+**Platform support:** FFI is fully supported on Unix/Linux systems via libffi. Windows support is limited. The feature requires CGO and is disabled in no-FFI builds.
+
+## F.2 Loading Libraries with MODULE
+
+C libraries are loaded dynamically using the `MODULE` keyword with an alias:
+
+```za
+MODULE "/path/to/library.so" AS alias_name
+USE +alias_name
+```
+
+The `MODULE` statement loads the shared library and makes its symbols available. The `USE +alias` statement enables the namespace for function calls.
+
+**Common system libraries:**
+
+```za
+# Math library
+module "/usr/lib/libm.so.6" as m
+use +m
+
+# C standard library
+module "/usr/lib/libc.so.6" as c
+use +c
+
+# libcurl for HTTP operations
+module "/usr/lib/libcurl.so.4" as curl
+use +curl
+
+# ncurses for terminal UI
+module "/usr/lib/libncursesw.so.6" as nc
+use +nc
+
+# GLib utility library
+module "/usr/lib/libglib-2.0.so.0" as glib
+use +glib
+
+# JSON-C for JSON parsing
+module "/usr/lib/libjson-c.so.5" as json
+use +json
+
+# zlib compression
+module "/usr/lib/libz.so.1" as z
+use +z
+
+# libgd for graphics
+module "/usr/lib/libgd.so.3" as gd
+use +gd
+```
+
+**Finding library paths:** System libraries are typically in `/usr/lib`, `/usr/lib64`, or `/lib`. Use `ldconfig -p` or `find /usr/lib -name "lib*.so*"` to locate specific libraries.
+
+## F.3 Declaring Function Signatures with LIB
+
+C functions require explicit type declarations using the `LIB` keyword. This tells Za how to marshal arguments and return values.
+
+**Syntax:**
+```za
+lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
+```
+
+**Supported types:**
+- `int` - C integers (int, long, int32_t, int64_t, etc.)
+- `float` - C single-precision float
+- `double` - C double-precision float (preferred for floating-point)
+- `string` - C null-terminated string (char*)
+- `pointer` - Generic pointer (void*, struct pointers)
+- `void` - Return type only (function returns nothing)
+- `bool` - C boolean type
+
+**Examples covering all type combinations:**
+
+```za
+# Math functions (double parameters and returns)
+lib m::sqrt(x:double) -> double
+lib m::pow(x:double, y:double) -> double
+lib m::sin(x:double) -> double
+lib m::floor(x:double) -> double
+
+# String functions (string and pointer types)
+lib c::strlen(s:string) -> pointer         # Returns size_t as pointer
+lib c::strcmp(s1:string, s2:string) -> int
+lib c::strcpy(dest:pointer, src:string) -> pointer
+lib c::strcat(dest:pointer, src:string) -> pointer
+
+# Memory management (pointer and int)
+lib c::malloc(size:int) -> pointer
+lib c::calloc(nmemb:int, size:int) -> pointer
+lib c::free(ptr:pointer) -> void           # void return (no value)
+lib c::memcpy(dest:pointer, src:pointer, n:int) -> pointer
+
+# File operations (string, pointer returns)
+lib c::fopen(filename:string, mode:string) -> pointer
+lib c::fclose(stream:pointer) -> int
+lib c::fwrite(ptr:pointer, size:int, nmemb:int, stream:pointer) -> int
+
+# Environment access (string return)
+lib c::getenv(name:string) -> string
+
+# GLib functions (various return types)
+lib glib::g_strdup(str:string) -> string
+lib glib::g_malloc(n_bytes:int) -> pointer
+lib glib::g_free(mem:pointer) -> void
+lib glib::g_random_int() -> int
+lib glib::g_random_double() -> double
+lib glib::g_strcmp0(str1:string, str2:string) -> int
+
+# JSON-C functions (pointer-heavy)
+lib json::json_object_new_object() -> pointer
+lib json::json_object_new_string(s:string) -> pointer
+lib json::json_object_new_int(i:int) -> pointer
+lib json::json_object_object_add(obj:pointer, key:string, val:pointer) -> void
+lib json::json_object_to_json_string(obj:pointer) -> string
+lib json::json_object_put(obj:pointer) -> void
+
+# Graphics (libgd)
+lib gd::gdImageCreate(width:int, height:int) -> pointer
+lib gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -> int
+lib gd::gdImageDestroy(im:pointer) -> void
+```
+
+**Variadic functions** (experimental):
+```za
+# Functions with variable arguments
+lib c::printf(fmt:string, ...args) -> int
+```
+
+**Optional return types:** Functions that perform side effects without returning meaningful values use `-> void`.
+
+## F.4 Calling C Functions
+
+Once declared with `LIB`, C functions are called using the (optional) `namespace::function(args)` syntax. If no namespace is specified, then lookup is performed against the USE chain:
+
+use +c
+```za
+# Simple calls with return values
+result = m::sqrt(16.0)           # result = 4.0
+power = m::pow(2.0, 8.0)         # power = 256.0
+rounded = m::floor(3.7)          # rounded = 3.0
+
+# String operations
+len = c_ptr_to_int(c::strlen("Hello"))  # len = 5
+cmp = c::strcmp("abc", "xyz")           # cmp < 0
+
+# Memory allocation and use
+buffer = malloc(1024)         # Allocate 1KB
+memset(buffer, 0, 1024)       # Zero the buffer
+free(buffer)                  # Free when done
+
+# File operations (with namespace qualifiers to avoid clash with za's fopen/fclose)
+fp = c::fopen("/tmp/test.txt", "w")
+if !c_ptr_is_null(fp)
+    # Write to file
+    c::fclose(fp)
+endif
+
+# Environment variables (with namespace to avoid confusion with builtin env functions)
+home = c::getenv("HOME")
+path = c::getenv("PATH")
+```
+
+**Type conversions:** Za automatically converts between Za types and C types. Strings become `char*`, integers map to appropriate C integer types, and floats/doubles are preserved. Pointers remain opaque.
+
+## F.5 Helper Functions for FFI
+
+Za provides built-in helper functions to work with C pointers and memory:
+
+### c_ptr_is_null(ptr) -> bool
+
+Checks if a C pointer is null.
+
+```za
+fp = c::fopen("/nonexistent", "r")
+if c_ptr_is_null(fp)
+    println "Failed to open file"
+else
+    c::fclose(fp)
+endif
+```
+
+### c_ptr_to_int(ptr) -> int
+
+Converts a C pointer to an integer. Essential for `size_t` return values.
+
+```za
+# strlen returns size_t as a pointer
+len = c_ptr_to_int(c::strlen("Hello, World!"))  # len = 13
+println "Length: {len}"
+```
+
+### c_alloc(size:int) -> pointer
+
+Allocates a zero-initialized byte buffer (similar to `calloc`).
+
+```za
+buffer = c_alloc(256)
+# Use buffer with C functions
+c_set_byte(buffer, 0, 65)  # Set first byte to 'A'
+# ...
+c_free(buffer)
+```
+
+### c_free(ptr)
+
+Frees memory allocated by `c_alloc()`.
+
+```za
+buf = c_alloc(1000)
+# ... use buffer ...
+c_free(buf)
+```
+
+### c_null() -> pointer
+
+Returns a null C pointer.
+
+```za
+null_ptr = c_null()
+assert c_ptr_is_null(null_ptr), "Should be null"
+```
+
+### c_fopen(path:string, mode:string) -> pointer
+
+Opens a file and returns a `FILE*` pointer. Modes: `"r"`, `"w"`, `"a"`, `"rb"`, `"wb"`, etc.
+
+```za
+fp = c_fopen("/tmp/output.txt", "w")
+if !c_ptr_is_null(fp)
+    # Use with fwrite, fprintf, etc.
+    c_fclose(fp)
+endif
+```
+
+### c_fclose(file_ptr) -> int
+
+Closes a `FILE*` pointer. Returns 0 on success.
+
+```za
+result = c_fclose(fp)
+assert result == 0, "Failed to close file"
+```
+
+### c_set_byte(ptr:pointer, offset:int, value:int)
+
+Sets a byte at a specific offset in a buffer.
+
+```za
+buf = c_alloc(256)
+c_set_byte(buf, 0, 72)   # 'H'
+c_set_byte(buf, 1, 105)  # 'i'
+c_set_byte(buf, 2, 0)    # Null terminator
+```
+
+## F.6 Discovering Functions with help plugin
+
+Za's help system provides runtime introspection of loaded C libraries.
+
+### List all loaded libraries
+
+```za
+help plugin
+```
+
+**Output:**
+```
+Loaded C libraries:
+  m -> /usr/lib/libm.so.6 (45 symbols)
+  c -> /usr/lib/libc.so.6 (200 symbols)
+  json -> /usr/lib/libjson-c.so.5 (89 symbols)
+
+Use 'help plugin <library_name>' for detailed information.
+```
+
+### Show library functions
+
+```za
+help plugin m
+```
+
+**Output:**
+```
+C Library: m
+Symbols found: 45
+
+Functions:
+  acos(x:double) -> double
+  asin(x:double) -> double
+  atan(x:double) -> double
+  ceil(x:double) -> double
+  cos(x:double) -> double
+  floor(x:double) -> double
+  log(x:double) -> double
+  pow(x:double, y:double) -> double
+  sin(x:double) -> double
+  sqrt(x:double) -> double
+  tan(x:double) -> double
+  ...
+```
+
+### Search for a function
+
+```za
+help plugin find strlen
+```
+
+**Output:**
+```
+Searching for function: strlen
+
+Found in 1 library:
+  • c
+
+Looking up function signature...
+
+Found in man page:
+  size_t strlen(const char *s);
+
+Suggested LIB declaration:
+  lib c::strlen(s:string) -> int
+
+For more details:
+  • Run: man 3 strlen
+  • Online: https://man7.org/linux/man-pages/man3/strlen.3.html
+```
+
+**Namespaced search:**
+```za
+help plugin find c::strlen
+help plugin find glib::g_malloc
+```
+
+**Man page integration:** Za automatically looks up function signatures from system man pages (section 3) and suggests appropriate `LIB` declarations with C-to-Za type mappings.
+
+## F.7 Type Mapping Reference
+
+| C Type | Za Type | Notes |
+|--------|---------|-------|
+| `void` | (none) | Return type only |
+| `void*` | `pointer` | Generic pointer |
+| `char*` | `string` | Null-terminated strings |
+| `int`, `long` | `int` | All integer types |
+| `int32_t`, `int64_t` | `int` | Fixed-size integers |
+| `size_t`, `ssize_t` | `pointer`* | Use `c_ptr_to_int()` |
+| `uint8_t` - `uint64_t` | `int` | Unsigned integers |
+| `float` | `float` | Single precision |
+| `double` | `double` | Double precision (preferred) |
+| `bool`, `_Bool` | `bool` | Boolean type |
+| `struct`, `union` | `pointer` | Opaque structure pointer |
+
+*Note: `size_t` is returned as a pointer and must be converted with `c_ptr_to_int()`.
+
+**String handling:** Za strings are automatically converted to null-terminated `char*` when passed to C. C strings returned as `string` type are copied into Za memory.
+
+**Pointer considerations:** Pointers to structures are opaque in Za. You cannot access struct fields directly—pass pointers to C functions that know the layout.
+
+## F.8 Complete Working Examples
+
+### F.8.1 Math Operations (libm)
+
+```za
+module "/usr/lib/libm.so.6" as m
+use +m
+
+LIB m::sqrt(x:double) -> double
+LIB m::pow(x:double, y:double) -> double
+LIB m::sin(x:double) -> double
+LIB m::cos(x:double) -> double
+LIB m::floor(x:double) -> double
+LIB m::ceil(x:double) -> double
+
+# Calculate hypotenuse
+a = 3.0
+b = 4.0
+c = m::sqrt(m::pow(a, 2.0) + m::pow(b, 2.0))
+println "Hypotenuse: {c}"  # 5.0
+
+# Trigonometry (angles in radians)
+angle = 3.14159 / 4.0  # 45 degrees
+println "sin(45°) = ",m::sin(angle)  # 0.707...
+println "cos(45°) = ",m::cos(angle)  # 0.707...
+
+# Rounding
+println "floor(3.7) = ",m::floor(3.7)  # 3.0
+println "ceil(3.2) = ",m::ceil(3.2)    # 4.0
+```
+
+### F.8.2 String Manipulation (libc)
+
+```za
+module "/usr/lib/libc.so.6" as c
+use +c
+
+LIB c::strlen(s:string) -> pointer
+LIB c::strcmp(s1:string, s2:string) -> int
+LIB c::strdup(s:string) -> pointer
+
+# String length
+len = c_ptr_to_int(c::strlen("Hello, World!"))
+println "Length: {len}"  # 13
+
+# String comparison
+cmp = c::strcmp("apple", "banana")
+if cmp < 0
+    println "apple comes before banana"
+endif
+
+cmp2 = c::strcmp("test", "test")
+println "Equal strings: {cmp2}"  # 0
+```
+
+### F.8.3 Memory Management (libc)
+
+```za
+module "/usr/lib/libc.so.6" as c
+use +c
+
+LIB c::malloc(size:int) -> pointer
+LIB c::memset(ptr:pointer, value:int, num:int) -> pointer
+LIB c::free(ptr:pointer) -> void
+
+# Allocate buffer
+buffer = malloc(1000)
+if c_ptr_is_null(buffer)
+    println "Memory allocation failed!"
+    exit 1
+endif
+
+# Initialize memory
+memset(buffer, 42, 1000)  # Fill with value 42
+
+# Use buffer...
+
+# Free when done
+c::free(buffer)
+println "Memory freed"
+```
+
+### F.8.4 JSON Processing (libjson-c)
+
+```za
+module "/usr/lib/libjson-c.so.5" as json
+use +json
+
+LIB json::json_object_new_object() -> pointer
+LIB json::json_object_new_string(s:string) -> pointer
+LIB json::json_object_new_int(i:int) -> pointer
+LIB json::json_object_new_double(d:double) -> pointer
+LIB json::json_object_object_add(obj:pointer, key:string, val:pointer) -> void
+LIB json::json_object_to_json_string(obj:pointer) -> string
+LIB json::json_object_put(obj:pointer) -> void
+
+# Create JSON object
+person = json_object_new_object()
+
+# Add fields
+json_object_object_add(person, "name", json_object_new_string("Alice"))
+json_object_object_add(person, "age", json_object_new_int(30))
+json_object_object_add(person, "salary", json_object_new_double(75000.50))
+
+# Convert to JSON string
+json_str = json_object_to_json_string(person)
+println json_str
+# Output: {"name":"Alice","age":30,"salary":75000.5}
+
+# Cleanup
+json_object_put(person)
+```
+
+### F.8.5 Graphics (libgd)
+
+```za
+module "/usr/lib/libgd.so.3" as gd
+use +gd
+
+LIB gd::gdImageCreate(width:int, height:int) -> pointer
+LIB gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -> int
+LIB gd::gdImageLine(im:pointer, x1:int, y1:int, x2:int, y2:int, color:int) -> void
+LIB gd::gdImageRectangle(im:pointer, x1:int, y1:int, x2:int, y2:int, color:int) -> void
+LIB gd::gdImageJpeg(im:pointer, out:pointer, quality:int) -> void
+LIB gd::gdImageDestroy(im:pointer) -> void
+
+# Create image
+im = gdImageCreate(200, 150)
+
+# Allocate colors
+white = gdImageColorAllocate(im, 255, 255, 255)
+red = gdImageColorAllocate(im, 255, 0, 0)
+blue = gdImageColorAllocate(im, 0, 0, 255)
+
+# Draw shapes
+gdImageLine(im, 10, 10, 190, 140, red)
+gdImageRectangle(im, 50, 50, 150, 100, blue)
+
+# Save to file
+fp = c_fopen("/tmp/output.jpg", "wb")
+if !c_ptr_is_null(fp)
+    gdImageJpeg(im, fp, 90)  # Quality: 90
+    c_fclose(fp)
+    println "Image saved to /tmp/output.jpg"
+endif
+
+# Cleanup
+gdImageDestroy(im)
+```
+
+### F.8.6 Terminal UI (ncurses)
+
+```za
+module "/usr/lib/libncursesw.so.6" as nc
+use +nc
+
+LIB nc::initscr() -> pointer
+LIB nc::printw(fmt:string) -> int
+LIB nc::mvaddch(y:int, x:int, ch:int) -> int
+LIB nc::mvprintw(y:int, x:int, fmt:string) -> int
+LIB nc::refresh() -> int
+LIB nc::getch() -> int
+LIB nc::endwin() -> int
+
+# Initialize screen
+stdscr = nc::initscr()
+
+# Print text
+nc::printw("Hello from Za FFI!\n")
+nc::mvprintw(5, 10, "Press any key to exit...")
+
+# Draw characters
+nc::mvaddch(10, 20, 42)   # '*'
+nc::mvaddch(10, 21, 42)
+nc::mvaddch(10, 22, 42)
+
+# Refresh and wait
+nc::refresh()
+nc::getch()
+
+# Cleanup
+nc::endwin()
+```
+
+## F.9 Advanced Topics
+
+### F.9.1 Opaque Structure Pointers
+
+C structures are handled as opaque pointers. Za doesn't need to know the internal layout:
+
+```za
+module "/usr/lib/libglib-2.0.so.0" as glib
+use +glib
+
+LIB glib::g_list_append(list:pointer, data:pointer) -> pointer
+LIB glib::g_list_length(list:pointer) -> int
+LIB glib::g_list_free(list:pointer) -> void
+
+# GList is a struct, but we treat it as an opaque pointer
+list = c_null()
+list = glib::g_list_append(list, "Item 1")
+list = glib::g_list_append(list, "Item 2")
+list = glib::g_list_append(list, "Item 3")
+
+length = glib::g_list_length(list)
+println "List length: {length}"  # 3
+
+glib::g_list_free(list)
+```
+
+### F.9.2 Complex Data Structures
+
+Working with complex C data structures via pointers:
+
+```za
+# JSON arrays
+module "/usr/lib/libjson-c.so.5" as json
+use +json
+
+LIB json::json_object_new_array() -> pointer
+LIB json::json_object_array_add(arr:pointer, val:pointer) -> int
+LIB json::json_object_array_length(arr:pointer) -> int
+
+arr = json::json_object_new_array()
+json::json_object_array_add(arr, json::json_object_new_int(10))
+json::json_object_array_add(arr, json::json_object_new_int(20))
+json::json_object_array_add(arr, json::json_object_new_int(30))
+
+length = json::json_object_array_length(arr)
+println "Array length: {length}"  # 3
+
+json_str = json::json_object_to_json_string(arr)
+println json_str  # [10,20,30]
+
+json::json_object_put(arr)
+```
+
+### F.9.3 Multi-Library Integration
+
+Combining multiple C libraries in one script:
+
+```za
+# Load multiple libraries
+module "libm.so.6" as m
+module "/usr/lib/libc.so.6" as c
+module "/usr/lib/libglib-2.0.so.0" as glib
+use +m
+use +c
+use +glib
+
+# Declare functions from different libraries
+LIB m::sqrt(x:double) -> double
+LIB c::malloc(size:int) -> pointer
+LIB c::free(ptr:pointer) -> void
+LIB glib::g_random_double() -> double
+
+# Use functions together
+random_val = glib::g_random_double() * 100.0
+sqrt_val = m::sqrt(random_val)
+
+buffer = c::malloc(1024)
+# ... use buffer ...
+c::free(buffer)
+```
+
+### F.9.4 Error Handling Strategies
+
+Check return values and null pointers:
+
+```za
+# File operations with error checking
+fp = c_fopen("/tmp/test.dat", "w")
+if c_ptr_is_null(fp)
+    println "[ERROR] Failed to open file"
+    exit 1
+endif
+
+# Write data
+bytes_written = c::fwrite(buffer, 1, 100, fp)
+if bytes_written != 100
+    println "[ERROR] Write failed: expected 100, wrote {bytes_written}"
+    c_fclose(fp)
+    exit 1
+endif
+
+# Close and check
+result = c_fclose(fp)
+if result != 0
+    println "[ERROR] Failed to close file properly"
+    exit 1
+endif
+
+println "File operations completed successfully"
+```
+
+### F.9.5 Memory Management Patterns
+
+**Pattern 1: Allocate-Use-Free**
+```za
+buffer = c::malloc(1024)
+if !c_ptr_is_null(buffer)
+    # Use buffer
+    c::memset(buffer, 0, 1024)
+    # ... operations ...
+    c::free(buffer)
+endif
+```
+
+**Pattern 2: Resource wrapper with cleanup**
+```za
+def safe_file_operation(filename, data)
+    fp = c_fopen(filename, "w")
+    if c_ptr_is_null(fp)
+        return false
+    endif
+
+    # Use file
+    c::fwrite(data, 1, len(data), fp)
+
+    # Always cleanup
+    c_fclose(fp)
+    return true
+end
+```
+
+**Pattern 3: Library-managed memory**
+```za
+# Some libraries manage their own memory
+obj = json::json_object_new_object()
+# ... use object ...
+json::json_object_put(obj)  # Library's cleanup function
+```
+
+## F.10 Limitations and Best Practices
+
+**Limitations:**
+
+1. **No callback function support:** You cannot pass Za functions to C as callbacks (e.g., `qsort` comparator functions).
+
+2. **Manual memory management:** Unlike Za's garbage collection, C memory must be manually freed with `free()` or library-specific cleanup functions.
+
+3. **Preprocessor macros not accessible:** C `#define` constants are not symbols and cannot be accessed via FFI. Define them in Za:
+   ```za
+   # Cannot access C's NULL or EOF directly
+   NULL = c_null()
+   EOF = -1
+   ```
+
+4. **Platform-specific behavior:** Some libraries behave differently across platforms. Test thoroughly.
+
+5. **No struct field access yet:** Cannot read/write struct fields directly. Use library functions that accept struct pointers.
+
+6. **Size_t special handling:** Functions returning `size_t` require `c_ptr_to_int()` conversion.
+
+**Best Practices:**
+
+1. **Prefer Za standard library:** If Za has built-in functionality, use it instead of FFI.
+
+2. **Check for null pointers:** Always verify pointers before use:
+   ```za
+   ptr = c::malloc(1000)
+   if c_ptr_is_null(ptr)
+       println "Allocation failed"
+       exit 1
+   endif
+   ```
+
+3. **Free all allocated memory:** Track allocations and ensure cleanup:
+   ```za
+   buf = c::malloc(1000)
+   try
+       # Use buffer
+   catch e
+       c::free(buf)
+       throw e
+   endtry
+   c::free(buf)
+   ```
+
+4. **Document C library versions:** Different library versions may have incompatible ABIs.
+
+5. **Test edge cases:** C libraries often have undefined behavior on invalid inputs. Test boundary conditions.
+
+6. **Use help plugin for discovery:** Leverage `help plugin find` to get correct signatures from man pages.
+
+7. **Wrap C operations in Za functions:** Create higher-level abstractions:
+   ```za
+   def json_create_person(name, age)
+       obj = json::json_object_new_object()
+       json::json_object_object_add(obj, "name",
+           json::json_object_new_string(name))
+       json::json_object_object_add(obj, "age",
+           json::json_object_new_int(age))
+       return obj
+   end
+   ```
+
+8. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
+
+## F.11 Platform Support and Build Requirements
+
+**Unix/Linux:**
+
+- Full FFI support via `dlopen()` and libffi
+- Supports GNU IFUNC and symbol versioning (@@GLIBC)
+
+**Windows:**
+
+- Limited/stub implementation
+- Most FFI features unavailable
+
+**No-FFI Builds:**
+
+- `lib-c_noffi.go` provides graceful error messages
+- FFI functions return errors explaining the feature is disabled
+- Useful for minimal builds or restricted environments
+
+**Build flags:**
+```go
+//go:build !windows && !noffi && cgo
+```
+
+FFI requires:
+
+- CGO enabled (`CGO_ENABLED=1`)
+- C compiler available
+- libffi installed (typically libffi-dev or libffi-devel package)
+
+**Checking for FFI support:** If FFI is not available, `MODULE` statements will produce an error message indicating the feature is not supported in this build.
+
+**Fallback strategies:** If FFI is unavailable:
+
+- Use Za's standard library functions
+- Use shell commands with external tooling
+
+---
+
+*This appendix documents Za's experimental FFI feature. The API may change in future versions. Test thoroughly and refer to test files in `za_tests/test_ffi*.za` for additional examples.*
 
