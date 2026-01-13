@@ -35,6 +35,7 @@ data3 = g_malloc(8)
 # g_list_prepend returns updated GList* pointer
 list = g_list_prepend(g_malloc(0), data1)
 println "  g_list_prepend() returned: ", list
+println format("list : %#v\n",list)
 assert !c_ptr_is_null(list), "g_list_prepend returned NULL"
 println "  ✓ g_list_prepend returns non-null GList* pointer"
 
@@ -69,9 +70,10 @@ println "\n[#6]Testing GArray Pointer Return Type[#-]"
 
 # Create new dynamic array
 # Returns GArray* pointer
-array = g_array_new(0, 0, 4)  # element_size=4 (int-sized)
-println "  g_array_new() returned: ", array
-assert !c_ptr_is_null(array), "g_array_new returned NULL"
+ary = g_array_new(0, 0, 4)  # element_size=4 (int-sized)
+println "  g_array_new() returned: ", ary
+println format("array : %#v\n",ary)
+assert !c_ptr_is_null(ary), "g_array_new returned NULL"
 println "  ✓ g_array_new returns non-null GArray* pointer"
 
 # Note: We can't easily free GArray without causing issues,
