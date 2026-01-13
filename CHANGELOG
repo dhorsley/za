@@ -24,6 +24,9 @@ library changes
       - c_free(ptr) - frees allocated pointer
       - c_set_byte(ptr, offset, value) - sets byte in buffer
       - c_get_symbol(lib, name) - reads data symbol from library
+      - c_alloc_struct(struct_type_name) - allocates C memory for structs
+      - c_free_struct(ptr) - frees struct memory allocated by c_alloc_struct
+      - c_unmarshal_struct(ptr, struct_type_name) - reads C struct data into Za structs
 
 
 language changes
@@ -47,10 +50,15 @@ language changes
           - library scoping syntax: help plugin find library::function
       - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
       - test scripts at za_tests/test_ffi_*
+      - struct marshaling support:
+          - automatic marshaling when passing struct<typename> parameters to C functions
+          - c_alloc_struct(), c_free_struct(), c_unmarshal_struct() for manual struct handling
+          - supports basic types (int, float, double, bool), strings, pointers
+          - out parameter support for C functions that fill structs
+          - test scripts at za_tests/test_ffi_struct_*.za
       - current limitations:
           - no parameter type information from symbols alone (use LIB declarations)
           - constants (#define macros) not discoverable from .so files
-          - structs only usable as opaque pointers
           - no callback support (C calling Za functions)
           - Windows implementation is stubbed only
 

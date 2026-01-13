@@ -116,7 +116,7 @@ D. [Appendix D - Standard Library Categories](#appendix-d-standard-library-categ
 
 E. [Appendix E - Worked Example Script](#appendix-e-worked-example-script)
 
-F. [Appendix F - C Library Imports (FFI)](#appendix-f-c-library-imports-ffi)
+F. [Appendix F - C Library Imports (FFI) (v1.2.2+)](#appendix-f-c-library-imports-ffi-v1.2.2)
 
 
 <div style="page-break-after: always;"></div>
@@ -4142,7 +4142,7 @@ User input is handled with `keypress(key_timeout)` and a `case char(k)` dispatch
 On exit it restores terminal state and turns the cursor back on (lines 841–844).
 
 
-# Appendix F — C Library Imports (FFI)
+# Appendix F — C Library Imports (FFI) (v1.2.2+)
 
 ## F.1 Introduction and Use Cases
 
@@ -4413,6 +4413,56 @@ c_set_byte(buf, 1, 105)  # 'i'
 c_set_byte(buf, 2, 0)    # Null terminator
 ```
 
+### c_alloc_struct(struct_type_name:string) -> pointer
+
+Allocates C memory for a struct type defined in Za. Returns a pointer to the allocated memory.
+
+```za
+struct Point
+    x int
+    y int
+endstruct
+
+ptr = c_alloc_struct("Point")
+# ptr now points to C memory sized for the Point struct
+```
+
+**Important:** The struct must be defined with the `struct` keyword before calling this function.
+
+### c_free_struct(ptr:pointer)
+
+Frees C struct memory allocated by `c_alloc_struct()`.
+
+```za
+ptr = c_alloc_struct("Point")
+# ... use the pointer ...
+c_free_struct(ptr)
+```
+
+### c_unmarshal_struct(ptr:pointer, struct_type_name:string) -> struct
+
+Reads C memory and converts it to a Za struct. Essential for "out parameters" where C functions fill struct data.
+
+```za
+struct StatStruct
+    st_size int
+    st_mode int
+endstruct
+
+# Allocate memory for C to fill
+statbuf = c_alloc_struct("StatStruct")
+
+# Call C function that fills the struct
+LIB c::stat(pathname:string, statbuf:pointer) -> int
+c::stat("/etc/passwd", statbuf)
+
+# Unmarshal C data back to Za struct
+stats = c_unmarshal_struct(statbuf, "StatStruct")
+println "File size:", stats.st_size
+
+c_free_struct(statbuf)
+```
+
 ## F.6 Discovering Functions with help plugin
 
 Za's help system provides runtime introspection of loaded C libraries.
@@ -4507,13 +4557,15 @@ help plugin find glib::g_malloc
 | `float` | `float` | Single precision |
 | `double` | `double` | Double precision (preferred) |
 | `bool`, `_Bool` | `bool` | Boolean type |
-| `struct`, `union` | `pointer` | Opaque structure pointer |
+| `struct`, `union` | `pointer` or `struct<name>` | Opaque pointer OR marshaled struct (see F.9.1, F.9.2) |
 
 *Note: `size_t` is returned as a pointer and must be converted with `c_ptr_to_int()`.
 
 **String handling:** Za strings are automatically converted to null-terminated `char*` when passed to C. C strings returned as `string` type are copied into Za memory.
 
 **Pointer considerations:** Pointers to structures are opaque in Za. You cannot access struct fields directly—pass pointers to C functions that know the layout.
+
+**Struct marshaling:** Za supports marshaling structs between Za and C memory. Use `struct<typename>` in LIB declarations for automatic marshaling of input parameters. For "out parameters" where C fills the struct, use manual marshaling with `c_alloc_struct()`, `c_unmarshal_struct()`, and `c_free_struct()`.
 
 ## F.8 Complete Working Examples
 
@@ -4725,7 +4777,146 @@ println "List length: {length}"  # 3
 glib::g_list_free(list)
 ```
 
-### F.9.2 Complex Data Structures
+### F.9.2 Struct Marshaling Between Za and C
+
+Za supports bidirectional struct marshaling for passing data between Za and C libraries.
+
+#### Two Modes of Struct Usage
+
+1. **Opaque pointers** (`pointer`): When C library manages the struct internally
+2. **Marshaled structs** (`struct<Name>`): When you define the struct in Za and pass data to/from C
+
+#### Defining Structs
+
+Use Za's existing `struct` keyword:
+
+```za
+struct Point
+    x int
+    y int
+endstruct
+```
+
+#### Automatic Marshaling (Input Parameters)
+
+Use `struct<typename>` in LIB declarations for automatic marshaling:
+
+```za
+module "libexample.so" as ex
+use +ex
+
+struct Point
+    x int
+    y int
+endstruct
+
+# C function: void draw_point(Point pt)
+LIB ex::draw_point(pt:struct<Point>) -> void
+
+# Create Za struct and call - automatic marshaling
+point = Point(.x 100, .y 200)
+ex::draw_point(point)
+```
+
+Za automatically:
+1. Allocates C memory for the struct
+2. Marshals Za struct fields to C memory layout
+3. Passes pointer to C function
+4. Frees C memory after the call
+
+#### Manual Marshaling (Out Parameters)
+
+When C functions fill struct data, use manual marshaling:
+
+```za
+module "libc.so.6" as c
+use +c
+
+struct FileStat
+    st_mode int
+    st_size int
+    st_uid int
+endstruct
+
+def get_file_info(filepath)
+    # Step 1: Allocate C memory
+    statbuf = c_alloc_struct("FileStat")
+
+    # Step 2: Call C function with pointer (not struct<T>)
+    LIB c::stat(path:string, buf:pointer) -> int
+    result = c::stat(filepath, statbuf)
+
+    if result != 0
+        c_free_struct(statbuf)
+        return null
+    endif
+
+    # Step 3: Unmarshal C data to Za struct
+    info = c_unmarshal_struct(statbuf, "FileStat")
+
+    # Step 4: Free C memory
+    c_free_struct(statbuf)
+
+    return info
+end
+
+# Use it
+info = get_file_info("/etc/passwd")
+if info != null
+    println "Size: {info.st_size} bytes"
+    println "Owner: UID {info.st_uid}"
+endif
+```
+
+#### Supported Field Types
+
+| Za Field Type | C Equivalent | Notes |
+|--------------|--------------|-------|
+| `int` | `int`, `long`, `int32_t` | Signed integer |
+| `float` | `float` | Single precision |
+| `double` | `double` | Double precision |
+| `bool` | `_Bool`, `int` | Converted to 0/1 |
+| `string` | `char*` | Allocated as C string |
+| `pointer` | `void*` | Raw pointer value |
+
+**Not yet supported**: Nested structs, fixed-size arrays in structs
+
+#### Best Practices
+
+1. **Match C layouts**: Ensure Za struct field order and types match the C definition
+2. **Free memory**: Always call `c_free_struct()` on manually allocated structs
+3. **Use automatic when possible**: For input parameters, `struct<typename>` handles cleanup
+4. **Manual for out parameters**: When C fills the struct, use alloc → call → unmarshal → free pattern
+5. **Platform differences**: Struct layouts can vary by platform - test on target systems
+
+#### Complete Examples
+
+See working examples in:
+
+- `za_tests/test_ffi_struct_basic.za` - Allocation and deallocation
+- `za_tests/test_ffi_struct_marshal.za` - Marshaling tests
+- `za_tests/test_ffi_struct_stat.za` - Real-world stat() with out parameters
+- `za_tests/test_ffi_png_struct.za` - Opaque pointers (library-managed structs)
+
+#### When to Use Each Mode
+
+**Use opaque pointers** (`pointer`) when:
+
+- C library creates and manages the struct internally
+- You only pass the pointer between C functions
+- Example: PNG structs created by `png_create_read_struct()`
+
+**Use marshaled structs** (`struct<Name>`) when:
+
+- You create the data in Za and pass to C (input parameters)
+- Example: geometry calculations, configuration structs
+
+**Use manual marshaling** when:
+
+- C function fills the struct with data (out parameters)
+- Example: `stat()`, `readdir()`, system calls that return structured data
+
+### F.9.3 Complex Data Structures
 
 Working with complex C data structures via pointers:
 
@@ -4752,7 +4943,7 @@ println json_str  # [10,20,30]
 json::json_object_put(arr)
 ```
 
-### F.9.3 Multi-Library Integration
+### F.9.4 Multi-Library Integration
 
 Combining multiple C libraries in one script:
 
@@ -4780,7 +4971,7 @@ buffer = c::malloc(1024)
 c::free(buffer)
 ```
 
-### F.9.4 Error Handling Strategies
+### F.9.5 Error Handling Strategies
 
 Check return values and null pointers:
 
@@ -4810,7 +5001,7 @@ endif
 println "File operations completed successfully"
 ```
 
-### F.9.5 Memory Management Patterns
+### F.9.6 Memory Management Patterns
 
 **Pattern 1: Allocate-Use-Free**
 ```za
@@ -4865,7 +5056,11 @@ json::json_object_put(obj)  # Library's cleanup function
 
 4. **Platform-specific behavior:** Some libraries behave differently across platforms. Test thoroughly.
 
-5. **No struct field access yet:** Cannot read/write struct fields directly. Use library functions that accept struct pointers.
+5. **Struct field access:** Za now supports struct marshaling for passing data between Za and C:
+   - Define structs in Za and automatically pass to C using `struct<typename>` syntax
+   - Read C struct data into Za using `c_unmarshal_struct()`
+   - Direct field access works within Za structs (e.g., `point.x`)
+   - Nested structs and fixed-size arrays in structs not yet supported
 
 6. **Size_t special handling:** Functions returning `size_t` require `c_ptr_to_int()` conversion.
 

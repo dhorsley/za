@@ -2135,11 +2135,40 @@ func help_plugin(ns string, libraryName string) {
 
     // Display functions
     if len(functions) > 0 {
-        pf("[#2]Functions:[#-]\n")
+        // Separate declared and undeclared functions
+        var declaredFuncs []*CSymbol
+        var undeclaredFuncs []*CSymbol
+
         for _, fn := range functions {
-            pf(sf("  [#6]%s[#-]\n", GetCFunctionSignature(fn)))
+            if _, hasDeclared := GetDeclaredSignature(lib.Alias, fn.Name); hasDeclared {
+                declaredFuncs = append(declaredFuncs, fn)
+            } else {
+                undeclaredFuncs = append(undeclaredFuncs, fn)
+            }
         }
-        pf("\n")
+
+        // Display declared functions with full signatures
+        if len(declaredFuncs) > 0 {
+            pf("\n[#2]Declared Functions:[#-]\n")
+            for _, fn := range declaredFuncs {
+                declaredSig, _ := GetDeclaredSignature(lib.Alias, fn.Name)
+                formattedSig := FormatDeclaredSignature(fn.Name, declaredSig)
+                pf(sf("  [#4][declared][#-] [#6]%s[#-]\n", formattedSig))
+            }
+            pf("\n")
+        }
+
+        // Display undeclared functions as comma-separated list
+        if len(undeclaredFuncs) > 0 {
+            pf("[#2]Undeclared Functions:[#-] [#dim]")
+            for i, fn := range undeclaredFuncs {
+                if i > 0 {
+                    pf(", ")
+                }
+                pf(fn.Name)
+            }
+            pf("[#-]\n\n")
+        }
     }
 
     // Display unsupported items
@@ -2240,6 +2269,10 @@ func help_plugin_find(ns string, functionName string) {
             libDecl := generateLIBDeclaration(libName, actualFunctionName, sig)
             pf(sf("  [#dim]%s[#-]\n", libDecl))
         }
+
+        // Add disclaimer about accuracy
+        pf("\n[#dim]⚠ Note: This suggestion is based on man page parsing and may be inaccurate.[#-]\n")
+        pf("[#dim]   Always verify the signature against the library's documentation.[#-]\n")
 
         // Show variadic note if applicable
         if sig.IsVariadic {

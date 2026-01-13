@@ -355,7 +355,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             return nil, fmt.Errorf("libffi call failed with code %d", result)
         }
 
-        return convertReturnValue(returnValue, expectedRetType)
+        return convertReturnValue(returnValue, sig)
     }
 
     // Build argument type and value arrays
@@ -436,7 +436,41 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             argValuesSlice[i] = ptrPtr
 
         default:
-            return nil, fmt.Errorf("unsupported argument type: %T", arg)
+            // Check if this is a struct type that needs marshaling
+            // Get the struct type name from signature if available
+            var structTypeName string
+            if i < len(sig.ParamStructNames) {
+                structTypeName = sig.ParamStructNames[i]
+            }
+
+            if structTypeName != "" {
+                // This is a typed struct - marshal to C memory
+                argTypesSlice[i] = 8 // CStruct
+
+                // Get C struct layout from Za struct definition
+                structDef, err := getStructLayoutFromZa(structTypeName)
+                if err != nil {
+                    return nil, fmt.Errorf("argument %d: failed to get struct layout for %s: %v", i, structTypeName, err)
+                }
+
+                // Marshal Za struct to C memory
+                cPtr, cleanup, err := MarshalStructToC(arg, structDef)
+                if err != nil {
+                    return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                }
+
+                // Clean up allocated C memory after the FFI call completes
+                // cleanup() will free the struct memory and any allocated strings
+                defer cleanup()
+
+                // Store pointer for libffi (don't add cPtr to allocatedMem, cleanup() handles it)
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = cPtr
+                argValuesSlice[i] = ptrPtr
+            } else {
+                return nil, fmt.Errorf("unsupported argument type: %T", arg)
+            }
         }
     }
 
@@ -467,11 +501,13 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         return nil, fmt.Errorf("libffi call failed with code %d", result)
     }
 
-    return convertReturnValue(returnValue, expectedRetType)
+    return convertReturnValue(returnValue, sig)
 }
 
 // convertReturnValue converts C return value to Za type
-func convertReturnValue(returnValue C.longlong, expectedRetType CType) (any, error) {
+func convertReturnValue(returnValue C.longlong, sig CFunctionSignature) (any, error) {
+    expectedRetType := sig.ReturnType
+
     switch expectedRetType {
     case CVoid:
         return nil, nil
@@ -496,6 +532,26 @@ func convertReturnValue(returnValue C.longlong, expectedRetType CType) (any, err
     case CPointer:
         ptr := *(*unsafe.Pointer)(unsafe.Pointer(&returnValue))
         return &CPointerValue{Ptr: ptr}, nil
+
+    case CStruct:
+        ptr := *(*unsafe.Pointer)(unsafe.Pointer(&returnValue))
+        if ptr == nil {
+            return nil, nil
+        }
+
+        if sig.ReturnStructName != "" {
+            // Typed struct - unmarshal from C memory
+            structDef, err := getStructLayoutFromZa(sig.ReturnStructName)
+            if err != nil {
+                return nil, fmt.Errorf("failed to get struct layout for %s: %v", sig.ReturnStructName, err)
+            }
+
+            // Unmarshal C memory to Za struct
+            return UnmarshalStructFromC(ptr, structDef, sig.ReturnStructName)
+        } else {
+            // Generic struct - return as opaque pointer
+            return &CPointerValue{Ptr: ptr}, nil
+        }
 
     default:
         return nil, fmt.Errorf("unsupported return type: %d", expectedRetType)
