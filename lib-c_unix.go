@@ -352,7 +352,7 @@ func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrar
 // callCFunctionPlatform attempts to call a C function with given arguments
 func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any, []string) {
     if lib.Handle == nil {
-        return nil, []string{"[ERROR: Library handle is nil - cannot call function]"}
+        return nil, []string{"ERROR: Library handle is nil - cannot call function"}
     }
 
     // Get function pointer from library
@@ -362,14 +362,14 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
     funcPtr := C.dlsym(lib.Handle, funcNameC)
     if funcPtr == nil {
         errMsg := C.GoString(C.dlerror())
-        return nil, []string{fmt.Sprintf("[ERROR: Failed to resolve symbol '%s': %s]", functionName, errMsg)}
+        return nil, []string{fmt.Sprintf("ERROR: Failed to resolve symbol '%s': %s", functionName, errMsg)}
     }
 
     // Check if function signature was declared via LIB keyword
     sig, declared := GetDeclaredSignature(lib.Alias, functionName)
     if !declared {
         return nil, []string{fmt.Sprintf(
-            "[ERROR: Function '%s' not declared. Use: LIB %s::%s(...) -> <return_type>]",
+            "ERROR: Function '%s' not declared. Use: LIB %s::%s(...) -> <return_type>",
             functionName, lib.Alias, functionName)}
     }
 
@@ -378,14 +378,14 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
         // Variadic function - require at least fixed args count
         if len(args) < sig.FixedArgCount {
             return nil, []string{fmt.Sprintf(
-                "[ERROR: %s expects at least %d arguments (declared in LIB %s::%s), got %d]",
+                "ERROR: %s expects at least %d arguments (declared in LIB %s::%s), got %d",
                 functionName, sig.FixedArgCount, lib.Alias, functionName, len(args))}
         }
     } else {
         // Non-variadic function - require exact match
         if len(args) != len(sig.ParamTypes) {
             return nil, []string{fmt.Sprintf(
-                "[ERROR: %s expects %d arguments (declared in LIB %s::%s), got %d]",
+                "ERROR: %s expects %d arguments (declared in LIB %s::%s), got %d",
                 functionName, len(sig.ParamTypes), lib.Alias, functionName, len(args))}
         }
     }
@@ -395,14 +395,14 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
         // Call via libffi with declared signature
         result, err := CallCFunctionViaLibFFI(funcPtr, functionName, args, sig)
         if err != nil {
-            return nil, []string{fmt.Sprintf("[ERROR: libffi call failed: %v]", err)}
+            return nil, []string{fmt.Sprintf("ERROR: libffi call failed: %v", err)}
         }
 
         return result, nil
     }
 
     // Fallback if libffi not available
-    return nil, []string{"[ERROR: libffi not available - this should have been caught during library loading]"}
+    return nil, []string{"ERROR: libffi not available - this should have been caught during library loading"}
 }
 
 // Check if symbol should be processed
