@@ -8,6 +8,13 @@ struct Point
     y int
 endstruct
 
+struct Rectangle
+    x int
+    y int
+    width int
+    height int
+endstruct
+
 # Test 1: Verify struct is defined
 println "Test 1: Struct definition"
 p1 = Point(.x 10, .y 20)
@@ -25,14 +32,7 @@ println "  ✓ c_alloc_struct works"
 c_free_struct(ptr)
 println "  ✓ c_free_struct works"
 
-# Test 4: Define a more complex struct
-struct Rectangle
-    x int
-    y int
-    width int
-    height int
-endstruct
-
+# Test 4: Use a more complex struct
 println "\nTest 4: More complex struct"
 rect = Rectangle(.x 5, .y 10, .width 100, .height 50)
 assert rect.x == 5
