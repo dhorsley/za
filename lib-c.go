@@ -9,6 +9,7 @@ import (
     "regexp"
     "strconv"
     "strings"
+    "sync"
     "unsafe"
 )
 
@@ -40,8 +41,9 @@ type CSymbol struct {
 
 // CParameter represents a function parameter
 type CParameter struct {
-    Name string
-    Type CType
+    Name           string
+    Type           CType
+    StructTypeName string // For CStruct types, the Za struct type name
 }
 
 // StructField represents a field in a C struct
@@ -81,10 +83,12 @@ var loadedCLibraries = make(map[string]*CLibrary)
 
 // CFunctionSignature represents an explicitly declared C function signature
 type CFunctionSignature struct {
-    ParamTypes    []CType  // Types of fixed parameters
-    ReturnType    CType    // Return type
-    HasVarargs    bool     // True if function is variadic (takes variable arguments)
-    FixedArgCount int      // Number of fixed arguments before varargs
+    ParamTypes       []CType  // Types of fixed parameters
+    ParamStructNames []string // Parallel array for struct type names (empty for non-struct params)
+    ReturnType       CType    // Return type
+    ReturnStructName string   // For CStruct return values, the Za struct type name
+    HasVarargs       bool     // True if function is variadic (takes variable arguments)
+    FixedArgCount    int      // Number of fixed arguments before varargs
 }
 
 // Global registry of declared function signatures
@@ -92,16 +96,18 @@ type CFunctionSignature struct {
 var declaredSignatures = make(map[string]map[string]CFunctionSignature)
 
 // DeclareCFunction stores an explicit function signature declaration
-func DeclareCFunction(libraryAlias, functionName string, paramTypes []CType, returnType CType, hasVarargs bool) {
+func DeclareCFunction(libraryAlias, functionName string, paramTypes []CType, paramStructNames []string, returnType CType, returnStructName string, hasVarargs bool) {
     if declaredSignatures[libraryAlias] == nil {
         declaredSignatures[libraryAlias] = make(map[string]CFunctionSignature)
     }
     fixedArgCount := len(paramTypes)
     declaredSignatures[libraryAlias][functionName] = CFunctionSignature{
-        ParamTypes:    paramTypes,
-        ReturnType:    returnType,
-        HasVarargs:    hasVarargs,
-        FixedArgCount: fixedArgCount,
+        ParamTypes:       paramTypes,
+        ParamStructNames: paramStructNames,
+        ReturnType:       returnType,
+        ReturnStructName: returnStructName,
+        HasVarargs:       hasVarargs,
+        FixedArgCount:    fixedArgCount,
     }
 }
 
@@ -162,26 +168,38 @@ func ConvertZaToCType(zaType uint8) (CType, []string) {
 }
 
 // StringToCType converts type name strings to CType enum (for LIB declarations)
-func StringToCType(typeName string) (CType, error) {
+// Returns: CType, struct name (if applicable), error
+func StringToCType(typeName string) (CType, string, error) {
+    // Remove all spaces for parsing
+    typeName = strings.ReplaceAll(typeName, " ", "")
+
+    // Handle struct<typename> syntax
+    if strings.HasPrefix(typeName, "struct<") && strings.HasSuffix(typeName, ">") {
+        structName := typeName[7:len(typeName)-1] // Extract name from struct<name>
+        return CStruct, structName, nil
+    }
+
     switch strings.ToLower(typeName) {
     case "void":
-        return CVoid, nil
+        return CVoid, "", nil
     case "int":
-        return CInt, nil
+        return CInt, "", nil
     case "float":
-        return CFloat, nil
+        return CFloat, "", nil
     case "double":
-        return CDouble, nil
+        return CDouble, "", nil
     case "char":
-        return CChar, nil
+        return CChar, "", nil
     case "string":
-        return CString, nil
+        return CString, "", nil
     case "bool":
-        return CBool, nil
+        return CBool, "", nil
     case "pointer", "ptr":
-        return CPointer, nil
+        return CPointer, "", nil
+    case "struct":
+        return CStruct, "", nil // Generic opaque struct pointer
     default:
-        return CVoid, fmt.Errorf("unknown type name: %s", typeName)
+        return CVoid, "", fmt.Errorf("unknown type name: %s", typeName)
     }
 }
 
@@ -411,6 +429,42 @@ func GetCFunctionSignature(symbol *CSymbol) string {
     return fmt.Sprintf("%s(%s) -> %s", symbol.Name, paramStr.String(), returnType)
 }
 
+// FormatDeclaredSignature formats a declared function signature for display
+func FormatDeclaredSignature(functionName string, sig CFunctionSignature) string {
+    var paramStr strings.Builder
+
+    // Build parameter list
+    for i, paramType := range sig.ParamTypes {
+        if i > 0 {
+            paramStr.WriteString(", ")
+        }
+
+        // Use generic param names (arg1, arg2, etc.) since we don't store param names
+        paramStr.WriteString(fmt.Sprintf("arg%d:%s", i+1, CTypeToString(paramType)))
+
+        // Add struct type name if present
+        if len(sig.ParamStructNames) > i && sig.ParamStructNames[i] != "" {
+            paramStr.WriteString(fmt.Sprintf("<%s>", sig.ParamStructNames[i]))
+        }
+    }
+
+    // Add varargs indicator
+    if sig.HasVarargs {
+        if len(sig.ParamTypes) > 0 {
+            paramStr.WriteString(", ")
+        }
+        paramStr.WriteString("...args")
+    }
+
+    // Format return type
+    returnType := CTypeToString(sig.ReturnType)
+    if sig.ReturnStructName != "" {
+        returnType += fmt.Sprintf("<%s>", sig.ReturnStructName)
+    }
+
+    return fmt.Sprintf("%s(%s) -> %s", functionName, paramStr.String(), returnType)
+}
+
 // CTypeToString converts C type enum to string
 func CTypeToString(cType CType) string {
     switch cType {
@@ -440,7 +494,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_symbol"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -525,6 +579,62 @@ func buildFfiLib() {
         }
         return CGetDataSymbol(args[0].(string), args[1].(string))
     }
+
+    slhelp["c_alloc_struct"] = LibHelp{in: "struct_type_name", out: "cpointer", action: "Allocates memory for a C struct of the given Za struct type. The struct must be defined with the 'struct' keyword."}
+    stdlib["c_alloc_struct"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_struct", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        structName := args[0].(string)
+
+        // Get struct layout from Za struct definition
+        structDef, err := getStructLayoutFromZa(structName)
+        if err != nil {
+            return nil, fmt.Errorf("c_alloc_struct: %v", err)
+        }
+
+        // Allocate memory for the struct
+        return CAllocBytes(int(structDef.Size)), nil
+    }
+
+    slhelp["c_free_struct"] = LibHelp{in: "struct_ptr", out: "", action: "Frees a C struct pointer allocated by c_alloc_struct."}
+    stdlib["c_free_struct"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 1 {
+            return nil, fmt.Errorf("c_free_struct requires 1 argument")
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CFreePtr(p)
+        }
+        return nil, nil
+    }
+
+    slhelp["c_unmarshal_struct"] = LibHelp{in: "struct_ptr,struct_type_name", out: "struct", action: "Reads C struct data from memory and converts it to a Za struct. Use this for 'out' parameters that C functions fill with data."}
+    stdlib["c_unmarshal_struct"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_unmarshal_struct", args, 1, "2", "any", "string"); !ok {
+            return nil, err
+        }
+
+        // Get the C pointer
+        ptr, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, fmt.Errorf("c_unmarshal_struct: first argument must be a C pointer")
+        }
+
+        if ptr.Ptr == nil {
+            return nil, fmt.Errorf("c_unmarshal_struct: pointer is null")
+        }
+
+        structName := args[1].(string)
+
+        // Get struct layout from Za struct definition
+        structDef, err := getStructLayoutFromZa(structName)
+        if err != nil {
+            return nil, fmt.Errorf("c_unmarshal_struct: %v", err)
+        }
+
+        // Unmarshal C memory to Za struct
+        return UnmarshalStructFromC(ptr.Ptr, structDef, structName)
+    }
 }
 // FunctionSignature represents a parsed C function signature from man pages
 type FunctionSignature struct {
@@ -580,6 +690,45 @@ func mapCTypeStringToZa(cTypeStr string) (CType, string, error) {
     }
     baseType := strings.TrimSpace(baseTypePart)
 
+    // Check for common typedef patterns that indicate pointers
+    // Many libraries use 'p' or 'ptr' suffix for pointer typedefs
+    lowerType := strings.ToLower(baseType)
+
+    // Pattern 1: Types ending in "charp", "*charp", "char_p" are char pointers (strings)
+    // Examples: png_charp, png_const_charp, json_charp, etc.
+    if strings.HasSuffix(lowerType, "charp") || strings.HasSuffix(lowerType, "char_p") ||
+       strings.HasSuffix(lowerType, "char_ptr") || strings.Contains(lowerType, "charp") {
+        return CString, baseType + " (char pointer typedef) mapped to string", nil
+    }
+
+    // Pattern 2: Types containing "string" are likely strings
+    // Examples: string_t, StringPtr, etc.
+    if strings.Contains(lowerType, "string") {
+        return CString, baseType + " (string typedef) mapped to string", nil
+    }
+
+    // Pattern 3: Types ending in 'p' or 'ptr' (except common non-pointer types)
+    // Examples: png_structp, voidp, intp, json_objectp, etc.
+    // Exclude: "exp" (exponential), "tmp" (temporary), "cmp" (compare), etc.
+    if !isPointer && (strings.HasSuffix(lowerType, "p") || strings.HasSuffix(lowerType, "ptr")) {
+        // Check if it's not a common false positive
+        falsePositives := []string{"exp", "tmp", "cmp", "amp"}
+        isFalsePositive := false
+        for _, fp := range falsePositives {
+            if lowerType == fp || strings.HasSuffix(lowerType, "_"+fp) {
+                isFalsePositive = true
+                break
+            }
+        }
+
+        if !isFalsePositive && len(lowerType) > 1 {
+            // This is likely a pointer typedef
+            isPointer = true
+            // Note: We don't know what it points to, so treat as generic pointer
+            // unless we can infer from the name
+        }
+    }
+
     // Map C types to Za types
     switch baseType {
     case "void":
@@ -594,10 +743,14 @@ func mapCTypeStringToZa(cTypeStr string) (CType, string, error) {
         }
         return CChar, "", nil
 
-    case "int", "long", "short", "int8_t", "int16_t", "int32_t", "int64_t",
+    case "int", "long", "short", "long long", "unsigned long", "unsigned int",
+        "int8_t", "int16_t", "int32_t", "int64_t",
         "uint8_t", "uint16_t", "uint32_t", "uint64_t",
         "size_t", "ssize_t", "off_t", "pid_t", "uid_t", "gid_t", "mode_t", "time_t":
         if baseType == "size_t" || baseType == "ssize_t" {
+            return CInt, baseType + " mapped to int", nil
+        }
+        if baseType == "long long" || baseType == "unsigned long" {
             return CInt, baseType + " mapped to int", nil
         }
         return CInt, "", nil
@@ -666,20 +819,33 @@ func tryManPage(manPageName string, functionName string) (string, error) {
         trimmed := strings.TrimSpace(line)
 
         // Look for the function name
-        if strings.Contains(trimmed, functionName+"(") ||
-            strings.Contains(trimmed, functionName+" (") {
+        if !inFunction && (strings.Contains(trimmed, functionName+"(") ||
+            strings.Contains(trimmed, functionName+" (")) {
             inFunction = true
             signatureLines = append(signatureLines, trimmed)
-
-            // Check if signature ends on same line (with semicolon or closing paren)
-            if strings.Contains(trimmed, ");") {
-                break
-            }
-        } else if inFunction {
+        } else if inFunction && trimmed != "" {
             // Continue collecting multi-line signature
             signatureLines = append(signatureLines, trimmed)
-            if strings.Contains(trimmed, ");") {
-                break
+        }
+
+        // Check if we have a complete signature
+        if inFunction && len(signatureLines) > 0 {
+            // Join current lines to check for completion
+            joined := strings.Join(signatureLines, " ")
+
+            // Signature is complete when:
+            // 1. Has opening parenthesis AND
+            // 2. Has at least as many closing parens as opening parens AND
+            // 3. Either ends with ; or has balanced parens
+            openCount := strings.Count(joined, "(")
+            closeCount := strings.Count(joined, ")")
+
+            if openCount > 0 && closeCount >= openCount {
+                // Check if this looks complete (ends with ) or );)
+                if strings.HasSuffix(strings.TrimSpace(joined), ")") ||
+                   strings.HasSuffix(strings.TrimSpace(joined), ");") {
+                    break
+                }
             }
         }
     }
@@ -836,6 +1002,45 @@ func parseCFunctionSignature(sigStr string, functionName string) (*FunctionSigna
                 Type: zaType,
             })
         }
+    }
+
+    // Apply function name heuristics to correct likely-wrong return types
+    // This helps when man pages have incorrect/simplified type signatures
+    lowerFuncName := strings.ToLower(functionName)
+
+    // Functions with these patterns in their names likely return strings
+    stringReturnPatterns := []string{
+        "_ver",        // png_get_libpng_ver, SDL_GetVersion, etc.
+        "_version",    // get_version, sqlite3_version, etc.
+        "version",     // getversion, libversion, etc.
+        "_string",     // to_string, get_string, etc.
+        "tostring",    // json_to_string, etc.
+        "_name",       // get_name, file_name, etc.
+        "getname",     // getname, getName, etc.
+        "_path",       // get_path, file_path, etc.
+        "getpath",     // getpath, getPath, etc.
+        "_error",      // get_error, error_string, etc.
+        "geterror",    // geterror, getError, etc.
+        "strerror",    // strerror, etc.
+        "_message",    // get_message, error_message, etc.
+        "getmessage",  // getmessage, getMessage, etc.
+    }
+
+    // Check if function name matches string return patterns
+    // and if current return type is a non-string pointer/int
+    shouldBeString := false
+    for _, pattern := range stringReturnPatterns {
+        if strings.Contains(lowerFuncName, pattern) {
+            // Only override if it's currently not a string
+            if returnType != CString && (returnType == CPointer || returnType == CInt || returnType == CChar) {
+                shouldBeString = true
+                break
+            }
+        }
+    }
+
+    if shouldBeString {
+        returnType = CString
     }
 
     return &FunctionSignature{
@@ -997,6 +1202,7 @@ func parseManPageOnline(functionName string) (string, error) {
         lines := strings.Split(cleanContent, "\n")
         var signatureLines []string
         foundMatch := false
+        inSignature := false
 
         for _, line := range lines {
             trimmedLine := strings.TrimSpace(line)
@@ -1006,13 +1212,13 @@ func parseManPageOnline(functionName string) (string, error) {
                 continue
             }
 
-            // Skip empty lines
-            if trimmedLine == "" {
+            // Skip empty lines when not in signature
+            if !inSignature && trimmedLine == "" {
                 continue
             }
 
             // Look for function name with opening parenthesis (and not in a comment/header)
-            if strings.Contains(trimmedLine, functionName) && strings.Contains(trimmedLine, "(") {
+            if !inSignature && strings.Contains(trimmedLine, functionName) && strings.Contains(trimmedLine, "(") {
                 // Make sure it's not a header line
                 if !strings.Contains(trimmedLine, "Manual") && !strings.Contains(trimmedLine, "(3)") {
                     // Check if this line starts with the function name (not just contains it)
@@ -1023,7 +1229,28 @@ func parseManPageOnline(functionName string) (string, error) {
                         strings.Contains(trimmedLine, "*"+functionName+"(") {
                         signatureLines = append(signatureLines, trimmedLine)
                         foundMatch = true
-                        break // Get only the first matching signature
+                        inSignature = true
+                    }
+                }
+            } else if inSignature {
+                // Continue collecting lines that are part of the signature
+                if trimmedLine != "" {
+                    signatureLines = append(signatureLines, trimmedLine)
+                }
+            }
+
+            // Check if signature is complete
+            if inSignature && len(signatureLines) > 0 {
+                joined := strings.Join(signatureLines, " ")
+                openCount := strings.Count(joined, "(")
+                closeCount := strings.Count(joined, ")")
+
+                // Signature is complete when parentheses are balanced
+                if openCount > 0 && closeCount >= openCount {
+                    // Check if this looks complete
+                    if strings.HasSuffix(strings.TrimSpace(joined), ")") ||
+                       strings.HasSuffix(strings.TrimSpace(joined), ");") {
+                        break
                     }
                 }
             }
@@ -1038,4 +1265,148 @@ func parseManPageOnline(functionName string) (string, error) {
     }
 
     return "", fmt.Errorf("function signature not found in online man page")
+}
+
+// Global registry for FFI struct definitions (separate from Za's structmaps)
+var ffiStructDefinitions = make(map[string]*CLibraryStruct)
+var ffiStructLock sync.RWMutex
+
+// lookupStructDefinition finds a struct definition by name
+func lookupStructDefinition(name string) *CLibraryStruct {
+    ffiStructLock.RLock()
+    defer ffiStructLock.RUnlock()
+    return ffiStructDefinitions[name]
+}
+
+// getStructLayoutFromZa converts a Za struct definition to a C struct layout
+// It queries the global structmaps and calculates C-style field offsets
+func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
+    // Check if already cached
+    if cached := lookupStructDefinition(structName); cached != nil {
+        return cached, nil
+    }
+
+    // Look up struct definition in Za's structmaps
+    // Try with and without namespace prefixes
+    structmapslock.RLock()
+    structDef, found := structmaps[structName]
+
+    if !found {
+        // Try common namespace prefixes
+        namespaces := []string{"main::", "global::", ""}
+        for _, ns := range namespaces {
+            qualifiedName := ns + structName
+            if def, ok := structmaps[qualifiedName]; ok {
+                structDef = def
+                found = true
+                break
+            }
+        }
+    }
+
+    if !found {
+        // Search all keys for a match (handle cases where user provides full name or just base name)
+        for k, v := range structmaps {
+            // If structName has ::, do exact match; otherwise match the suffix
+            if strings.Contains(structName, "::") {
+                if k == structName {
+                    structDef = v
+                    found = true
+                    break
+                }
+            } else {
+                // Match suffix after ::
+                if strings.HasSuffix(k, "::"+structName) || k == structName {
+                    structDef = v
+                    found = true
+                    break
+                }
+            }
+        }
+    }
+    structmapslock.RUnlock()
+
+    if !found {
+        return nil, fmt.Errorf("struct %s not defined", structName)
+    }
+
+    // structDef format: [fieldName1, fieldType1, hasDefault1, defaultVal1, fieldName2, fieldType2, ...]
+    if len(structDef)%4 != 0 {
+        return nil, fmt.Errorf("invalid struct definition for %s", structName)
+    }
+
+    var fields []StructField
+    var currentOffset uintptr = 0
+
+    // Process each field
+    for i := 0; i < len(structDef); i += 4 {
+        fieldName, ok := structDef[i].(string)
+        if !ok {
+            return nil, fmt.Errorf("invalid field name in struct %s", structName)
+        }
+
+        fieldTypeStr, ok := structDef[i+1].(string)
+        if !ok {
+            return nil, fmt.Errorf("invalid field type in struct %s", structName)
+        }
+
+        // Convert Za type string to CType
+        var fieldCType CType
+        var fieldSize uintptr
+
+        switch strings.ToLower(fieldTypeStr) {
+        case "int", "uint":
+            fieldCType = CInt
+            fieldSize = 4 // C int is 32-bit
+        case "float":
+            fieldCType = CDouble // Za float is float64
+            fieldSize = 8
+        case "double":
+            fieldCType = CDouble
+            fieldSize = 8
+        case "string":
+            fieldCType = CString // char* pointer
+            fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
+        case "bool":
+            fieldCType = CBool
+            fieldSize = 1
+        case "pointer", "ptr":
+            fieldCType = CPointer
+            fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
+        case "any", "interface{}":
+            fieldCType = CPointer // Treat as opaque pointer
+            fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
+        default:
+            // Check if it's a struct type
+            if strings.HasPrefix(fieldTypeStr, "struct<") || structmaps[fieldTypeStr] != nil {
+                fieldCType = CStruct // Nested struct as pointer
+                fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
+            } else {
+                // Unknown type - treat as pointer
+                fieldCType = CPointer
+                fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
+            }
+        }
+
+        fields = append(fields, StructField{
+            Name:   fieldName,
+            Type:   fieldCType,
+            Offset: currentOffset,
+        })
+
+        currentOffset += fieldSize
+    }
+
+    // Create and cache the C struct layout
+    cStruct := &CLibraryStruct{
+        Name:   structName,
+        Fields: fields,
+        Size:   currentOffset,
+    }
+
+    ffiStructLock.Lock()
+    ffiStructDefinitions[structName] = cStruct
+    ffiStructLock.Unlock()
+
+    return cStruct, nil
 }

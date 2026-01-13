@@ -1,0 +1,48 @@
+#!/usr/bin/env za
+
+# Test basic struct FFI support
+
+# Define a simple struct for testing
+struct Point
+    x int
+    y int
+endstruct
+
+# Test 1: Verify struct is defined
+println "Test 1: Struct definition"
+p1 = Point(.x 10, .y 20)
+assert p1.x == 10
+assert p1.y == 20
+println "  ✓ Struct definition and instantiation works"
+
+# Test 2: Allocate C memory for struct
+println "\nTest 2: C struct allocation"
+ptr = c_alloc_struct("Point")
+assert !c_ptr_is_null(ptr)
+println "  ✓ c_alloc_struct works"
+
+# Test 3: Free C struct memory
+c_free_struct(ptr)
+println "  ✓ c_free_struct works"
+
+# Test 4: Define a more complex struct
+struct Rectangle
+    x int
+    y int
+    width int
+    height int
+endstruct
+
+println "\nTest 4: More complex struct"
+rect = Rectangle(.x 5, .y 10, .width 100, .height 50)
+assert rect.x == 5
+assert rect.width == 100
+println "  ✓ Complex struct works"
+
+# Test 5: Allocate complex struct
+ptr2 = c_alloc_struct("Rectangle")
+assert !c_ptr_is_null(ptr2)
+c_free_struct(ptr2)
+println "  ✓ Complex struct allocation works"
+
+println "\n✅ All basic struct tests passed!"

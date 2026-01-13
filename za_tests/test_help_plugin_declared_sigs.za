@@ -1,0 +1,43 @@
+#!/usr/bin/env za
+
+# Test: help plugin command displays declared LIB signatures
+#
+# This test verifies that:
+# 1. Functions with LIB declarations show with [declared] tag in green
+# 2. Functions without LIB declarations show dimmed with default void signatures
+# 3. Declared signatures include correct parameter types and return types
+# 4. Varargs functions are handled correctly
+
+println "=== Test: Help Plugin Declared Signatures ==="
+println ""
+
+# Load libc
+module "/usr/lib/libc.so.6" as c
+module "libpng.so" as png
+
+println "Step 1: Declaring some functions with LIB"
+lib c::scanf(format:string, ...args) -> int
+lib c::sprintf(str:string, format:string, ...args) -> int
+lib c::malloc_usable_size(ptr:pointer) -> int
+
+println "Step 2: Running 'help plugin c'"
+println ""
+println "Expected behavior:"
+println "  - 'Declared Functions:' section shows functions with LIB declarations"
+println "  - Full signatures displayed with [declared] tag (green)"
+println "  - 'Undeclared Functions:' section shows comma-separated list (dimmed)"
+println ""
+
+help plugin c
+
+println ""
+println "=== Test completed ==="
+println ""
+println "Manual verification:"
+println "  1. 'Declared Functions:' section at top with 3 functions"
+println "  2. Each declared function has [declared] tag (green) and full signature:"
+println "     - malloc_usable_size(arg1:void*) -> int"
+println "     - scanf(arg1:char*, ...args) -> int"
+println "     - sprintf(arg1:char*, arg2:char*, ...args) -> int"
+println "  3. 'Undeclared Functions:' section shows compact comma-separated list (dimmed)"
+println "  4. Undeclared list should contain ~1975 other function names"

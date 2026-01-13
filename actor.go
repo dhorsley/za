@@ -5679,7 +5679,7 @@ tco_reentry:
                 returnTypeStr = strings.TrimSpace(afterParams[arrowIdx+2:])
             }
 
-            returnType, err := StringToCType(returnTypeStr)
+            returnType, returnStructName, err := StringToCType(returnTypeStr)
             if err != nil {
                 parser.report(inbound.SourceLine, sf("Invalid return type '%s': %v", returnTypeStr, err))
                 finish(false, ERR_SYNTAX)
@@ -5688,6 +5688,7 @@ tco_reentry:
 
             // Parse parameters
             var paramTypes []CType
+            var paramStructNames []string
             hasVarargs := false
             if paramsStr != "" {
                 params := strings.Split(paramsStr, ",")
@@ -5714,18 +5715,19 @@ tco_reentry:
                         break
                     }
                     typeStr := strings.TrimSpace(param[colonIdx+1:])
-                    paramType, err := StringToCType(typeStr)
+                    paramType, structName, err := StringToCType(typeStr)
                     if err != nil {
                         parser.report(inbound.SourceLine, sf("Invalid parameter type '%s': %v", typeStr, err))
                         finish(false, ERR_SYNTAX)
                         break
                     }
                     paramTypes = append(paramTypes, paramType)
+                    paramStructNames = append(paramStructNames, structName)
                 }
             }
 
             // Store the function signature
-            DeclareCFunction(libAlias, funcName, paramTypes, returnType, hasVarargs)
+            DeclareCFunction(libAlias, funcName, paramTypes, paramStructNames, returnType, returnStructName, hasVarargs)
 
         case C_Case:
 

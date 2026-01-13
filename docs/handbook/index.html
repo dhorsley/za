@@ -241,8 +241,8 @@ Constants</a></p>
 Standard Library Categories</a></p>
 <p>E. <a href="#appendix-e-worked-example-script">Appendix E - Worked
 Example Script</a></p>
-<p>F. <a href="#appendix-f-c-library-imports-ffi">Appendix F - C Library
-Imports (FFI)</a></p>
+<p>F. <a href="#appendix-f-c-library-imports-ffi-v1.2.2">Appendix F - C
+Library Imports (FFI) (v1.2.2+)</a></p>
 <div style="page-break-after: always;">
 
 </div>
@@ -3726,8 +3726,8 @@ interface (<code>i</code>), process filter (<code>f</code>), timeout
 redraw on Ctrl‑L (<code>k==12</code>) (lines 800–834).</p>
 <p>On exit it restores terminal state and turns the cursor back on
 (lines 841–844).</p>
-<h1 id="appendix-f-c-library-imports-ffi">Appendix F — C Library Imports
-(FFI)</h1>
+<h1 id="appendix-f-c-library-imports-ffi-v1.2.2">Appendix F — C Library
+Imports (FFI) (v1.2.2+)</h1>
 <h2 id="f.1-introduction-and-use-cases">F.1 Introduction and Use
 Cases</h2>
 <p>Za’s Foreign Function Interface (FFI) is an experimental feature that
@@ -3957,6 +3957,47 @@ offset:int, value:int)</h3>
 c_set_byte(buf, 0, 72)   # &#39;H&#39;
 c_set_byte(buf, 1, 105)  # &#39;i&#39;
 c_set_byte(buf, 2, 0)    # Null terminator</code></pre>
+<h3
+id="c_alloc_structstruct_type_namestring---pointer">c_alloc_struct(struct_type_name:string)
+-&gt; pointer</h3>
+<p>Allocates C memory for a struct type defined in Za. Returns a pointer
+to the allocated memory.</p>
+<pre class="za"><code>struct Point
+    x int
+    y int
+endstruct
+
+ptr = c_alloc_struct(&quot;Point&quot;)
+# ptr now points to C memory sized for the Point struct</code></pre>
+<p><strong>Important:</strong> The struct must be defined with the
+<code>struct</code> keyword before calling this function.</p>
+<h3 id="c_free_structptrpointer">c_free_struct(ptr:pointer)</h3>
+<p>Frees C struct memory allocated by <code>c_alloc_struct()</code>.</p>
+<pre class="za"><code>ptr = c_alloc_struct(&quot;Point&quot;)
+# ... use the pointer ...
+c_free_struct(ptr)</code></pre>
+<h3
+id="c_unmarshal_structptrpointer-struct_type_namestring---struct">c_unmarshal_struct(ptr:pointer,
+struct_type_name:string) -&gt; struct</h3>
+<p>Reads C memory and converts it to a Za struct. Essential for “out
+parameters” where C functions fill struct data.</p>
+<pre class="za"><code>struct StatStruct
+    st_size int
+    st_mode int
+endstruct
+
+# Allocate memory for C to fill
+statbuf = c_alloc_struct(&quot;StatStruct&quot;)
+
+# Call C function that fills the struct
+LIB c::stat(pathname:string, statbuf:pointer) -&gt; int
+c::stat(&quot;/etc/passwd&quot;, statbuf)
+
+# Unmarshal C data back to Za struct
+stats = c_unmarshal_struct(statbuf, &quot;StatStruct&quot;)
+println &quot;File size:&quot;, stats.st_size
+
+c_free_struct(statbuf)</code></pre>
 <h2 id="f.6-discovering-functions-with-help-plugin">F.6 Discovering
 Functions with help plugin</h2>
 <p>Za’s help system provides runtime introspection of loaded C
@@ -4017,6 +4058,11 @@ appropriate <code>LIB</code> declarations with C-to-Za type
 mappings.</p>
 <h2 id="f.7-type-mapping-reference">F.7 Type Mapping Reference</h2>
 <table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 37%" />
+<col style="width: 29%" />
+</colgroup>
 <thead>
 <tr>
 <th>C Type</th>
@@ -4077,8 +4123,8 @@ mappings.</p>
 </tr>
 <tr>
 <td><code>struct</code>, <code>union</code></td>
-<td><code>pointer</code></td>
-<td>Opaque structure pointer</td>
+<td><code>pointer</code> or <code>struct&lt;name&gt;</code></td>
+<td>Opaque pointer OR marshaled struct (see F.9.1, F.9.2)</td>
 </tr>
 </tbody>
 </table>
@@ -4091,6 +4137,12 @@ memory.</p>
 <p><strong>Pointer considerations:</strong> Pointers to structures are
 opaque in Za. You cannot access struct fields directly—pass pointers to
 C functions that know the layout.</p>
+<p><strong>Struct marshaling:</strong> Za supports marshaling structs
+between Za and C memory. Use <code>struct&lt;typename&gt;</code> in LIB
+declarations for automatic marshaling of input parameters. For “out
+parameters” where C fills the struct, use manual marshaling with
+<code>c_alloc_struct()</code>, <code>c_unmarshal_struct()</code>, and
+<code>c_free_struct()</code>.</p>
 <h2 id="f.8-complete-working-examples">F.8 Complete Working
 Examples</h2>
 <h3 id="f.8.1-math-operations-libm">F.8.1 Math Operations (libm)</h3>
@@ -4276,7 +4328,175 @@ length = glib::g_list_length(list)
 println &quot;List length: {length}&quot;  # 3
 
 glib::g_list_free(list)</code></pre>
-<h3 id="f.9.2-complex-data-structures">F.9.2 Complex Data
+<h3 id="f.9.2-struct-marshaling-between-za-and-c">F.9.2 Struct
+Marshaling Between Za and C</h3>
+<p>Za supports bidirectional struct marshaling for passing data between
+Za and C libraries.</p>
+<h4 id="two-modes-of-struct-usage">Two Modes of Struct Usage</h4>
+<ol type="1">
+<li><strong>Opaque pointers</strong> (<code>pointer</code>): When C
+library manages the struct internally</li>
+<li><strong>Marshaled structs</strong>
+(<code>struct&lt;Name&gt;</code>): When you define the struct in Za and
+pass data to/from C</li>
+</ol>
+<h4 id="defining-structs-1">Defining Structs</h4>
+<p>Use Za’s existing <code>struct</code> keyword:</p>
+<pre class="za"><code>struct Point
+    x int
+    y int
+endstruct</code></pre>
+<h4 id="automatic-marshaling-input-parameters">Automatic Marshaling
+(Input Parameters)</h4>
+<p>Use <code>struct&lt;typename&gt;</code> in LIB declarations for
+automatic marshaling:</p>
+<pre class="za"><code>module &quot;libexample.so&quot; as ex
+use +ex
+
+struct Point
+    x int
+    y int
+endstruct
+
+# C function: void draw_point(Point pt)
+LIB ex::draw_point(pt:struct&lt;Point&gt;) -&gt; void
+
+# Create Za struct and call - automatic marshaling
+point = Point(.x 100, .y 200)
+ex::draw_point(point)</code></pre>
+<p>Za automatically: 1. Allocates C memory for the struct 2. Marshals Za
+struct fields to C memory layout 3. Passes pointer to C function 4.
+Frees C memory after the call</p>
+<h4 id="manual-marshaling-out-parameters">Manual Marshaling (Out
+Parameters)</h4>
+<p>When C functions fill struct data, use manual marshaling:</p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c
+use +c
+
+struct FileStat
+    st_mode int
+    st_size int
+    st_uid int
+endstruct
+
+def get_file_info(filepath)
+    # Step 1: Allocate C memory
+    statbuf = c_alloc_struct(&quot;FileStat&quot;)
+
+    # Step 2: Call C function with pointer (not struct&lt;T&gt;)
+    LIB c::stat(path:string, buf:pointer) -&gt; int
+    result = c::stat(filepath, statbuf)
+
+    if result != 0
+        c_free_struct(statbuf)
+        return null
+    endif
+
+    # Step 3: Unmarshal C data to Za struct
+    info = c_unmarshal_struct(statbuf, &quot;FileStat&quot;)
+
+    # Step 4: Free C memory
+    c_free_struct(statbuf)
+
+    return info
+end
+
+# Use it
+info = get_file_info(&quot;/etc/passwd&quot;)
+if info != null
+    println &quot;Size: {info.st_size} bytes&quot;
+    println &quot;Owner: UID {info.st_uid}&quot;
+endif</code></pre>
+<h4 id="supported-field-types">Supported Field Types</h4>
+<table>
+<thead>
+<tr>
+<th>Za Field Type</th>
+<th>C Equivalent</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>int</code>, <code>long</code>, <code>int32_t</code></td>
+<td>Signed integer</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>float</code></td>
+<td>Single precision</td>
+</tr>
+<tr>
+<td><code>double</code></td>
+<td><code>double</code></td>
+<td>Double precision</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>_Bool</code>, <code>int</code></td>
+<td>Converted to 0/1</td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>char*</code></td>
+<td>Allocated as C string</td>
+</tr>
+<tr>
+<td><code>pointer</code></td>
+<td><code>void*</code></td>
+<td>Raw pointer value</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Not yet supported</strong>: Nested structs, fixed-size arrays
+in structs</p>
+<h4 id="best-practices">Best Practices</h4>
+<ol type="1">
+<li><strong>Match C layouts</strong>: Ensure Za struct field order and
+types match the C definition</li>
+<li><strong>Free memory</strong>: Always call
+<code>c_free_struct()</code> on manually allocated structs</li>
+<li><strong>Use automatic when possible</strong>: For input parameters,
+<code>struct&lt;typename&gt;</code> handles cleanup</li>
+<li><strong>Manual for out parameters</strong>: When C fills the struct,
+use alloc → call → unmarshal → free pattern</li>
+<li><strong>Platform differences</strong>: Struct layouts can vary by
+platform - test on target systems</li>
+</ol>
+<h4 id="complete-examples">Complete Examples</h4>
+<p>See working examples in:</p>
+<ul>
+<li><code>za_tests/test_ffi_struct_basic.za</code> - Allocation and
+deallocation</li>
+<li><code>za_tests/test_ffi_struct_marshal.za</code> - Marshaling
+tests</li>
+<li><code>za_tests/test_ffi_struct_stat.za</code> - Real-world stat()
+with out parameters</li>
+<li><code>za_tests/test_ffi_png_struct.za</code> - Opaque pointers
+(library-managed structs)</li>
+</ul>
+<h4 id="when-to-use-each-mode">When to Use Each Mode</h4>
+<p><strong>Use opaque pointers</strong> (<code>pointer</code>) when:</p>
+<ul>
+<li>C library creates and manages the struct internally</li>
+<li>You only pass the pointer between C functions</li>
+<li>Example: PNG structs created by
+<code>png_create_read_struct()</code></li>
+</ul>
+<p><strong>Use marshaled structs</strong>
+(<code>struct&lt;Name&gt;</code>) when:</p>
+<ul>
+<li>You create the data in Za and pass to C (input parameters)</li>
+<li>Example: geometry calculations, configuration structs</li>
+</ul>
+<p><strong>Use manual marshaling</strong> when:</p>
+<ul>
+<li>C function fills the struct with data (out parameters)</li>
+<li>Example: <code>stat()</code>, <code>readdir()</code>, system calls
+that return structured data</li>
+</ul>
+<h3 id="f.9.3-complex-data-structures">F.9.3 Complex Data
 Structures</h3>
 <p>Working with complex C data structures via pointers:</p>
 <pre class="za"><code># JSON arrays
@@ -4299,7 +4519,7 @@ json_str = json::json_object_to_json_string(arr)
 println json_str  # [10,20,30]
 
 json::json_object_put(arr)</code></pre>
-<h3 id="f.9.3-multi-library-integration">F.9.3 Multi-Library
+<h3 id="f.9.4-multi-library-integration">F.9.4 Multi-Library
 Integration</h3>
 <p>Combining multiple C libraries in one script:</p>
 <pre class="za"><code># Load multiple libraries
@@ -4323,7 +4543,7 @@ sqrt_val = m::sqrt(random_val)
 buffer = c::malloc(1024)
 # ... use buffer ...
 c::free(buffer)</code></pre>
-<h3 id="f.9.4-error-handling-strategies">F.9.4 Error Handling
+<h3 id="f.9.5-error-handling-strategies">F.9.5 Error Handling
 Strategies</h3>
 <p>Check return values and null pointers:</p>
 <pre class="za"><code># File operations with error checking
@@ -4349,7 +4569,7 @@ if result != 0
 endif
 
 println &quot;File operations completed successfully&quot;</code></pre>
-<h3 id="f.9.5-memory-management-patterns">F.9.5 Memory Management
+<h3 id="f.9.6-memory-management-patterns">F.9.6 Memory Management
 Patterns</h3>
 <p><strong>Pattern 1: Allocate-Use-Free</strong></p>
 <pre class="za"><code>buffer = c::malloc(1024)
@@ -4396,9 +4616,18 @@ NULL = c_null()
 EOF = -1</code></pre></li>
 <li><p><strong>Platform-specific behavior:</strong> Some libraries
 behave differently across platforms. Test thoroughly.</p></li>
-<li><p><strong>No struct field access yet:</strong> Cannot read/write
-struct fields directly. Use library functions that accept struct
-pointers.</p></li>
+<li><p><strong>Struct field access:</strong> Za now supports struct
+marshaling for passing data between Za and C:</p>
+<ul>
+<li>Define structs in Za and automatically pass to C using
+<code>struct&lt;typename&gt;</code> syntax</li>
+<li>Read C struct data into Za using
+<code>c_unmarshal_struct()</code></li>
+<li>Direct field access works within Za structs (e.g.,
+<code>point.x</code>)</li>
+<li>Nested structs and fixed-size arrays in structs not yet
+supported</li>
+</ul></li>
 <li><p><strong>Size_t special handling:</strong> Functions returning
 <code>size_t</code> require <code>c_ptr_to_int()</code>
 conversion.</p></li>
@@ -4464,8 +4693,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb206"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb212"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb212-1"><a href="#cb212-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
