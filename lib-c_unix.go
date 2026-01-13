@@ -298,6 +298,11 @@ func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
         }
 
         if shouldProcessSymbol(cleanName) {
+            // Skip imported symbols (undefined in this library)
+            if sym.Section == elf.SHN_UNDEF {
+                continue
+            }
+
             symbolCount++
             symType := elf.ST_TYPE(sym.Info)
             // STT_FUNC (2) = regular function
