@@ -5,12 +5,13 @@ println "[#4]Testing zlib FFI[#-]"
 println "=" * 50
 
 # Load zlib
-module "/usr/lib/libz.so.1" as z
+module "libc.so.6" as c
+module "libz.so.1" as z
 use +z
 
 # Declare function signatures
 LIB z::zlibVersion() -> string
-LIB z::strlen(s:string) -> pointer
+LIB c::strlen(s:string) -> pointer
 LIB z::compressBound(sourceLen:int) -> pointer
 
 # zlib constants
@@ -24,7 +25,7 @@ println "\n[#6]Version Information[#-]"
 
 # Get zlib zlib_version string
 zlib_version = zlibVersion()
-zlib_version_len = c_ptr_to_int(strlen(zlib_version))
+zlib_version_len = c_ptr_to_int(c::strlen(zlib_version))
 assert zlib_version_len > 0, "zlibVersion returned empty string"
 println "  ✓ zlibVersion() returns non-empty string"
 println "  zlib zlib_version: {zlib_version}"
@@ -37,7 +38,7 @@ println "\n[#6]Compression Test[#-]"
 # Test string
 check_string = "Hello, World! This is a check string for compression. "
 check_string = check_string + check_string + check_string  # Make it bigger
-source_len = c_ptr_to_int(strlen(check_string))
+source_len = c_ptr_to_int(c::strlen(check_string))
 
 println "  Original size: {source_len} bytes"
 
