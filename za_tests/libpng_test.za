@@ -6,12 +6,15 @@ println "======================================"
 
 # Load libpng
 println "\n[#6]Loading libpng...[#-]"
-module "/usr/lib/libpng16.so.16" as png
+module "libpng.so" as png
 use +png
+
+lib png::png_get_libpng_ver() -> pointer
 
 # Get and display version
 println "  libpng loaded successfully"
-ver = png::png_access_version_number()
+ver = png_get_libpng_ver()
+on ver is nil do exit 1, "Could not read version number!"
 println "  Version number: ", ver
 
 # PNG constants - these are C preprocessor #define macros in png.h,
@@ -47,7 +50,7 @@ println "  File opened successfully"
 
 # Create PNG write struct
 null_ptr = c_null()
-png_ptr = png::png_create_write_struct("1.6.0", null_ptr, null_ptr, null_ptr)
+png_ptr = png_create_write_struct("1.6.0", null_ptr, null_ptr, null_ptr)
 if c_ptr_is_null(png_ptr)
     println "[#1]Error: Could not create PNG write struct[#-]"
     c_fclose(fp)
@@ -56,7 +59,7 @@ endif
 println "  PNG write struct created"
 
 # Create info struct
-info_ptr = png::png_create_info_struct(png_ptr)
+info_ptr = png_create_info_struct(png_ptr)
 if c_ptr_is_null(info_ptr)
     println "[#1]Error: Could not create PNG info struct[#-]"
     c_fclose(fp)
@@ -65,15 +68,15 @@ endif
 println "  PNG info struct created"
 
 # Initialize IO
-png::png_init_io(png_ptr, fp)
+png_init_io(png_ptr, fp)
 println "  IO initialized"
 
 # Set image header
-png::png_set_IHDR(png_ptr, info_ptr, WIDTH, HEIGHT, BIT_DEPTH, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT)
+png_set_IHDR(png_ptr, info_ptr, WIDTH, HEIGHT, BIT_DEPTH, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT)
 println "  Image header set"
 
 # Write header
-png::png_write_info(png_ptr, info_ptr)
+png_write_info(png_ptr, info_ptr)
 println "  Header written"
 
 # Generate and write image data (simple gradient pattern)
@@ -96,7 +99,7 @@ for y = 0 to HEIGHT - 1
     endfor
 
     # Write the row
-    png::png_write_row(png_ptr, row)
+    png_write_row(png_ptr, row)
     c_free(row)
 
     # Progress indicator every 64 rows
@@ -107,7 +110,7 @@ endfor
 println " done"
 
 # Write end
-png::png_write_end(png_ptr, info_ptr)
+png_write_end(png_ptr, info_ptr)
 println "  End marker written"
 
 # Cleanup
