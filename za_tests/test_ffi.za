@@ -6,8 +6,16 @@ println "===================="
 
 # Test 1: Load libm (math library)
 println "\n[#6]Test 1: Loading libm.so.6[#-]"
-MODULE "/usr/lib/libm.so.6" as m
+module "/usr/lib/libm.so.6" as m
 use +m
+
+# Declare function signatures
+LIB m::sqrt(x:double) -> double
+LIB m::pow(x:double, y:double) -> double
+LIB m::floor(x:double) -> double
+LIB m::ceil(x:double) -> double
+LIB m::sin(x:double) -> double
+LIB m::cos(x:double) -> double
 
 println "  Library loaded successfully"
 

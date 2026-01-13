@@ -1463,7 +1463,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     // pf("entering cfe with %s args:%#v arg_names:%#v\n",name,iargs,arg_names)
     res, _, _, err := p.callFunctionExt(p.fs, p.ident, name, false, nil, "", arg_names, iargs)
     if err != nil {
-        fmt.Printf("error found during callFunctionExt() inside buildStructOrFunction() : %+v\n", err)
+        panic(fmt.Errorf("%+v\n", err))
         return nil, err
     }
 

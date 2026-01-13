@@ -19,6 +19,7 @@ library changes
       - c_fopen(path, mode) - opens file, returns C FILE* pointer
       - c_fclose(fp) - closes C FILE* pointer
       - c_ptr_is_null(ptr) - checks if pointer is null
+      - c_ptr_to_int(ptr) - converts c pointer to int, useful for *size_t
       - c_alloc(size) - allocates byte buffer
       - c_free(ptr) - frees allocated pointer
       - c_set_byte(ptr, offset, value) - sets byte in buffer
@@ -34,17 +35,23 @@ language changes
       - GNU IFUNC and symbol versioning (@@GLIBC) support
       - basic type conversion between Za and C types
       - opaque pointer handling via CPointerValue
-      - return type heuristics for unknown signatures
-      - help plugin support for discovered functions
+      - LIB keyword for explicit function signature declarations
+          - supports typed parameters: LIB c::strlen(s:string) -> int
+          - variadic function support: LIB c::printf(fmt:string, ...args) -> int
+          - optional return types: LIB c::exit(code:int) -> void
+      - help plugin find command enhancements
+          - automatic signature discovery from local man pages (section 3)
+          - library-level man page search (e.g., finds functions in "man 3 libpng")
+          - online fallback via man7.org when local man pages unavailable
+          - automatic C-to-Za type mapping with LIB declaration generation
+          - library scoping syntax: help plugin find library::function
       - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
-      - test script at za_tests/test_ffi_libpng.za
+      - test scripts at za_tests/test_ffi_*
       - current limitations:
-          - return types guessed via heuristics (may be incorrect)
-          - no parameter type information from symbols
+          - no parameter type information from symbols alone (use LIB declarations)
           - constants (#define macros) not discoverable from .so files
           - structs only usable as opaque pointers
           - no callback support (C calling Za functions)
-          - no varargs function support (printf, etc.)
           - Windows implementation is stubbed only
 
   * (experimental) added optional type specifications to function definitions

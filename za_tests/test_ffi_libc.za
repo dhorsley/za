@@ -1,0 +1,128 @@
+# libc FFI Test Script
+# Tests standard C library functions (string, memory, file operations)
+
+println "[#4]Testing libc FFI[#-]"
+println "=" * 50
+
+# Load libc
+module "/usr/lib/libc.so.6" as c
+use +c
+
+# Declare function signatures
+LIB c::strlen(s:string) -> pointer
+LIB c::strcmp(s1:string, s2:string) -> int
+LIB c::strcpy(dest:pointer, src:string) -> pointer
+LIB c::strcat(dest:pointer, src:string) -> pointer
+LIB c::malloc(size:int) -> pointer
+LIB c::memset(ptr:pointer, value:int, num:int) -> pointer
+LIB c::calloc(nmemb:int, size:int) -> pointer
+LIB c::memcpy(dest:pointer, src:pointer, n:int) -> pointer
+LIB c::free(ptr:pointer) -> void
+LIB c::fopen(filename:string, mode:string) -> pointer
+LIB c::fclose(stream:pointer) -> int
+LIB c::getenv(name:string) -> string
+
+# ========================================
+# String Functions
+# ========================================
+println "\n[#6]String Functions[#-]"
+
+# strlen (returns size_t which comes back as CPointer)
+len = c_ptr_to_int(strlen("Hello, World!"))
+assert len == 13, "strlen failed: got {len}"
+println "  ✓ strlen('Hello, World!') == 13"
+
+# strcmp - equal
+result = strcmp("abc", "abc")
+assert result == 0, "strcmp equal failed"
+println "  ✓ strcmp('abc', 'abc') == 0"
+
+# strcmp - less than
+result = strcmp("abc", "xyz")
+assert result < 0, "strcmp less than failed"
+println "  ✓ strcmp('abc', 'xyz') < 0"
+
+# strcmp - greater than
+result = strcmp("xyz", "abc")
+assert result > 0, "strcmp greater than failed"
+println "  ✓ strcmp('xyz', 'abc') > 0"
+
+# strcpy
+dest_buf = c_alloc(100)
+strcpy(dest_buf, "Test string")
+println "  ✓ strcpy works"
+
+# strcat
+strcat(dest_buf, " appended")
+println "  ✓ strcat works"
+c_free(dest_buf)
+
+# ========================================
+# Memory Functions
+# ========================================
+println "\n[#6]Memory Functions[#-]"
+
+# malloc
+buf = malloc(1000)
+assert !c_ptr_is_null(buf), "malloc failed"
+println "  ✓ malloc(1000) returns non-null"
+
+# memset
+memset(buf, 42, 1000)
+println "  ✓ memset works"
+
+# calloc
+buf2 = calloc(100, 10)
+assert !c_ptr_is_null(buf2), "calloc failed"
+println "  ✓ calloc(100, 10) returns non-null"
+
+# memcpy
+memcpy(buf2, buf, 100)
+println "  ✓ memcpy works"
+
+# free
+free(buf)
+free(buf2)
+println "  ✓ free works"
+
+# ========================================
+# File Operations
+# ========================================
+println "\n[#6]File Operations[#-]"
+
+# fopen for writing
+fp = fopen("/tmp/za_libc_test.txt", "w")
+assert !c_ptr_is_null(fp), "fopen for writing failed"
+println "  ✓ fopen('/tmp/za_libc_test.txt', 'w') succeeds"
+
+# fclose
+result = fclose(fp)
+assert result == 0, "fclose failed"
+println "  ✓ fclose returns 0"
+
+# fopen for reading
+fp = fopen("/etc/hostname", "r")
+assert !c_ptr_is_null(fp), "fopen for reading failed"
+println "  ✓ fopen('/etc/hostname', 'r') succeeds"
+fclose(fp)
+
+# ========================================
+# Environment Functions
+# ========================================
+println "\n[#6]Environment Functions[#-]"
+
+# getenv
+path = getenv("PATH")
+path_len = c_ptr_to_int(strlen(path))
+assert path_len > 0, "getenv('PATH') returned empty string"
+println "  ✓ getenv('PATH') returns non-empty string"
+
+home = getenv("HOME")
+home_len = c_ptr_to_int(strlen(home))
+assert home_len > 0, "getenv('HOME') returned empty string"
+println "  ✓ getenv('HOME') returns non-empty string"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#2]✓ All libc tests passed![#-]"

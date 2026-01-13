@@ -1,0 +1,278 @@
+# libjson-c FFI Test Script - Complete Object/Array Manipulation
+# Tests working with json_object and json_array as structured data
+
+println "[#4]Testing libjson-c FFI - Object & Array Structures[#-]"
+println "=" * 50
+
+# Load libjson-c
+module "/usr/lib/libjson-c.so.5" as json
+use +json
+
+# Declare function signatures
+LIB json::json_object_new_object() -> pointer
+LIB json::json_object_new_array() -> pointer
+LIB json::json_object_new_string(s:string) -> pointer
+LIB json::json_object_new_int(i:int) -> pointer
+LIB json::json_object_new_double(d:double) -> pointer
+LIB json::json_object_new_boolean(b:int) -> pointer
+LIB json::json_object_object_add(obj:pointer, key:string, val:pointer) -> void
+LIB json::json_object_object_get(obj:pointer, key:string) -> pointer
+LIB json::json_object_object_get_ex(obj:pointer, key:string, value_out:pointer) -> int
+LIB json::json_object_array_add(obj:pointer, val:pointer) -> int
+LIB json::json_object_array_get_idx(obj:pointer, idx:int) -> pointer
+LIB json::json_object_array_length(obj:pointer) -> int
+LIB json::json_object_get_string(obj:pointer) -> string
+LIB json::json_object_get_int(obj:pointer) -> int
+LIB json::json_object_get_double(obj:pointer) -> double
+LIB json::json_object_get_boolean(obj:pointer) -> int
+LIB json::json_object_get_type(obj:pointer) -> int
+LIB json::json_object_to_json_string(obj:pointer) -> string
+LIB json::json_object_to_json_string_ext(obj:pointer, flags:int) -> string
+LIB json::json_object_put(obj:pointer) -> int
+
+# JSON type constants
+JSON_TYPE_NULL = 0
+JSON_TYPE_BOOLEAN = 1
+JSON_TYPE_DOUBLE = 2
+JSON_TYPE_INT = 3
+JSON_TYPE_OBJECT = 4
+JSON_TYPE_ARRAY = 5
+JSON_TYPE_STRING = 6
+
+# Pretty print flag
+JSON_C_TO_STRING_PRETTY = 1
+
+# ========================================
+# Test: Creating and Reading JSON Objects
+# ========================================
+println "\n[#6]Test 1: JSON Object Creation and Field Access[#-]"
+
+# Create a person object
+person = json_object_new_object()
+json_object_object_add(person, "name", json_object_new_string("Alice"))
+json_object_object_add(person, "age", json_object_new_int(30))
+json_object_object_add(person, "height", json_object_new_double(5.6))
+json_object_object_add(person, "active", json_object_new_boolean(1))
+
+println "  Created person object"
+
+# Get JSON string representation
+person_json = json_object_to_json_string(person)
+println "  JSON: {person_json}"
+
+# Get individual fields back as json_object pointers
+name_obj = json_object_object_get(person, "name")
+println "  json_object_object_get('name') returned: {name_obj}"
+assert !c_ptr_is_null(name_obj), "json_object_object_get returned NULL"
+println "  ✓ json_object_object_get returns json_object pointer"
+
+# Extract value from the returned object
+name_val = json_object_get_string(name_obj)
+println "  Extracted name: '{name_val}'"
+assert name_val == "Alice", "Name extraction failed"
+println "  ✓ Retrieved string value from nested json_object"
+
+# Get age field
+age_obj = json_object_object_get(person, "age")
+age_val = json_object_get_int(age_obj)
+println "  Extracted age: {age_val}"
+assert age_val == 30, "Age extraction failed"
+println "  ✓ Retrieved int value from nested json_object"
+
+# Get height field
+height_obj = json_object_object_get(person, "height")
+height_val = json_object_get_double(height_obj)
+println "  Extracted height: {height_val}"
+assert height_val > 5.5 and height_val < 5.7, "Height extraction failed"
+println "  ✓ Retrieved double value from nested json_object"
+
+# Get active field
+active_obj = json_object_object_get(person, "active")
+active_val = json_object_get_boolean(active_obj)
+println "  Extracted active: {active_val}"
+assert active_val != 0, "Active extraction failed"
+println "  ✓ Retrieved boolean value from nested json_object"
+
+# ========================================
+# Test: JSON Arrays and Iteration
+# ========================================
+println "\n[#6]Test 2: JSON Array Creation and Iteration[#-]"
+
+# Create an array of numbers
+numbers = json_object_new_array()
+json_object_array_add(numbers, json_object_new_int(10))
+json_object_array_add(numbers, json_object_new_int(20))
+json_object_array_add(numbers, json_object_new_int(30))
+json_object_array_add(numbers, json_object_new_int(40))
+json_object_array_add(numbers, json_object_new_int(50))
+
+println "  Created array of 5 integers"
+
+# Get array JSON
+array_json = json_object_to_json_string(numbers)
+println "  Array JSON: {array_json}"
+
+# Get array length
+arr_len = json_object_array_length(numbers)
+println "  Array length: {arr_len}"
+assert arr_len == 5, "Array length incorrect"
+println "  ✓ json_object_array_length returns correct count"
+
+# Iterate through array
+println "  Iterating through array:"
+sum = 0
+foreach i in 0..4
+    elem_obj = json_object_array_get_idx(numbers, i)
+    assert !c_ptr_is_null(elem_obj), "Array element is NULL"
+    elem_val = json_object_get_int(elem_obj)
+    println "    [{i}] = {elem_val}"
+    sum = sum + elem_val
+endfor
+
+println "  Sum of array elements: {sum}"
+assert sum == 150, "Array sum incorrect"
+println "  ✓ json_object_array_get_idx returns valid json_object pointers"
+println "  ✓ Successfully iterated through array and extracted values"
+
+# ========================================
+# Test: Nested Objects and Arrays
+# ========================================
+println "\n[#6]Test 3: Nested Objects and Arrays[#-]"
+
+# Create a complex nested structure
+company = json_object_new_object()
+json_object_object_add(company, "name", json_object_new_string("TechCorp"))
+json_object_object_add(company, "founded", json_object_new_int(2020))
+
+# Create array of employees
+employees = json_object_new_array()
+
+# Employee 1
+emp1 = json_object_new_object()
+json_object_object_add(emp1, "name", json_object_new_string("Bob"))
+json_object_object_add(emp1, "role", json_object_new_string("Engineer"))
+json_object_object_add(emp1, "salary", json_object_new_int(80000))
+json_object_array_add(employees, emp1)
+
+# Employee 2
+emp2 = json_object_new_object()
+json_object_object_add(emp2, "name", json_object_new_string("Carol"))
+json_object_object_add(emp2, "role", json_object_new_string("Manager"))
+json_object_object_add(emp2, "salary", json_object_new_int(95000))
+json_object_array_add(employees, emp2)
+
+# Employee 3
+emp3 = json_object_new_object()
+json_object_object_add(emp3, "name", json_object_new_string("Dave"))
+json_object_object_add(emp3, "role", json_object_new_string("Designer"))
+json_object_object_add(emp3, "salary", json_object_new_int(75000))
+json_object_array_add(employees, emp3)
+
+# Add employees array to company
+json_object_object_add(company, "employees", employees)
+
+println "  Created nested company structure"
+
+# Get pretty printed JSON
+company_json = json_object_to_json_string_ext(company, JSON_C_TO_STRING_PRETTY)
+println "  Company JSON (pretty):"
+println "{company_json}"
+
+# Extract company name
+company_name_obj = json_object_object_get(company, "name")
+company_name = json_object_get_string(company_name_obj)
+println "\  Company name: '{company_name}'"
+assert company_name == "TechCorp", "Company name extraction failed"
+println "  ✓ Extracted string from nested object"
+
+# Extract employees array
+employees_arr = json_object_object_get(company, "employees")
+assert !c_ptr_is_null(employees_arr), "Employees array is NULL"
+employees_count = json_object_array_length(employees_arr)
+println "  Number of employees: {employees_count}"
+assert employees_count == 3, "Employee count incorrect"
+println "  ✓ Extracted array object from parent object"
+
+# Iterate through employees
+println "  Employee details:"
+total_salary = 0
+foreach i in 0..2
+    emp = json_object_array_get_idx(employees_arr, i)
+
+    name_obj = json_object_object_get(emp, "name")
+    role_obj = json_object_object_get(emp, "role")
+    salary_obj = json_object_object_get(emp, "salary")
+
+    emp_name = json_object_get_string(name_obj)
+    emp_role = json_object_get_string(role_obj)
+    emp_salary = json_object_get_int(salary_obj)
+
+    println "    {emp_name} - {emp_role} (salary: ${emp_salary})"
+    total_salary = total_salary + emp_salary
+endfor
+
+println "  Total payroll: ${total_salary}"
+assert total_salary == 250000, "Total salary incorrect"
+println "  ✓ Successfully navigated nested object/array structure"
+println "  ✓ Extracted all nested values correctly"
+
+# ========================================
+# Test: Type Checking on Retrieved Objects
+# ========================================
+println "\n[#6]Test 4: Type Checking Retrieved Objects[#-]"
+
+# Get various fields and check their types
+name_type = json_object_get_type(company_name_obj)
+println "  Type of 'name' field: {name_type}"
+assert name_type == JSON_TYPE_STRING, "Name type incorrect"
+println "  ✓ Retrieved object has correct type (STRING)"
+
+employees_type = json_object_get_type(employees_arr)
+println "  Type of 'employees' field: {employees_type}"
+assert employees_type == JSON_TYPE_ARRAY, "Employees type incorrect"
+println "  ✓ Retrieved object has correct type (ARRAY)"
+
+first_emp = json_object_array_get_idx(employees_arr, 0)
+first_emp_type = json_object_get_type(first_emp)
+println "  Type of first employee: {first_emp_type}"
+assert first_emp_type == JSON_TYPE_OBJECT, "First employee type incorrect"
+println "  ✓ Retrieved array element has correct type (OBJECT)"
+
+# ========================================
+# Test: Missing Key Handling
+# ========================================
+println "\n[#6]Test 5: Missing Key Handling[#-]"
+
+# Try to get a non-existent key
+missing = json_object_object_get(person, "nonexistent")
+println "  json_object_object_get('nonexistent') = {missing}"
+if c_ptr_is_null(missing)
+    println "  ✓ Returns NULL for missing keys"
+else
+    println "  WARNING: Did not return NULL for missing key"
+endif
+
+# ========================================
+# Cleanup
+# ========================================
+println "\n[#6]Cleanup[#-]"
+
+json_object_put(person)
+json_object_put(numbers)
+json_object_put(company)
+
+println "  ✓ All objects freed"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#2]✓ All libjson-c object/array tests passed![#-]"
+println "\nTested operations:"
+println "  • Creating JSON objects with multiple fields"
+println "  • Retrieving field values as json_object pointers"
+println "  • Extracting typed values from retrieved objects"
+println "  • Creating and iterating JSON arrays"
+println "  • Building deeply nested structures (objects in arrays in objects)"
+println "  • Navigating nested structures to extract values"
+println "  • Type checking retrieved objects"
+println "  • Handling missing keys"

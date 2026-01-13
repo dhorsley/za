@@ -6,7 +6,7 @@ println "======================================"
 
 # Load libpng
 println "\n[#6]Loading libpng...[#-]"
-MODULE "/usr/lib/libpng16.so.16" as png
+module "/usr/lib/libpng16.so.16" as png
 use +png
 
 # Get and display version

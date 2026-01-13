@@ -850,12 +850,8 @@ func ihelp(ns string, hargs []string) {
         case "plugin":
             fallthrough
         case "plugins":
-            // Extract library name from rest of the command
-            if len(hargs) > 1 {
-                help_plugin(ns, hargs[1])
-            } else {
-                help_plugin(ns, "")
-            }
+            // Pass remaining arguments (after "plugin") to ihelpPlugin
+            ihelpPlugin(hargs[1:]...)
 
         default:
 
@@ -2060,8 +2056,26 @@ func processMacroPhrase(phrase Phrase) {
 
 // ihelpPlugin handles "help plugin" command
 func ihelpPlugin(args ...string) {
+    if len(args) == 0 {
+        gpf("", "Usage: help plugin <library_name>")
+        gpf("", "       help plugin find <function_name>")
+        return
+    }
+
+    if args[0] == "find" {
+        if len(args) < 2 {
+            gpf("", "Usage: help plugin find <function_name>")
+            return
+        }
+        // Join remaining args to handle "c :: strlen" tokens -> "c::strlen"
+        functionName := strings.Join(args[1:], "")
+        help_plugin_find("", functionName)
+        return
+    }
+
     if len(args) != 1 {
         gpf("", "Usage: help plugin <library_name>")
+        gpf("", "       help plugin find <function_name>")
         return
     }
     help_plugin("", args[0])
@@ -2135,3 +2149,125 @@ func help_plugin(ns string, libraryName string) {
         pf("\n")
     }
 }
+
+// help_plugin_find searches for a function across all loaded C libraries
+func help_plugin_find(ns string, functionName string) {
+    if len(loadedCLibraries) == 0 {
+        gpf(ns, "[#1]No C libraries currently loaded.[#-]")
+        gpf(ns, "Load a library with: [#4]MODULE \"/path/to/lib.so\" as name[#-]")
+        return
+    }
+
+    // Check if function name includes library scope (e.g., "png::some_function")
+    var targetLibrary string
+    var actualFunctionName string
+
+    if strings.Contains(functionName, "::") {
+        parts := strings.SplitN(functionName, "::", 2)
+        targetLibrary = parts[0]
+        actualFunctionName = parts[1]
+        gpf(ns, sf("[#4]Searching for function: %s in library: %s[#-]\n", actualFunctionName, targetLibrary))
+    } else {
+        actualFunctionName = functionName
+        gpf(ns, sf("[#4]Searching for function: %s[#-]\n", actualFunctionName))
+    }
+
+    // Search in specified library or all loaded libraries
+    var foundIn []string
+    if targetLibrary != "" {
+        // Search only in the specified library
+        lib, exists := loadedCLibraries[targetLibrary]
+        if !exists {
+            gpf(ns, sf("[#1]Library '%s' is not loaded.[#-]", targetLibrary))
+            gpf(ns, sf("\n[#dim]Tip: Load it with: MODULE \"/path/to/lib.so\" as %s[#-]", targetLibrary))
+            return
+        }
+        if symbol, exists := lib.Symbols[actualFunctionName]; exists && symbol.IsFunction {
+            foundIn = append(foundIn, targetLibrary)
+        }
+    } else {
+        // Search across all loaded libraries
+        for libName, lib := range loadedCLibraries {
+            if symbol, exists := lib.Symbols[actualFunctionName]; exists && symbol.IsFunction {
+                foundIn = append(foundIn, libName)
+            }
+        }
+    }
+
+    if len(foundIn) == 0 {
+        if targetLibrary != "" {
+            gpf(ns, sf("[#1]Function '%s' not found in library '%s'.[#-]", actualFunctionName, targetLibrary))
+        } else {
+            gpf(ns, sf("[#1]Function '%s' not found in any loaded library.[#-]", actualFunctionName))
+        }
+        gpf(ns, "\n[#dim]Tip: Make sure the library containing this function is loaded.[#-]")
+        return
+    }
+
+    // Display found locations
+    gpf(ns, sf("[#2]Found in %d librar%s:[#-]", len(foundIn), func() string {
+        if len(foundIn) == 1 {
+            return "y"
+        }
+        return "ies"
+    }()))
+
+    for _, libName := range foundIn {
+        gpf(ns, sf("  • [#6]%s[#-]", libName))
+    }
+
+    // Try to lookup function signature from man pages
+    gpf(ns, "\n[#dim]Looking up function signature...[#-]")
+
+    // Get library context for the first found library
+    var firstLib *CLibrary
+    if len(foundIn) > 0 {
+        firstLib = loadedCLibraries[foundIn[0]]
+    }
+
+    sig, err := lookupFunctionSignature(actualFunctionName, firstLib)
+
+    if err == nil && sig != nil {
+        // Successfully found and parsed signature
+        gpf(ns, "\n[#2]Found in man page:[#-]")
+        gpf(ns, sf("  [#6]%s[#-]", sig.RawSignature))
+
+        // Generate and display suggested LIB declarations for each library
+        gpf(ns, "\n[#4]Suggested LIB declaration:[#-]")
+        for _, libName := range foundIn {
+            libDecl := generateLIBDeclaration(libName, actualFunctionName, sig)
+            gpf(ns, sf("  [#dim]%s[#-]", libDecl))
+        }
+
+        // Show variadic note if applicable
+        if sig.IsVariadic {
+            gpf(ns, "\n[#dim]Note: This function accepts variable arguments (...args)[#-]")
+        }
+
+        // Show manual reference for more details
+        gpf(ns, "\n[#4]For more details:[#-]")
+        gpf(ns, sf("  • Run: [#6]man 3 %s[#-]", actualFunctionName))
+        gpf(ns, sf("  • Online: [#6]https://man7.org/linux/man-pages/man3/%s.3.html[#-]", actualFunctionName))
+    } else {
+        // Signature lookup failed - fall back to manual guidance
+        gpf(ns, sf("\n[#dim]Could not auto-lookup signature (%s)[#-]", err.Error()))
+
+        // Show how to declare the function
+        gpf(ns, "\n[#4]To use this function, declare it with LIB:[#-]")
+        for _, libName := range foundIn {
+            gpf(ns, sf("  [#dim]LIB %s::%s(<params>) -> <return_type>[#-]", libName, actualFunctionName))
+        }
+
+        // Provide guidance on finding signatures
+        gpf(ns, "\n[#4]To find the function signature:[#-]")
+        gpf(ns, "  • Check the library's documentation")
+        gpf(ns, sf("  • Run: [#6]man 3 %s[#-]", actualFunctionName))
+        gpf(ns, sf("  • Search online: [#6]https://man7.org/linux/man-pages/man3/%s.3.html[#-]", actualFunctionName))
+
+        gpf(ns, "\n[#4]Example LIB declarations:[#-]")
+        gpf(ns, "  [#dim]LIB c::strlen(s:string) -> int[#-]")
+        gpf(ns, "  [#dim]LIB c::malloc(size:int) -> pointer[#-]")
+        gpf(ns, "  [#dim]LIB c::printf(fmt:string, ...args) -> int  [#3]# Variadic function[#-][#-]")
+    }
+}
+

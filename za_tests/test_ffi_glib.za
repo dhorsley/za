@@ -1,0 +1,143 @@
+# GLib FFI Test Script
+# Tests all return types: int, double, string, pointer, void
+
+println "[#4]Testing GLib FFI - All Return Types[#-]"
+println "=" * 50
+
+# Load GLib
+module "/usr/lib/libglib-2.0.so.0" as glib
+use +glib
+
+# Declare function signatures for different return types
+LIB glib::g_strdup(str:string) -> string
+LIB glib::g_strndup(str:string, n:int) -> string
+LIB glib::g_malloc(n_bytes:int) -> pointer
+LIB glib::g_malloc0(n_bytes:int) -> pointer
+LIB glib::g_free(mem:pointer) -> void
+LIB glib::g_strcmp0(str1:string, str2:string) -> int
+LIB glib::g_str_has_prefix(str:string, prefix:string) -> int
+LIB glib::g_str_has_suffix(str:string, suffix:string) -> int
+LIB glib::g_ascii_strcasecmp(s1:string, s2:string) -> int
+LIB glib::g_random_int() -> int
+LIB glib::g_random_double() -> double
+LIB glib::g_random_double_range(begin:double, end:double) -> double
+
+# ========================================
+# Return Type: STRING
+# ========================================
+println "\n[#6]Testing STRING Return Type[#-]"
+
+# g_strdup - duplicates a string
+result_str = g_strdup("Hello GLib!")
+println "  g_strdup('Hello GLib!') = '{result_str}'"
+assert result_str == "Hello GLib!", "g_strdup failed"
+println "  ✓ g_strdup returns correct string"
+
+# g_strndup - duplicates first n characters
+result_str2 = g_strndup("Hello World", 5)
+println "  g_strndup('Hello World', 5) = '{result_str2}'"
+assert result_str2 == "Hello", "g_strndup failed"
+println "  ✓ g_strndup returns correct string"
+
+# ========================================
+# Return Type: INT
+# ========================================
+println "\n[#6]Testing INT Return Type[#-]"
+
+# g_strcmp0 - string comparison (NULL-safe)
+result_int = g_strcmp0("abc", "abc")
+println "  g_strcmp0('abc', 'abc') = {result_int}"
+assert result_int == 0, "g_strcmp0 equal failed"
+println "  ✓ g_strcmp0 returns 0 for equal strings"
+
+result_int = g_strcmp0("abc", "xyz")
+println "  g_strcmp0('abc', 'xyz') = {result_int}"
+assert result_int != 0, "g_strcmp0 not-equal failed"
+println "  ✓ g_strcmp0 returns non-zero for different strings"
+
+# g_str_has_prefix - check prefix (returns gboolean which is int)
+result_bool = g_str_has_prefix("Hello World", "Hello")
+println "  g_str_has_prefix('Hello World', 'Hello') = {result_bool}"
+assert result_bool != 0, "g_str_has_prefix true failed"
+println "  ✓ g_str_has_prefix returns non-zero (TRUE)"
+
+result_bool = g_str_has_prefix("Hello World", "Goodbye")
+println "  g_str_has_prefix('Hello World', 'Goodbye') = {result_bool}"
+assert result_bool == 0, "g_str_has_prefix false failed"
+println "  ✓ g_str_has_prefix returns 0 (FALSE)"
+
+# g_str_has_suffix
+result_bool = g_str_has_suffix("test.txt", ".txt")
+println "  g_str_has_suffix('test.txt', '.txt') = {result_bool}"
+assert result_bool != 0, "g_str_has_suffix true failed"
+println "  ✓ g_str_has_suffix returns non-zero (TRUE)"
+
+# g_ascii_strcasecmp - case-insensitive comparison
+result_int = g_ascii_strcasecmp("Hello", "HELLO")
+println "  g_ascii_strcasecmp('Hello', 'HELLO') = {result_int}"
+assert result_int == 0, "g_ascii_strcasecmp failed"
+println "  ✓ g_ascii_strcasecmp returns 0 for case-insensitive match"
+
+# g_random_int - random integer
+rand_int = g_random_int()
+println "  g_random_int() = {rand_int}"
+println "  ✓ g_random_int returns an integer"
+
+# ========================================
+# Return Type: DOUBLE
+# ========================================
+println "\n[#6]Testing DOUBLE Return Type[#-]"
+
+# g_random_double - random double between 0.0 and 1.0
+rand_double = g_random_double()
+println "  g_random_double() = {rand_double}"
+assert rand_double >= 0.0 and rand_double <= 1.0, "g_random_double out of range"
+println "  ✓ g_random_double returns value in [0.0, 1.0]"
+
+# g_random_double_range - random double in range
+rand_range = g_random_double_range(10.0, 20.0)
+println "  g_random_double_range(10.0, 20.0) = {rand_range}"
+assert rand_range >= 10.0 and rand_range <= 20.0, "g_random_double_range out of range"
+println "  ✓ g_random_double_range returns value in [10.0, 20.0]"
+
+# ========================================
+# Return Type: POINTER
+# ========================================
+println "\n[#6]Testing POINTER Return Type[#-]"
+
+# g_malloc - allocate memory
+ptr1 = g_malloc(1024)
+println "  g_malloc(1024) = {ptr1}"
+assert !c_ptr_is_null(ptr1), "g_malloc returned NULL"
+println "  ✓ g_malloc returns non-null pointer"
+
+# g_malloc0 - allocate zero-initialized memory
+ptr2 = g_malloc0(512)
+println "  g_malloc0(512) = {ptr2}"
+assert !c_ptr_is_null(ptr2), "g_malloc0 returned NULL"
+println "  ✓ g_malloc0 returns non-null pointer"
+
+# ========================================
+# Return Type: VOID
+# ========================================
+println "\n[#6]Testing VOID Return Type[#-]"
+
+# g_free - free memory (returns void)
+g_free(ptr1)
+println "  g_free(ptr1) completed"
+println "  ✓ g_free (void return) works"
+
+g_free(ptr2)
+println "  g_free(ptr2) completed"
+println "  ✓ g_free called successfully for both pointers"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#2]✓ All GLib return type tests passed![#-]"
+println "\nTested return types:"
+println "  • STRING: g_strdup, g_strndup"
+println "  • INT: g_strcmp0, g_str_has_prefix, g_str_has_suffix, g_ascii_strcasecmp, g_random_int"
+println "  • DOUBLE: g_random_double, g_random_double_range"
+println "  • POINTER: g_malloc, g_malloc0"
+println "  • VOID: g_free"

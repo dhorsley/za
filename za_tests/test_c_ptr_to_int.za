@@ -1,0 +1,21 @@
+#!/usr/bin/za
+# Test c_ptr_to_int function
+
+println "Loading libc..."
+module "/usr/lib/libc.so.6" as c
+use +c
+println "Library loaded"
+
+println "Calling strlen..."
+ptr_result = strlen("test")
+println "strlen returned: {ptr_result}"
+
+println "Converting to int..."
+int_result = c_ptr_to_int(ptr_result)
+println "c_ptr_to_int returned: {int_result}"
+
+if int_result == 4
+    println "SUCCESS: strlen('test') == 4"
+else
+    println "FAIL: expected 4, got {int_result}"
+endif
