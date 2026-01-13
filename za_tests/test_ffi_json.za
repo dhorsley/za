@@ -1,0 +1,213 @@
+# libjson-c FFI Test Script
+# Tests all return types: int, double, string, pointer, void
+
+println "[#4]Testing libjson-c FFI - All Return Types[#-]"
+println "=" * 50
+
+# Load libjson-c
+module "/usr/lib/libjson-c.so.5" as json
+use +json
+
+# Declare function signatures for different return types
+LIB json::json_object_new_object() -> pointer
+LIB json::json_object_new_array() -> pointer
+LIB json::json_object_new_string(s:string) -> pointer
+LIB json::json_object_new_int(i:int) -> pointer
+LIB json::json_object_new_double(d:double) -> pointer
+LIB json::json_object_new_boolean(b:int) -> pointer
+LIB json::json_object_get_string(obj:pointer) -> string
+LIB json::json_object_get_int(obj:pointer) -> int
+LIB json::json_object_get_double(obj:pointer) -> double
+LIB json::json_object_get_boolean(obj:pointer) -> int
+LIB json::json_object_get_type(obj:pointer) -> int
+LIB json::json_object_object_add(obj:pointer, key:string, val:pointer) -> void
+LIB json::json_object_array_add(obj:pointer, val:pointer) -> int
+LIB json::json_object_array_length(obj:pointer) -> int
+LIB json::json_object_to_json_string(obj:pointer) -> string
+LIB json::json_object_put(obj:pointer) -> int
+
+# JSON type constants
+JSON_TYPE_NULL = 0
+JSON_TYPE_BOOLEAN = 1
+JSON_TYPE_DOUBLE = 2
+JSON_TYPE_INT = 3
+JSON_TYPE_OBJECT = 4
+JSON_TYPE_ARRAY = 5
+JSON_TYPE_STRING = 6
+
+# ========================================
+# Return Type: POINTER
+# ========================================
+println "\n[#6]Testing POINTER Return Type[#-]"
+
+# Create various JSON objects
+obj_str = json_object_new_string("Hello JSON!")
+println "  json_object_new_string('Hello JSON!') = {obj_str}"
+assert !c_ptr_is_null(obj_str), "json_object_new_string returned NULL"
+println "  ✓ json_object_new_string returns non-null pointer"
+
+obj_int = json_object_new_int(42)
+println "  json_object_new_int(42) = {obj_int}"
+assert !c_ptr_is_null(obj_int), "json_object_new_int returned NULL"
+println "  ✓ json_object_new_int returns non-null pointer"
+
+obj_double = json_object_new_double(3.14159)
+println "  json_object_new_double(3.14159) = {obj_double}"
+assert !c_ptr_is_null(obj_double), "json_object_new_double returned NULL"
+println "  ✓ json_object_new_double returns non-null pointer"
+
+obj_bool_true = json_object_new_boolean(1)
+println "  json_object_new_boolean(1) = {obj_bool_true}"
+assert !c_ptr_is_null(obj_bool_true), "json_object_new_boolean returned NULL"
+println "  ✓ json_object_new_boolean returns non-null pointer"
+
+obj_bool_false = json_object_new_boolean(0)
+println "  json_object_new_boolean(0) = {obj_bool_false}"
+assert !c_ptr_is_null(obj_bool_false), "json_object_new_boolean(0) returned NULL"
+println "  ✓ json_object_new_boolean(0) returns non-null pointer"
+
+obj_object = json_object_new_object()
+println "  json_object_new_object() = {obj_object}"
+assert !c_ptr_is_null(obj_object), "json_object_new_object returned NULL"
+println "  ✓ json_object_new_object returns non-null pointer"
+
+obj_array = json_object_new_array()
+println "  json_object_new_array() = {obj_array}"
+assert !c_ptr_is_null(obj_array), "json_object_new_array returned NULL"
+println "  ✓ json_object_new_array returns non-null pointer"
+
+# ========================================
+# Return Type: STRING
+# ========================================
+println "\n[#6]Testing STRING Return Type[#-]"
+
+# Get string from string object
+str_val = json_object_get_string(obj_str)
+println "  json_object_get_string(obj_str) = '{str_val}'"
+assert str_val == "Hello JSON!", "json_object_get_string failed"
+println "  ✓ json_object_get_string returns correct string"
+
+# Get JSON string representation
+json_str = json_object_to_json_string(obj_int)
+println "  json_object_to_json_string(obj_int) = '{json_str}'"
+assert json_str == "42", "json_object_to_json_string failed"
+println "  ✓ json_object_to_json_string returns correct string"
+
+# ========================================
+# Return Type: INT
+# ========================================
+println "\n[#6]Testing INT Return Type[#-]"
+
+# Get integer from int object
+int_val = json_object_get_int(obj_int)
+println "  json_object_get_int(obj_int) = {int_val}"
+assert int_val == 42, "json_object_get_int failed"
+println "  ✓ json_object_get_int returns correct int (42)"
+
+# Get boolean as int
+bool_val_true = json_object_get_boolean(obj_bool_true)
+println "  json_object_get_boolean(obj_bool_true) = {bool_val_true}"
+assert bool_val_true != 0, "json_object_get_boolean(true) failed"
+println "  ✓ json_object_get_boolean returns non-zero (TRUE)"
+
+bool_val_false = json_object_get_boolean(obj_bool_false)
+println "  json_object_get_boolean(obj_bool_false) = {bool_val_false}"
+assert bool_val_false == 0, "json_object_get_boolean(false) failed"
+println "  ✓ json_object_get_boolean returns 0 (FALSE)"
+
+# Get type enum
+type_val = json_object_get_type(obj_str)
+println "  json_object_get_type(obj_str) = {type_val}"
+assert type_val == JSON_TYPE_STRING, "json_object_get_type failed"
+println "  ✓ json_object_get_type returns correct type (STRING)"
+
+type_val = json_object_get_type(obj_int)
+println "  json_object_get_type(obj_int) = {type_val}"
+assert type_val == JSON_TYPE_INT, "json_object_get_type(int) failed"
+println "  ✓ json_object_get_type returns correct type (INT)"
+
+# Array operations
+result = json_object_array_add(obj_array, json_object_new_int(10))
+println "  json_object_array_add result = {result}"
+println "  ✓ json_object_array_add returns int"
+
+result = json_object_array_add(obj_array, json_object_new_int(20))
+result = json_object_array_add(obj_array, json_object_new_int(30))
+
+arr_len = json_object_array_length(obj_array)
+println "  json_object_array_length(obj_array) = {arr_len}"
+assert arr_len == 3, "json_object_array_length failed"
+println "  ✓ json_object_array_length returns correct length (3)"
+
+# ========================================
+# Return Type: DOUBLE
+# ========================================
+println "\n[#6]Testing DOUBLE Return Type[#-]"
+
+# Get double from double object
+double_val = json_object_get_double(obj_double)
+println "  json_object_get_double(obj_double) = {double_val}"
+# Check if close to 3.14159 (allow small floating point error)
+diff = double_val - 3.14159
+if diff < 0.0
+    diff = 0.0 - diff
+endif
+assert diff < 0.001, "json_object_get_double failed"
+println "  ✓ json_object_get_double returns correct double (~3.14159)"
+
+# Get double from int object (should convert)
+double_from_int = json_object_get_double(obj_int)
+println "  json_object_get_double(obj_int) = {double_from_int}"
+assert double_from_int == 42.0, "json_object_get_double(int) conversion failed"
+println "  ✓ json_object_get_double converts int to double (42.0)"
+
+# ========================================
+# Return Type: VOID
+# ========================================
+println "\n[#6]Testing VOID Return Type[#-]"
+
+# Build a complex object
+complex_obj = json_object_new_object()
+json_object_object_add(complex_obj, "name", json_object_new_string("Za Language"))
+println "  json_object_object_add completed (void return)"
+println "  ✓ json_object_object_add (void return) works"
+
+json_object_object_add(complex_obj, "version", json_object_new_double(1.0))
+json_object_object_add(complex_obj, "stable", json_object_new_boolean(1))
+json_object_object_add(complex_obj, "features", obj_array)
+
+# Get final JSON string
+final_json = json_object_to_json_string(complex_obj)
+println "  Final JSON object:"
+println "  {final_json}"
+
+# ========================================
+# Cleanup (json_object_put returns int reference count)
+# ========================================
+println "\n[#6]Testing Reference Count Return[#-]"
+
+# json_object_put decrements reference and returns remaining count
+ref_count = json_object_put(obj_str)
+println "  json_object_put(obj_str) returned: {ref_count}"
+println "  ✓ json_object_put returns int (reference count)"
+
+json_object_put(obj_int)
+json_object_put(obj_double)
+json_object_put(obj_bool_true)
+json_object_put(obj_bool_false)
+json_object_put(obj_object)
+json_object_put(complex_obj)
+
+println "  ✓ All objects freed"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#2]✓ All libjson-c return type tests passed![#-]"
+println "\nTested return types:"
+println "  • POINTER: json_object_new_* functions"
+println "  • STRING: json_object_get_string, json_object_to_json_string"
+println "  • INT: json_object_get_int, json_object_get_boolean, json_object_get_type,"
+println "         json_object_array_add, json_object_array_length, json_object_put"
+println "  • DOUBLE: json_object_get_double"
+println "  • VOID: json_object_object_add"

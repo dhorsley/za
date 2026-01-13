@@ -92,7 +92,7 @@ static int call_func_iiii_int(void* fn, int i1, int i2, int i3, int i4) {
     return ((func_t)fn)(i1, i2, i3, i4);
 }
 
-// Pointer-based functions (for APIs like libpng, zlib, etc.)
+// Pointer-based functions
 
 // 0-arg returning pointer
 static void* call_func_void_ptr(void* fn) {
@@ -158,7 +158,7 @@ static int call_func_ptr_int_int_int(void* fn, void* p, int i1, int i2) {
     return ((func_t)fn)(p, i1, i2);
 }
 
-// 4-arg pointer functions (png_create_write_struct pattern: str, ptr, ptr, ptr -> ptr)
+// 4-arg pointer functions
 static void* call_func_str_ptr_ptr_ptr_ptr(void* fn, const char* s, void* p1, void* p2, void* p3) {
     typedef void* (*func_t)(const char*, void*, void*, void*);
     return ((func_t)fn)(s, p1, p2, p3);
@@ -169,7 +169,7 @@ static void call_func_ptr_ptr_int_int_void(void* fn, void* p1, void* p2, int i1,
     ((func_t)fn)(p1, p2, i1, i2);
 }
 
-// 8-arg function for png_set_IHDR: (ptr, ptr, int, int, int, int, int, int) -> void
+// 8-arg function: (ptr, ptr, int, int, int, int, int, int) -> void
 static void call_func_ppiiiiiii_void(void* fn, void* p1, void* p2,
                                       unsigned int width, unsigned int height,
                                       int bit_depth, int color_type,
@@ -178,7 +178,7 @@ static void call_func_ppiiiiiii_void(void* fn, void* p1, void* p2,
     ((func_t)fn)(p1, p2, width, height, bit_depth, color_type, interlace, compression, filter);
 }
 
-// File operations for libpng
+// File operations
 static void* call_fopen(const char* path, const char* mode) {
     return fopen(path, mode);
 }
@@ -187,13 +187,11 @@ static int call_fclose(void* fp) {
     return fclose((FILE*)fp);
 }
 
-// png_init_io wrapper: (png_ptr, FILE*) -> void
-static void call_func_ptr_file_void(void* fn, void* png_ptr, void* fp) {
+// Generic (ptr, ptr) -> void wrapper
+static void call_func_ptr_file_void(void* fn, void* p1, void* fp) {
     typedef void (*func_t)(void*, void*);
-    ((func_t)fn)(png_ptr, fp);
+    ((func_t)fn)(p1, fp);
 }
-
-// For png_write_row: (ptr, ptr) -> void (already covered by call_func_ptr_ptr_void)
 
 // For getting NULL pointer
 static void* get_null_ptr(void) {
@@ -221,7 +219,6 @@ import "C"
 import (
     "debug/elf"
     "fmt"
-    "path/filepath"
     "strings"
     "unsafe"
 )
@@ -231,14 +228,15 @@ func LoadCLibrary(path string) (*CLibrary, error) {
     pathC := C.CString(path)
     defer C.free(unsafe.Pointer(pathC))
 
-    handle := C.dlopen(pathC, C.RTLD_LAZY)
+    // Try RTLD_NOW | RTLD_GLOBAL for better symbol resolution
+    handle := C.dlopen(pathC, C.RTLD_NOW|C.RTLD_GLOBAL)
     if handle == nil {
         errMsg := C.GoString(C.dlerror())
         return nil, fmt.Errorf("failed to load library %s: %s", path, errMsg)
     }
 
     return &CLibrary{
-        Name:    filepath.Base(path),
+        Name:    path, // Store full path for man page lookup
         Handle:  unsafe.Pointer(handle),
         Symbols: make(map[string]*CSymbol),
         Structs: make(map[string]*CLibraryStruct),
@@ -247,11 +245,31 @@ func LoadCLibrary(path string) (*CLibrary, error) {
 
 // LoadCLibraryWithAlias loads a C library with a specific alias name
 func LoadCLibraryWithAlias(path string, alias string) (*CLibrary, error) {
+    // On first C library load, try to initialize libffi
+    if !libffiChecked {
+        InitLibFFI()
+    }
+
+    // Check if libffi is available
+    if !IsLibFFIAvailable() {
+        return nil, fmt.Errorf(
+            "C FFI requires libffi but it was not found on this system.\n\n" +
+                "To use C library FFI, install libffi:\n\n" +
+                "  Debian/Ubuntu:  sudo apt install libffi8\n" +
+                "  RHEL/Fedora:    sudo dnf install libffi\n" +
+                "  Arch Linux:     sudo pacman -S libffi\n" +
+                "  Alpine Linux:   sudo apk add libffi\n" +
+                "  FreeBSD:        sudo pkg install libffi\n\n" +
+                "After installation, restart your Za program.")
+    }
+
     lib, err := LoadCLibrary(path)
     if err != nil {
         return nil, err
     }
-    lib.Name = alias              // Override auto-detected name with alias
+    // Keep lib.Name as the full path (set in LoadCLibrary)
+    // but also store the alias for namespace lookups
+    lib.Alias = alias             // Set alias field for LIB declaration lookup
     loadedCLibraries[alias] = lib // Register library for help system
     return lib, nil
 }
@@ -342,323 +360,44 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
         return nil, []string{fmt.Sprintf("[ERROR: Failed to resolve symbol '%s': %s]", functionName, errMsg)}
     }
 
-    // Call function using generic approach
-    return callGenericFunction(funcPtr, functionName, args)
-}
-
-// callGenericFunction calls a C function using proper CGO helper functions
-// Supports common function signatures through C wrapper functions
-func callGenericFunction(funcPtr unsafe.Pointer, functionName string, args []any) (any, []string) {
-    switch len(args) {
-    case 0:
-        return call0Args(funcPtr, functionName)
-    case 1:
-        return call1Arg(funcPtr, functionName, args[0])
-    case 2:
-        return call2Args(funcPtr, functionName, args[0], args[1])
-    case 3:
-        return call3Args(funcPtr, functionName, args[0], args[1], args[2])
-    default:
-        return callNArgs(funcPtr, functionName, args)
-    }
-}
-
-// call0Args handles functions with no arguments
-func call0Args(funcPtr unsafe.Pointer, functionName string) (any, []string) {
-    // Heuristic: if function name suggests it returns a number, try int first
-    // This avoids crashes from calling int-returning functions as string-returning
-    lowerName := strings.ToLower(functionName)
-    if strings.Contains(lowerName, "number") ||
-        strings.Contains(lowerName, "count") ||
-        strings.Contains(lowerName, "size") ||
-        strings.Contains(lowerName, "length") ||
-        strings.Contains(lowerName, "get_") && !strings.Contains(lowerName, "str") {
-        // Try () -> int first
-        intResult := C.call_func_void_int(funcPtr)
-        return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s() -> int]", functionName)}
+    // Check if function signature was declared via LIB keyword
+    sig, declared := GetDeclaredSignature(lib.Alias, functionName)
+    if !declared {
+        return nil, []string{fmt.Sprintf(
+            "[ERROR: Function '%s' not declared. Use: LIB %s::%s(...) -> <return_type>]",
+            functionName, lib.Alias, functionName)}
     }
 
-    // Try () -> ptr first (for functions returning opaque handles)
-    ptrResult := C.call_func_void_ptr(funcPtr)
-    if ptrResult != nil {
-        // Could be a valid pointer or a string pointer
-        // Try to read it as a string (safely check first byte)
-        result := C.call_func_void_str(funcPtr)
-        if result != nil {
-            return C.GoString(result), []string{fmt.Sprintf("[SUCCESS: %s() -> string]", functionName)}
+    // Validate argument count matches declaration
+    if sig.HasVarargs {
+        // Variadic function - require at least fixed args count
+        if len(args) < sig.FixedArgCount {
+            return nil, []string{fmt.Sprintf(
+                "[ERROR: %s expects at least %d arguments (declared in LIB %s::%s), got %d]",
+                functionName, sig.FixedArgCount, lib.Alias, functionName, len(args))}
         }
-        return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s() -> ptr]", functionName)}
-    }
-
-    // Try () -> double (for math constants like M_PI if exposed)
-    doubleResult := C.call_func_void_double(funcPtr)
-    if doubleResult != 0.0 {
-        return float64(doubleResult), []string{fmt.Sprintf("[SUCCESS: %s() -> double]", functionName)}
-    }
-
-    // Try () -> int
-    intResult := C.call_func_void_int(funcPtr)
-    return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s() -> int]", functionName)}
-}
-
-// call1Arg handles functions with one argument
-func call1Arg(funcPtr unsafe.Pointer, functionName string, arg any) (any, []string) {
-    switch v := arg.(type) {
-    case string:
-        cStr := C.CString(v)
-        defer C.free(unsafe.Pointer(cStr))
-
-        // Try (char*) -> char* first (common for string processing)
-        strResult := C.call_func_str_str(funcPtr, cStr)
-        if strResult != nil {
-            return C.GoString(strResult), []string{fmt.Sprintf("[SUCCESS: %s(string) -> string]", functionName)}
-        }
-
-        // Try (char*) -> ptr (for functions like png_get_libpng_ver that may return ptr)
-        ptrResult := C.call_func_str_ptr(funcPtr, cStr)
-        if ptrResult != nil {
-            return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s(string) -> ptr]", functionName)}
-        }
-
-        // Try (char*) -> int
-        intResult := C.call_func_str_int(funcPtr, cStr)
-        return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(string) -> int]", functionName)}
-
-    case int:
-        // Try (int) -> int
-        intResult := C.call_func_int_int(funcPtr, C.int(v))
-        return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(int) -> int]", functionName)}
-
-    case float64:
-        // Try (double) -> double
-        doubleResult := C.call_func_double_double(funcPtr, C.double(v))
-        return float64(doubleResult), []string{fmt.Sprintf("[SUCCESS: %s(double) -> double]", functionName)}
-
-    case bool:
-        intVal := 0
-        if v {
-            intVal = 1
-        }
-        intResult := C.call_func_int_int(funcPtr, C.int(intVal))
-        return int(intResult) != 0, []string{fmt.Sprintf("[SUCCESS: %s(bool) -> bool]", functionName)}
-
-    case *CPointerValue:
-        var cPtr unsafe.Pointer
-        if v != nil {
-            cPtr = v.Ptr
-        }
-        // Try (ptr) -> ptr first
-        ptrResult := C.call_func_ptr_ptr(funcPtr, cPtr)
-        if ptrResult != nil {
-            return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s(ptr) -> ptr]", functionName)}
-        }
-        // Try (ptr) -> int
-        intResult := C.call_func_ptr_int(funcPtr, cPtr)
-        return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(ptr) -> int]", functionName)}
-
-    default:
-        return nil, []string{fmt.Sprintf("[ERROR: Unsupported argument type %T for %s]", arg, functionName)}
-    }
-}
-
-// call2Args handles functions with two arguments
-func call2Args(funcPtr unsafe.Pointer, functionName string, arg1, arg2 any) (any, []string) {
-    switch v1 := arg1.(type) {
-    case string:
-        cStr1 := C.CString(v1)
-        defer C.free(unsafe.Pointer(cStr1))
-
-        switch v2 := arg2.(type) {
-        case string:
-            cStr2 := C.CString(v2)
-            defer C.free(unsafe.Pointer(cStr2))
-            // (char*, char*) -> int (strcmp, strstr patterns)
-            intResult := C.call_func_str_str_int(funcPtr, cStr1, cStr2)
-            return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(string, string) -> int]", functionName)}
-
-        case int:
-            // (char*, int) -> int
-            intResult := C.call_func_str_int_int(funcPtr, cStr1, C.int(v2))
-            return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(string, int) -> int]", functionName)}
-
-        case *CPointerValue:
-            var cPtr unsafe.Pointer
-            if v2 != nil {
-                cPtr = v2.Ptr
-            }
-            // (char*, ptr) -> ptr
-            ptrResult := C.call_func_str_ptr_ptr(funcPtr, cStr1, cPtr)
-            if ptrResult != nil {
-                return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s(string, ptr) -> ptr]", functionName)}
-            }
-            return NullPointer(), []string{fmt.Sprintf("[SUCCESS: %s(string, ptr) -> null]", functionName)}
-        }
-
-    case int:
-        if v2, ok := arg2.(int); ok {
-            // (int, int) -> int
-            intResult := C.call_func_int_int_int(funcPtr, C.int(v1), C.int(v2))
-            return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(int, int) -> int]", functionName)}
-        }
-
-    case float64:
-        if v2, ok := arg2.(float64); ok {
-            // (double, double) -> double (math functions like pow, fmod)
-            doubleResult := C.call_func_double_double_double(funcPtr, C.double(v1), C.double(v2))
-            return float64(doubleResult), []string{fmt.Sprintf("[SUCCESS: %s(double, double) -> double]", functionName)}
-        }
-
-    case *CPointerValue:
-        var cPtr1 unsafe.Pointer
-        if v1 != nil {
-            cPtr1 = v1.Ptr
-        }
-        switch v2 := arg2.(type) {
-        case *CPointerValue:
-            var cPtr2 unsafe.Pointer
-            if v2 != nil {
-                cPtr2 = v2.Ptr
-            }
-            // (ptr, ptr) -> ptr first
-            ptrResult := C.call_func_ptr_ptr_ptr(funcPtr, cPtr1, cPtr2)
-            if ptrResult != nil {
-                return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s(ptr, ptr) -> ptr]", functionName)}
-            }
-            // (ptr, ptr) -> void (common pattern like png_init_io, png_write_info)
-            C.call_func_ptr_ptr_void(funcPtr, cPtr1, cPtr2)
-            return nil, []string{fmt.Sprintf("[SUCCESS: %s(ptr, ptr) -> void]", functionName)}
-
-        case int:
-            // (ptr, int) -> int
-            intResult := C.call_func_ptr_int_int(funcPtr, cPtr1, C.int(v2))
-            return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(ptr, int) -> int]", functionName)}
+    } else {
+        // Non-variadic function - require exact match
+        if len(args) != len(sig.ParamTypes) {
+            return nil, []string{fmt.Sprintf(
+                "[ERROR: %s expects %d arguments (declared in LIB %s::%s), got %d]",
+                functionName, len(sig.ParamTypes), lib.Alias, functionName, len(args))}
         }
     }
 
-    return nil, []string{fmt.Sprintf("[ERROR: Unsupported argument types (%T, %T) for %s]", arg1, arg2, functionName)}
-}
-
-// call3Args handles functions with three arguments
-func call3Args(funcPtr unsafe.Pointer, functionName string, arg1, arg2, arg3 any) (any, []string) {
-    switch v1 := arg1.(type) {
-    case int:
-        if v2, ok := arg2.(int); ok {
-            if v3, ok := arg3.(int); ok {
-                // (int, int, int) -> int
-                intResult := C.call_func_int_int_int_int(funcPtr, C.int(v1), C.int(v2), C.int(v3))
-                return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(int, int, int) -> int]", functionName)}
-            }
+    // Use libffi if available
+    if IsLibFFIAvailable() {
+        // Call via libffi with declared signature
+        result, err := CallCFunctionViaLibFFI(funcPtr, functionName, args, sig)
+        if err != nil {
+            return nil, []string{fmt.Sprintf("[ERROR: libffi call failed: %v]", err)}
         }
 
-    case string:
-        cStr1 := C.CString(v1)
-        defer C.free(unsafe.Pointer(cStr1))
-
-        if v2, ok := arg2.(string); ok {
-            cStr2 := C.CString(v2)
-            defer C.free(unsafe.Pointer(cStr2))
-
-            if v3, ok := arg3.(int); ok {
-                // (char*, char*, int) -> int (strncmp pattern)
-                intResult := C.call_func_str_str_int_int(funcPtr, cStr1, cStr2, C.int(v3))
-                return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(string, string, int) -> int]", functionName)}
-            }
-        }
-
-    case float64:
-        if v2, ok := arg2.(float64); ok {
-            if v3, ok := arg3.(float64); ok {
-                // (double, double, double) -> double (fma pattern)
-                doubleResult := C.call_func_ddd_double(funcPtr, C.double(v1), C.double(v2), C.double(v3))
-                return float64(doubleResult), []string{fmt.Sprintf("[SUCCESS: %s(double, double, double) -> double]", functionName)}
-            }
-        }
+        return result, nil
     }
 
-    return nil, []string{fmt.Sprintf("[ERROR: Unsupported argument types for %s with 3 args]", functionName)}
-}
-
-// callNArgs handles functions with 4+ arguments (limited support)
-func callNArgs(funcPtr unsafe.Pointer, functionName string, args []any) (any, []string) {
-    if len(args) == 4 {
-        // Try (string, ptr, ptr, ptr) -> ptr pattern (png_create_write_struct)
-        if s, ok := args[0].(string); ok {
-            if p1, ok1 := args[1].(*CPointerValue); ok1 {
-                if p2, ok2 := args[2].(*CPointerValue); ok2 {
-                    if p3, ok3 := args[3].(*CPointerValue); ok3 {
-                        cStr := C.CString(s)
-                        defer C.free(unsafe.Pointer(cStr))
-                        var cp1, cp2, cp3 unsafe.Pointer
-                        if p1 != nil {
-                            cp1 = p1.Ptr
-                        }
-                        if p2 != nil {
-                            cp2 = p2.Ptr
-                        }
-                        if p3 != nil {
-                            cp3 = p3.Ptr
-                        }
-                        ptrResult := C.call_func_str_ptr_ptr_ptr_ptr(funcPtr, cStr, cp1, cp2, cp3)
-                        if ptrResult != nil {
-                            return NewCPointer(ptrResult, functionName+"_result"), []string{fmt.Sprintf("[SUCCESS: %s(str, ptr, ptr, ptr) -> ptr]", functionName)}
-                        }
-                        return NullPointer(), []string{fmt.Sprintf("[SUCCESS: %s(str, ptr, ptr, ptr) -> null]", functionName)}
-                    }
-                }
-            }
-        }
-
-        // Try all-int signature
-        allInts := true
-        intArgs := make([]int, 4)
-        for i, arg := range args {
-            if v, ok := arg.(int); ok {
-                intArgs[i] = v
-            } else {
-                allInts = false
-                break
-            }
-        }
-        if allInts {
-            intResult := C.call_func_iiii_int(funcPtr, C.int(intArgs[0]), C.int(intArgs[1]), C.int(intArgs[2]), C.int(intArgs[3]))
-            return int(intResult), []string{fmt.Sprintf("[SUCCESS: %s(int, int, int, int) -> int]", functionName)}
-        }
-    }
-
-    // Handle 9-arg function for png_set_IHDR: (ptr, ptr, int, int, int, int, int, int, int) -> void
-    if len(args) == 9 {
-        if p1, ok1 := args[0].(*CPointerValue); ok1 {
-            if p2, ok2 := args[1].(*CPointerValue); ok2 {
-                allIntsAfter := true
-                intArgs := make([]int, 7)
-                for i := 2; i < 9; i++ {
-                    if v, ok := args[i].(int); ok {
-                        intArgs[i-2] = v
-                    } else {
-                        allIntsAfter = false
-                        break
-                    }
-                }
-                if allIntsAfter {
-                    var cp1, cp2 unsafe.Pointer
-                    if p1 != nil {
-                        cp1 = p1.Ptr
-                    }
-                    if p2 != nil {
-                        cp2 = p2.Ptr
-                    }
-                    C.call_func_ppiiiiiii_void(funcPtr, cp1, cp2,
-                        C.uint(intArgs[0]), C.uint(intArgs[1]),
-                        C.int(intArgs[2]), C.int(intArgs[3]),
-                        C.int(intArgs[4]), C.int(intArgs[5]), C.int(intArgs[6]))
-                    return nil, []string{fmt.Sprintf("[SUCCESS: %s(ptr, ptr, 7 ints) -> void]", functionName)}
-                }
-            }
-        }
-    }
-
-    // Fallback for unsupported signatures
-    return fmt.Sprintf("C_FUNCTION_%s_CALLED", functionName), []string{fmt.Sprintf("[WARNING: %s called with %d args - limited signature support]", functionName, len(args))}
+    // Fallback if libffi not available
+    return nil, []string{"[ERROR: libffi not available - this should have been caught during library loading]"}
 }
 
 // Check if symbol should be processed

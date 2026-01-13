@@ -1,0 +1,104 @@
+# libgd FFI Test Script
+# Tests GD graphics library (image creation and JPEG output)
+
+println "[#4]Testing libgd FFI[#-]"
+println "=" * 50
+
+# Load libgd
+module "/usr/lib/libgd.so.3" as gd
+use +gd
+
+# Declare function signatures
+LIB gd::gdImageCreate(width:int, height:int) -> pointer
+LIB gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -> int
+LIB gd::gdImageSetPixel(im:pointer, x:int, y:int, color:int) -> void
+LIB gd::gdImageLine(im:pointer, x1:int, y1:int, x2:int, y2:int, color:int) -> void
+LIB gd::gdImageRectangle(im:pointer, x1:int, y1:int, x2:int, y2:int, color:int) -> void
+LIB gd::gdImageJpeg(im:pointer, out:pointer, quality:int) -> void
+LIB gd::gdImageDestroy(im:pointer) -> void
+
+# Note: Using c_fopen from stdlib instead of direct fopen to avoid mode validation
+
+# ========================================
+# Image Creation
+# ========================================
+println "\n[#6]Image Creation[#-]"
+
+width = 200
+height = 150
+im = gdImageCreate(width, height)
+assert !c_ptr_is_null(im), "gdImageCreate failed"
+println "  ✓ gdImageCreate({width}, {height}) successful"
+
+# ========================================
+# Color Allocation
+# ========================================
+println "\n[#6]Color Allocation[#-]"
+
+# Allocate colors
+white = gdImageColorAllocate(im, 255, 255, 255)
+black = gdImageColorAllocate(im, 0, 0, 0)
+red = gdImageColorAllocate(im, 255, 0, 0)
+green = gdImageColorAllocate(im, 0, 255, 0)
+blue = gdImageColorAllocate(im, 0, 0, 255)
+
+println "  ✓ gdImageColorAllocate successful"
+println "    white={white}, black={black}, red={red}, green={green}, blue={blue}"
+
+# ========================================
+# Drawing Operations
+# ========================================
+println "\n[#6]Drawing Operations[#-]"
+
+# Draw a red rectangle outline
+gdImageRectangle(im, 10, 10, 190, 140, red)
+println "  ✓ gdImageRectangle (red outline)"
+
+# Draw a green line
+gdImageLine(im, 10, 10, 190, 140, green)
+println "  ✓ gdImageLine (green diagonal)"
+
+# Draw a blue line
+gdImageLine(im, 190, 10, 10, 140, blue)
+println "  ✓ gdImageLine (blue diagonal)"
+
+# Draw some pixels
+gdImageSetPixel(im, 100, 75, black)
+gdImageSetPixel(im, 101, 75, black)
+gdImageSetPixel(im, 99, 75, black)
+gdImageSetPixel(im, 100, 76, black)
+gdImageSetPixel(im, 100, 74, black)
+println "  ✓ gdImageSetPixel (5 black pixels)"
+
+# ========================================
+# JPEG Output
+# ========================================
+println "\n[#6]JPEG Output[#-]"
+
+output_file = "/tmp/za_libgd_test.jpg"
+fp = c_fopen(output_file, "wb")
+assert !c_ptr_is_null(fp), "c_fopen failed"
+println "  ✓ c_fopen('{output_file}', 'wb') successful"
+
+# Save as JPEG with quality 90
+gdImageJpeg(im, fp, 90)
+println "  ✓ gdImageJpeg with quality 90"
+
+c_fclose(fp)
+println "  ✓ c_fclose successful"
+
+# ========================================
+# Cleanup
+# ========================================
+println "\n[#6]Cleanup[#-]"
+
+gdImageDestroy(im)
+println "  ✓ gdImageDestroy successful"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#3]Image saved to: {output_file}[#-]"
+println "You can view it with: [#dim]feh {output_file}[#-] or any image viewer"
+
+println "\n[#2]✓ All libgd tests passed![#-]"

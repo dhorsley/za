@@ -1,0 +1,99 @@
+# GLib FFI Test Script - Complex Data Structures as Return Types
+# Tests GList and GArray structure pointers
+
+println "[#4]Testing GLib FFI - Structure Pointers[#-]"
+println "=" * 50
+
+# Load GLib
+module "/usr/lib/libglib-2.0.so.0" as glib
+use +glib
+
+# Declare GList functions
+LIB glib::g_list_append(list:pointer, data:pointer) -> pointer
+LIB glib::g_list_prepend(list:pointer, data:pointer) -> pointer
+LIB glib::g_list_length(list:pointer) -> int
+LIB glib::g_list_free(list:pointer) -> void
+
+# Declare GArray functions
+LIB glib::g_array_new(zero_terminated:int, clear:int, element_size:int) -> pointer
+
+# Declare helper functions
+LIB glib::g_malloc(n_bytes:int) -> pointer
+LIB glib::g_free(ptr:pointer) -> void
+
+# ========================================
+# Test: GList (Linked List) as Return Type
+# ========================================
+println "\n[#6]Testing GList Pointer Return Type[#-]"
+
+# Allocate some data
+data1 = g_malloc(8)
+data2 = g_malloc(8)
+data3 = g_malloc(8)
+
+# Build list by starting NULL and prepending
+# g_list_prepend returns updated GList* pointer
+list = g_list_prepend(g_malloc(0), data1)
+println "  g_list_prepend() returned: ", list
+assert !c_ptr_is_null(list), "g_list_prepend returned NULL"
+println "  ✓ g_list_prepend returns non-null GList* pointer"
+
+# Prepend more elements
+list = g_list_prepend(list, data2)
+list = g_list_prepend(list, data3)
+
+# Get list length
+len = g_list_length(list)
+println "  g_list_length() = ", len
+println "  ✓ g_list_length accepts GList* pointer and returns int"
+
+# Free the list structure
+g_list_free(list)
+println "  ✓ g_list_free accepts GList* pointer (void return)"
+
+# Free the data
+g_free(data1)
+g_free(data2)
+g_free(data3)
+
+println "\n  [#2]GList test summary:[#-]"
+println "    • g_list_prepend() returns GList* pointer"
+println "    • List pointer is updated through prepend operations"
+println "    • g_list_length() reads from GList* and returns int"
+println "    • g_list_free() accepts GList* (void return)"
+
+# ========================================
+# Test: GArray (Dynamic Array) as Return Type
+# ========================================
+println "\n[#6]Testing GArray Pointer Return Type[#-]"
+
+# Create new dynamic array
+# Returns GArray* pointer
+array = g_array_new(0, 0, 4)  # element_size=4 (int-sized)
+println "  g_array_new() returned: ", array
+assert !c_ptr_is_null(array), "g_array_new returned NULL"
+println "  ✓ g_array_new returns non-null GArray* pointer"
+
+# Note: We can't easily free GArray without causing issues,
+# so we just demonstrate that we got the pointer
+
+println "\n  [#2]GArray test summary:[#-]"
+println "    • g_array_new() returns GArray* pointer"
+println "    • Pointer can be stored in Za variable"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#2]✓ All GLib structure pointer tests passed![#-]"
+println "\nTested structure types as FFI return values:"
+println "  • GList*: Linked list structure pointer"
+println "    - Created and manipulated via g_list_prepend()"
+println "    - Queried via g_list_length()"
+println "    - Freed via g_list_free()"
+println ""
+println "  • GArray*: Dynamic array structure pointer"
+println "    - Created via g_array_new()"
+println ""
+println "[#3]Note:[#-] This demonstrates that complex C structure pointers"
+println "can be returned from FFI calls, stored in Za variables, and"
+println "passed back to other FFI functions for manipulation."

@@ -1,0 +1,125 @@
+# libncurses FFI Test Script
+# Tests ncurses terminal UI library
+
+println "[#4]Testing libncurses FFI[#-]"
+println "=" * 50
+
+# Load ncurses
+module "/usr/lib/libncursesw.so.6" as nc
+use +nc
+
+# Declare function signatures
+LIB nc::initscr() -> pointer
+LIB nc::endwin() -> int
+LIB nc::printw(fmt:string) -> int
+LIB nc::mvaddch(y:int, x:int, ch:int) -> int
+LIB nc::getch() -> int
+LIB nc::refresh() -> int
+LIB nc::clear() -> int
+
+# ========================================
+# Initialization
+# ========================================
+println "\n[#6]Initialization[#-]"
+
+stdscr = initscr()
+assert !c_ptr_is_null(stdscr), "initscr failed"
+println "  ✓ initscr() successful"
+
+# ========================================
+# Text Output
+# ========================================
+println "\n[#6]Text Output[#-]"
+
+result = printw("Hello from Za FFI!\n")
+println "  ✓ printw returned: {result}"
+
+result = printw("This is a test of the ncurses library.\n")
+println "  ✓ printw (line 2) returned: {result}"
+
+result = printw("\nDrawing characters:\n")
+println "  ✓ printw (line 3) returned: {result}"
+
+# ========================================
+# Character Drawing
+# ========================================
+println "\n[#6]Character Drawing[#-]"
+
+# Draw a box using ASCII characters
+# Top line
+for x in 5..34
+    mvaddch(5, x, 45)  # '-' character
+endfor
+println "  ✓ Drew top line"
+
+# Bottom line
+for x in 5..34
+    mvaddch(10, x, 45)  # '-' character
+endfor
+println "  ✓ Drew bottom line"
+
+# Left side
+for y in 6..9
+    mvaddch(y, 5, 124)  # '|' character
+endfor
+println "  ✓ Drew left side"
+
+# Right side
+for y in 6..9
+    mvaddch(y, 34, 124)  # '|' character
+endfor
+println "  ✓ Drew right side"
+
+# Corners
+mvaddch(5, 5, 43)    # '+'
+mvaddch(5, 34, 43)   # '+'
+mvaddch(10, 5, 43)   # '+'
+mvaddch(10, 34, 43)  # '+'
+println "  ✓ Drew corners"
+
+# Text inside box
+mvaddch(7, 10, 42)   # '*'
+mvaddch(7, 29, 42)   # '*'
+mvaddch(8, 15, 90)   # 'Z'
+mvaddch(8, 16, 97)   # 'a'
+mvaddch(8, 17, 33)   # '!'
+println "  ✓ Drew content"
+
+# ========================================
+# Screen Refresh and Input
+# ========================================
+println "\n[#6]Screen Refresh[#-]"
+
+result = refresh()
+println "  ✓ refresh() returned: {result}"
+
+printw("\n\nPress any key to continue...")
+refresh()
+
+println "\n[#3]Waiting for keypress...[#-]"
+key = getch()
+println "  ✓ getch() returned: {key}"
+
+# ========================================
+# Cleanup
+# ========================================
+println "\n[#6]Cleanup[#-]"
+
+result = clear()
+println "  ✓ clear() returned: {result}"
+
+result = endwin()
+println "  ✓ endwin() returned: {result}"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#3]Note: Full ncurses testing requires terminal interaction[#-]"
+println "This test demonstrates basic ncurses functionality including:"
+println "  • Screen initialization and cleanup"
+println "  • Text output with printw"
+println "  • Character positioning with mvaddch"
+println "  • Screen refresh"
+println "  • Keyboard input with getch"
+
+println "\n[#2]✓ All libncurses basic tests passed![#-]"

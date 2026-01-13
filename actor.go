@@ -5344,6 +5344,7 @@ tco_reentry:
                 // Check if path contains directory separator (either / or \)
                 hasPathSep := str.Contains(modGivenPath, "/") || str.Contains(modGivenPath, "\\")
 
+                var lib *CLibrary
                 if !hasPathSep {
                     // Try common system library paths based on OS
                     var systemPaths []string
@@ -5373,7 +5374,7 @@ tco_reentry:
 
                     for _, path := range systemPaths {
                         libPath = path
-                        _, err = LoadCLibrary(path)
+                        lib, err = LoadCLibraryWithAlias(path, currentModule)
                         if err == nil {
                             break
                         }
@@ -5386,18 +5387,18 @@ tco_reentry:
                     }
                 } else {
                     libPath = modGivenPath
-                    lib, err := LoadCLibraryWithAlias(libPath, currentModule)
+                    lib, err = LoadCLibraryWithAlias(libPath, currentModule)
 
                     if err != nil {
                         parser.report(inbound.SourceLine, sf("Failed to load C library '%s': %v", modGivenPath, err))
                         finish(false, ERR_MODULE)
                         break
                     }
+                }
 
-                    // Store library reference for help system
-                    if lib != nil {
-                        loadedCLibraries[currentModule] = lib
-                    }
+                // Store library reference for help system
+                if lib != nil {
+                    loadedCLibraries[currentModule] = lib
                 }
 
                 // Discover symbols in the C library
@@ -5578,6 +5579,128 @@ tco_reentry:
                 parser.namespace = oldModule
 
             }
+
+        case C_Lib:
+            // LIB namespace::function(param1:type, param2:type) -> return_type
+            // TODO: Refactor to parse tokens directly instead of string reconstruction
+            // (see Call/functionargs parsing for reference)
+
+            if inbound.TokenCount < 2 {
+                parser.report(inbound.SourceLine, "LIB requires a function signature")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            // Reconstruct the full signature from tokens (everything after LIB keyword)
+            var sigBuilder strings.Builder
+            for i := int16(1); i < inbound.TokenCount; i++ {
+                if i > 1 {
+                    sigBuilder.WriteString(" ")
+                }
+                sigBuilder.WriteString(inbound.Tokens[i].tokText)
+            }
+            signature := sigBuilder.String()
+
+            // Remove spaces around special characters for easier parsing
+            signature = strings.ReplaceAll(signature, " :: ", "::")
+            signature = strings.ReplaceAll(signature, " ( ", "(")
+            signature = strings.ReplaceAll(signature, " ) ", ")")
+            signature = strings.ReplaceAll(signature, " : ", ":")
+            signature = strings.ReplaceAll(signature, " , ", ",")
+            signature = strings.ReplaceAll(signature, " -> ", "->")
+            // Fix varargs: ". . ." or ".. ." -> "..."
+            signature = strings.ReplaceAll(signature, ". . .", "...")
+            signature = strings.ReplaceAll(signature, ".. .", "...")
+            signature = strings.ReplaceAll(signature, ". ..", "...")
+
+            // Parse: namespace::function(param1:type, param2:type) -> return_type
+
+            // Find the :: separator
+            nsIdx := strings.Index(signature, "::")
+            if nsIdx == -1 {
+                parser.report(inbound.SourceLine, "LIB signature must include namespace prefix (e.g., c::malloc)")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            libAlias := signature[:nsIdx]
+            remaining := signature[nsIdx+2:]
+
+            // Find the opening parenthesis
+            parenIdx := strings.Index(remaining, "(")
+            if parenIdx == -1 {
+                parser.report(inbound.SourceLine, "LIB signature must include parameter list in parentheses")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            funcName := remaining[:parenIdx]
+
+            // Find the closing parenthesis
+            closeParenIdx := strings.Index(remaining, ")")
+            if closeParenIdx == -1 {
+                parser.report(inbound.SourceLine, "LIB signature has unclosed parameter list")
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            paramsStr := remaining[parenIdx+1 : closeParenIdx]
+            afterParams := remaining[closeParenIdx+1:]
+
+            // Parse return type (after ->)
+            returnTypeStr := "void"
+            if strings.Contains(afterParams, "->") {
+                arrowIdx := strings.Index(afterParams, "->")
+                returnTypeStr = strings.TrimSpace(afterParams[arrowIdx+2:])
+            }
+
+            returnType, err := StringToCType(returnTypeStr)
+            if err != nil {
+                parser.report(inbound.SourceLine, sf("Invalid return type '%s': %v", returnTypeStr, err))
+                finish(false, ERR_SYNTAX)
+                break
+            }
+
+            // Parse parameters
+            var paramTypes []CType
+            hasVarargs := false
+            if paramsStr != "" {
+                params := strings.Split(paramsStr, ",")
+                for i, param := range params {
+                    param = strings.TrimSpace(param)
+
+                    // Check for varargs (...name)
+                    if strings.HasPrefix(param, "...") {
+                        if i != len(params)-1 {
+                            parser.report(inbound.SourceLine, "Varargs parameter (...) must be last parameter")
+                            finish(false, ERR_SYNTAX)
+                            break
+                        }
+                        hasVarargs = true
+                        // Don't add varargs to paramTypes - they're handled dynamically
+                        break
+                    }
+
+                    // Extract type from "name:type" format
+                    colonIdx := strings.Index(param, ":")
+                    if colonIdx == -1 {
+                        parser.report(inbound.SourceLine, sf("Parameter '%s' must have format name:type", param))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                    typeStr := strings.TrimSpace(param[colonIdx+1:])
+                    paramType, err := StringToCType(typeStr)
+                    if err != nil {
+                        parser.report(inbound.SourceLine, sf("Invalid parameter type '%s': %v", typeStr, err))
+                        finish(false, ERR_SYNTAX)
+                        break
+                    }
+                    paramTypes = append(paramTypes, paramType)
+                }
+            }
+
+            // Store the function signature
+            DeclareCFunction(libAlias, funcName, paramTypes, returnType, hasVarargs)
 
         case C_Case:
 

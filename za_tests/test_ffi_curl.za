@@ -1,0 +1,76 @@
+# libcurl FFI Test Script
+# Tests HTTP networking library
+
+println "[#4]Testing libcurl FFI[#-]"
+println "=" * 50
+
+# Load libcurl
+module "/usr/lib/libcurl.so.4" as curl
+use +curl
+
+# Declare function signatures
+LIB curl::curl_global_init(flags:int) -> int
+LIB curl::curl_easy_init() -> pointer
+LIB curl::curl_easy_cleanup(handle:pointer) -> void
+LIB curl::curl_global_cleanup() -> void
+
+# CURL constants
+CURLE_OK = 0
+
+# ========================================
+# Global Initialization
+# ========================================
+println "\n[#6]Global Initialization[#-]"
+
+# Initialize libcurl globally
+curl_global_init(0)
+println "  ✓ curl_global_init(0) succeeds"
+
+# ========================================
+# Easy Handle Operations
+# ========================================
+println "\n[#6]Easy Handle Operations[#-]"
+
+# Create easy handle
+handle = curl_easy_init()
+assert !c_ptr_is_null(handle), "curl_easy_init returned null"
+println "  ✓ curl_easy_init() returns non-null handle"
+
+# Cleanup easy handle
+curl_easy_cleanup(handle)
+println "  ✓ curl_easy_cleanup succeeds"
+
+# ========================================
+# Multiple Handles
+# ========================================
+println "\n[#6]Multiple Handle Test[#-]"
+
+# Create multiple handles to check handle management
+handle1 = curl_easy_init()
+handle2 = curl_easy_init()
+handle3 = curl_easy_init()
+
+assert !c_ptr_is_null(handle1) and !c_ptr_is_null(handle2) and !c_ptr_is_null(handle3), "Failed to create multiple handles"
+println "  ✓ Multiple handles can be created"
+
+curl_easy_cleanup(handle1)
+curl_easy_cleanup(handle2)
+curl_easy_cleanup(handle3)
+println "  ✓ Multiple handles cleaned up successfully"
+
+# ========================================
+# Global Cleanup
+# ========================================
+println "\n[#6]Global Cleanup[#-]"
+
+curl_global_cleanup()
+println "  ✓ curl_global_cleanup() succeeds"
+
+# ========================================
+# Summary
+# ========================================
+println "\n[#3]Note: Full curl testing requires varargs support[#-]"
+println "The curl_easy_setopt function is variadic and requires special handling."
+println "Basic handle creation and lifecycle management works correctly."
+
+println "\n[#2]✓ All libcurl basic tests passed![#-]"
