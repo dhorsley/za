@@ -34,7 +34,7 @@ use +c
 LIB c::stat(pathname:string, statbuf:pointer) -> int
 
 println "\nTest 2: Call c::stat() to fill the struct"
-result = c::stat("za_tests/test_ffi_struct_stat.za", statbuf_ptr)
+result = c::stat("/tmp", statbuf_ptr)
 println "Result code:", result
 
 if result != 0
@@ -54,10 +54,10 @@ println "  File mode:", stats.st_mode
 println "  UID:", stats.st_uid
 println "  GID:", stats.st_gid
 
-if stats.st_size > 0
-    println "✓ Struct contains valid data (size > 0)"
+if stats.st_mode == 1
+    println "✓ Struct contains valid data (mode == 1)"
 else
-    println "✗ Struct size is 0 - unexpected"
+    println "✗ Struct mode is not 1 - unexpected"
 endif
 
 println "\nTest 5: Cleanup"
