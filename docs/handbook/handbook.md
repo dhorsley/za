@@ -4172,7 +4172,7 @@ MODULE "/path/to/library.so" AS alias_name
 USE +alias_name
 ```
 
-The `MODULE` statement loads the shared library and makes its symbols available. The `USE +alias` statement enables the namespace for function calls.
+The `MODULE` statement loads the shared library and makes its symbols available. The `USE +alias` statement appends the alias to the namespace lookup chain. (use `USE ^alias` to push the namespace to the head of the search list instead if required).
 
 **Common system libraries:**
 

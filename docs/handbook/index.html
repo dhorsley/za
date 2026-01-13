@@ -3760,8 +3760,10 @@ keyword with an alias:</p>
 <pre class="za"><code>MODULE &quot;/path/to/library.so&quot; AS alias_name
 USE +alias_name</code></pre>
 <p>The <code>MODULE</code> statement loads the shared library and makes
-its symbols available. The <code>USE +alias</code> statement enables the
-namespace for function calls.</p>
+its symbols available. The <code>USE +alias</code> statement appends the
+alias to the namespace lookup chain. (use <code>USE ^alias</code> to
+push the namespace to the head of the search list instead if
+required).</p>
 <p><strong>Common system libraries:</strong></p>
 <pre class="za"><code># Math library
 module &quot;/usr/lib/libm.so.6&quot; as m
