@@ -11,6 +11,7 @@ import (
     "math"
     "math/big"
     "os"
+    "os/exec"
     "path"
     "path/filepath"
     "reflect"
@@ -5346,38 +5347,60 @@ tco_reentry:
 
                 var lib *CLibrary
                 if !hasPathSep {
-                    // Try common system library paths based on OS
+                    // Use hybrid approach: LD_LIBRARY_PATH -> ldconfig -> comprehensive path search
                     var systemPaths []string
-                    if runtime.GOOS == "windows" {
-                        // Windows system paths
-                        systemPaths = []string{
-                            "C:\\Windows\\System32\\" + modGivenPath,
-                            "C:\\Windows\\SysWOW64\\" + modGivenPath,
-                        }
-                        // Also check PATH directories
-                        if pathEnv := os.Getenv("PATH"); pathEnv != "" {
-                            for _, dir := range strings.Split(pathEnv, ";") {
-                                systemPaths = append(systemPaths, filepath.Join(dir, modGivenPath))
+
+                    // 1. Check environment library path variables first (user override, highest priority)
+                    if runtime.GOOS == "darwin" {
+                        // macOS: Check DYLD_LIBRARY_PATH and DYLD_FALLBACK_LIBRARY_PATH
+                        // Note: These are often disabled by SIP for protected binaries
+                        if dyldPath := os.Getenv("DYLD_LIBRARY_PATH"); dyldPath != "" {
+                            for _, dir := range str.Split(dyldPath, ":") {
+                                if dir != "" {
+                                    systemPaths = append(systemPaths, filepath.Join(dir, modGivenPath))
+                                }
                             }
                         }
-                    } else {
-                        // Unix/Linux/macOS system paths
-                        systemPaths = []string{
-                            "/usr/lib/" + modGivenPath,
-                            "/usr/lib/x86_64-linux-gnu/" + modGivenPath,
-                            "/usr/local/lib/" + modGivenPath,
-                            "/lib/" + modGivenPath,
-                            "/lib/x86_64-linux-gnu/" + modGivenPath,
-                            "/usr/lib64/" + modGivenPath,
+                        if dyldFallback := os.Getenv("DYLD_FALLBACK_LIBRARY_PATH"); dyldFallback != "" {
+                            for _, dir := range str.Split(dyldFallback, ":") {
+                                if dir != "" {
+                                    systemPaths = append(systemPaths, filepath.Join(dir, modGivenPath))
+                                }
+                            }
+                        }
+                    } else if runtime.GOOS != "windows" {
+                        // Unix/Linux/BSD: Check LD_LIBRARY_PATH
+                        if ldPath := os.Getenv("LD_LIBRARY_PATH"); ldPath != "" {
+                            for _, dir := range str.Split(ldPath, ":") {
+                                if dir != "" {
+                                    systemPaths = append(systemPaths, filepath.Join(dir, modGivenPath))
+                                }
+                            }
+                        }
+
+                        // 2. Try ldconfig if available (most accurate, respects system config)
+                        // Note: BSD systems use ldconfig but with different output format
+                        if ldconfigPath := tryLdconfigPath(modGivenPath); ldconfigPath != "" {
+                            systemPaths = append(systemPaths, ldconfigPath)
                         }
                     }
 
+                    // 3. Fallback to comprehensive path search (works everywhere)
+                    systemPaths = append(systemPaths, getSystemLibraryPaths(modGivenPath)...)
+
+                    // Try each path in order until one succeeds
                     for _, path := range systemPaths {
                         libPath = path
                         lib, err = LoadCLibraryWithAlias(path, currentModule)
                         if err == nil {
                             break
                         }
+                    }
+
+                    // Final fallback: try with just the library name, letting dlopen use its own search
+                    if err != nil && runtime.GOOS != "windows" {
+                        libPath = modGivenPath
+                        lib, err = LoadCLibraryWithAlias(modGivenPath, currentModule)
                     }
 
                     if err != nil {
@@ -5420,11 +5443,11 @@ tco_reentry:
                 modlist[currentModule] = true
 
                 // pf("C library '%s' loaded with %d symbols", currentModule, len(symbols))
-            }
+            } else {
 
-            //.. set file location
+                //.. set file location
 
-            moduleloc = ""
+                moduleloc = ""
 
             if str.IndexByte(modGivenPath, '/') > -1 {
                 if filepath.IsAbs(modGivenPath) {
@@ -5579,6 +5602,8 @@ tco_reentry:
                 parser.namespace = oldModule
 
             }
+
+            } // end else (Za module loading)
 
         case C_Lib:
             // LIB namespace::function(param1:type, param2:type) -> return_type
@@ -8293,6 +8318,240 @@ func findDelim(tokens []Token, delim int64, start int16) (pos int16) {
         }
     }
     return -1
+}
+
+// getMultiarchTriplets returns possible multiarch triplets for the current architecture
+func getMultiarchTriplets() []string {
+    var archToTriplet = map[string][]string{
+        // x86 family
+        "amd64": {"x86_64-linux-gnu", "x86_64-linux-musl"},
+        "386":   {"i386-linux-gnu", "i686-linux-gnu"},
+
+        // ARM family
+        "arm64": {"aarch64-linux-gnu"},
+        "arm":   {"arm-linux-gnueabihf", "arm-linux-gnueabi"},
+
+        // PowerPC family
+        "ppc64":   {"powerpc64-linux-gnu"},
+        "ppc64le": {"powerpc64le-linux-gnu"},
+        "ppc":     {"powerpc-linux-gnu"},
+
+        // Other architectures
+        "s390x":    {"s390x-linux-gnu"},
+        "mips":     {"mips-linux-gnu"},
+        "mipsle":   {"mipsel-linux-gnu"},
+        "mips64":   {"mips64-linux-gnuabi64"},
+        "mips64le": {"mips64el-linux-gnuabi64"},
+        "riscv64":  {"riscv64-linux-gnu"},
+    }
+
+    if triplets, ok := archToTriplet[runtime.GOARCH]; ok {
+        return triplets
+    }
+    return []string{}
+}
+
+// tryLdconfigPath attempts to find a library using ldconfig -p
+// Returns the full path if found, empty string otherwise
+func tryLdconfigPath(libName string) string {
+    cmd := exec.Command("ldconfig", "-p")
+    output, err := cmd.Output()
+    if err != nil {
+        return ""
+    }
+
+    // Parse ldconfig output: "libname.so.X (libc6,x86-64) => /path/to/lib"
+    lines := str.Split(string(output), "\n")
+    for _, line := range lines {
+        line = str.TrimSpace(line)
+        if str.HasPrefix(line, libName+" ") || str.HasPrefix(line, libName+"(") {
+            // Extract path after "=>"
+            parts := str.Split(line, "=>")
+            if len(parts) == 2 {
+                path := str.TrimSpace(parts[1])
+                if path != "" {
+                    return path
+                }
+            }
+        }
+    }
+
+    return ""
+}
+
+// getSystemLibraryPaths returns a comprehensive list of library search paths
+// for the current OS and architecture
+func getSystemLibraryPaths(libName string) []string {
+    var paths []string
+
+    if runtime.GOOS == "windows" {
+        // Windows DLL search order (standard LoadLibrary behavior)
+        // https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order
+
+        // 1. Application directory (where Za.exe is running from)
+        if exePath, err := os.Executable(); err == nil {
+            exeDir := filepath.Dir(exePath)
+            paths = append(paths, filepath.Join(exeDir, libName))
+        }
+
+        // 2. System directory (System32 for native arch, SysWOW64 for 32-bit on 64-bit)
+        // Note: On 64-bit Windows, System32 contains 64-bit DLLs, SysWOW64 contains 32-bit DLLs
+        if sysDir := os.Getenv("SystemRoot"); sysDir != "" {
+            paths = append(paths,
+                filepath.Join(sysDir, "System32", libName),
+                filepath.Join(sysDir, "SysWOW64", libName),
+            )
+        } else {
+            // Fallback if SystemRoot not set
+            paths = append(paths,
+                "C:\\Windows\\System32\\"+libName,
+                "C:\\Windows\\SysWOW64\\"+libName,
+            )
+        }
+
+        // 3. Windows directory
+        if winDir := os.Getenv("SystemRoot"); winDir != "" {
+            paths = append(paths, filepath.Join(winDir, libName))
+        } else {
+            paths = append(paths, "C:\\Windows\\"+libName)
+        }
+
+        // 4. Current working directory (security note: can be a risk in some scenarios)
+        if cwd, err := os.Getwd(); err == nil {
+            paths = append(paths, filepath.Join(cwd, libName))
+        }
+
+        // 5. PATH environment variable directories
+        if pathEnv := os.Getenv("PATH"); pathEnv != "" {
+            for _, dir := range str.Split(pathEnv, ";") {
+                if dir != "" {
+                    paths = append(paths, filepath.Join(dir, libName))
+                }
+            }
+        }
+
+        return paths
+    }
+
+    // Platform-specific path ordering
+    // Darwin (macOS), BSD variants, Linux, Solaris/illumos each have different conventions
+
+    triplets := getMultiarchTriplets()
+
+    if runtime.GOOS == "darwin" {
+        // macOS paths - search order per dyld documentation
+        // Note: /usr/local/lib may not be searched by default on newer macOS (Xcode 15+)
+        // but we include it for compatibility with older systems and Homebrew
+        paths = append(paths,
+            "/usr/local/lib/"+libName,      // Homebrew
+            "/opt/homebrew/lib/"+libName,   // Homebrew on Apple Silicon
+            "/opt/local/lib/"+libName,      // MacPorts
+            "/usr/lib/"+libName,            // System libraries
+            "/Library/Frameworks/"+libName, // System frameworks location (rare for .dylib)
+        )
+        return paths
+    }
+
+    if runtime.GOOS == "freebsd" || runtime.GOOS == "dragonfly" {
+        // FreeBSD and DragonFly BSD paths
+        // Third-party packages install to /usr/local by convention
+        paths = append(paths,
+            "/usr/local/lib/"+libName,           // Primary for user-installed packages
+            "/usr/lib/"+libName,                 // System libraries
+            "/lib/"+libName,                     // Base system libraries
+            "/usr/local/lib/compat/pkg/"+libName, // Compatibility packages
+            "/usr/lib/compat/"+libName,          // Compatibility libraries
+        )
+        return paths
+    }
+
+    if runtime.GOOS == "openbsd" {
+        // OpenBSD paths - simpler than FreeBSD
+        paths = append(paths,
+            "/usr/local/lib/"+libName, // User-installed packages
+            "/usr/lib/"+libName,       // System libraries
+        )
+        return paths
+    }
+
+    if runtime.GOOS == "netbsd" {
+        // NetBSD paths - uses /usr/pkg for pkgsrc packages
+        paths = append(paths,
+            "/usr/pkg/lib/"+libName,   // pkgsrc packages (primary)
+            "/usr/local/lib/"+libName, // Local installations
+            "/usr/lib/"+libName,       // System libraries
+        )
+        return paths
+    }
+
+    if runtime.GOOS == "solaris" || runtime.GOOS == "illumos" {
+        // Solaris and illumos paths
+        // 64-bit and 32-bit libraries use different subdirectories
+        is64bit := runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" ||
+                   runtime.GOARCH == "ppc64" || runtime.GOARCH == "ppc64le" ||
+                   runtime.GOARCH == "s390x" || runtime.GOARCH == "mips64" ||
+                   runtime.GOARCH == "mips64le" || runtime.GOARCH == "riscv64"
+
+        if is64bit {
+            paths = append(paths,
+                "/lib/64/"+libName,       // 64-bit system libraries (primary)
+                "/usr/lib/64/"+libName,   // 64-bit user libraries
+                "/lib/"+libName,          // Fallback to 32-bit
+                "/usr/lib/"+libName,      // Fallback to 32-bit
+            )
+        } else {
+            paths = append(paths,
+                "/lib/"+libName,         // 32-bit system libraries
+                "/usr/lib/"+libName,     // 32-bit user libraries
+            )
+        }
+        return paths
+    }
+
+    // Linux paths (various distributions)
+    // Priority order: multiarch-specific -> standard lib64 -> standard lib -> BSD-style -> multilib
+
+    // 1. Multiarch paths (Debian/Ubuntu/derivatives)
+    for _, triplet := range triplets {
+        paths = append(paths,
+            "/usr/lib/"+triplet+"/"+libName,
+            "/lib/"+triplet+"/"+libName,
+            "/usr/local/lib/"+triplet+"/"+libName,
+        )
+    }
+
+    // 2. Standard 64-bit paths (RHEL/Fedora/CentOS/AWS Linux 2023 primary)
+    // AWS Linux 2023 is Fedora-based and uses the same lib64 structure
+    paths = append(paths,
+        "/usr/lib64/"+libName,
+        "/lib64/"+libName,
+    )
+
+    // 3. Standard primary paths (Arch/Gentoo/Void/most systems)
+    paths = append(paths,
+        "/usr/lib/"+libName,
+        "/lib/"+libName,
+    )
+
+    // 4. /usr/local paths (common on many systems, though not all Linux distros use it)
+    paths = append(paths,
+        "/usr/local/lib/"+libName,
+    )
+
+    // 5. 32-bit multilib paths (Arch and others)
+    paths = append(paths,
+        "/usr/lib32/"+libName,
+        "/lib32/"+libName,
+    )
+
+    // Note: NixOS is intentionally not included here as it uses /nix/store/<hash>-package/lib/
+    // and relies entirely on RPATH embedded in binaries or NIX_LD_LIBRARY_PATH.
+    // NixOS users should either:
+    // 1. Use full paths: MODULE "/nix/store/.../lib/libfoo.so"
+    // 2. Set LD_LIBRARY_PATH to the nix store location
+    // 3. Use the system's dlopen which will find libraries via RPATH
+
+    return paths
 }
 
 func (parser *leparser) splitCommaArray(tokens []Token) (resu [][]Token) {
