@@ -50,3 +50,5 @@ println "✓ PNG FFI functions working with struct pointers"
 
 println "\n✅ PNG struct pointer test complete!"
 println "Demonstrated passing opaque struct pointers to/from C functions"
+
+

@@ -48,6 +48,16 @@ if c_ptr_is_null(fp)
 endif
 println "  File opened successfully"
 
+# more declarations:
+LIB png::png_create_write_struct(user_png_ver:string, error_ptr:pointer, error_fn:pointer, warn_fn:pointer) -> pointer
+LIB png::png_create_info_struct(png_ptr:pointer) -> pointer
+LIB png::png_init_io(png_ptr:pointer, fp:pointer) -> void
+# LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:uint, height:uint, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
+LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:int, height:int, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
+LIB png::png_write_info(png_ptr:pointer, info_ptr:pointer) -> void
+LIB png::png_write_row(png_ptr:pointer, row:pointer) -> void
+LIB png::png_write_end(png_ptr:pointer, info_ptr:pointer) -> void
+
 # Create PNG write struct
 null_ptr = c_null()
 png_ptr = png_create_write_struct("1.6.0", null_ptr, null_ptr, null_ptr)
@@ -119,3 +129,5 @@ println "  File closed"
 
 println "\n[#2]PNG file created successfully: {OUTPUT_FILE}[#-]"
 println "You can view it with: display {OUTPUT_FILE}"
+
+
