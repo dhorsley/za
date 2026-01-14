@@ -3808,13 +3808,29 @@ Function Signatures with LIB</h2>
 return values.</p>
 <p><strong>Syntax:</strong></p>
 <pre class="za"><code>lib namespace::function_name(param1:type1, param2:type2, ...) -&gt; return_type</code></pre>
-<p><strong>Supported types:</strong> - <code>int</code> - C integers
-(int, long, int32_t, int64_t, etc.) - <code>float</code> - C
-single-precision float - <code>double</code> - C double-precision float
-(preferred for floating-point) - <code>string</code> - C null-terminated
-string (char<em>) - <code>pointer</code> - Generic pointer (void</em>,
-struct pointers) - <code>void</code> - Return type only (function
-returns nothing) - <code>bool</code> - C boolean type</p>
+<p><strong>Supported types:</strong></p>
+<p><strong>Integer types:</strong> - <code>int</code> - C 32-bit
+integers (int, int32_t) - <code>uint</code> - C 32-bit unsigned integers
+(unsigned int, uint32_t) - <code>int8</code> - C 8-bit signed integers
+(int8_t) - range: -128 to 127 - <code>uint8</code> / <code>byte</code> -
+C 8-bit unsigned integers (uint8_t) - range: 0 to 255 -
+<code>int16</code> - C 16-bit signed integers (short, int16_t) - range:
+-32,768 to 32,767 - <code>uint16</code> - C 16-bit unsigned integers
+(unsigned short, uint16_t) - range: 0 to 65,535 - <code>int64</code> - C
+64-bit signed integers (long long, int64_t, off_t, ptrdiff_t) -
+<code>uint64</code> - C 64-bit unsigned integers (unsigned long long,
+uint64_t, size_t) - <code>intptr</code> - Pointer-sized signed integer
+(intptr_t) - maps to int64 - <code>uintptr</code> - Pointer-sized
+unsigned integer (uintptr_t) - maps to uint64</p>
+<p><strong>Floating-point types:</strong> - <code>float</code> - C
+single-precision float (32-bit) - <code>double</code> - C
+double-precision float (64-bit, preferred for floating-point) -
+<code>longdouble</code> - C extended precision float (long double,
+80-bit on x86-64)</p>
+<p><strong>Other types:</strong> - <code>string</code> - C
+null-terminated string (char<em>) - <code>pointer</code> - Generic
+pointer (void</em>, struct pointers) - <code>void</code> - Return type
+only (function returns nothing) - <code>bool</code> - C boolean type</p>
 <p><strong>Examples covering all type combinations:</strong></p>
 <pre class="za"><code># Math functions (double parameters and returns)
 lib m::sqrt(x:double) -&gt; double
@@ -4057,6 +4073,131 @@ function signatures from system man pages (section 3) and suggests
 appropriate <code>LIB</code> declarations with C-to-Za type
 mappings.</p>
 <h2 id="f.7-type-mapping-reference">F.7 Type Mapping Reference</h2>
+<p><strong>Integer types:</strong></p>
+<table>
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 17%" />
+<col style="width: 13%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr>
+<th>C Type</th>
+<th>Za Type</th>
+<th>Range</th>
+<th>Auto-converts from Za types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code>, <code>int32_t</code></td>
+<td><code>int</code></td>
+<td>-2³¹ to 2³¹-1</td>
+<td>int, uint, int64, uint64</td>
+</tr>
+<tr>
+<td><code>unsigned int</code>, <code>uint32_t</code></td>
+<td><code>uint</code></td>
+<td>0 to 2³²-1</td>
+<td>int, uint, int64, uint64</td>
+</tr>
+<tr>
+<td><code>int8_t</code></td>
+<td><code>int8</code></td>
+<td>-128 to 127</td>
+<td>int, int64, uint, uint64, uint8</td>
+</tr>
+<tr>
+<td><code>uint8_t</code></td>
+<td><code>uint8</code> / <code>byte</code></td>
+<td>0 to 255</td>
+<td>uint8 (native), int, uint, int64</td>
+</tr>
+<tr>
+<td><code>short</code>, <code>int16_t</code></td>
+<td><code>int16</code></td>
+<td>-32,768 to 32,767</td>
+<td>int, int64, uint, uint64, uint8</td>
+</tr>
+<tr>
+<td><code>unsigned short</code>, <code>uint16_t</code></td>
+<td><code>uint16</code></td>
+<td>0 to 65,535</td>
+<td>int, uint, int64, uint64, uint8</td>
+</tr>
+<tr>
+<td><code>long long</code>, <code>int64_t</code>,
+<code>off_t</code></td>
+<td><code>int64</code></td>
+<td>-2⁶³ to 2⁶³-1</td>
+<td>int, int64, uint, uint64</td>
+</tr>
+<tr>
+<td><code>unsigned long long</code>, <code>uint64_t</code></td>
+<td><code>uint64</code></td>
+<td>0 to 2⁶⁴-1</td>
+<td>uint64 (native), int, int64, uint</td>
+</tr>
+<tr>
+<td><code>intptr_t</code>, <code>ptrdiff_t</code></td>
+<td><code>int64</code></td>
+<td>Pointer-sized</td>
+<td>int, int64, uint, uint64</td>
+</tr>
+<tr>
+<td><code>uintptr_t</code></td>
+<td><code>uint64</code></td>
+<td>Pointer-sized</td>
+<td>uint64, int, int64, uint</td>
+</tr>
+<tr>
+<td><code>size_t</code></td>
+<td><code>uint64</code></td>
+<td>Unsigned pointer-sized</td>
+<td>uint64, int, uint</td>
+</tr>
+<tr>
+<td><code>ssize_t</code></td>
+<td><code>int</code></td>
+<td>Signed pointer-sized</td>
+<td>int, int64, uint, uint64</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Floating-point types:</strong></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 37%" />
+<col style="width: 29%" />
+</colgroup>
+<thead>
+<tr>
+<th>C Type</th>
+<th>Za Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>float</code></td>
+<td><code>float</code></td>
+<td>32-bit single precision</td>
+</tr>
+<tr>
+<td><code>double</code></td>
+<td><code>double</code></td>
+<td>64-bit double precision (preferred)</td>
+</tr>
+<tr>
+<td><code>long double</code></td>
+<td><code>longdouble</code></td>
+<td>80-bit extended precision (may lose precision)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Other types:</strong></p>
 <table>
 <colgroup>
 <col style="width: 33%" />
@@ -4087,36 +4228,6 @@ mappings.</p>
 <td>Null-terminated strings</td>
 </tr>
 <tr>
-<td><code>int</code>, <code>long</code></td>
-<td><code>int</code></td>
-<td>All integer types</td>
-</tr>
-<tr>
-<td><code>int32_t</code>, <code>int64_t</code></td>
-<td><code>int</code></td>
-<td>Fixed-size integers</td>
-</tr>
-<tr>
-<td><code>size_t</code>, <code>ssize_t</code></td>
-<td><code>pointer</code>*</td>
-<td>Use <code>c_ptr_to_int()</code></td>
-</tr>
-<tr>
-<td><code>uint8_t</code> - <code>uint64_t</code></td>
-<td><code>int</code></td>
-<td>Unsigned integers</td>
-</tr>
-<tr>
-<td><code>float</code></td>
-<td><code>float</code></td>
-<td>Single precision</td>
-</tr>
-<tr>
-<td><code>double</code></td>
-<td><code>double</code></td>
-<td>Double precision (preferred)</td>
-</tr>
-<tr>
 <td><code>bool</code>, <code>_Bool</code></td>
 <td><code>bool</code></td>
 <td>Boolean type</td>
@@ -4128,8 +4239,6 @@ mappings.</p>
 </tr>
 </tbody>
 </table>
-<p>*Note: <code>size_t</code> is returned as a pointer and must be
-converted with <code>c_ptr_to_int()</code>.</p>
 <p><strong>String handling:</strong> Za strings are automatically
 converted to null-terminated <code>char*</code> when passed to C. C
 strings returned as <code>string</code> type are copied into Za
@@ -4598,13 +4707,198 @@ end</code></pre>
 obj = json::json_object_new_object()
 # ... use object ...
 json::json_object_put(obj)  # Library&#39;s cleanup function</code></pre>
-<h2 id="f.10-limitations-and-best-practices">F.10 Limitations and Best
+<h2 id="f.10-callback-functions">F.10 Callback Functions</h2>
+<p>Za supports passing Za functions to C as callbacks (function
+pointers). This enables integration with C APIs that require callbacks
+such as <code>qsort_r()</code>, <code>pthread_create()</code>, signal
+handlers, and event-driven libraries.</p>
+<h3 id="f.10.1-how-callbacks-work">F.10.1 How Callbacks Work</h3>
+<p>Za uses a <strong>trampoline pattern</strong> with
+<code>cgo.Handle</code> to safely pass Za functions through C:</p>
+<ol type="1">
+<li>Register a Za function with <code>c_register_callback()</code></li>
+<li>Receive a callback object with <code>.trampoline</code> and
+<code>.handle</code> fields</li>
+<li>Pass these to the C function (trampoline = function pointer, handle
+= context)</li>
+<li>When C calls back, the trampoline invokes your Za function</li>
+<li>Cleanup with <code>c_unregister_callback()</code> when done</li>
+</ol>
+<h3 id="f.10.2-supported-callback-signatures">F.10.2 Supported Callback
+Signatures</h3>
+<table>
+<colgroup>
+<col style="width: 37%" />
+<col style="width: 27%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr>
+<th>Signature</th>
+<th>C Type</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ptr,ptr-&gt;int</code></td>
+<td><code>int (*)(void*, void*, void*)</code></td>
+<td>qsort_r comparator</td>
+</tr>
+<tr>
+<td><code>int,int-&gt;int</code></td>
+<td><code>int (*)(int, int, void*)</code></td>
+<td>Integer comparator with context</td>
+</tr>
+<tr>
+<td><code>ptr-&gt;ptr</code></td>
+<td><code>void* (*)(void*)</code></td>
+<td>pthread_create thread function</td>
+</tr>
+<tr>
+<td><code>int,ptr,ptr-&gt;void</code></td>
+<td><code>void (*)(int, siginfo_t*, void*)</code></td>
+<td>sigaction with SA_SIGINFO</td>
+</tr>
+<tr>
+<td><code>int-&gt;void</code></td>
+<td><code>void (*)(int)</code></td>
+<td>Simple signal handler (limited)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> Most callbacks require C APIs that support a
+<strong>context parameter</strong> (also called <code>user_data</code>,
+<code>thunk</code>, or <code>arg</code>). This is where the
+<code>.handle</code> is passed.</p>
+<h3 id="f.10.3-example-qsort_r-with-custom-comparator">F.10.3 Example:
+qsort_r with Custom Comparator</h3>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c
+use +c
+
+# qsort_r takes a comparator function and context parameter
+LIB c::qsort_r(base:pointer, nmemb:int, size:int, compar:pointer, arg:pointer) -&gt; void
+
+# Define a Za comparator function
+def compare_ints(a_ptr, b_ptr)
+    # Extract int values from pointers (requires c_ptr_read functions)
+    a = c_ptr_read_int(a_ptr, 0)
+    b = c_ptr_read_int(b_ptr, 0)
+
+    if a &lt; b
+        return -1
+    endif
+    if a &gt; b
+        return 1
+    endif
+    return 0
+end
+
+# Create array and get pointer
+arr = [5, 2, 8, 1, 9, 3]
+arr_ptr = get_array_pointer(arr)  # Implementation-specific
+
+# Register callback
+cb = c_register_callback(&quot;compare_ints&quot;, &quot;ptr,ptr-&gt;int&quot;)
+
+# Sort using Za comparator
+c::qsort_r(arr_ptr, 6, 4, cb.trampoline, cb.handle)
+
+# Cleanup
+c_unregister_callback(cb)
+
+# arr is now sorted</code></pre>
+<h3 id="f.10.4-example-thread-creation">F.10.4 Example: Thread
+Creation</h3>
+<pre class="za"><code>module &quot;libpthread.so.0&quot; as pthread
+use +pthread
+
+LIB pthread::pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -&gt; int
+LIB pthread::pthread_join(thread:pointer, retval:pointer) -&gt; int
+
+# Define thread function
+def worker_thread(arg)
+    println &quot;Thread running&quot;
+    # Do work...
+    return c_null()
+end
+
+# Register callback
+cb = c_register_callback(&quot;worker_thread&quot;, &quot;ptr-&gt;ptr&quot;)
+
+# Create thread
+VAR thread_id pointer
+result = pthread::pthread_create(&amp;thread_id, c_null(), cb.trampoline, cb.handle)
+
+if result == 0
+    # Wait for thread to complete
+    pthread::pthread_join(thread_id, c_null())
+endif
+
+# Cleanup
+c_unregister_callback(cb)</code></pre>
+<h3 id="f.10.5-callback-lifecycle">F.10.5 Callback Lifecycle</h3>
+<p><strong>Registration:</strong></p>
+<pre class="za"><code>cb = c_register_callback(function_name, signature)
+# Returns: map with .trampoline and .handle fields</code></pre>
+<p><strong>Usage:</strong></p>
+<pre class="za"><code># Pass to C function that accepts function pointer + context
+c::some_function(cb.trampoline, other_args, cb.handle)</code></pre>
+<p><strong>Cleanup:</strong></p>
+<pre class="za"><code>c_unregister_callback(cb)
+# Must be called when C will no longer call the callback</code></pre>
+<h3 id="f.10.6-thread-safety">F.10.6 Thread Safety</h3>
+<p><strong>Important:</strong> Callbacks are serialized with a mutex to
+protect Za’s interpreter. This means:</p>
+<ul>
+<li>Multiple concurrent callbacks from different threads are safe</li>
+<li>Callbacks execute sequentially, never in parallel</li>
+<li>Performance may be impacted with high-frequency callbacks from many
+threads</li>
+</ul>
+<h3 id="f.10.7-limitations">F.10.7 Limitations</h3>
+<ol type="1">
+<li><p><strong>Context parameter required:</strong> Most callbacks need
+C APIs with a context/user_data parameter. Simple callbacks without
+context (like old <code>signal()</code>) have limited support.</p></li>
+<li><p><strong>No closure capture:</strong> Callback functions cannot
+capture variables from enclosing scope. They only access their
+parameters and global variables.</p></li>
+<li><p><strong>Manual cleanup required:</strong> You must call
+<code>c_unregister_callback()</code> or memory will leak. Unregister
+before the callback might be called again.</p></li>
+<li><p><strong>Function must exist:</strong> The Za function must remain
+defined while the callback is registered. Don’t redefine or delete
+callback functions while in use.</p></li>
+<li><p><strong>Error handling:</strong> Callback errors cannot propagate
+to C. Errors return safe default values (0, nil) to C.</p></li>
+</ol>
+<h3 id="f.10.8-best-practices">F.10.8 Best Practices</h3>
+<ol type="1">
+<li><p><strong>Always cleanup:</strong> Use try/catch blocks to ensure
+callbacks are unregistered:</p>
+<pre class="za"><code>cb = c_register_callback(&quot;my_func&quot;, &quot;ptr,ptr-&gt;int&quot;)
+try
+    # Use callback
+catch e
+    c_unregister_callback(cb)
+    throw e
+endtry
+c_unregister_callback(cb)</code></pre></li>
+<li><p><strong>Check return values:</strong> Many C APIs return error
+codes. Check them before assuming success.</p></li>
+<li><p><strong>Simple callback logic:</strong> Keep callback functions
+simple. Complex logic increases risk of errors that can’t be reported to
+C.</p></li>
+<li><p><strong>Document context usage:</strong> When using callbacks
+with C APIs, document which parameter is the context.</p></li>
+<li><p><strong>Test thread safety:</strong> If C library uses threads,
+test that callbacks work correctly with concurrent invocations.</p></li>
+</ol>
+<h2 id="f.11-limitations-and-best-practices">F.11 Limitations and Best
 Practices</h2>
 <p><strong>Limitations:</strong></p>
 <ol type="1">
-<li><p><strong>No callback function support:</strong> You cannot pass Za
-functions to C as callbacks (e.g., <code>qsort</code> comparator
-functions).</p></li>
 <li><p><strong>Manual memory management:</strong> Unlike Za’s garbage
 collection, C memory must be manually freed with <code>free()</code> or
 library-specific cleanup functions.</p></li>
@@ -4673,7 +4967,7 @@ end</code></pre></li>
 <li><p><strong>When in doubt, use shell commands:</strong> If FFI
 becomes complex, consider using Za’s shell integration instead.</p></li>
 </ol>
-<h2 id="f.11-platform-support-and-build-requirements">F.11 Platform
+<h2 id="f.12-platform-support-and-build-requirements">F.12 Platform
 Support and Build Requirements</h2>
 <p><strong>Unix/Linux:</strong></p>
 <ul>
@@ -4693,8 +4987,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb212"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb212-1"><a href="#cb212-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb218"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb218-1"><a href="#cb218-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

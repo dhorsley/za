@@ -1,0 +1,14 @@
+# Test script for "help plugin batch <namespace>" feature
+# This demonstrates batch conversion of all functions in a namespace
+
+println "[#4]Testing namespace batch feature[#-]"
+println "====================================="
+
+# Load a smaller library for testing
+println "\n[#6]Loading png library...[#-]"
+module "libpng.so" as png
+use +m
+
+help plugin batch png
+
+println "\n[#2]Test structure completed![#-]"

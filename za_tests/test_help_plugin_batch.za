@@ -1,0 +1,16 @@
+# Test script for "help plugin batch" feature
+# This demonstrates batch conversion of C function declarations to Za LIB statements
+
+println "[#4]Testing help plugin batch feature[#-]"
+println "======================================"
+
+# Load C standard library
+println "\n[#6]Loading libc...[#-]"
+module "libc.so.6" as c
+use +c
+
+# Test batch conversion with multiple functions
+println "\n[#6]Converting multiple C functions...[#-]"
+help plugin batch strlen strcmp malloc free calloc realloc printf sprintf
+
+println "\n[#2]Test completed![#-]"

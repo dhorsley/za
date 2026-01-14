@@ -4222,9 +4222,25 @@ lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
 ```
 
 **Supported types:**
-- `int` - C integers (int, long, int32_t, int64_t, etc.)
-- `float` - C single-precision float
-- `double` - C double-precision float (preferred for floating-point)
+
+**Integer types:**
+- `int` - C 32-bit integers (int, int32_t)
+- `uint` - C 32-bit unsigned integers (unsigned int, uint32_t)
+- `int8` - C 8-bit signed integers (int8_t) - range: -128 to 127
+- `uint8` / `byte` - C 8-bit unsigned integers (uint8_t) - range: 0 to 255
+- `int16` - C 16-bit signed integers (short, int16_t) - range: -32,768 to 32,767
+- `uint16` - C 16-bit unsigned integers (unsigned short, uint16_t) - range: 0 to 65,535
+- `int64` - C 64-bit signed integers (long long, int64_t, off_t, ptrdiff_t)
+- `uint64` - C 64-bit unsigned integers (unsigned long long, uint64_t, size_t)
+- `intptr` - Pointer-sized signed integer (intptr_t) - maps to int64
+- `uintptr` - Pointer-sized unsigned integer (uintptr_t) - maps to uint64
+
+**Floating-point types:**
+- `float` - C single-precision float (32-bit)
+- `double` - C double-precision float (64-bit, preferred for floating-point)
+- `longdouble` - C extended precision float (long double, 80-bit on x86-64)
+
+**Other types:**
 - `string` - C null-terminated string (char*)
 - `pointer` - Generic pointer (void*, struct pointers)
 - `void` - Return type only (function returns nothing)
@@ -4545,21 +4561,40 @@ help plugin find glib::g_malloc
 
 ## F.7 Type Mapping Reference
 
+**Integer types:**
+
+| C Type | Za Type | Range | Auto-converts from Za types |
+|--------|---------|-------|---------------------------|
+| `int`, `int32_t` | `int` | -2³¹ to 2³¹-1 | int, uint, int64, uint64 |
+| `unsigned int`, `uint32_t` | `uint` | 0 to 2³²-1 | int, uint, int64, uint64 |
+| `int8_t` | `int8` | -128 to 127 | int, int64, uint, uint64, uint8 |
+| `uint8_t` | `uint8` / `byte` | 0 to 255 | uint8 (native), int, uint, int64 |
+| `short`, `int16_t` | `int16` | -32,768 to 32,767 | int, int64, uint, uint64, uint8 |
+| `unsigned short`, `uint16_t` | `uint16` | 0 to 65,535 | int, uint, int64, uint64, uint8 |
+| `long long`, `int64_t`, `off_t` | `int64` | -2⁶³ to 2⁶³-1 | int, int64, uint, uint64 |
+| `unsigned long long`, `uint64_t` | `uint64` | 0 to 2⁶⁴-1 | uint64 (native), int, int64, uint |
+| `intptr_t`, `ptrdiff_t` | `int64` | Pointer-sized | int, int64, uint, uint64 |
+| `uintptr_t` | `uint64` | Pointer-sized | uint64, int, int64, uint |
+| `size_t` | `uint64` | Unsigned pointer-sized | uint64, int, uint |
+| `ssize_t` | `int` | Signed pointer-sized | int, int64, uint, uint64 |
+
+**Floating-point types:**
+
+| C Type | Za Type | Notes |
+|--------|---------|-------|
+| `float` | `float` | 32-bit single precision |
+| `double` | `double` | 64-bit double precision (preferred) |
+| `long double` | `longdouble` | 80-bit extended precision (may lose precision) |
+
+**Other types:**
+
 | C Type | Za Type | Notes |
 |--------|---------|-------|
 | `void` | (none) | Return type only |
 | `void*` | `pointer` | Generic pointer |
 | `char*` | `string` | Null-terminated strings |
-| `int`, `long` | `int` | All integer types |
-| `int32_t`, `int64_t` | `int` | Fixed-size integers |
-| `size_t`, `ssize_t` | `pointer`* | Use `c_ptr_to_int()` |
-| `uint8_t` - `uint64_t` | `int` | Unsigned integers |
-| `float` | `float` | Single precision |
-| `double` | `double` | Double precision (preferred) |
 | `bool`, `_Bool` | `bool` | Boolean type |
 | `struct`, `union` | `pointer` or `struct<name>` | Opaque pointer OR marshaled struct (see F.9.1, F.9.2) |
-
-*Note: `size_t` is returned as a pointer and must be converted with `c_ptr_to_int()`.
 
 **String handling:** Za strings are automatically converted to null-terminated `char*` when passed to C. C strings returned as `string` type are copied into Za memory.
 
@@ -5039,30 +5074,188 @@ obj = json::json_object_new_object()
 json::json_object_put(obj)  # Library's cleanup function
 ```
 
-## F.10 Limitations and Best Practices
+## F.10 Callback Functions
+
+Za supports passing Za functions to C as callbacks (function pointers). This enables integration with C APIs that require callbacks such as `qsort_r()`, `pthread_create()`, signal handlers, and event-driven libraries.
+
+### F.10.1 How Callbacks Work
+
+Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions through C:
+
+1. Register a Za function with `c_register_callback()`
+2. Receive a callback object with `.trampoline` and `.handle` fields
+3. Pass these to the C function (trampoline = function pointer, handle = context)
+4. When C calls back, the trampoline invokes your Za function
+5. Cleanup with `c_unregister_callback()` when done
+
+### F.10.2 Supported Callback Signatures
+
+| Signature | C Type | Use Case |
+|-----------|--------|----------|
+| `ptr,ptr->int` | `int (*)(void*, void*, void*)` | qsort_r comparator |
+| `int,int->int` | `int (*)(int, int, void*)` | Integer comparator with context |
+| `ptr->ptr` | `void* (*)(void*)` | pthread_create thread function |
+| `int,ptr,ptr->void` | `void (*)(int, siginfo_t*, void*)` | sigaction with SA_SIGINFO |
+| `int->void` | `void (*)(int)` | Simple signal handler (limited) |
+
+**Note:** Most callbacks require C APIs that support a **context parameter** (also called `user_data`, `thunk`, or `arg`). This is where the `.handle` is passed.
+
+### F.10.3 Example: qsort_r with Custom Comparator
+
+```za
+module "libc.so.6" as c
+use +c
+
+# qsort_r takes a comparator function and context parameter
+LIB c::qsort_r(base:pointer, nmemb:int, size:int, compar:pointer, arg:pointer) -> void
+
+# Define a Za comparator function
+def compare_ints(a_ptr, b_ptr)
+    # Extract int values from pointers (requires c_ptr_read functions)
+    a = c_ptr_read_int(a_ptr, 0)
+    b = c_ptr_read_int(b_ptr, 0)
+
+    if a < b
+        return -1
+    endif
+    if a > b
+        return 1
+    endif
+    return 0
+end
+
+# Create array and get pointer
+arr = [5, 2, 8, 1, 9, 3]
+arr_ptr = get_array_pointer(arr)  # Implementation-specific
+
+# Register callback
+cb = c_register_callback("compare_ints", "ptr,ptr->int")
+
+# Sort using Za comparator
+c::qsort_r(arr_ptr, 6, 4, cb.trampoline, cb.handle)
+
+# Cleanup
+c_unregister_callback(cb)
+
+# arr is now sorted
+```
+
+### F.10.4 Example: Thread Creation
+
+```za
+module "libpthread.so.0" as pthread
+use +pthread
+
+LIB pthread::pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -> int
+LIB pthread::pthread_join(thread:pointer, retval:pointer) -> int
+
+# Define thread function
+def worker_thread(arg)
+    println "Thread running"
+    # Do work...
+    return c_null()
+end
+
+# Register callback
+cb = c_register_callback("worker_thread", "ptr->ptr")
+
+# Create thread
+VAR thread_id pointer
+result = pthread::pthread_create(&thread_id, c_null(), cb.trampoline, cb.handle)
+
+if result == 0
+    # Wait for thread to complete
+    pthread::pthread_join(thread_id, c_null())
+endif
+
+# Cleanup
+c_unregister_callback(cb)
+```
+
+### F.10.5 Callback Lifecycle
+
+**Registration:**
+```za
+cb = c_register_callback(function_name, signature)
+# Returns: map with .trampoline and .handle fields
+```
+
+**Usage:**
+```za
+# Pass to C function that accepts function pointer + context
+c::some_function(cb.trampoline, other_args, cb.handle)
+```
+
+**Cleanup:**
+```za
+c_unregister_callback(cb)
+# Must be called when C will no longer call the callback
+```
+
+### F.10.6 Thread Safety
+
+**Important:** Callbacks are serialized with a mutex to protect Za's interpreter. This means:
+
+- Multiple concurrent callbacks from different threads are safe
+- Callbacks execute sequentially, never in parallel
+- Performance may be impacted with high-frequency callbacks from many threads
+
+### F.10.7 Limitations
+
+1. **Context parameter required:** Most callbacks need C APIs with a context/user_data parameter. Simple callbacks without context (like old `signal()`) have limited support.
+
+2. **No closure capture:** Callback functions cannot capture variables from enclosing scope. They only access their parameters and global variables.
+
+3. **Manual cleanup required:** You must call `c_unregister_callback()` or memory will leak. Unregister before the callback might be called again.
+
+4. **Function must exist:** The Za function must remain defined while the callback is registered. Don't redefine or delete callback functions while in use.
+
+5. **Error handling:** Callback errors cannot propagate to C. Errors return safe default values (0, nil) to C.
+
+### F.10.8 Best Practices
+
+1. **Always cleanup:** Use try/catch blocks to ensure callbacks are unregistered:
+   ```za
+   cb = c_register_callback("my_func", "ptr,ptr->int")
+   try
+       # Use callback
+   catch e
+       c_unregister_callback(cb)
+       throw e
+   endtry
+   c_unregister_callback(cb)
+   ```
+
+2. **Check return values:** Many C APIs return error codes. Check them before assuming success.
+
+3. **Simple callback logic:** Keep callback functions simple. Complex logic increases risk of errors that can't be reported to C.
+
+4. **Document context usage:** When using callbacks with C APIs, document which parameter is the context.
+
+5. **Test thread safety:** If C library uses threads, test that callbacks work correctly with concurrent invocations.
+
+## F.11 Limitations and Best Practices
 
 **Limitations:**
 
-1. **No callback function support:** You cannot pass Za functions to C as callbacks (e.g., `qsort` comparator functions).
+1. **Manual memory management:** Unlike Za's garbage collection, C memory must be manually freed with `free()` or library-specific cleanup functions.
 
-2. **Manual memory management:** Unlike Za's garbage collection, C memory must be manually freed with `free()` or library-specific cleanup functions.
-
-3. **Preprocessor macros not accessible:** C `#define` constants are not symbols and cannot be accessed via FFI. Define them in Za:
+2. **Preprocessor macros not accessible:** C `#define` constants are not symbols and cannot be accessed via FFI. Define them in Za:
    ```za
    # Cannot access C's NULL or EOF directly
    NULL = c_null()
    EOF = -1
    ```
 
-4. **Platform-specific behavior:** Some libraries behave differently across platforms. Test thoroughly.
+3. **Platform-specific behavior:** Some libraries behave differently across platforms. Test thoroughly.
 
-5. **Struct field access:** Za now supports struct marshaling for passing data between Za and C:
+4. **Struct field access:** Za now supports struct marshaling for passing data between Za and C:
    - Define structs in Za and automatically pass to C using `struct<typename>` syntax
    - Read C struct data into Za using `c_unmarshal_struct()`
    - Direct field access works within Za structs (e.g., `point.x`)
    - Nested structs and fixed-size arrays in structs not yet supported
 
-6. **Size_t special handling:** Functions returning `size_t` require `c_ptr_to_int()` conversion.
+5. **Size_t special handling:** Functions returning `size_t` require `c_ptr_to_int()` conversion.
 
 **Best Practices:**
 
@@ -5109,7 +5302,7 @@ json::json_object_put(obj)  # Library's cleanup function
 
 8. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
 
-## F.11 Platform Support and Build Requirements
+## F.12 Platform Support and Build Requirements
 
 **Unix/Linux:**
 

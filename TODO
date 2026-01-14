@@ -1,7 +1,7 @@
 
-* uint support in C_Lib statement
+* [DONE] uint support in C_Lib statement
 
-* support in help plugin for "HELP PLUGIN CONVERT <c_decl>"
+* [DONE] support in help plugin for "HELP PLUGIN CONVERT <c_decl>"
   - this would take a found C header string and convert it to za LIB format.
 
 

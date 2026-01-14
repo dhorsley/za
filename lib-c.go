@@ -26,6 +26,14 @@ const (
     CBool
     CPointer
     CStruct
+    CUInt
+    CInt16
+    CUInt16
+    CInt64
+    CUInt64
+    CLongDouble
+    CInt8
+    CUInt8
 )
 
 // CSymbol represents a C function or variable symbol
@@ -184,10 +192,30 @@ func StringToCType(typeName string) (CType, string, error) {
         return CVoid, "", nil
     case "int":
         return CInt, "", nil
+    case "uint":
+        return CUInt, "", nil
+    case "int16":
+        return CInt16, "", nil
+    case "uint16":
+        return CUInt16, "", nil
+    case "int64":
+        return CInt64, "", nil
+    case "uint64":
+        return CUInt64, "", nil
+    case "int8":
+        return CInt8, "", nil
+    case "uint8", "byte":
+        return CUInt8, "", nil
+    case "intptr":
+        return CInt64, "intptr mapped to int64", nil
+    case "uintptr":
+        return CUInt64, "uintptr mapped to uint64", nil
     case "float":
         return CFloat, "", nil
     case "double":
         return CDouble, "", nil
+    case "longdouble":
+        return CLongDouble, "", nil
     case "char":
         return CChar, "", nil
     case "string":
@@ -244,6 +272,32 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
         default:
             return nil, fmt.Errorf("cannot convert %T to C int", zval)
         }
+    case CUInt:
+        switch v := zval.(type) {
+        case int:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative int %d to C uint", v)
+            }
+            return uint(v), nil
+        case float64:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative float %f to C uint", v)
+            }
+            return uint(v), nil
+        case string:
+            uival, err := strconv.ParseUint(v, 10, 32)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to uint", v)
+            }
+            return uint(uival), nil
+        case bool:
+            if v {
+                return uint(1), nil
+            }
+            return uint(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C uint", zval)
+        }
     case CFloat:
         switch v := zval.(type) {
         case int:
@@ -285,6 +339,270 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
         default:
             return false, nil
         }
+    case CInt16:
+        switch v := zval.(type) {
+        case int:
+            if v < -32768 || v > 32767 {
+                return nil, fmt.Errorf("value %d out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case int64:
+            if v < -32768 || v > 32767 {
+                return nil, fmt.Errorf("value %d out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case uint:
+            if v > 32767 {
+                return nil, fmt.Errorf("value %d out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case uint64:
+            if v > 32767 {
+                return nil, fmt.Errorf("value %d out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case uint8:
+            return int16(v), nil // uint8 always fits in int16
+        case float64:
+            if v < -32768 || v > 32767 {
+                return nil, fmt.Errorf("value %f out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case string:
+            ival, err := strconv.ParseInt(v, 10, 16)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to int16", v)
+            }
+            return int16(ival), nil
+        case bool:
+            if v {
+                return int16(1), nil
+            }
+            return int16(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C int16", zval)
+        }
+    case CUInt16:
+        switch v := zval.(type) {
+        case int:
+            if v < 0 || v > 65535 {
+                return nil, fmt.Errorf("value %d out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
+        case int64:
+            if v < 0 || v > 65535 {
+                return nil, fmt.Errorf("value %d out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
+        case uint:
+            if v > 65535 {
+                return nil, fmt.Errorf("value %d out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
+        case uint64:
+            if v > 65535 {
+                return nil, fmt.Errorf("value %d out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
+        case uint8:
+            return uint16(v), nil // uint8 always fits in uint16
+        case float64:
+            if v < 0 || v > 65535 {
+                return nil, fmt.Errorf("value %f out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
+        case string:
+            uival, err := strconv.ParseUint(v, 10, 16)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to uint16", v)
+            }
+            return uint16(uival), nil
+        case bool:
+            if v {
+                return uint16(1), nil
+            }
+            return uint16(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C uint16", zval)
+        }
+    case CInt64:
+        switch v := zval.(type) {
+        case int64:
+            return v, nil // Za native int64 type
+        case int:
+            return int64(v), nil
+        case uint:
+            return int64(v), nil
+        case uint64:
+            if v > 9223372036854775807 { // Max int64
+                return nil, fmt.Errorf("value %d out of range for int64", v)
+            }
+            return int64(v), nil
+        case uint8:
+            return int64(v), nil
+        case float64:
+            return int64(v), nil
+        case string:
+            ival, err := strconv.ParseInt(v, 10, 64)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to int64", v)
+            }
+            return ival, nil
+        case bool:
+            if v {
+                return int64(1), nil
+            }
+            return int64(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C int64", zval)
+        }
+    case CUInt64:
+        switch v := zval.(type) {
+        case uint64:
+            return v, nil // Za native uint64 type
+        case uint:
+            return uint64(v), nil // Za native uint type
+        case uint8:
+            return uint64(v), nil // Za native uint8 type
+        case int:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative int %d to C uint64", v)
+            }
+            return uint64(v), nil
+        case int64:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative int64 %d to C uint64", v)
+            }
+            return uint64(v), nil
+        case float64:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative float %f to C uint64", v)
+            }
+            return uint64(v), nil
+        case string:
+            uival, err := strconv.ParseUint(v, 10, 64)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to uint64", v)
+            }
+            return uival, nil
+        case bool:
+            if v {
+                return uint64(1), nil
+            }
+            return uint64(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C uint64", zval)
+        }
+    case CLongDouble:
+        // Go doesn't have native long double, use float64
+        switch v := zval.(type) {
+        case int:
+            return float64(v), nil
+        case float64:
+            return v, nil
+        case string:
+            fval, err := strconv.ParseFloat(v, 64)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to long double", v)
+            }
+            return fval, nil
+        case bool:
+            if v {
+                return 1.0, nil
+            }
+            return 0.0, nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C long double", zval)
+        }
+    case CInt8:
+        switch v := zval.(type) {
+        case int:
+            if v < -128 || v > 127 {
+                return nil, fmt.Errorf("value %d out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case int64:
+            if v < -128 || v > 127 {
+                return nil, fmt.Errorf("value %d out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case uint:
+            if v > 127 {
+                return nil, fmt.Errorf("value %d out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case uint64:
+            if v > 127 {
+                return nil, fmt.Errorf("value %d out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case uint8:
+            if v > 127 {
+                return nil, fmt.Errorf("value %d out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case float64:
+            if v < -128 || v > 127 {
+                return nil, fmt.Errorf("value %f out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
+        case string:
+            ival, err := strconv.ParseInt(v, 10, 8)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to int8", v)
+            }
+            return int8(ival), nil
+        case bool:
+            if v {
+                return int8(1), nil
+            }
+            return int8(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C int8", zval)
+        }
+    case CUInt8:
+        switch v := zval.(type) {
+        case uint8:
+            return v, nil // Za native uint8 type - direct mapping
+        case int:
+            if v < 0 || v > 255 {
+                return nil, fmt.Errorf("value %d out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case int64:
+            if v < 0 || v > 255 {
+                return nil, fmt.Errorf("value %d out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case uint:
+            if v > 255 {
+                return nil, fmt.Errorf("value %d out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case uint64:
+            if v > 255 {
+                return nil, fmt.Errorf("value %d out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case float64:
+            if v < 0 || v > 255 {
+                return nil, fmt.Errorf("value %f out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case string:
+            uival, err := strconv.ParseUint(v, 10, 8)
+            if err != nil {
+                return nil, fmt.Errorf("cannot convert string '%s' to uint8", v)
+            }
+            return uint8(uival), nil
+        case bool:
+            if v {
+                return uint8(1), nil
+            }
+            return uint8(0), nil
+        default:
+            return nil, fmt.Errorf("cannot convert %T to C uint8", zval)
+        }
     default:
         return zval, nil // Pass through for unsupported types
     }
@@ -299,6 +617,15 @@ func ConvertCToZaValue(cval any, cType CType) (any, error) {
             return v, nil
         case int32:
             return int(v), nil
+        default:
+            return cval, nil
+        }
+    case CUInt:
+        switch v := cval.(type) {
+        case uint:
+            return int(v), nil // Convert to Za int
+        case uint32:
+            return int(v), nil // Convert to Za int
         default:
             return cval, nil
         }
@@ -326,6 +653,74 @@ func ConvertCToZaValue(cval any, cType CType) (any, error) {
             return v != 0, nil
         default:
             return cval != nil, nil
+        }
+    case CInt16:
+        switch v := cval.(type) {
+        case int16:
+            return int(v), nil
+        case int:
+            return v, nil
+        default:
+            return cval, nil
+        }
+    case CUInt16:
+        switch v := cval.(type) {
+        case uint16:
+            return int(v), nil
+        case uint:
+            return int(v), nil
+        default:
+            return cval, nil
+        }
+    case CInt64:
+        switch v := cval.(type) {
+        case int64:
+            return int(v), nil // May lose precision on 32-bit platforms
+        case int:
+            return v, nil
+        default:
+            return cval, nil
+        }
+    case CUInt64:
+        switch v := cval.(type) {
+        case uint64:
+            return int(v), nil // May lose precision or overflow
+        case uint:
+            return int(v), nil
+        default:
+            return cval, nil
+        }
+    case CLongDouble:
+        switch v := cval.(type) {
+        case float64:
+            return v, nil
+        case float32:
+            return float64(v), nil
+        default:
+            return cval, nil
+        }
+    case CInt8:
+        switch v := cval.(type) {
+        case int8:
+            return int(v), nil
+        case int:
+            return v, nil
+        default:
+            return cval, nil
+        }
+    case CUInt8:
+        switch v := cval.(type) {
+        case uint8:
+            return v, nil // Return as uint8 (Za native type)
+        case uint:
+            return uint8(v), nil
+        case int:
+            if v >= 0 && v <= 255 {
+                return uint8(v), nil
+            }
+            return cval, nil
+        default:
+            return cval, nil
         }
     case CPointer, CVoid:
         return cval, nil // Pointers and void as-is for now
@@ -743,17 +1138,55 @@ func mapCTypeStringToZa(cTypeStr string) (CType, string, error) {
         }
         return CChar, "", nil
 
-    case "int", "long", "short", "long long", "unsigned long", "unsigned int",
+    // Signed integer types
+    case "int", "long", "short", "long long",
         "int8_t", "int16_t", "int32_t", "int64_t",
-        "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-        "size_t", "ssize_t", "off_t", "pid_t", "uid_t", "gid_t", "mode_t", "time_t":
-        if baseType == "size_t" || baseType == "ssize_t" {
-            return CInt, baseType + " mapped to int", nil
+        "ssize_t", "off_t", "pid_t", "time_t",
+        "intptr_t", "ptrdiff_t":
+        // 8-bit signed integers
+        if baseType == "int8_t" {
+            return CInt8, baseType + " mapped to int8", nil
         }
-        if baseType == "long long" || baseType == "unsigned long" {
+        // 16-bit signed integers
+        if baseType == "short" || baseType == "int16_t" {
+            return CInt16, baseType + " mapped to int16", nil
+        }
+        // 64-bit signed integers
+        if baseType == "long long" || baseType == "int64_t" || baseType == "off_t" ||
+           baseType == "intptr_t" || baseType == "ptrdiff_t" {
+            return CInt64, baseType + " mapped to int64", nil
+        }
+        // Default to 32-bit for int, long (on most platforms), ssize_t, pid_t, time_t
+        if baseType == "ssize_t" {
             return CInt, baseType + " mapped to int", nil
         }
         return CInt, "", nil
+
+    // Unsigned integer types
+    case "unsigned int", "unsigned long", "unsigned short", "unsigned long long",
+        "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+        "size_t", "uid_t", "gid_t", "mode_t",
+        "uintptr_t":
+        // 8-bit unsigned integers
+        if baseType == "uint8_t" {
+            return CUInt8, baseType + " mapped to uint8", nil
+        }
+        // 16-bit unsigned integers
+        if baseType == "unsigned short" || baseType == "uint16_t" {
+            return CUInt16, baseType + " mapped to uint16", nil
+        }
+        // 64-bit unsigned integers
+        if baseType == "unsigned long long" || baseType == "uint64_t" ||
+           baseType == "uintptr_t" {
+            return CUInt64, baseType + " mapped to uint64", nil
+        }
+        // size_t handling: typically 64-bit on 64-bit systems, 32-bit on 32-bit systems
+        // For simplicity, map to uint64 to avoid truncation issues
+        if baseType == "size_t" {
+            return CUInt64, baseType + " mapped to uint64", nil
+        }
+        // Default to 32-bit for unsigned int, uid_t, gid_t, mode_t
+        return CUInt, "", nil
 
     case "float":
         return CFloat, "", nil
@@ -761,10 +1194,18 @@ func mapCTypeStringToZa(cTypeStr string) (CType, string, error) {
     case "double":
         return CDouble, "", nil
 
+    case "long double":
+        return CLongDouble, "", nil
+
     case "bool", "_Bool":
         return CBool, "", nil
 
     default:
+        // Heuristic: types containing "uint" are likely unsigned integers
+        if strings.Contains(strings.ToLower(baseType), "uint") {
+            return CUInt, baseType + " mapped to uint (heuristic)", nil
+        }
+
         // Unknown types or struct/union pointers default to pointer
         if isPointer {
             return CPointer, baseType + "* mapped to pointer", nil
@@ -1058,10 +1499,26 @@ func cTypeToLIBString(cType CType) string {
         return "void"
     case CInt:
         return "int"
+    case CUInt:
+        return "uint"
+    case CInt16:
+        return "int16"
+    case CUInt16:
+        return "uint16"
+    case CInt64:
+        return "int64"
+    case CUInt64:
+        return "uint64"
     case CFloat:
         return "float"
     case CDouble:
         return "double"
+    case CLongDouble:
+        return "longdouble"
+    case CInt8:
+        return "int8"
+    case CUInt8:
+        return "uint8"
     case CChar:
         return "char"
     case CString:
