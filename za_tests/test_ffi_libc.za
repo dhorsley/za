@@ -5,7 +5,7 @@ println "[#4]Testing libc FFI[#-]"
 println "=" * 50
 
 # Load libc
-module "/usr/lib/libc.so.6" as c
+module "libc.so.6" as c
 use +c
 
 # Declare function signatures
