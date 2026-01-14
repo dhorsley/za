@@ -10,6 +10,7 @@ import (
     "reflect"
     "regexp"
     "runtime"
+    "sort"
     "strings"
     str "strings"
     "sync"
@@ -2061,6 +2062,8 @@ func ihelpPlugin(args ...string) {
         help_plugin("", "")
         pf("\nUsage: help plugin <library_name>\n")
         pf("       help plugin find <function_name>\n")
+        pf("       help plugin batch <func1> <func2> ...\n")
+        pf("       help plugin convert <c_declaration>\n")
         return
     }
 
@@ -2075,12 +2078,115 @@ func ihelpPlugin(args ...string) {
         return
     }
 
+    if args[0] == "batch" {
+        if len(args) < 2 {
+            pf("Usage: help plugin batch <func1> <func2> ...\n")
+            pf("       help plugin batch <namespace>::\n")
+            pf("       help plugin batch <pattern>      [#3]# Supports * wildcard[#-]\n")
+            pf("Examples:\n")
+            pf("  help plugin batch strlen strcmp malloc free\n")
+            pf("  help plugin batch png::              [#3]# All functions in png library[#-]\n")
+            pf("  help plugin batch c                  [#3]# All functions in c library[#-]\n")
+            pf("  help plugin batch png::png_get_*     [#3]# All png getter functions[#-]\n")
+            pf("  help plugin batch *alloc             [#3]# All allocation functions[#-]\n")
+            return
+        }
+        help_plugin_batch(args[1:])
+        return
+    }
+
+    if args[0] == "convert" {
+        if len(args) < 2 {
+            pf("Usage: help plugin convert <c_declaration>\n")
+            pf("Example: help plugin convert \"size_t strlen(const char *s)\"\n")
+            return
+        }
+        // Join all remaining args as the C declaration (in case it has spaces)
+        cDeclaration := strings.Join(args[1:], " ")
+        help_plugin_convert(cDeclaration)
+        return
+    }
+
     if len(args) != 1 {
         pf("Usage: help plugin <library_name>\n")
         pf("       help plugin find <function_name>\n")
+        pf("       help plugin batch <func1> <func2> ...\n")
+        pf("       help plugin convert <c_declaration>\n")
         return
     }
     help_plugin("", args[0])
+}
+
+// Helper functions for help plugin commands
+
+// checkLibrariesLoaded checks if any C libraries are loaded and prints an error if not
+func checkLibrariesLoaded() bool {
+    if len(loadedCLibraries) == 0 {
+        pf("[#1]No C libraries currently loaded.[#-]\n")
+        pf("Load a library with: [#4]MODULE \"/path/to/lib.so\" as name[#-]\n")
+        return false
+    }
+    return true
+}
+
+// parseQualifiedFunctionName parses a function name that may include a library namespace
+// Returns (library, function) where library is empty string if no namespace is specified
+func parseQualifiedFunctionName(name string) (library, function string) {
+    if strings.Contains(name, "::") {
+        parts := strings.SplitN(name, "::", 2)
+        return parts[0], parts[1]
+    }
+    return "", name
+}
+
+// findFunctionInLibraries searches for a function in loaded libraries
+// If targetLibrary is specified, searches only that library
+// Returns the list of library names where the function was found, and the first library object
+func findFunctionInLibraries(functionName, targetLibrary string) (foundLibraries []string, firstLib *CLibrary, err error) {
+    if targetLibrary != "" {
+        // Search only in the specified library
+        lib, exists := loadedCLibraries[targetLibrary]
+        if !exists {
+            return nil, nil, fmt.Errorf("library '%s' is not loaded", targetLibrary)
+        }
+        if symbol, exists := lib.Symbols[functionName]; exists && symbol.IsFunction {
+            return []string{targetLibrary}, lib, nil
+        }
+        return nil, nil, fmt.Errorf("function '%s' not found in library '%s'", functionName, targetLibrary)
+    }
+
+    // Search across all loaded libraries
+    for libName, lib := range loadedCLibraries {
+        if symbol, exists := lib.Symbols[functionName]; exists && symbol.IsFunction {
+            foundLibraries = append(foundLibraries, libName)
+            if firstLib == nil {
+                firstLib = lib
+            }
+        }
+    }
+
+    if len(foundLibraries) == 0 {
+        return nil, nil, fmt.Errorf("function '%s' not found in any loaded library", functionName)
+    }
+
+    return foundLibraries, firstLib, nil
+}
+
+// tryGenerateLIBDeclaration attempts to lookup a function signature and generate a LIB declaration
+// Returns the LIB declaration string, the signature (if found), and any error
+func tryGenerateLIBDeclaration(libName, functionName string, lib *CLibrary) (libDecl string, sig *FunctionSignature, err error) {
+    sig, err = lookupFunctionSignature(functionName, lib)
+    if err != nil || sig == nil {
+        return "", nil, err
+    }
+    libDecl = generateLIBDeclaration(libName, functionName, sig)
+    return libDecl, sig, nil
+}
+
+// printAccuracyDisclaimer prints the standard warning about auto-generated declarations
+func printAccuracyDisclaimer() {
+    pf("\n[#dim]⚠ Note: Auto-generated declarations may be inaccurate.[#-]\n")
+    pf("[#dim]   Always verify against the library's documentation.[#-]\n")
 }
 
 // help_plugin displays information about loaded C libraries
@@ -2183,55 +2289,28 @@ func help_plugin(ns string, libraryName string) {
 
 // help_plugin_find searches for a function across all loaded C libraries
 func help_plugin_find(ns string, functionName string) {
-    if len(loadedCLibraries) == 0 {
-        pf("[#1]No C libraries currently loaded.[#-]\n")
-        pf("Load a library with: [#4]MODULE \"/path/to/lib.so\" as name[#-]\n")
+    if !checkLibrariesLoaded() {
         return
     }
 
-    // Check if function name includes library scope (e.g., "png::some_function")
-    var targetLibrary string
-    var actualFunctionName string
+    // Parse qualified function name (e.g., "png::some_function")
+    targetLibrary, actualFunctionName := parseQualifiedFunctionName(functionName)
 
-    if strings.Contains(functionName, "::") {
-        parts := strings.SplitN(functionName, "::", 2)
-        targetLibrary = parts[0]
-        actualFunctionName = parts[1]
+    if targetLibrary != "" {
         pf(sf("[#4]Searching for function: %s in library: %s[#-]\n", actualFunctionName, targetLibrary))
     } else {
-        actualFunctionName = functionName
         pf(sf("[#4]Searching for function: %s[#-]\n", actualFunctionName))
     }
 
-    // Search in specified library or all loaded libraries
-    var foundIn []string
-    if targetLibrary != "" {
-        // Search only in the specified library
-        lib, exists := loadedCLibraries[targetLibrary]
-        if !exists {
-            pf(sf("[#1]Library '%s' is not loaded.[#-]\n", targetLibrary))
-            pf(sf("\n[#dim]Tip: Load it with: MODULE \"/path/to/lib.so\" as %s[#-]\n", targetLibrary))
-            return
-        }
-        if symbol, exists := lib.Symbols[actualFunctionName]; exists && symbol.IsFunction {
-            foundIn = append(foundIn, targetLibrary)
-        }
-    } else {
-        // Search across all loaded libraries
-        for libName, lib := range loadedCLibraries {
-            if symbol, exists := lib.Symbols[actualFunctionName]; exists && symbol.IsFunction {
-                foundIn = append(foundIn, libName)
-            }
-        }
-    }
-
-    if len(foundIn) == 0 {
+    // Search for the function
+    foundIn, firstLib, err := findFunctionInLibraries(actualFunctionName, targetLibrary)
+    if err != nil {
+        pf(sf("[#1]%s[#-]\n", err.Error()))
         if targetLibrary != "" {
-            pf(sf("[#1]Function '%s' not found in library '%s'.[#-]\n", actualFunctionName, targetLibrary))
+            pf(sf("\n[#dim]Tip: Load it with: MODULE \"/path/to/lib.so\" as %s[#-]\n", targetLibrary))
         } else {
-            pf(sf("[#1]Function '%s' not found in any loaded library.[#-]\n", actualFunctionName))
+            pf("\n[#dim]Tip: Make sure the library containing this function is loaded.[#-]\n")
         }
-        pf("\n[#dim]Tip: Make sure the library containing this function is loaded.[#-]\n")
         return
     }
 
@@ -2250,13 +2329,7 @@ func help_plugin_find(ns string, functionName string) {
     // Try to lookup function signature from man pages
     pf("\n[#dim]Looking up function signature...[#-]\n")
 
-    // Get library context for the first found library
-    var firstLib *CLibrary
-    if len(foundIn) > 0 {
-        firstLib = loadedCLibraries[foundIn[0]]
-    }
-
-    sig, err := lookupFunctionSignature(actualFunctionName, firstLib)
+    _, sig, err := tryGenerateLIBDeclaration(foundIn[0], actualFunctionName, firstLib)
 
     if err == nil && sig != nil {
         // Successfully found and parsed signature
@@ -2270,9 +2343,7 @@ func help_plugin_find(ns string, functionName string) {
             pf(sf("  [#dim]%s[#-]\n", libDecl))
         }
 
-        // Add disclaimer about accuracy
-        pf("\n[#dim]⚠ Note: This suggestion is based on man page parsing and may be inaccurate.[#-]\n")
-        pf("[#dim]   Always verify the signature against the library's documentation.[#-]\n")
+        printAccuracyDisclaimer()
 
         // Show variadic note if applicable
         if sig.IsVariadic {
@@ -2305,4 +2376,340 @@ func help_plugin_find(ns string, functionName string) {
         pf("  [#dim]LIB c::printf(fmt:string, ...args) -> int  [#3]# Variadic function[#-]\n")
     }
 }
+
+// help_plugin_batch processes multiple function names and generates LIB declarations
+func help_plugin_batch(functionNames []string) {
+    if !checkLibrariesLoaded() {
+        return
+    }
+
+    // Reassemble function names from tokens (handles "c :: strlen" -> "c::strlen", "png_get_" + "*" -> "png_get_*", and "*" + "alloc" -> "*alloc")
+    var reassembled []string
+    i := 0
+    for i < len(functionNames) {
+        // Start building a function name
+        name := functionNames[i]
+        i++
+
+        // Check if current token is "*" and needs to be joined with next token
+        if name == "*" && i < len(functionNames) {
+            name += functionNames[i]
+            i++
+        }
+
+        // Check if next tokens are "::" and a name (forming namespace::function)
+        for i+1 < len(functionNames) && functionNames[i] == "::" {
+            name += "::" + functionNames[i+1]
+            i += 2
+        }
+
+        // Check if next token is "*" (wildcard character that got tokenized separately)
+        if i < len(functionNames) && functionNames[i] == "*" {
+            name += "*"
+            i++
+        }
+
+        if strings.TrimSpace(name) != "" && name != "::" {
+            reassembled = append(reassembled, name)
+        }
+    }
+
+    if len(reassembled) == 0 {
+        pf("[#1]No valid function names provided.[#-]\n")
+        return
+    }
+
+    // Expand wildcards (e.g., "png_get_*" or "c::*alloc")
+    var expandedFunctions []string
+    wildcardUsed := false
+    for _, pattern := range reassembled {
+        if !strings.Contains(pattern, "*") {
+            // No wildcard, add as-is
+            expandedFunctions = append(expandedFunctions, pattern)
+            continue
+        }
+
+        wildcardUsed = true
+
+        // Parse namespace if present (e.g., "png::png_get_*" or just "png_get_*")
+        var targetLibrary string
+        var funcPattern string
+
+        if strings.Contains(pattern, "::") {
+            parts := strings.SplitN(pattern, "::", 2)
+            targetLibrary = parts[0]
+            funcPattern = parts[1]
+        } else {
+            funcPattern = pattern
+        }
+
+        // Convert wildcard pattern to regex: replace * with .*
+        regexPattern := "^" + strings.ReplaceAll(regexp.QuoteMeta(funcPattern), "\\*", ".*") + "$"
+        re, err := regexp.Compile(regexPattern)
+        if err != nil {
+            pf(sf("[#1]Invalid wildcard pattern '%s': %v[#-]\n", pattern, err))
+            continue
+        }
+
+        matched := 0
+        if targetLibrary != "" {
+            // Search only in specified library
+            lib, exists := loadedCLibraries[targetLibrary]
+            if !exists {
+                pf(sf("[#1]Warning: Library '%s' not loaded, skipping pattern '%s'[#-]\n", targetLibrary, pattern))
+                continue
+            }
+
+            for symbolName, symbol := range lib.Symbols {
+                if !symbol.IsFunction {
+                    continue
+                }
+                if re.MatchString(symbolName) {
+                    expandedFunctions = append(expandedFunctions, targetLibrary + "::" + symbolName)
+                    matched++
+                }
+            }
+        } else {
+            // Search all loaded libraries
+            for libName, lib := range loadedCLibraries {
+                for symbolName, symbol := range lib.Symbols {
+                    if !symbol.IsFunction {
+                        continue
+                    }
+                    if re.MatchString(symbolName) {
+                        expandedFunctions = append(expandedFunctions, libName + "::" + symbolName)
+                        matched++
+                    }
+                }
+            }
+        }
+
+        if matched == 0 {
+            pf(sf("[#1]Warning: No functions matched pattern '%s'[#-]\n", pattern))
+        }
+    }
+
+    if wildcardUsed && len(expandedFunctions) > 0 {
+        pf(sf("[#4]Wildcard expansion matched %d function(s)...[#-]\n\n", len(expandedFunctions)))
+    }
+
+    reassembled = expandedFunctions
+
+    if len(reassembled) == 0 {
+        pf("[#1]No functions to process after wildcard expansion.[#-]\n")
+        return
+    }
+
+    // Special case: if only one argument and it's a namespace (e.g., "png::" or "png")
+    // expand to all functions in that library
+    // IMPORTANT: Skip this if wildcard expansion already ran to avoid double-expansion
+    if !wildcardUsed && len(reassembled) == 1 {
+        arg := reassembled[0]
+        var libName string
+
+        // Check if it ends with "::" (e.g., "png::")
+        if strings.HasSuffix(arg, "::") {
+            libName = strings.TrimSuffix(arg, "::")
+        } else if !strings.Contains(arg, "::") {
+            // Check if it's a library name without "::" (e.g., "png")
+            if _, exists := loadedCLibraries[arg]; exists {
+                libName = arg
+            }
+        }
+
+        // If we detected a namespace/library, expand to all functions
+        if libName != "" {
+            lib, exists := loadedCLibraries[libName]
+            if !exists {
+                pf(sf("[#1]Library '%s' is not loaded.[#-]\n", libName))
+                return
+            }
+
+            // Collect all function symbols from the library
+            var allFunctions []string
+            for symbolName, symbol := range lib.Symbols {
+                if symbol.IsFunction {
+                    allFunctions = append(allFunctions, libName + "::" + symbolName)
+                }
+            }
+
+            if len(allFunctions) == 0 {
+                pf(sf("[#1]No function symbols found in library '%s'.[#-]\n", libName))
+                return
+            }
+
+            // Sort alphabetically for consistent output
+            sort.Strings(allFunctions)
+
+            pf(sf("[#4]Expanding namespace '%s' to %d function(s)...[#-]\n\n", libName, len(allFunctions)))
+            reassembled = allFunctions
+        }
+    }
+
+    pf(sf("[#4]Batch processing %d function(s)...[#-]\n\n", len(reassembled)))
+
+    type BatchResult struct {
+        FunctionName string
+        LibraryName  string
+        LibDecl      string
+        Success      bool
+        ErrorMsg     string
+    }
+
+    var results []BatchResult
+    total := len(reassembled)
+
+    // Process each function
+    for idx, funcName := range reassembled {
+        funcName = strings.TrimSpace(funcName)
+        if funcName == "" {
+            continue
+        }
+
+        // Show progress indicator
+        progress := idx + 1
+        percentage := int(float64(progress) / float64(total) * 100)
+
+        // Truncate function name if too long for display
+        displayName := funcName
+        if len(displayName) > 50 {
+            displayName = displayName[:47] + "..."
+        }
+
+        // Use \r to update in place with clear-to-end-of-line
+        pf(sf("\r[#dim][%d/%d] (%d%%%%) Processing: %s...[#CTE][#-]", progress, total, percentage, displayName))
+
+        // Parse qualified function name
+        targetLibrary, actualFunctionName := parseQualifiedFunctionName(funcName)
+
+        // Find which library contains this function
+        foundLibraries, firstLib, err := findFunctionInLibraries(actualFunctionName, targetLibrary)
+        if err != nil {
+            results = append(results, BatchResult{
+                FunctionName: funcName,
+                Success:      false,
+                ErrorMsg:     "not found in loaded libraries",
+            })
+            continue
+        }
+
+        // Try to lookup function signature and generate LIB declaration
+        libDecl, _, err := tryGenerateLIBDeclaration(foundLibraries[0], actualFunctionName, firstLib)
+        if err != nil {
+            results = append(results, BatchResult{
+                FunctionName: funcName,
+                LibraryName:  foundLibraries[0],
+                Success:      false,
+                ErrorMsg:     "signature lookup failed",
+            })
+            continue
+        }
+
+        results = append(results, BatchResult{
+            FunctionName: actualFunctionName,
+            LibraryName:  foundLibraries[0],
+            LibDecl:      libDecl,
+            Success:      true,
+        })
+    }
+
+    // Clear progress line and add spacing
+    pf("\r[#CTE]\n")
+
+    // Display results
+    successCount := 0
+    failCount := 0
+
+    // Count successes and failures
+    for _, result := range results {
+        if result.Success {
+            successCount++
+        } else {
+            failCount++
+        }
+    }
+
+    // Show successful conversions
+    if successCount > 0 {
+        pf(sf("[#2]✓ Successfully converted %d function(s):[#-]\n", successCount))
+        pf("[#dim]Copy and paste these declarations into your script:[#-]\n\n")
+        for _, result := range results {
+            if result.Success {
+                pf(sf("%s\n", result.LibDecl))
+            }
+        }
+        pf("\n")
+    }
+
+    // Show failures
+    if failCount > 0 {
+        pf(sf("[#1]✗ Failed to convert %d function(s):[#-]\n", failCount))
+        for _, result := range results {
+            if !result.Success {
+                pf(sf("  • [#6]%s[#-]: %s\n", result.FunctionName, result.ErrorMsg))
+            }
+        }
+        pf("\n[#dim]Manually look up signatures for failed functions using:[#-]\n")
+        pf("[#dim]  help plugin find <function_name>[#-]\n")
+        pf("\n")
+    }
+
+    // Summary and disclaimer
+    pf(sf("[#4]Summary:[#-] %d succeeded, %d failed\n", successCount, failCount))
+    if successCount > 0 {
+        printAccuracyDisclaimer()
+    }
+}
+
+// help_plugin_convert converts a C function declaration to Za LIB format
+func help_plugin_convert(cDeclaration string) {
+    cDeclaration = strings.TrimSpace(cDeclaration)
+
+    if cDeclaration == "" {
+        pf("[#1]Error: No C declaration provided.[#-]\n")
+        pf("Usage: help plugin convert <c_declaration>\n")
+        pf("Example: help plugin convert \"size_t strlen(const char *s)\"\n")
+        return
+    }
+
+    // Extract function name from declaration
+    // C declarations have format: return_type function_name(params)
+    // Find the function name (word before opening paren)
+
+    openParenPos := strings.Index(cDeclaration, "(")
+    if openParenPos == -1 {
+        pf("[#1]Error: Invalid C declaration - missing '('[#-]\n")
+        return
+    }
+
+    leftPart := cDeclaration[:openParenPos]
+    leftWords := strings.Fields(leftPart)
+    if len(leftWords) == 0 {
+        pf("[#1]Error: Cannot extract function name[#-]\n")
+        return
+    }
+
+    // Last word in leftPart is the function name (possibly with * prefix for pointer returns)
+    lastWord := leftWords[len(leftWords)-1]
+    functionName := strings.TrimPrefix(lastWord, "*")
+
+    // Parse the C signature
+    sig, err := parseCFunctionSignature(cDeclaration, functionName)
+    if err != nil {
+        pf("[#1]Error parsing C declaration:[#-] %v\n", err)
+        pf("Declaration: %s\n", cDeclaration)
+        return
+    }
+
+    // Generate LIB declaration with "c" as default library alias
+    libDecl := generateLIBDeclaration("c", functionName, sig)
+
+    pf("\n[#2]Converted C declaration:[#-]\n")
+    pf("[#7]%s[#-]\n", cDeclaration)
+    pf("\n[#2]Za LIB format:[#-]\n")
+    pf("[#4]%s[#-]\n\n", libDecl)
+}
+
+// matchWildcard matches a string against a wildcard pattern
+// Supports * as a wildcard for any sequence of characters
 

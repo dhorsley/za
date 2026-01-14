@@ -27,6 +27,9 @@ library changes
       - c_alloc_struct(struct_type_name) - allocates C memory for structs
       - c_free_struct(ptr) - frees struct memory allocated by c_alloc_struct
       - c_unmarshal_struct(ptr, struct_type_name) - reads C struct data into Za structs
+      - c_register_callback(func_name, signature) - registers Za function as C callback
+      - c_unregister_callback(callback) - unregisters and cleans up callback
+      - c_get_trampoline(signature) - gets C-callable trampoline for signature
 
 
 language changes
@@ -42,12 +45,18 @@ language changes
           - supports typed parameters: LIB c::strlen(s:string) -> int
           - variadic function support: LIB c::printf(fmt:string, ...args) -> int
           - optional return types: LIB c::exit(code:int) -> void
-      - help plugin find command enhancements
-          - automatic signature discovery from local man pages (section 3)
-          - library-level man page search (e.g., finds functions in "man 3 libpng")
-          - online fallback via man7.org when local man pages unavailable
-          - automatic C-to-Za type mapping with LIB declaration generation
-          - library scoping syntax: help plugin find library::function
+      - help plugin enhancements
+          - find command: automatic signature discovery from man pages
+              - automatic signature discovery from local man pages (section 3)
+              - library-level man page search (e.g., finds functions in "man 3 libpng")
+              - online fallback via man7.org when local man pages unavailable
+              - automatic C-to-Za type mapping with LIB declaration generation
+              - library scoping syntax: help plugin find library::function
+          - batch command: bulk function discovery with wildcard support
+          - convert command: direct C declaration to LIB format conversion
+              - help plugin convert "size_t strlen(const char *s)"
+              - no man page lookup required, pure string parsing
+              - supports all C function signatures including variadic and function pointers
       - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
       - test scripts at za_tests/test_ffi_*
       - struct marshaling support:
@@ -56,10 +65,17 @@ language changes
           - supports basic types (int, float, double, bool), strings, pointers
           - out parameter support for C functions that fill structs
           - test scripts at za_tests/test_ffi_struct_*.za
+      - callback support (C calling Za functions):
+          - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
+          - Za functions can be passed as callbacks to C APIs
+          - supported signatures: ptr,ptr->int, int,int->int, ptr->ptr, int,ptr,ptr->void, int->void
+          - examples: qsort_r comparators, pthread_create, sigaction handlers
+          - thread-safe invocation (serialized with mutex)
+          - test scripts at za_tests/test_callback*.za
       - current limitations:
           - no parameter type information from symbols alone (use LIB declarations)
           - constants (#define macros) not discoverable from .so files
-          - no callback support (C calling Za functions)
+          - callback signatures limited to predefined trampolines
           - Windows implementation is stubbed only
 
   * (experimental) added optional type specifications to function definitions

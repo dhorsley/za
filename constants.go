@@ -71,6 +71,7 @@ const (
 //               7: lib-net
 //               8: Main Routine
 //               9: Error Routines
+//              10: FFI Callback
 
 const (
     ciTrap uint8 = iota
@@ -83,6 +84,7 @@ const (
     ciLnet
     ciMain
     ciErr
+    ciCallback
 )
 
 // used by C_Endfor statement:

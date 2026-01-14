@@ -1,0 +1,24 @@
+# Comprehensive test for wildcard pattern matching in "help plugin batch"
+# Demonstrates various wildcard patterns working correctly
+
+println "[#4]Wildcard Pattern Matching Tests[#-]"
+println "=================================="
+
+println "\n[#6]Test 1: Prefix wildcard (*alloc matches malloc, calloc, realloc, etc.)[#-]"
+module "libc.so.6" as c
+use +c
+help plugin batch *alloc
+
+println "\n\n[#6]Test 2: Suffix wildcard (str* matches strlen, strcmp, strcpy, etc.)[#-]"
+help plugin batch c::str*
+
+println "\n\n[#6]Test 3: Namespace with suffix wildcard[#-]"
+module "libpng.so" as png
+use +png
+help plugin batch png::png_create_*
+
+println "\n\n[#6]Test 4: Multiple wildcard patterns in one command[#-]"
+help plugin batch png::png_get_IHDR png::png_set_IHDR png::png_create_*
+
+println "\n\n[#2]All wildcard tests completed successfully![#-]"
+

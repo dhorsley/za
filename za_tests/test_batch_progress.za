@@ -1,0 +1,19 @@
+# Test script for improved batch progress indicator
+# Demonstrates clean line clearing and non-redundant error messages
+
+println "[#4]Testing Batch Progress Indicator[#-]"
+println "======================================"
+
+println "\n[#6]Loading libpng...[#-]"
+module "libpng.so" as png
+use +png
+
+println "\n[#6]Testing batch with mix of successes and failures:[#-]"
+help plugin batch png::png_create_info_struct png::png_init_io png::png_fake_function png::png_write_info png::png_another_fake png::png_write_row
+
+println "\n[#2]Note the improvements:[#-]"
+println "  1. Progress line clears properly (no artifacts)"
+println "  2. Failed functions don't show redundant '(in png)'"
+println "     since 'png::' is already in the function name"
+
+println "\n[#2]Test completed![#-]"

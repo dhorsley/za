@@ -52,8 +52,8 @@ println "  File opened successfully"
 LIB png::png_create_write_struct(user_png_ver:string, error_ptr:pointer, error_fn:pointer, warn_fn:pointer) -> pointer
 LIB png::png_create_info_struct(png_ptr:pointer) -> pointer
 LIB png::png_init_io(png_ptr:pointer, fp:pointer) -> void
-# LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:uint, height:uint, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
-LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:int, height:int, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
+LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:uint, height:uint, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
+# LIB png::png_set_IHDR(png_ptr:pointer, info_ptr:pointer, width:int, height:int, bit_depth:int, color_type:int, interlace_type:int, compresssion_type:int, filter_type:int) -> void
 LIB png::png_write_info(png_ptr:pointer, info_ptr:pointer) -> void
 LIB png::png_write_row(png_ptr:pointer, row:pointer) -> void
 LIB png::png_write_end(png_ptr:pointer, info_ptr:pointer) -> void

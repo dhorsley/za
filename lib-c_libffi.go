@@ -41,6 +41,7 @@ static ffi_type* libffi_type_sint64;
 static ffi_type* libffi_type_float;
 static ffi_type* libffi_type_double;
 static ffi_type* libffi_type_pointer;
+static ffi_type* libffi_type_longdouble;
 
 // Function pointer types for libffi functions
 // Use void* for all parameters to match actual dlsym signatures
@@ -117,6 +118,7 @@ static int load_libffi(void) {
     libffi_type_float = (ffi_type*)dlsym(libffi_handle, "ffi_type_float");
     libffi_type_double = (ffi_type*)dlsym(libffi_handle, "ffi_type_double");
     libffi_type_pointer = (ffi_type*)dlsym(libffi_handle, "ffi_type_pointer");
+    libffi_type_longdouble = (ffi_type*)dlsym(libffi_handle, "ffi_type_longdouble");
 
     // Verify all symbols loaded
     if (libffi_prep_cif == NULL || libffi_call == NULL ||
@@ -195,6 +197,30 @@ static int call_via_libffi(
             case 8: // CStruct (pointer)
                 ffi_arg_types[i] = libffi_type_pointer;
                 break;
+            case 9: // CUInt
+                ffi_arg_types[i] = libffi_type_uint32;
+                break;
+            case 10: // CInt16
+                ffi_arg_types[i] = libffi_type_sint16;
+                break;
+            case 11: // CUInt16
+                ffi_arg_types[i] = libffi_type_uint16;
+                break;
+            case 12: // CInt64
+                ffi_arg_types[i] = libffi_type_sint64;
+                break;
+            case 13: // CUInt64
+                ffi_arg_types[i] = libffi_type_uint64;
+                break;
+            case 14: // CLongDouble
+                ffi_arg_types[i] = libffi_type_longdouble;
+                break;
+            case 15: // CInt8
+                ffi_arg_types[i] = libffi_type_sint8;
+                break;
+            case 16: // CUInt8
+                ffi_arg_types[i] = libffi_type_uint8;
+                break;
             default:
                 if (ffi_arg_types != NULL) free(ffi_arg_types);
                 free(cif);
@@ -231,6 +257,30 @@ static int call_via_libffi(
             break;
         case 8: // CStruct (pointer)
             ffi_return_type = libffi_type_pointer;
+            break;
+        case 9: // CUInt
+            ffi_return_type = libffi_type_uint32;
+            break;
+        case 10: // CInt16
+            ffi_return_type = libffi_type_sint16;
+            break;
+        case 11: // CUInt16
+            ffi_return_type = libffi_type_uint16;
+            break;
+        case 12: // CInt64
+            ffi_return_type = libffi_type_sint64;
+            break;
+        case 13: // CUInt64
+            ffi_return_type = libffi_type_uint64;
+            break;
+        case 14: // CLongDouble
+            ffi_return_type = libffi_type_longdouble;
+            break;
+        case 15: // CInt8
+            ffi_return_type = libffi_type_sint8;
+            break;
+        case 16: // CUInt8
+            ffi_return_type = libffi_type_uint8;
             break;
         default:
             if (ffi_arg_types != NULL) free(ffi_arg_types);
@@ -358,13 +408,47 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         return convertReturnValue(returnValue, sig)
     }
 
+    // Convert Za arguments to C values with type checking and range validation
+    convertedArgs := make([]any, len(args))
+    for i, arg := range args {
+        var expectedType CType
+        if i < len(sig.ParamTypes) {
+            expectedType = sig.ParamTypes[i]
+        } else {
+            // Variadic argument - infer type from value
+            switch arg.(type) {
+            case int:
+                expectedType = CInt
+            case uint:
+                expectedType = CUInt
+            case float64:
+                expectedType = CDouble
+            case string:
+                expectedType = CString
+            case bool:
+                expectedType = CBool
+            case *CPointerValue:
+                expectedType = CPointer
+            default:
+                expectedType = CInt // Default fallback
+            }
+        }
+
+        // Convert with range validation
+        converted, err := ConvertZaToCValue(arg, expectedType)
+        if err != nil {
+            return nil, fmt.Errorf("argument %d: %v", i, err)
+        }
+        convertedArgs[i] = converted
+    }
+
     // Build argument type and value arrays
     // Allocate C memory for argument type array
-    argTypes := (*C.int)(C.malloc(C.size_t(len(args)) * C.size_t(unsafe.Sizeof(C.int(0)))))
+    argTypes := (*C.int)(C.malloc(C.size_t(len(convertedArgs)) * C.size_t(unsafe.Sizeof(C.int(0)))))
     defer C.free(unsafe.Pointer(argTypes))
 
     // Allocate C memory for argument value pointer array
-    argValues := (*unsafe.Pointer)(C.malloc(C.size_t(len(args)) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil)))))
+    argValues := (*unsafe.Pointer)(C.malloc(C.size_t(len(convertedArgs)) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil)))))
     defer C.free(unsafe.Pointer(argValues))
 
     // Temporary storage for converted arguments (must stay alive during call)
@@ -381,10 +465,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     }()
 
     // Convert to slices for easier indexing
-    argTypesSlice := (*[1 << 30]C.int)(unsafe.Pointer(argTypes))[:len(args):len(args)]
-    argValuesSlice := (*[1 << 30]unsafe.Pointer)(unsafe.Pointer(argValues))[:len(args):len(args)]
+    argTypesSlice := (*[1 << 30]C.int)(unsafe.Pointer(argTypes))[:len(convertedArgs):len(convertedArgs)]
+    argValuesSlice := (*[1 << 30]unsafe.Pointer)(unsafe.Pointer(argValues))[:len(convertedArgs):len(convertedArgs)]
 
-    for i, arg := range args {
+    for i, arg := range convertedArgs {
         switch v := arg.(type) {
         case int:
             argTypesSlice[i] = 1 // CInt
@@ -393,6 +477,62 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, intPtr)
             *(*C.int)(intPtr) = C.int(v)
             argValuesSlice[i] = intPtr
+
+        case uint:
+            argTypesSlice[i] = 9 // CUInt
+            // Allocate C memory for uint value
+            uintPtr := C.malloc(C.size_t(unsafe.Sizeof(C.uint(0))))
+            allocatedMem = append(allocatedMem, uintPtr)
+            *(*C.uint)(uintPtr) = C.uint(v)
+            argValuesSlice[i] = uintPtr
+
+        case int16:
+            argTypesSlice[i] = 10 // CInt16
+            // Allocate C memory for int16 value
+            int16Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.short(0))))
+            allocatedMem = append(allocatedMem, int16Ptr)
+            *(*C.short)(int16Ptr) = C.short(v)
+            argValuesSlice[i] = int16Ptr
+
+        case uint16:
+            argTypesSlice[i] = 11 // CUInt16
+            // Allocate C memory for uint16 value
+            uint16Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.ushort(0))))
+            allocatedMem = append(allocatedMem, uint16Ptr)
+            *(*C.ushort)(uint16Ptr) = C.ushort(v)
+            argValuesSlice[i] = uint16Ptr
+
+        case int64:
+            argTypesSlice[i] = 12 // CInt64
+            // Allocate C memory for int64 value
+            int64Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.longlong(0))))
+            allocatedMem = append(allocatedMem, int64Ptr)
+            *(*C.longlong)(int64Ptr) = C.longlong(v)
+            argValuesSlice[i] = int64Ptr
+
+        case uint64:
+            argTypesSlice[i] = 13 // CUInt64
+            // Allocate C memory for uint64 value
+            uint64Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.ulonglong(0))))
+            allocatedMem = append(allocatedMem, uint64Ptr)
+            *(*C.ulonglong)(uint64Ptr) = C.ulonglong(v)
+            argValuesSlice[i] = uint64Ptr
+
+        case int8:
+            argTypesSlice[i] = 15 // CInt8
+            // Allocate C memory for int8 value
+            int8Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.char(0))))
+            allocatedMem = append(allocatedMem, int8Ptr)
+            *(*C.char)(int8Ptr) = C.char(v)
+            argValuesSlice[i] = int8Ptr
+
+        case uint8:
+            argTypesSlice[i] = 16 // CUInt8
+            // Allocate C memory for uint8 value
+            uint8Ptr := C.malloc(C.size_t(unsafe.Sizeof(C.uchar(0))))
+            allocatedMem = append(allocatedMem, uint8Ptr)
+            *(*C.uchar)(uint8Ptr) = C.uchar(v)
+            argValuesSlice[i] = uint8Ptr
 
         case float64:
             argTypesSlice[i] = 3 // CDouble
@@ -514,6 +654,32 @@ func convertReturnValue(returnValue C.longlong, sig CFunctionSignature) (any, er
 
     case CInt:
         return int(*(*C.int)(unsafe.Pointer(&returnValue))), nil
+
+    case CUInt:
+        return int(*(*C.uint)(unsafe.Pointer(&returnValue))), nil
+
+    case CInt16:
+        return int(*(*C.short)(unsafe.Pointer(&returnValue))), nil
+
+    case CUInt16:
+        return int(*(*C.ushort)(unsafe.Pointer(&returnValue))), nil
+
+    case CInt64:
+        return int(*(*C.longlong)(unsafe.Pointer(&returnValue))), nil
+
+    case CUInt64:
+        return int(*(*C.ulonglong)(unsafe.Pointer(&returnValue))), nil
+
+    case CLongDouble:
+        // Note: Go doesn't have native long double support
+        // libffi stores it in returnValue, we read it as double (may lose precision)
+        return float64(*(*C.double)(unsafe.Pointer(&returnValue))), nil
+
+    case CInt8:
+        return int(*(*C.char)(unsafe.Pointer(&returnValue))), nil
+
+    case CUInt8:
+        return uint8(*(*C.uchar)(unsafe.Pointer(&returnValue))), nil
 
     case CDouble:
         return float64(*(*C.double)(unsafe.Pointer(&returnValue))), nil

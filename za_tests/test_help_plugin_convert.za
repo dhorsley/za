@@ -1,0 +1,27 @@
+# Test help plugin convert command
+println "[#4]═══ Testing help plugin convert ═══[#-]\n"
+
+println "[#3]Test 1: Simple C Declaration (strlen)[#-]"
+help plugin convert "size_t strlen(const char *s)"
+
+println "[#3]Test 2: Pointer Return Type (malloc)[#-]"
+help plugin convert "void* malloc(size_t size)"
+
+println "[#3]Test 3: Complex Function (pthread_create)[#-]"
+help plugin convert "int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)"
+
+println "[#3]Test 4: Variadic Function (printf)[#-]"
+help plugin convert "int printf(const char *format, ...)"
+
+println "[#3]Test 5: Function with ssize_t return (read)[#-]"
+help plugin convert "ssize_t read(int fd, void *buf, size_t count)"
+
+println "[#3]Test 6: Function with const pointer return[#-]"
+help plugin convert "const char* getenv(const char *name)"
+
+println "[#3]Test 7: Callback function signature (qsort)[#-]"
+help plugin convert "void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))"
+
+println "\n[#2]═══════════════════════════════════[#-]"
+println "[#2]  All Test Cases Completed!  [#-]"
+println "[#2]═══════════════════════════════════[#-]\n"
