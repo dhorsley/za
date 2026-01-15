@@ -1,0 +1,59 @@
+#!/usr/bin/env za
+
+# Test AUTO struct import - structs should be available without manual definition
+# This tests that C structs parsed from headers are automatically registered as Za types
+
+println "[#4]Testing AUTO Struct Import[#-]"
+println "=" * 60
+
+# Load C library with AUTO - should parse struct definitions from header
+module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+use +test_c
+
+println "\n[#6]Test 1: color_t should be available as typed struct[#-]"
+# This would previously require manual struct definition!
+# Now it should work automatically from the AUTO-parsed header
+color = test_c::make_color(255, 128, 64, 200)
+println "  Received color from C function"
+println "    R:", color.rgb[0]
+println "    G:", color.rgb[1]
+println "    B:", color.rgb[2]
+println "    Alpha:", color.alpha
+assert color.rgb[0] == 255, "Red should be 255"
+assert color.rgb[1] == 128, "Green should be 128"
+assert color.rgb[2] == 64, "Blue should be 64"
+assert color.alpha == 200, "Alpha should be 200"
+println "  [#2]✓ color_t available from AUTO import[#-]"
+
+println "\n[#6]Test 2: data_block_t should be available[#-]"
+block = test_c::make_data_block(42, 10, 20, 30, 40, 50)
+println "  Received data block from C function"
+println "    ID:", block.id
+println "    Values[0]:", block.values[0]
+println "    Values[2]:", block.values[2]
+println "    Values[4]:", block.values[4]
+println "    Count:", block.count
+assert block.id == 42, "ID should be 42"
+assert block.values[0] == 10, "First value should be 10"
+assert block.values[2] == 30, "Third value should be 30"
+assert block.values[4] == 50, "Fifth value should be 50"
+assert block.count == 5, "Count should be 5"
+println "  [#2]✓ data_block_t available from AUTO import[#-]"
+
+println "\n[#6]Test 3: Pass AUTO-imported struct back to C[#-]"
+# Create struct in Za using values from C
+za_color = map()
+za_color.rgb = [100, 150, 200]
+za_color.alpha = 255
+avg = test_c::get_avg_rgb(za_color)
+println "  Created color in Za, passed to C"
+println "    Average RGB:", avg
+assert avg == 150, "Average should be (100+150+200)/3 = 150"
+println "  [#2]✓ AUTO-imported struct works in both directions[#-]"
+
+println "\n[#2]✓ All AUTO Struct Import Tests Passed![#-]"
+println "\nSuccessfully demonstrated:"
+println "  • C structs automatically available as Za types"
+println "  • No manual STRUCT/ENDSTRUCT definitions needed"
+println "  • Structs work for both receiving from C and passing to C"
+println "  • Array fields in structs preserved correctly"

@@ -6,6 +6,7 @@ package main
 /*
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 */
 import "C"
 
@@ -43,31 +44,88 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
         C.free(ptr)
     }
 
-    // Use reflection to read Za struct fields
+    // Handle both Go structs and maps (structs from AUTO are returned as maps)
     val := reflect.ValueOf(zaStruct)
     if val.Kind() == reflect.Ptr {
         val = val.Elem()
     }
 
-    if val.Kind() != reflect.Struct {
+    // Check if it's a map or a struct
+    isMap := val.Kind() == reflect.Map
+    isStruct := val.Kind() == reflect.Struct
+
+    if !isMap && !isStruct {
         cleanup()
-        return nil, nil, fmt.Errorf("expected struct, got %v", val.Kind())
+        return nil, nil, fmt.Errorf("expected struct or map, got %v", val.Kind())
     }
 
     // Copy each field to C memory at the correct offset
     for _, field := range structDef.Fields {
-        zaField := val.FieldByName(field.Name)
-        if !zaField.IsValid() {
-            cleanup()
-            return nil, nil, fmt.Errorf("Za struct missing field: %s", field.Name)
+        var zaField reflect.Value
+
+        if isMap {
+            // Access map by key (use original C field name)
+            mapVal := val.MapIndex(reflect.ValueOf(field.Name))
+            if !mapVal.IsValid() {
+                cleanup()
+                return nil, nil, fmt.Errorf("Za struct missing field: %s", field.Name)
+            }
+            zaField = mapVal
+        } else {
+            // Access struct by field name (use capitalized Go field name)
+            goFieldName := renameSF(field.Name)
+            zaField = val.FieldByName(goFieldName)
+            if !zaField.IsValid() {
+                cleanup()
+                return nil, nil, fmt.Errorf("Za struct missing field: %s (Go field: %s)", field.Name, goFieldName)
+            }
+        }
+
+        // Handle interface{} wrapped values from maps
+        if zaField.Kind() == reflect.Interface {
+            zaField = zaField.Elem()
         }
 
         // Calculate C memory address for this field
         fieldPtr := unsafe.Pointer(uintptr(ptr) + field.Offset)
 
+        // Handle fixed-size arrays
+        if field.ArraySize > 0 {
+            // Za field should be a slice or array
+            if zaField.Kind() != reflect.Slice && zaField.Kind() != reflect.Array {
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected slice/array for C array field, got %v", field.Name, zaField.Kind())
+            }
+
+            // Check array length
+            arrayLen := zaField.Len()
+            if arrayLen != field.ArraySize {
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: array length mismatch (expected %d, got %d)", field.Name, field.ArraySize, arrayLen)
+            }
+
+            // Copy each array element
+            for i := 0; i < field.ArraySize; i++ {
+                elemVal := zaField.Index(i)
+                elemPtr := unsafe.Pointer(uintptr(fieldPtr) + uintptr(i)*getSizeForType(field.ElementType))
+
+                // Unwrap interface{} values from maps
+                if elemVal.Kind() == reflect.Interface {
+                    elemVal = elemVal.Elem()
+                }
+
+                // Marshal element based on type
+                if err := marshalElementToC(elemPtr, elemVal, field.ElementType, field.Name, &allocatedStrings); err != nil {
+                    cleanup()
+                    return nil, nil, err
+                }
+            }
+            continue
+        }
+
         // Marshal based on field type
         switch field.Type {
-        case CInt:
+        case CInt, CUInt:
             // Handle both int and uint types
             var intVal int64
             switch zaField.Kind() {
@@ -80,6 +138,74 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
                 return nil, nil, fmt.Errorf("field %s: expected int/uint, got %v", field.Name, zaField.Kind())
             }
             *(*C.int)(fieldPtr) = C.int(intVal)
+
+        case CInt8:
+            var intVal int64
+            switch zaField.Kind() {
+            case reflect.Int, reflect.Int8:
+                intVal = zaField.Int()
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected int8, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.int8_t)(fieldPtr) = C.int8_t(intVal)
+
+        case CUInt8, CChar:
+            var uintVal uint64
+            switch zaField.Kind() {
+            case reflect.Uint, reflect.Uint8:
+                uintVal = zaField.Uint()
+            case reflect.Int, reflect.Int8:
+                uintVal = uint64(zaField.Int())
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected uint8, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.uint8_t)(fieldPtr) = C.uint8_t(uintVal)
+
+        case CInt16:
+            var intVal int64
+            switch zaField.Kind() {
+            case reflect.Int, reflect.Int16:
+                intVal = zaField.Int()
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected int16, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.int16_t)(fieldPtr) = C.int16_t(intVal)
+
+        case CUInt16:
+            var uintVal uint64
+            switch zaField.Kind() {
+            case reflect.Uint, reflect.Uint16:
+                uintVal = zaField.Uint()
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected uint16, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.uint16_t)(fieldPtr) = C.uint16_t(uintVal)
+
+        case CInt64:
+            var intVal int64
+            switch zaField.Kind() {
+            case reflect.Int, reflect.Int64:
+                intVal = zaField.Int()
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected int64, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.int64_t)(fieldPtr) = C.int64_t(intVal)
+
+        case CUInt64:
+            var uintVal uint64
+            switch zaField.Kind() {
+            case reflect.Uint, reflect.Uint64:
+                uintVal = zaField.Uint()
+            default:
+                cleanup()
+                return nil, nil, fmt.Errorf("field %s: expected uint64, got %v", field.Name, zaField.Kind())
+            }
+            *(*C.uint64_t)(fieldPtr) = C.uint64_t(uintVal)
 
         case CFloat:
             if zaField.Kind() != reflect.Float32 && zaField.Kind() != reflect.Float64 {
@@ -156,83 +282,372 @@ func UnmarshalStructFromC(cPtr unsafe.Pointer, structDef *CLibraryStruct, zaStru
         return nil, fmt.Errorf("struct definition is nil")
     }
 
-    // Build reflect.StructField array from C struct definition
-    var sfields []reflect.StructField
-    for _, field := range structDef.Fields {
-        var fieldType reflect.Type
+    // Return a map with original C field names (like unmarshalUnion does)
+    result := make(map[string]any)
 
-        // Map CType to Go reflect.Type
-        switch field.Type {
-        case CInt:
-            fieldType = reflect.TypeOf(int(0))
-        case CFloat:
-            fieldType = reflect.TypeOf(float32(0))
-        case CDouble:
-            fieldType = reflect.TypeOf(float64(0))
-        case CBool:
-            fieldType = reflect.TypeOf(false)
-        case CString:
-            fieldType = reflect.TypeOf("")
-        case CPointer:
-            fieldType = reflect.TypeOf((*CPointerValue)(nil))
-        case CStruct:
-            // Nested struct as pointer
-            fieldType = reflect.TypeOf((*CPointerValue)(nil))
-        default:
-            fieldType = reflect.TypeOf((*any)(nil)).Elem() // interface{}
+    // Read each field from C memory using sequential offsets
+    for _, field := range structDef.Fields {
+        fieldPtr := unsafe.Pointer(uintptr(cPtr) + field.Offset)
+
+        // Handle fixed-size arrays
+        if field.ArraySize > 0 {
+            slice := make([]any, field.ArraySize)
+            for j := 0; j < field.ArraySize; j++ {
+                elemPtr := unsafe.Pointer(uintptr(fieldPtr) + uintptr(j)*getSizeForType(field.ElementType))
+
+                var elemVal any
+                switch field.ElementType {
+                case CInt, CUInt:
+                    elemVal = int(*(*C.int)(elemPtr))
+                case CInt8:
+                    elemVal = int8(*(*C.int8_t)(elemPtr))
+                case CUInt8, CChar:
+                    elemVal = uint8(*(*C.uint8_t)(elemPtr))
+                case CInt16:
+                    elemVal = int16(*(*C.int16_t)(elemPtr))
+                case CUInt16:
+                    elemVal = uint16(*(*C.uint16_t)(elemPtr))
+                case CInt64:
+                    elemVal = int64(*(*C.int64_t)(elemPtr))
+                case CUInt64:
+                    elemVal = uint64(*(*C.uint64_t)(elemPtr))
+                case CFloat:
+                    elemVal = float64(*(*C.float)(elemPtr))
+                case CDouble:
+                    elemVal = float64(*(*C.double)(elemPtr))
+                case CBool:
+                    elemVal = (*(*C.int)(elemPtr)) != 0
+                default:
+                    elemVal = nil
+                }
+                slice[j] = elemVal
+            }
+            result[field.Name] = slice
+            continue
         }
 
-        sfields = append(sfields, reflect.StructField{
-            Name: field.Name,
-            Type: fieldType,
-        })
-    }
-
-    // Create struct dynamically
-    structType := reflect.StructOf(sfields)
-    structVal := reflect.New(structType).Elem()
-
-    // Read each field from C memory
-    for i, field := range structDef.Fields {
-        fieldPtr := unsafe.Pointer(uintptr(cPtr) + field.Offset)
-        zaField := structVal.Field(i)
-
+        // Read single value
+        var fieldVal any
         switch field.Type {
         case CInt:
-            cIntVal := *(*C.int)(fieldPtr)
-            zaField.SetInt(int64(cIntVal))
-
+            fieldVal = int(*(*C.int)(fieldPtr))
+        case CUInt:
+            fieldVal = uint(*(*C.uint)(fieldPtr))
+        case CInt8:
+            fieldVal = int8(*(*C.int8_t)(fieldPtr))
+        case CUInt8, CChar:
+            fieldVal = uint8(*(*C.uint8_t)(fieldPtr))
+        case CInt16:
+            fieldVal = int16(*(*C.int16_t)(fieldPtr))
+        case CUInt16:
+            fieldVal = uint16(*(*C.uint16_t)(fieldPtr))
+        case CInt64:
+            fieldVal = int64(*(*C.int64_t)(fieldPtr))
+        case CUInt64:
+            fieldVal = uint64(*(*C.uint64_t)(fieldPtr))
         case CFloat:
-            cFloatVal := *(*C.float)(fieldPtr)
-            zaField.SetFloat(float64(cFloatVal))
-
+            fieldVal = float64(*(*C.float)(fieldPtr))
         case CDouble:
-            cDoubleVal := *(*C.double)(fieldPtr)
-            zaField.SetFloat(float64(cDoubleVal))
-
+            fieldVal = float64(*(*C.double)(fieldPtr))
         case CBool:
-            cBoolVal := *(*C.int)(fieldPtr)
-            zaField.SetBool(cBoolVal != 0)
-
+            fieldVal = (*(*C.int)(fieldPtr)) != 0
         case CString:
             // Read char* pointer and convert to Go string
             cstr := *(*unsafe.Pointer)(fieldPtr)
             if cstr != nil {
-                goStr := C.GoString((*C.char)(cstr))
-                zaField.SetString(goStr)
+                fieldVal = C.GoString((*C.char)(cstr))
             } else {
-                zaField.SetString("")
+                fieldVal = ""
             }
-
         case CPointer, CStruct:
             // Read pointer value
             ptr := *(*unsafe.Pointer)(fieldPtr)
-            zaField.Set(reflect.ValueOf(&CPointerValue{Ptr: ptr, TypeTag: field.Name}))
-
+            fieldVal = &CPointerValue{Ptr: ptr, TypeTag: field.Name}
         default:
-            // Unknown type - leave as zero value
+            fieldVal = nil
         }
+
+        result[field.Name] = fieldVal
     }
 
-    return structVal.Interface(), nil
+    return result, nil
+}
+
+// getSizeForType returns the size in bytes for a CType
+func getSizeForType(ctype CType) uintptr {
+    switch ctype {
+    case CInt, CUInt, CFloat:
+        return 4
+    case CDouble, CInt64, CUInt64:
+        return 8
+    case CInt16, CUInt16:
+        return 2
+    case CInt8, CUInt8, CChar, CBool:
+        return 1
+    case CString, CPointer:
+        return unsafe.Sizeof(uintptr(0))
+    default:
+        return unsafe.Sizeof(uintptr(0))
+    }
+}
+
+// marshalElementToC marshals a single array element to C memory
+func marshalElementToC(ptr unsafe.Pointer, val reflect.Value, ctype CType, fieldName string, allocatedStrings *[]unsafe.Pointer) error {
+    switch ctype {
+    case CInt, CUInt:
+        var intVal int64
+        switch val.Kind() {
+        case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+            intVal = val.Int()
+        case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+            intVal = int64(val.Uint())
+        default:
+            return fmt.Errorf("field %s: expected int/uint, got %v", fieldName, val.Kind())
+        }
+        *(*C.int)(ptr) = C.int(intVal)
+
+    case CInt8:
+        if val.Kind() != reflect.Int && val.Kind() != reflect.Int8 {
+            return fmt.Errorf("field %s: expected int8, got %v", fieldName, val.Kind())
+        }
+        *(*C.int8_t)(ptr) = C.int8_t(val.Int())
+
+    case CUInt8, CChar:
+        var uintVal uint64
+        switch val.Kind() {
+        case reflect.Uint, reflect.Uint8:
+            uintVal = val.Uint()
+        case reflect.Int, reflect.Int8:
+            uintVal = uint64(val.Int())
+        default:
+            return fmt.Errorf("field %s: expected uint8, got %v", fieldName, val.Kind())
+        }
+        *(*C.uint8_t)(ptr) = C.uint8_t(uintVal)
+
+    case CInt16:
+        if val.Kind() != reflect.Int && val.Kind() != reflect.Int16 {
+            return fmt.Errorf("field %s: expected int16, got %v", fieldName, val.Kind())
+        }
+        *(*C.int16_t)(ptr) = C.int16_t(val.Int())
+
+    case CUInt16:
+        if val.Kind() != reflect.Uint && val.Kind() != reflect.Uint16 {
+            return fmt.Errorf("field %s: expected uint16, got %v", fieldName, val.Kind())
+        }
+        *(*C.uint16_t)(ptr) = C.uint16_t(val.Uint())
+
+    case CInt64:
+        if val.Kind() != reflect.Int64 && val.Kind() != reflect.Int {
+            return fmt.Errorf("field %s: expected int64, got %v", fieldName, val.Kind())
+        }
+        *(*C.int64_t)(ptr) = C.int64_t(val.Int())
+
+    case CUInt64:
+        if val.Kind() != reflect.Uint64 && val.Kind() != reflect.Uint {
+            return fmt.Errorf("field %s: expected uint64, got %v", fieldName, val.Kind())
+        }
+        *(*C.uint64_t)(ptr) = C.uint64_t(val.Uint())
+
+    case CFloat:
+        if val.Kind() != reflect.Float32 && val.Kind() != reflect.Float64 {
+            return fmt.Errorf("field %s: expected float, got %v", fieldName, val.Kind())
+        }
+        *(*C.float)(ptr) = C.float(val.Float())
+
+    case CDouble:
+        if val.Kind() != reflect.Float32 && val.Kind() != reflect.Float64 {
+            return fmt.Errorf("field %s: expected double, got %v", fieldName, val.Kind())
+        }
+        *(*C.double)(ptr) = C.double(val.Float())
+
+    case CBool:
+        if val.Kind() != reflect.Bool {
+            return fmt.Errorf("field %s: expected bool, got %v", fieldName, val.Kind())
+        }
+        var boolVal C.int
+        if val.Bool() {
+            boolVal = 1
+        } else {
+            boolVal = 0
+        }
+        *(*C.int)(ptr) = boolVal
+
+    case CString:
+        if val.Kind() != reflect.String {
+            return fmt.Errorf("field %s: expected string, got %v", fieldName, val.Kind())
+        }
+        str := val.String()
+        cstr := C.CString(str)
+        *allocatedStrings = append(*allocatedStrings, unsafe.Pointer(cstr))
+        *(*unsafe.Pointer)(ptr) = unsafe.Pointer(cstr)
+
+    case CPointer:
+        if ptrVal, ok := val.Interface().(*CPointerValue); ok {
+            *(*unsafe.Pointer)(ptr) = ptrVal.Ptr
+        } else {
+            *(*unsafe.Pointer)(ptr) = nil
+        }
+
+    default:
+        return fmt.Errorf("field %s: unsupported array element type %v", fieldName, ctype)
+    }
+
+    return nil
+}
+
+// marshalUnion marshals a Za map literal to C union memory
+// Expects a map with exactly 1 key (the active field)
+// Returns error if map has 0 or >1 keys, or if field name is invalid
+func marshalUnion(zaMap map[string]any, unionDef *CLibraryStruct, ptr unsafe.Pointer, allocatedStrings *[]unsafe.Pointer) error {
+    if unionDef == nil || !unionDef.IsUnion {
+        return fmt.Errorf("invalid union definition")
+    }
+
+    // Validate map has exactly 1 field
+    if len(zaMap) != 1 {
+        return fmt.Errorf("union map must have exactly 1 field (got %d)", len(zaMap))
+    }
+
+    // Find the field in the map
+    for fieldName, value := range zaMap {
+        // Find field in union definition
+        var field *StructField
+        for i := range unionDef.Fields {
+            if unionDef.Fields[i].Name == fieldName {
+                field = &unionDef.Fields[i]
+                break
+            }
+        }
+
+        if field == nil {
+            return fmt.Errorf("unknown union field: %s", fieldName)
+        }
+
+        // Marshal value to offset 0 (all union fields share memory)
+        // Note: All union fields have offset=0
+        fieldPtr := ptr // All fields write to same location
+
+        // Handle arrays
+        if field.ArraySize > 0 {
+            // Value should be a slice or array
+            val := reflect.ValueOf(value)
+            if val.Kind() != reflect.Slice && val.Kind() != reflect.Array {
+                return fmt.Errorf("union field %s: expected slice/array for C array field, got %T", fieldName, value)
+            }
+
+            arrayLen := val.Len()
+            if arrayLen != field.ArraySize {
+                return fmt.Errorf("union field %s: array length mismatch (expected %d, got %d)", fieldName, field.ArraySize, arrayLen)
+            }
+
+            // Copy each array element
+            for i := 0; i < field.ArraySize; i++ {
+                elemVal := val.Index(i)
+                elemPtr := unsafe.Pointer(uintptr(fieldPtr) + uintptr(i)*getSizeForType(field.ElementType))
+                if err := marshalElementToC(elemPtr, elemVal, field.ElementType, fieldName, allocatedStrings); err != nil {
+                    return err
+                }
+            }
+            return nil
+        }
+
+        // Marshal single value
+        return marshalElementToC(fieldPtr, reflect.ValueOf(value), field.Type, fieldName, allocatedStrings)
+    }
+
+    return nil
+}
+
+// unmarshalUnion unmarshals C union memory to a Za map with ALL interpretations
+// Returns a map where each key is a field name and value is that field's interpretation of the memory
+func unmarshalUnion(ptr unsafe.Pointer, unionDef *CLibraryStruct) (map[string]any, error) {
+    if unionDef == nil || !unionDef.IsUnion {
+        return nil, fmt.Errorf("invalid union definition")
+    }
+
+    result := make(map[string]any)
+
+    // Read each field from offset 0 (all fields overlap)
+    for _, field := range unionDef.Fields {
+        fieldPtr := ptr // All fields read from same location (offset 0)
+
+        // Handle arrays
+        if field.ArraySize > 0 {
+            slice := make([]any, field.ArraySize)
+            for i := 0; i < field.ArraySize; i++ {
+                elemPtr := unsafe.Pointer(uintptr(fieldPtr) + uintptr(i)*getSizeForType(field.ElementType))
+
+                var elemVal any
+                switch field.ElementType {
+                case CInt, CUInt:
+                    elemVal = int(*(*C.int)(elemPtr))
+                case CInt8:
+                    elemVal = int8(*(*C.int8_t)(elemPtr))
+                case CUInt8, CChar:
+                    elemVal = uint8(*(*C.uint8_t)(elemPtr))
+                case CInt16:
+                    elemVal = int16(*(*C.int16_t)(elemPtr))
+                case CUInt16:
+                    elemVal = uint16(*(*C.uint16_t)(elemPtr))
+                case CInt64:
+                    elemVal = int64(*(*C.int64_t)(elemPtr))
+                case CUInt64:
+                    elemVal = uint64(*(*C.uint64_t)(elemPtr))
+                case CFloat:
+                    elemVal = float64(*(*C.float)(elemPtr))
+                case CDouble:
+                    elemVal = float64(*(*C.double)(elemPtr))
+                case CBool:
+                    elemVal = (*(*C.int)(elemPtr)) != 0
+                default:
+                    elemVal = nil
+                }
+                slice[i] = elemVal
+            }
+            result[field.Name] = slice
+            continue
+        }
+
+        // Read single value
+        var fieldVal any
+        switch field.Type {
+        case CInt:
+            fieldVal = int(*(*C.int)(fieldPtr))
+        case CUInt:
+            fieldVal = uint(*(*C.uint)(fieldPtr))
+        case CInt8:
+            fieldVal = int8(*(*C.int8_t)(fieldPtr))
+        case CUInt8, CChar:
+            fieldVal = uint8(*(*C.uint8_t)(fieldPtr))
+        case CInt16:
+            fieldVal = int16(*(*C.int16_t)(fieldPtr))
+        case CUInt16:
+            fieldVal = uint16(*(*C.uint16_t)(fieldPtr))
+        case CInt64:
+            fieldVal = int64(*(*C.int64_t)(fieldPtr))
+        case CUInt64:
+            fieldVal = uint64(*(*C.uint64_t)(fieldPtr))
+        case CFloat:
+            fieldVal = float64(*(*C.float)(fieldPtr))
+        case CDouble:
+            fieldVal = float64(*(*C.double)(fieldPtr))
+        case CBool:
+            fieldVal = (*(*C.int)(fieldPtr)) != 0
+        case CString:
+            cstr := *(*unsafe.Pointer)(fieldPtr)
+            if cstr != nil {
+                fieldVal = C.GoString((*C.char)(cstr))
+            } else {
+                fieldVal = ""
+            }
+        case CPointer, CStruct:
+            fieldVal = *(*unsafe.Pointer)(fieldPtr)
+        default:
+            fieldVal = nil
+        }
+
+        result[field.Name] = fieldVal
+    }
+
+    return result, nil
 }

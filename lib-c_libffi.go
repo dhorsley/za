@@ -85,6 +85,30 @@ static ffi_abi get_platform_abi(const char* arch, const char* os) {
 // Forward declarations
 typedef struct ffi_type_s ffi_type;
 
+// Full ffi_type structure definition (from libffi)
+struct ffi_type_s {
+    size_t size;               // Size of type (libffi computes for structs)
+    unsigned short alignment;  // Alignment (libffi computes for structs)
+    unsigned short type;       // Type identifier (FFI_TYPE_STRUCT for structs)
+    ffi_type **elements;       // NULL-terminated array of field types (for structs)
+};
+
+// ffi_type constants (from libffi)
+#define FFI_TYPE_VOID       0
+#define FFI_TYPE_INT        1
+#define FFI_TYPE_FLOAT      2
+#define FFI_TYPE_DOUBLE     3
+#define FFI_TYPE_UINT8      5
+#define FFI_TYPE_SINT8      6
+#define FFI_TYPE_UINT16     7
+#define FFI_TYPE_SINT16     8
+#define FFI_TYPE_UINT32     9
+#define FFI_TYPE_SINT32     10
+#define FFI_TYPE_UINT64     11
+#define FFI_TYPE_SINT64     12
+#define FFI_TYPE_STRUCT     13
+#define FFI_TYPE_POINTER    14
+
 // ffi_cif structure (from libffi) - needed for closure handler
 typedef struct ffi_cif_s {
     ffi_abi abi;
@@ -294,16 +318,91 @@ static void* map_type_name_to_ffi_type(const char* type_name) {
     return NULL; // Unknown type
 }
 
+// Map Za CType enum to libffi type pointer
+// Returns NULL for CStruct (caller must create custom type)
+static ffi_type* map_ctype_to_ffi_type(int ctype) {
+    switch (ctype) {
+        case 0: return libffi_type_void;      // CVoid
+        case 1: return libffi_type_sint32;    // CInt
+        case 2: return libffi_type_float;     // CFloat
+        case 3: return libffi_type_double;    // CDouble
+        case 4: return libffi_type_sint8;     // CChar
+        case 5: return libffi_type_pointer;   // CString
+        case 6: return libffi_type_uint8;     // CBool
+        case 7: return libffi_type_pointer;   // CPointer
+        case 8: return NULL;                  // CStruct - needs custom type
+        case 9: return libffi_type_uint32;    // CUInt
+        case 10: return libffi_type_sint16;   // CInt16
+        case 11: return libffi_type_uint16;   // CUInt16
+        case 12: return libffi_type_sint64;   // CInt64
+        case 13: return libffi_type_uint64;   // CUInt64
+        case 14: return libffi_type_longdouble; // CLongDouble
+        case 15: return libffi_type_sint8;    // CInt8
+        case 16: return libffi_type_uint8;    // CUInt8
+        default: return NULL;
+    }
+}
+
+// Create a custom ffi_type for a struct
+// field_types: array of ffi_type* for each field (Go will create these)
+// num_fields: number of fields
+// Returns: dynamically allocated ffi_type*, caller must free
+static ffi_type* create_struct_ffi_type(ffi_type** field_types, int num_fields) {
+    if (field_types == NULL || num_fields < 0) {
+        return NULL;
+    }
+
+    // Allocate the ffi_type structure
+    ffi_type* struct_type = (ffi_type*)malloc(sizeof(ffi_type));
+    if (struct_type == NULL) {
+        return NULL;
+    }
+
+    // Allocate elements array (num_fields + 1 for NULL terminator)
+    ffi_type** elements = (ffi_type**)malloc(sizeof(ffi_type*) * (num_fields + 1));
+    if (elements == NULL) {
+        free(struct_type);
+        return NULL;
+    }
+
+    // Copy field types
+    for (int i = 0; i < num_fields; i++) {
+        elements[i] = field_types[i];
+    }
+    elements[num_fields] = NULL; // Terminator
+
+    // Initialize struct type
+    struct_type->size = 0;        // libffi computes this
+    struct_type->alignment = 0;   // libffi computes this
+    struct_type->type = FFI_TYPE_STRUCT;
+    struct_type->elements = elements;
+
+    return struct_type;
+}
+
+// Cleanup a custom struct ffi_type
+static void free_struct_ffi_type(ffi_type* struct_type) {
+    if (struct_type == NULL) {
+        return;
+    }
+    if (struct_type->elements != NULL) {
+        free(struct_type->elements);
+    }
+    free(struct_type);
+}
+
 // Generic FFI call wrapper
 static int call_via_libffi(
     void* fn_ptr,
     int n_args,
-    int* arg_types,      // Za CType enum values
-    void** arg_values,   // Pointers to actual argument values
-    int return_type,     // Za CType enum value
-    void* return_value,  // Pointer to return value storage
-    int is_variadic,     // 1 if variadic function, 0 otherwise
-    int n_fixed_args     // Number of fixed arguments (for variadic functions)
+    int* arg_types,         // Za CType enum values
+    void** arg_values,      // Pointers to actual argument values
+    int return_type,        // Za CType enum value
+    void* return_value,     // Pointer to return value storage
+    int is_variadic,        // 1 if variadic function, 0 otherwise
+    int n_fixed_args,       // Number of fixed arguments (for variadic functions)
+    ffi_type** custom_arg_types,  // Custom ffi_type* for each arg (NULL = use arg_types enum)
+    ffi_type* custom_return_type  // Custom ffi_type* for return (NULL = use return_type enum)
 ) {
     if (!is_libffi_available()) {
         return -1; // libffi not loaded
@@ -327,123 +426,30 @@ static int call_via_libffi(
 
     // Map Za types to libffi types
     for (int i = 0; i < n_args; i++) {
-        switch (arg_types[i]) {
-            case 0: // CVoid (shouldn't happen for args)
-                ffi_arg_types[i] = libffi_type_void;
-                break;
-            case 1: // CInt
-                ffi_arg_types[i] = libffi_type_sint32;
-                break;
-            case 2: // CFloat
-                ffi_arg_types[i] = libffi_type_float;
-                break;
-            case 3: // CDouble
-                ffi_arg_types[i] = libffi_type_double;
-                break;
-            case 4: // CChar
-                ffi_arg_types[i] = libffi_type_sint8;
-                break;
-            case 5: // CString (pointer)
-                ffi_arg_types[i] = libffi_type_pointer;
-                break;
-            case 6: // CBool
-                ffi_arg_types[i] = libffi_type_uint8;
-                break;
-            case 7: // CPointer
-                ffi_arg_types[i] = libffi_type_pointer;
-                break;
-            case 8: // CStruct (pointer)
-                ffi_arg_types[i] = libffi_type_pointer;
-                break;
-            case 9: // CUInt
-                ffi_arg_types[i] = libffi_type_uint32;
-                break;
-            case 10: // CInt16
-                ffi_arg_types[i] = libffi_type_sint16;
-                break;
-            case 11: // CUInt16
-                ffi_arg_types[i] = libffi_type_uint16;
-                break;
-            case 12: // CInt64
-                ffi_arg_types[i] = libffi_type_sint64;
-                break;
-            case 13: // CUInt64
-                ffi_arg_types[i] = libffi_type_uint64;
-                break;
-            case 14: // CLongDouble
-                ffi_arg_types[i] = libffi_type_longdouble;
-                break;
-            case 15: // CInt8
-                ffi_arg_types[i] = libffi_type_sint8;
-                break;
-            case 16: // CUInt8
-                ffi_arg_types[i] = libffi_type_uint8;
-                break;
-            default:
+        // Use custom type if provided, otherwise map from enum
+        if (custom_arg_types != NULL && custom_arg_types[i] != NULL) {
+            ffi_arg_types[i] = custom_arg_types[i];
+        } else {
+            ffi_arg_types[i] = map_ctype_to_ffi_type(arg_types[i]);
+            if (ffi_arg_types[i] == NULL) {
                 if (ffi_arg_types != NULL) free(ffi_arg_types);
                 free(cif);
                 return -2; // Unknown type
+            }
         }
     }
 
     // Map return type
     ffi_type* ffi_return_type;
-    switch (return_type) {
-        case 0: // CVoid
-            ffi_return_type = libffi_type_void;
-            break;
-        case 1: // CInt
-            ffi_return_type = libffi_type_sint32;
-            break;
-        case 2: // CFloat
-            ffi_return_type = libffi_type_float;
-            break;
-        case 3: // CDouble
-            ffi_return_type = libffi_type_double;
-            break;
-        case 4: // CChar
-            ffi_return_type = libffi_type_sint8;
-            break;
-        case 5: // CString (pointer)
-            ffi_return_type = libffi_type_pointer;
-            break;
-        case 6: // CBool
-            ffi_return_type = libffi_type_uint8;
-            break;
-        case 7: // CPointer
-            ffi_return_type = libffi_type_pointer;
-            break;
-        case 8: // CStruct (pointer)
-            ffi_return_type = libffi_type_pointer;
-            break;
-        case 9: // CUInt
-            ffi_return_type = libffi_type_uint32;
-            break;
-        case 10: // CInt16
-            ffi_return_type = libffi_type_sint16;
-            break;
-        case 11: // CUInt16
-            ffi_return_type = libffi_type_uint16;
-            break;
-        case 12: // CInt64
-            ffi_return_type = libffi_type_sint64;
-            break;
-        case 13: // CUInt64
-            ffi_return_type = libffi_type_uint64;
-            break;
-        case 14: // CLongDouble
-            ffi_return_type = libffi_type_longdouble;
-            break;
-        case 15: // CInt8
-            ffi_return_type = libffi_type_sint8;
-            break;
-        case 16: // CUInt8
-            ffi_return_type = libffi_type_uint8;
-            break;
-        default:
+    if (custom_return_type != NULL) {
+        ffi_return_type = custom_return_type;
+    } else {
+        ffi_return_type = map_ctype_to_ffi_type(return_type);
+        if (ffi_return_type == NULL) {
             if (ffi_arg_types != NULL) free(ffi_arg_types);
             free(cif);
             return -2; // Unknown type
+        }
     }
 
     // Detect platform ABI (passed from Go code)
@@ -632,6 +638,7 @@ import (
     "fmt"
     "runtime"
     "runtime/cgo"
+    "sync"
     "unsafe"
 )
 
@@ -668,6 +675,92 @@ func IsLibFFIAvailable() bool {
     return libffiAvailable
 }
 
+// Global cache for struct ffi_type* pointers (to avoid recreating them)
+var (
+    structFFITypeCache     = make(map[string]unsafe.Pointer)
+    structFFITypeCacheLock sync.RWMutex
+)
+
+// createFFITypeForStruct creates a custom ffi_type for a struct definition
+// Returns the ffi_type* pointer and any error
+func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
+    if structDef == nil {
+        return nil, fmt.Errorf("struct definition is nil")
+    }
+
+    // Check cache first
+    structFFITypeCacheLock.RLock()
+    if cached, ok := structFFITypeCache[structDef.Name]; ok {
+        structFFITypeCacheLock.RUnlock()
+        return cached, nil
+    }
+    structFFITypeCacheLock.RUnlock()
+
+    // Count total ffi_type elements (arrays expand to multiple elements)
+    totalElements := 0
+    for _, field := range structDef.Fields {
+        if field.ArraySize > 0 {
+            totalElements += field.ArraySize  // Each array element is a separate ffi_type
+        } else {
+            totalElements++
+        }
+    }
+
+    if totalElements == 0 {
+        return nil, fmt.Errorf("struct %s has no fields", structDef.Name)
+    }
+
+    // Allocate C array for field types (expanded for arrays)
+    fieldTypesArray := (**C.ffi_type)(C.malloc(C.size_t(totalElements) * C.size_t(unsafe.Sizeof(uintptr(0)))))
+    if fieldTypesArray == nil {
+        return nil, fmt.Errorf("failed to allocate field types array")
+    }
+
+    // Convert to Go slice for easier indexing
+    fieldTypesSlice := (*[1 << 30]*C.ffi_type)(unsafe.Pointer(fieldTypesArray))[:totalElements:totalElements]
+
+    // Map each field to its ffi_type* (expanding arrays)
+    idx := 0
+    for _, field := range structDef.Fields {
+        if field.ArraySize > 0 {
+            // Array field - expand to multiple ffi_type elements
+            elemType := C.map_ctype_to_ffi_type(C.int(field.ElementType))
+            if elemType == nil {
+                C.free(unsafe.Pointer(fieldTypesArray))
+                return nil, fmt.Errorf("field %s: unsupported array element type %d", field.Name, field.ElementType)
+            }
+            // Add element type for each array element
+            for j := 0; j < field.ArraySize; j++ {
+                fieldTypesSlice[idx] = elemType
+                idx++
+            }
+        } else {
+            // Regular field
+            fieldType := C.map_ctype_to_ffi_type(C.int(field.Type))
+            if fieldType == nil {
+                C.free(unsafe.Pointer(fieldTypesArray))
+                return nil, fmt.Errorf("field %s: unsupported type %d", field.Name, field.Type)
+            }
+            fieldTypesSlice[idx] = fieldType
+            idx++
+        }
+    }
+
+    // Create the struct ffi_type
+    structType := C.create_struct_ffi_type(fieldTypesArray, C.int(totalElements))
+    if structType == nil {
+        C.free(unsafe.Pointer(fieldTypesArray))
+        return nil, fmt.Errorf("failed to create struct ffi_type")
+    }
+
+    // Cache it
+    structFFITypeCacheLock.Lock()
+    structFFITypeCache[structDef.Name] = unsafe.Pointer(structType)
+    structFFITypeCacheLock.Unlock()
+
+    return unsafe.Pointer(structType), nil
+}
+
 // CallCFunctionViaLibFFI calls a C function using libffi
 func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any, sig CFunctionSignature) (any, error) {
     if !IsLibFFIAvailable() {
@@ -700,13 +793,15 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             unsafe.Pointer(&returnValue),
             C.int(isVariadic),
             C.int(0), // n_fixed_args (0 for zero-arg functions)
+            nil,      // custom_arg_types
+            nil,      // custom_return_type
         )
 
         if result != 0 {
             return nil, fmt.Errorf("libffi call failed with code %d", result)
         }
 
-        return convertReturnValue(returnValue, sig)
+        return convertReturnValue(unsafe.Pointer(&returnValue), sig)
     }
 
     // Convert Za arguments to C values with type checking and range validation
@@ -755,6 +850,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     // Temporary storage for converted arguments (must stay alive during call)
     var cstrings []unsafe.Pointer
     var allocatedMem []unsafe.Pointer
+
+    // Array to hold custom ffi_type* for struct/union parameters
+    var customArgTypes []unsafe.Pointer
+    if len(convertedArgs) > 0 {
+        customArgTypes = make([]unsafe.Pointer, len(convertedArgs))
+    }
 
     defer func() {
         for _, cs := range cstrings {
@@ -877,7 +978,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             argValuesSlice[i] = ptrPtr
 
         default:
-            // Check if this is a struct type that needs marshaling
+            // Check if this is a struct/union type that needs marshaling
             // Get the struct type name from signature if available
             var structTypeName string
             if i < len(sig.ParamStructNames) {
@@ -885,30 +986,102 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             }
 
             if structTypeName != "" {
-                // This is a typed struct - marshal to C memory
-                argTypesSlice[i] = 8 // CStruct
+                // Look up the struct/union definition
+                // First try as union (from AUTO parsing), then as Za struct
+                var structDef *CLibraryStruct
+                var err error
 
-                // Get C struct layout from Za struct definition
-                structDef, err := getStructLayoutFromZa(structTypeName)
-                if err != nil {
-                    return nil, fmt.Errorf("argument %d: failed to get struct layout for %s: %v", i, structTypeName, err)
+                // Check if it's a union from C headers
+                ffiStructLock.RLock()
+                if def, ok := ffiStructDefinitions[structTypeName]; ok {
+                    structDef = def
+                }
+                ffiStructLock.RUnlock()
+
+                // If not found in FFI registry, try Za struct definition
+                if structDef == nil {
+                    structDef, err = getStructLayoutFromZa(structTypeName)
+                    if err != nil {
+                        return nil, fmt.Errorf("argument %d: failed to get struct/union layout for %s: %v", i, structTypeName, err)
+                    }
                 }
 
-                // Marshal Za struct to C memory
-                cPtr, cleanup, err := MarshalStructToC(arg, structDef)
-                if err != nil {
-                    return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                // CRITICAL: Validate struct definition before marshaling
+                if structDef == nil {
+                    return nil, fmt.Errorf("argument %d: struct/union %s is not defined", i, structTypeName)
+                }
+                if structDef.Size == 0 {
+                    return nil, fmt.Errorf("argument %d: struct/union %s has zero size - invalid definition", i, structTypeName)
                 }
 
-                // Clean up allocated C memory after the FFI call completes
-                // cleanup() will free the struct memory and any allocated strings
-                defer cleanup()
+                // Create custom ffi_type for this struct/union
+                customFFIType, err := createFFITypeForStruct(structDef)
+                if err != nil {
+                    return nil, fmt.Errorf("argument %d: failed to create ffi_type for %s: %v", i, structTypeName, err)
+                }
+                customArgTypes[i] = customFFIType
 
-                // Store pointer for libffi (don't add cPtr to allocatedMem, cleanup() handles it)
-                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
-                allocatedMem = append(allocatedMem, ptrPtr)
-                *(*unsafe.Pointer)(ptrPtr) = cPtr
-                argValuesSlice[i] = ptrPtr
+                // Check if this is a union type
+                if structDef.IsUnion {
+                    // Union parameter - expect a map literal
+                    argTypesSlice[i] = 8 // CStruct (unions passed by value)
+
+                    // Arg should be a map
+                    argMap, ok := arg.(map[string]any)
+                    if !ok {
+                        return nil, fmt.Errorf("argument %d: union parameter expects map literal, got %T", i, arg)
+                    }
+
+                    // Allocate C memory for union
+                    cPtr := C.malloc(C.size_t(structDef.Size))
+                    if cPtr == nil {
+                        return nil, fmt.Errorf("argument %d: failed to allocate C memory for union (size: %d)", i, structDef.Size)
+                    }
+
+                    // Zero-initialize
+                    C.memset(cPtr, 0, C.size_t(structDef.Size))
+
+                    // Track allocated strings
+                    var allocatedStrings []unsafe.Pointer
+
+                    // Marshal union
+                    err = marshalUnion(argMap, structDef, cPtr, &allocatedStrings)
+                    if err != nil {
+                        C.free(cPtr)
+                        for _, strPtr := range allocatedStrings {
+                            C.free(strPtr)
+                        }
+                        return nil, fmt.Errorf("argument %d: failed to marshal union: %v", i, err)
+                    }
+
+                    // Cleanup function for union
+                    cleanup := func() {
+                        for _, strPtr := range allocatedStrings {
+                            C.free(strPtr)
+                        }
+                        C.free(cPtr)
+                    }
+                    defer cleanup()
+
+                    // For by-value unions, argValuesSlice should point directly to the union data
+                    // (not pointer-to-pointer, since we're passing the union by value)
+                    argValuesSlice[i] = cPtr
+                } else {
+                    // Regular struct - marshal to C memory and pass by value
+                    argTypesSlice[i] = 8 // CStruct
+
+                    cPtr, cleanup, err := MarshalStructToC(arg, structDef)
+                    if err != nil {
+                        return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                    }
+
+                    // Clean up allocated C memory after the FFI call completes
+                    defer cleanup()
+
+                    // For by-value structs, argValuesSlice should point directly to the struct data
+                    // (not pointer-to-pointer, since we're passing the struct by value)
+                    argValuesSlice[i] = cPtr
+                }
             } else {
                 return nil, fmt.Errorf("unsupported argument type: %T", arg)
             }
@@ -916,7 +1089,44 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     }
 
     // Prepare return value storage
+    // For struct return values, we need to allocate enough space
     var returnValue C.longlong
+    var returnPtr unsafe.Pointer
+    var structReturnBuf unsafe.Pointer
+
+    // Prepare custom ffi_type for struct return (if needed)
+    var customReturnType unsafe.Pointer
+    if expectedRetType == CStruct && sig.ReturnStructName != "" {
+        // Look up struct definition
+        ffiStructLock.RLock()
+        structDef, exists := ffiStructDefinitions[sig.ReturnStructName]
+        ffiStructLock.RUnlock()
+
+        if !exists || structDef == nil {
+            return nil, fmt.Errorf("struct return type %s is not defined", sig.ReturnStructName)
+        }
+        if structDef.Size == 0 {
+            return nil, fmt.Errorf("struct %s has zero size", sig.ReturnStructName)
+        }
+
+        // Create custom ffi_type for this struct
+        var err error
+        customReturnType, err = createFFITypeForStruct(structDef)
+        if err != nil {
+            return nil, fmt.Errorf("failed to create ffi_type for return struct %s: %v", sig.ReturnStructName, err)
+        }
+
+        // Allocate buffer for struct return value
+        structReturnBuf = C.malloc(C.size_t(structDef.Size))
+        if structReturnBuf == nil {
+            return nil, fmt.Errorf("failed to allocate return buffer for struct (size: %d)", structDef.Size)
+        }
+        defer C.free(structReturnBuf)
+        C.memset(structReturnBuf, 0, C.size_t(structDef.Size))
+        returnPtr = structReturnBuf
+    } else {
+        returnPtr = unsafe.Pointer(&returnValue)
+    }
 
     // Determine if variadic and fixed args count
     isVariadic := 0
@@ -926,28 +1136,65 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         nFixedArgs = sig.FixedArgCount
     }
 
-    // Call via libffi
+    // Prepare custom_arg_types array for C (if we have any custom types)
+    var customArgTypesC **C.ffi_type
+    if len(customArgTypes) > 0 {
+        // Check if any custom types exist
+        hasCustomTypes := false
+        for _, ct := range customArgTypes {
+            if ct != nil {
+                hasCustomTypes = true
+                break
+            }
+        }
+
+        if hasCustomTypes {
+            // Allocate C array
+            customArgTypesC = (**C.ffi_type)(C.malloc(C.size_t(len(customArgTypes)) * C.size_t(unsafe.Sizeof(uintptr(0)))))
+            defer C.free(unsafe.Pointer(customArgTypesC))
+
+            // Copy pointers
+            slice := (*[1 << 30]*C.ffi_type)(unsafe.Pointer(customArgTypesC))[:len(customArgTypes):len(customArgTypes)]
+            for i, ct := range customArgTypes {
+                slice[i] = (*C.ffi_type)(ct)
+            }
+        }
+    }
+
+    // Call via libffi with custom types
     result := C.call_via_libffi(
         funcPtr,
         C.int(len(args)),
         argTypes,
         (*unsafe.Pointer)(unsafe.Pointer(argValues)),
         C.int(expectedRetType),
-        unsafe.Pointer(&returnValue),
+        returnPtr,
         C.int(isVariadic),
         C.int(nFixedArgs),
+        customArgTypesC,     // custom_arg_types
+        (*C.ffi_type)(customReturnType), // custom_return_type
     )
 
     if result != 0 {
         return nil, fmt.Errorf("libffi call failed with code %d", result)
     }
 
-    return convertReturnValue(returnValue, sig)
+    // For struct returns, use the allocated buffer; otherwise use returnValue
+    if structReturnBuf != nil {
+        return convertReturnValue(structReturnBuf, sig)
+    }
+    return convertReturnValue(unsafe.Pointer(&returnValue), sig)
 }
 
 // convertReturnValue converts C return value to Za type
-func convertReturnValue(returnValue C.longlong, sig CFunctionSignature) (any, error) {
+func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (any, error) {
     expectedRetType := sig.ReturnType
+
+    // For non-struct returns, read the value from the pointer
+    var returnValue C.longlong
+    if expectedRetType != CStruct {
+        returnValue = *(*C.longlong)(returnValuePtr)
+    }
 
     switch expectedRetType {
     case CVoid:
@@ -979,8 +1226,11 @@ func convertReturnValue(returnValue C.longlong, sig CFunctionSignature) (any, er
     case CInt8:
         return int(*(*C.char)(unsafe.Pointer(&returnValue))), nil
 
-    case CUInt8:
+    case CUInt8, CChar:
         return uint8(*(*C.uchar)(unsafe.Pointer(&returnValue))), nil
+
+    case CFloat:
+        return float64(*(*C.float)(unsafe.Pointer(&returnValue))), nil
 
     case CDouble:
         return float64(*(*C.double)(unsafe.Pointer(&returnValue))), nil
@@ -1001,22 +1251,45 @@ func convertReturnValue(returnValue C.longlong, sig CFunctionSignature) (any, er
         return &CPointerValue{Ptr: ptr}, nil
 
     case CStruct:
-        ptr := *(*unsafe.Pointer)(unsafe.Pointer(&returnValue))
-        if ptr == nil {
-            return nil, nil
-        }
-
         if sig.ReturnStructName != "" {
-            // Typed struct - unmarshal from C memory
-            structDef, err := getStructLayoutFromZa(sig.ReturnStructName)
-            if err != nil {
-                return nil, fmt.Errorf("failed to get struct layout for %s: %v", sig.ReturnStructName, err)
+            // Look up the struct/union definition to determine if it's a value or pointer return
+            var structDef *CLibraryStruct
+            var err error
+
+            // Check if it's a union from C headers
+            ffiStructLock.RLock()
+            if def, ok := ffiStructDefinitions[sig.ReturnStructName]; ok {
+                structDef = def
+            }
+            ffiStructLock.RUnlock()
+
+            // If not found in FFI registry, try Za struct definition
+            if structDef == nil {
+                structDef, err = getStructLayoutFromZa(sig.ReturnStructName)
+                if err != nil {
+                    return nil, fmt.Errorf("failed to get struct/union layout for %s: %v", sig.ReturnStructName, err)
+                }
             }
 
-            // Unmarshal C memory to Za struct
-            return UnmarshalStructFromC(ptr, structDef, sig.ReturnStructName)
+            // Validate struct definition before unmarshaling
+            if structDef == nil {
+                return nil, fmt.Errorf("struct/union %s is not defined - cannot unmarshal return value", sig.ReturnStructName)
+            }
+            if structDef.Size == 0 {
+                return nil, fmt.Errorf("struct/union %s has zero size - cannot unmarshal", sig.ReturnStructName)
+            }
+
+            // Check if this is a union type (unions are typically returned by value)
+            if structDef.IsUnion {
+                // Union returned by value - data is in return buffer
+                return unmarshalUnion(returnValuePtr, structDef)
+            } else {
+                // Regular struct - also returned by value (data is in return buffer)
+                return UnmarshalStructFromC(returnValuePtr, structDef, sig.ReturnStructName)
+            }
         } else {
             // Generic struct - return as opaque pointer
+            ptr := *(*unsafe.Pointer)(returnValuePtr)
             return &CPointerValue{Ptr: ptr}, nil
         }
 

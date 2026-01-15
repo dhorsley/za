@@ -1,0 +1,68 @@
+#!/usr/bin/env za
+
+# Final test of AUTO struct import - demonstrates working feature
+
+println "[#4]Testing AUTO Struct Import - Final Test[#-]"
+println "=" * 60
+
+module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+use +test_c
+
+println "\n[#6]Test 1: Fully qualified VAR declarations[#-]"
+var c1 test_c::color_t
+var c2 test_c::data_block_t
+println "  ✓ Declared variables of AUTO-imported types"
+
+println "\n[#6]Test 2: Structs from C functions[#-]"
+color = test_c::make_color(255, 128, 64, 200)
+println "  Color from C:"
+println "    rgb[0]:", color.rgb[0], "(expected 255)"
+println "    rgb[1]:", color.rgb[1], "(expected 128)"
+println "    rgb[2]:", color.rgb[2], "(expected 64)"
+println "    alpha:", color.alpha, "(expected 200)"
+assert color.alpha == 200, "Alpha should be 200"
+println "  ✓ Struct from C has correct field values"
+
+println "\n[#6]Test 3: Pass struct to C function[#-]"
+avg = test_c::get_avg_rgb(color)
+println "  Average RGB:", avg, "(expected 149)"
+assert avg == 149, "Average should be 149"
+println "  ✓ Passing struct to C works"
+
+println "\n[#6]Test 4: Za maps as structs[#-]"
+za_color = map()
+za_color.rgb = [100, 150, 200]
+za_color.alpha = 255
+avg2 = test_c::get_avg_rgb(za_color)
+println "  Average from Za map:", avg2, "(expected 150)"
+assert avg2 == 150, "Average should be 150"
+println "  ✓ Za maps work as C structs"
+
+println "\n[#6]Test 5: data_block_t[#-]"
+block = test_c::make_data_block(42, 10, 20, 30, 40, 50)
+println "  Data block:"
+println "    id:", block.id, "(expected 42)"
+println "    values[0]:", block.values[0], "(expected 10)"
+println "    count:", block.count, "(expected 5)"
+assert block.id == 42, "ID should be 42"
+assert block.count == 5, "Count should be 5"
+println "  ✓ data_block_t works correctly"
+
+println "\n[#6]Test 6: Pass data_block to C[#-]"
+sum = test_c::sum_data_block(block)
+println "  Sum of values:", sum, "(expected 150)"
+assert sum == 150, "Sum should be 150"
+println "  ✓ Passing data_block to C works"
+
+println "\n[#6]Test 7: Debug info[#-]"
+showstruct
+
+println "\n[#2]✅ All Tests Passed![#-]"
+println "\n[#3]Feature Summary:[#-]"
+println "  ✓ C structs automatically registered from AUTO headers"
+println "  ✓ Fully qualified VAR declarations: var c test_c::color_t"
+println "  ✓ Structs returned from C functions work"
+println "  ✓ Structs can be passed to C functions"
+println "  ✓ Array fields in structs handled correctly"
+println "  ✓ Za maps can be used as C structs (backward compatible)"
+println "  ✓ No manual STRUCT/ENDSTRUCT definitions needed"

@@ -4146,7 +4146,7 @@ On exit it restores terminal state and turns the cursor back on (lines 841–844
 
 ## F.1 Introduction and Use Cases
 
-Za's Foreign Function Interface (FFI) is an experimental feature that enables direct calling of C library functions from Za scripts without requiring custom Go bindings. This allows you to leverage the vast ecosystem of existing C libraries for specialized tasks.
+Za's Foreign Function Interface (FFI) is an experimental feature that enables direct calling of C library functions from Za scripts. This allows you to leverage the vast ecosystem of existing C libraries for specialized tasks.
 
 **When to use FFI:**
 
@@ -4168,7 +4168,7 @@ Za's Foreign Function Interface (FFI) is an experimental feature that enables di
 C libraries are loaded dynamically using the `MODULE` keyword with an alias:
 
 ```za
-MODULE "/path/to/library.so" AS alias_name
+MODULE "/path/to/library.so" AS alias_name [AUTO]
 USE +alias_name
 ```
 
@@ -4321,13 +4321,23 @@ The AUTO clause parses C headers and extracts:
      #define UNIX_FLAG 1
    #endif
 
-   #ifdef __LP64__
+   #if defined(__LP64__) && VERSION > 1
      typedef unsigned long size_t;  // 64-bit
+   #elif VERSION == 1
+     typedef unsigned int size_t;   // 32-bit legacy
    #else
-     typedef unsigned int size_t;   // 32-bit
+     typedef unsigned short size_t;  // 16-bit
    #endif
    ```
-   - Supported directives: `#ifdef`, `#ifndef`, `#else`, `#endif`
+   - Supported directives: `#ifdef`, `#ifndef`, `#if`, `#elif`, `#else`, `#endif`, `#define`, `#include`
+   - **`#if` and `#elif`** with full expression evaluation:
+     - Numeric comparisons: `>`, `<`, `==`, `!=`, `>=`, `<=`
+     - Boolean operators: `&&`, `||`
+     - `defined()` operator: `defined(MACRO)` or `defined MACRO`
+     - Undefined macros treated as 0 (C preprocessor semantics)
+     - Only first true condition in if/elif/else chain activates
+     - Example: `#if defined(LINUX) && VERSION > 2`
+   - **`#include`** directive with recursion and cycle detection
    - Nested conditionals supported (unlimited depth via stack)
    - Platform macros auto-defined:
      - `__linux__` = "1" (on Linux/BSD systems)
@@ -4339,20 +4349,43 @@ The AUTO clause parses C headers and extracts:
    - Inactive blocks automatically skipped (not parsed)
    - Enables parsing real system headers (stdio.h, stdlib.h, sys/types.h)
    - Debug output: Set `ZA_DEBUG_AUTO=1` to see condition evaluation
-   - **Not supported** (future phases):
-     - `#include` recursion (Phase 7)
-     - Complex `#if` expressions: `#if defined(A) && defined(B)` (Phase 8)
-     - `#elif` directive (Phase 8)
-     - Macro expansion in values: `#define SIZE BUFFER_SIZE` (Phase 9)
+   - **Note**: Macro names prefixed internally to avoid Za keyword conflicts (e.g., VERSION)
+
+9. **Struct definitions** (automatically registered as Za types):
+   ```c
+   typedef struct {
+       int x;
+       int y;
+   } Point;
+
+   typedef struct {
+       uint8_t rgb[3];
+       char name[32];
+   } Color;
+   ```
+   - C structs automatically registered in Za's `structmaps`
+   - Supports VAR declarations: `var p Point`, `var c mylib::Color`
+   - Can be received from C functions (by value or pointer)
+   - Can be passed to C functions
+   - Array fields fully supported
+   - Backward compatible: Za map-based structs still work
+   - See test: `za_tests/test_auto_struct*.za`
+
+10. **Numeric type coercion** (comparison operators):
+    - `uint8`, `uint16`, `uint32`, `uint64` can be compared with `int`/`int64`
+    - Automatic value range checking and safe promotion
+    - Example: `color.r == 255` works (uint8 field compared to int literal)
+    - Preserves bit precision for uint64 values
+    - Applies to: `==`, `!=`, `>`, `<`, `>=`, `<=`
 
 **Not parsed** (limitations):
+
 - Function-like macros: `#define MAX(a,b) ((a)>(b)?(a):(b))`
 - Forward references: `#define B (A * 2)` where A is defined later
 - Function pointer typedefs: `typedef int (*callback_t)(void*);`
 - Array typedefs: `typedef int IntArray[10];`
-- Struct definitions (struct layout parsing)
 - Character literals: `#define NEWLINE_CHAR '\n'`
-- `#include` directives (headers must be explicitly listed)
+- Nested structs (struct fields that are themselves structs)
 
 ### F.3.3 Accessing Constants
 
@@ -4374,12 +4407,14 @@ alpha = png::PNG_COLOR_TYPE_RGBA
 When no explicit path is provided, AUTO searches for headers in standard locations:
 
 **Search paths** (in order):
+
 1. `/usr/include/<header>`
 2. `/usr/local/include/<header>`
 3. `/usr/include/<arch>-linux-gnu/<header>` (e.g., x86_64-linux-gnu)
 4. `/usr/include/<libname>/<header>` (e.g., curl/curl.h)
 
 **Header name derivation:**
+
 - `libpng.so` → searches for `png.h`
 - `libcurl.so` → searches for `curl.h`
 - `libjson-c.so` → searches for `json.h`, `json-c/json.h`
@@ -4423,13 +4458,14 @@ module "libc.so.6" as c auto
 use +c
 
 # Functions automatically discovered from headers - no LIB needed!
-len = strlen("hello")       # ✓ Works automatically
-cmp = strcmp("a", "b")      # ✓ Works automatically
-ptr = malloc(100)           # ✓ Works automatically
-free(ptr)                   # ✓ Works automatically
+len = strlen("hello")       # Works automatically
+cmp = strcmp("a", "b")      # Works automatically
+ptr = malloc(100)           # Works automatically
+free(ptr)                   # Works automatically
 ```
 
 **What gets auto-discovered:**
+
 - Simple functions: `int foo(int x);`
 - Pointer returns: `void *malloc(size_t size);`, `char *strcpy(...);`
 - Multiline declarations (automatically normalized)
@@ -4437,6 +4473,7 @@ free(ptr)                   # ✓ Works automatically
 - Const/extern qualifiers: `extern size_t fread(...);`
 
 **What gets skipped:**
+
 - `typedef` statements
 - `#define` macros
 - `static inline` functions
@@ -4459,6 +4496,7 @@ len = strlen("hello")  # Uses our override signature
 ### F.3.7 Error Handling
 
 If AUTO cannot find or parse headers:
+
 - A **warning** is printed to stderr
 - Module still loads successfully
 - Functions remain accessible (constants unavailable)
@@ -4501,6 +4539,7 @@ end
 ### F.3.9 Benefits Over Manual Constants and LIB Declarations
 
 **Before AUTO (manual constants and LIB declarations):**
+
 ```za
 module "libpng.so.16" as png
 use +png
@@ -4523,6 +4562,7 @@ lib png::png_read_image(png:ptr, rows:ptr) -> void
 ```
 
 **After AUTO (everything automatic):**
+
 ```za
 module "libpng.so.16" as png auto
 use +png
@@ -4535,11 +4575,12 @@ info = png_create_info_struct(rs)
 ```
 
 **Summary of benefits:**
-- ✅ No manual constant definitions
-- ✅ No manual LIB function declarations
-- ✅ Automatically synchronized with header file changes
-- ✅ Type-safe function calls with auto-discovered signatures
-- ✅ Reduces boilerplate code by 80-90%
+
+- No manual constant definitions
+- No manual LIB function declarations
+- Automatically synchronized with header file changes
+- Type-safe function calls with auto-discovered signatures
+- Reduces boilerplate code by 80-90%
 
 ## F.4 Declaring Function Signatures with LIB
 
@@ -4553,6 +4594,7 @@ lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
 **Supported types:**
 
 **Integer types:**
+
 - `int` - C 32-bit integers (int, int32_t)
 - `uint` - C 32-bit unsigned integers (unsigned int, uint32_t)
 - `int8` - C 8-bit signed integers (int8_t) - range: -128 to 127
@@ -4565,11 +4607,13 @@ lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
 - `uintptr` - Pointer-sized unsigned integer (uintptr_t) - maps to uint64
 
 **Floating-point types:**
+
 - `float` - C single-precision float (32-bit)
 - `double` - C double-precision float (64-bit, preferred for floating-point)
 - `longdouble` - C extended precision float (long double, 80-bit on x86-64)
 
 **Other types:**
+
 - `string` - C null-terminated string (char*)
 - `pointer` - Generic pointer (void*, struct pointers)
 - `void` - Return type only (function returns nothing)
@@ -4638,8 +4682,8 @@ lib c::printf(fmt:string, ...args) -> int
 
 Once declared with `LIB`, C functions are called using the (optional) `namespace::function(args)` syntax. If no namespace is specified, then lookup is performed against the USE chain:
 
-use +c
 ```za
+use +c
 # Simple calls with return values
 result = m::sqrt(16.0)           # result = 4.0
 power = m::pow(2.0, 8.0)         # power = 256.0
@@ -4933,7 +4977,7 @@ help plugin find glib::g_malloc
 
 ## F.9 Complete Working Examples
 
-### F.8.1 Math Operations (libm)
+### F.9.1 Math Operations (libm)
 
 ```za
 module "/usr/lib/libm.so.6" as m
@@ -4962,7 +5006,7 @@ println "floor(3.7) = ",m::floor(3.7)  # 3.0
 println "ceil(3.2) = ",m::ceil(3.2)    # 4.0
 ```
 
-### F.8.2 String Manipulation (libc)
+### F.9.2 String Manipulation (libc)
 
 ```za
 module "/usr/lib/libc.so.6" as c
@@ -4986,7 +5030,7 @@ cmp2 = c::strcmp("test", "test")
 println "Equal strings: {cmp2}"  # 0
 ```
 
-### F.8.3 Memory Management (libc)
+### F.9.3 Memory Management (libc)
 
 ```za
 module "/usr/lib/libc.so.6" as c
@@ -5013,7 +5057,7 @@ c::free(buffer)
 println "Memory freed"
 ```
 
-### F.8.4 JSON Processing (libjson-c)
+### F.9.4 JSON Processing (libjson-c)
 
 ```za
 module "/usr/lib/libjson-c.so.5" as json
@@ -5044,7 +5088,7 @@ println json_str
 json_object_put(person)
 ```
 
-### F.8.5 Graphics (libgd)
+### F.9.5 Graphics (libgd)
 
 ```za
 module "/usr/lib/libgd.so.3" as gd
@@ -5081,7 +5125,7 @@ endif
 gdImageDestroy(im)
 ```
 
-### F.8.6 Terminal UI (ncurses)
+### F.9.6 Terminal UI (ncurses)
 
 ```za
 module "/usr/lib/libncursesw.so.6" as nc
@@ -5117,7 +5161,7 @@ nc::endwin()
 
 ## F.10 Advanced Topics
 
-### F.9.1 Opaque Structure Pointers
+### F.10.1 Opaque Structure Pointers
 
 C structures are handled as opaque pointers. Za doesn't need to know the internal layout:
 
@@ -5141,7 +5185,7 @@ println "List length: {length}"  # 3
 glib::g_list_free(list)
 ```
 
-### F.9.2 Struct Marshaling Between Za and C
+### F.10.2 Struct Marshaling Between Za and C
 
 Za supports bidirectional struct marshaling for passing data between Za and C libraries.
 
@@ -5183,6 +5227,7 @@ ex::draw_point(point)
 ```
 
 Za automatically:
+
 1. Allocates C memory for the struct
 2. Marshals Za struct fields to C memory layout
 3. Passes pointer to C function
@@ -5242,8 +5287,70 @@ endif
 | `bool` | `_Bool`, `int` | Converted to 0/1 |
 | `string` | `char*` | Allocated as C string |
 | `pointer` | `void*` | Raw pointer value |
+| `[int]` | `int[N]` | Fixed-size arrays (v1.2.2+) |
 
-**Not yet supported**: Nested structs, fixed-size arrays in structs
+**Supported (v1.2.2+)**: Fixed-size arrays in structs, union types, struct-by-value parameters/returns
+
+**Not yet supported**: Nested structs
+
+#### Struct-by-Value Support (v1.2.2+)
+
+Za fully supports C functions that pass or return structs by value (not pointers). This is handled automatically when using the `AUTO` clause or when struct definitions are registered with the FFI system.
+
+**Return by value:**
+
+```za
+module "libexample.so" as ex auto "example.h"
+use +ex
+
+# C function: Color make_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+# Automatically discovered and callable
+color = ex::make_color(255, 128, 64, 200)
+
+# Access fields directly
+println "R: {color.rgb[0]}, G: {color.rgb[1]}, B: {color.rgb[2]}"
+println "Alpha: {color.alpha}"
+```
+
+**Pass by value:**
+
+```za
+# C function: int get_average_rgb(Color c)
+avg = ex::get_average_rgb(color)
+println "Average RGB: {avg}"
+```
+
+**Fixed-size arrays in structs:**
+
+```za
+# C struct: typedef struct { int id; int values[5]; int count; } DataBlock;
+block = ex::make_data_block(42, 10, 20, 30, 40, 50)
+
+# Access array elements
+println "ID: {block.id}"
+println "First value: {block.values[0]}"
+println "Third value: {block.values[2]}"
+println "Count: {block.count}"
+
+# Pass back to C
+sum = ex::sum_data_block(block)
+println "Sum: {sum}"  # Prints: Sum: 150
+```
+
+**Key features:**
+
+1. **Automatic marshaling**: Za creates proper libffi type descriptors for structs
+2. **Array expansion**: Fixed-size arrays like `uint8_t rgb[3]` work correctly
+3. **Round-trip fidelity**: Data is preserved when passing structs C → Za → C
+4. **Type safety**: Validates struct definitions exist before calling C functions
+5. **Performance**: Struct type descriptors are cached and reused
+
+**Notes:**
+
+- Struct-by-value is distinct from pointer-based struct passing (`pointer` type)
+- When using `AUTO` clause, struct definitions are parsed from headers automatically
+- For manual `LIB` declarations, ensure struct definitions match C layouts exactly
+- See `za_tests/test_ffi_struct_arrays.za` for comprehensive examples
 
 #### Best Practices
 
@@ -5260,6 +5367,7 @@ See working examples in:
 - `za_tests/test_ffi_struct_basic.za` - Allocation and deallocation
 - `za_tests/test_ffi_struct_marshal.za` - Marshaling tests
 - `za_tests/test_ffi_struct_stat.za` - Real-world stat() with out parameters
+- `za_tests/test_ffi_struct_arrays.za` - Struct-by-value with fixed-size arrays (v1.2.2+)
 - `za_tests/test_ffi_png_struct.za` - Opaque pointers (library-managed structs)
 
 #### When to Use Each Mode
@@ -5280,7 +5388,7 @@ See working examples in:
 - C function fills the struct with data (out parameters)
 - Example: `stat()`, `readdir()`, system calls that return structured data
 
-### F.9.3 Complex Data Structures
+### F.10.3 Complex Data Structures
 
 Working with complex C data structures via pointers:
 
@@ -5307,7 +5415,7 @@ println json_str  # [10,20,30]
 json::json_object_put(arr)
 ```
 
-### F.9.4 Multi-Library Integration
+### F.10.4 Multi-Library Integration
 
 Combining multiple C libraries in one script:
 
@@ -5335,7 +5443,7 @@ buffer = c::malloc(1024)
 c::free(buffer)
 ```
 
-### F.9.5 Error Handling Strategies
+### F.10.5 Error Handling Strategies
 
 Check return values and null pointers:
 
@@ -5365,7 +5473,7 @@ endif
 println "File operations completed successfully"
 ```
 
-### F.9.6 Memory Management Patterns
+### F.10.6 Memory Management Patterns
 
 **Pattern 1: Allocate-Use-Free**
 ```za
@@ -5407,7 +5515,7 @@ json::json_object_put(obj)  # Library's cleanup function
 
 Za supports passing Za functions to C as callbacks (function pointers). This enables integration with C APIs that require callbacks such as `qsort_r()`, `pthread_create()`, signal handlers, and event-driven libraries.
 
-### F.10.1 How Callbacks Work
+### F.11.1 How Callbacks Work
 
 Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions through C:
 
@@ -5417,15 +5525,17 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 4. When C calls back, the trampoline invokes your Za function
 5. Cleanup with `c_unregister_callback()` when done
 
-### F.10.2 Supported Callback Signatures
+### F.11.2 Supported Callback Signatures
 
-**Za now supports unlimited callback signatures via libffi closures!** The system automatically chooses between:
+**Za supports callback signatures via libffi closures!** The system automatically chooses between:
+
 - **Hardcoded trampolines** (19 common signatures) - optimal performance
 - **Dynamic closures** (any signature) - generated at runtime via libffi
 
 #### Hardcoded Trampolines (Fast Path)
 
 **Core Signatures:**
+
 | Signature | C Type | Use Case |
 |-----------|--------|----------|
 | `ptr,ptr->int` | `int (*)(void*, void*, void*)` | qsort_r comparators |
@@ -5435,6 +5545,7 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 | `int->void` | `void (*)(int)` | Simple signal handlers |
 
 **Math Signatures:**
+
 | Signature | C Type | Use Case |
 |-----------|--------|----------|
 | `double->double` | `double (*)(double, void*)` | Math transformations |
@@ -5442,6 +5553,7 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 | `double,double->double` | `double (*)(double, double, void*)` | Binary math ops |
 
 **Pointer Signatures:**
+
 | Signature | C Type | Use Case |
 |-----------|--------|----------|
 | `ptr,ptr,ptr->int` | `int (*)(void*, void*, void*, void*)` | 3-argument comparators |
@@ -5453,6 +5565,7 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 | `ptr,ptr->bool` | `int (*)(void*, void*, void*)` | Predicate filters |
 
 **Primitive Signatures:**
+
 | Signature | C Type | Use Case |
 |-----------|--------|----------|
 | `int->int` | `int (*)(int, void*)` | Hash functions |
@@ -5481,7 +5594,7 @@ c_register_callback("my_func", "int64,float,double->uint32")
 
 **Note:** Most callbacks require C APIs that support a **context parameter** (also called `user_data`, `thunk`, or `arg`). This is where the `.handle` is passed.
 
-### F.10.3 Example: qsort_r with Custom Comparator
+### F.11.3 Example: qsort_r with Custom Comparator
 
 ```za
 module "libc.so.6" as c
@@ -5521,7 +5634,7 @@ c_unregister_callback(cb)
 # arr is now sorted
 ```
 
-### F.10.4 Example: Thread Creation
+### F.11.4 Example: Thread Creation
 
 ```za
 module "libpthread.so.0" as pthread
@@ -5553,7 +5666,7 @@ endif
 c_unregister_callback(cb)
 ```
 
-### F.10.5 Custom Callback Signatures (Dynamic Closures)
+### F.11.5 Custom Callback Signatures (Dynamic Closures)
 
 For signatures not in the hardcoded list, Za automatically creates dynamic closures at runtime. This enables integration with any C API that uses callbacks.
 
@@ -5616,7 +5729,7 @@ cb = c_register_callback("main::mixed_callback", "int32,float,ptr->int64")
 | `bool` | `int` (0/1) | 4 bytes |
 | `void` | `void` | - |
 
-### F.10.6 Callback Lifecycle
+### F.11.6 Callback Lifecycle
 
 **Registration:**
 ```za
@@ -5636,7 +5749,7 @@ c_unregister_callback(cb)
 # Must be called when C will no longer call the callback
 ```
 
-### F.10.7 Thread Safety
+### F.11.7 Thread Safety
 
 **Important:** Callbacks are serialized with a mutex to protect Za's interpreter. This means:
 
@@ -5644,7 +5757,7 @@ c_unregister_callback(cb)
 - Callbacks execute sequentially, never in parallel
 - Performance may be impacted with high-frequency callbacks from many threads
 
-### F.10.8 Limitations
+### F.11.8 Limitations
 
 1. **Context parameter required:** Most callbacks need C APIs with a context/user_data parameter. Simple callbacks without context (like old `signal()`) have limited support.
 
@@ -5663,7 +5776,7 @@ c_unregister_callback(cb)
 
 7. **Performance consideration:** Hardcoded trampolines have zero overhead. Dynamic closures add a small runtime marshaling cost (~1-2μs per call). For high-frequency callbacks, prefer signatures from the hardcoded list when possible.
 
-### F.10.9 Best Practices
+### F.11.9 Best Practices
 
 1. **Always cleanup:** Use try/catch blocks to ensure callbacks are unregistered:
    ```za
@@ -5706,6 +5819,7 @@ c_unregister_callback(cb)
 3. **Platform-specific behavior:** Some libraries behave differently across platforms. Test thoroughly.
 
 4. **Struct field access:** Za now supports struct marshaling for passing data between Za and C:
+
    - Define structs in Za and automatically pass to C using `struct<typename>` syntax
    - Read C struct data into Za using `c_unmarshal_struct()`
    - Direct field access works within Za structs (e.g., `point.x`)
@@ -5746,6 +5860,7 @@ c_unregister_callback(cb)
 
 7. **Wrap C operations in Za functions:** Create higher-level abstractions:
    ```za
+
    def json_create_person(name, age)
        obj = json::json_object_new_object()
        json::json_object_object_add(obj, "name",
@@ -5758,6 +5873,20 @@ c_unregister_callback(cb)
 
 8. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
 
+9. **Keep local copies for distribution:** When distributing FFI-capable scripts, include local copies of both `.so` and `.h` files in the same directory as your script:
+   ```za
+   # Use relative paths for portability
+   module "./mylib.so" as mylib auto "./mylib.h"
+   use +mylib
+   ```
+   Benefits:
+
+   - Ensures script works regardless of system library paths
+   - Locks to specific library version (prevents ABI breakage)
+   - Makes script self-contained and portable
+   - Avoids dependency on system-installed libraries
+   - Users don't need to install development packages for headers
+
 ## F.13 Platform Support and Build Requirements
 
 **Unix/Linux:**
@@ -5767,8 +5896,7 @@ c_unregister_callback(cb)
 
 **Windows:**
 
-- Limited/stub implementation
-- Most FFI features unavailable
+- Not implemented
 
 **No-FFI Builds:**
 

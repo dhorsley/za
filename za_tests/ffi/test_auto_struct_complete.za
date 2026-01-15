@@ -1,0 +1,71 @@
+#!/usr/bin/env za
+
+# Comprehensive test of AUTO struct import with asserts
+
+println "[#4]Testing AUTO Struct Import[#-]"
+println "=" * 60
+
+module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+use +test_c
+
+println "\n[#6]Test 1: Declare variable with fully qualified type[#-]"
+var c test_c::color_t
+println "  SUCCESS: Declared variable of type test_c::color_t"
+
+println "\n[#6]Test 2: Receive struct from C function[#-]"
+c2 = test_c::make_color(255, 128, 64, 200)
+println "  c2.rgb[0]:", c2.rgb[0]
+println "  c2.rgb[1]:", c2.rgb[1]
+println "  c2.rgb[2]:", c2.rgb[2]
+println "  c2.alpha:", c2.alpha
+assert c2.rgb[0] == 255, "c2.rgb[0] should be 255"
+assert c2.rgb[1] == 128, "c2.rgb[1] should be 128"
+assert c2.rgb[2] == 64, "c2.rgb[2] should be 64"
+assert c2.alpha == 200, "c2.alpha should be 200"
+println "  [#2]✓ Struct from C has correct values[#-]"
+
+println "\n[#6]Test 3: Pass struct to C function[#-]"
+avg = test_c::get_avg_rgb(c2)
+println "  Average RGB:", avg
+assert avg == 149, "Average should be (255+128+64)/3 = 149"
+println "  [#2]✓ Passing struct to C works[#-]"
+
+println "\n[#6]Test 4: Create struct in Za, pass to C[#-]"
+c3 = map()
+c3.rgb = [100, 150, 200]
+c3.alpha = 255
+avg2 = test_c::get_avg_rgb(c3)
+println "  Za-created struct average:", avg2
+assert avg2 == 150, "Average should be (100+150+200)/3 = 150"
+println "  [#2]✓ Za map as struct works[#-]"
+
+println "\n[#6]Test 5: data_block_t type[#-]"
+var b test_c::data_block_t
+println "  SUCCESS: Declared variable of type test_c::data_block_t"
+
+println "\n[#6]Test 6: data_block_t from C[#-]"
+block = test_c::make_data_block(42, 10, 20, 30, 40, 50)
+println "  block.id:", block.id
+println "  block.values[0]:", block.values[0]
+println "  block.values[4]:", block.values[4]
+println "  block.count:", block.count
+assert block.id == 42, "block.id should be 42"
+assert block.values[0] == 10, "block.values[0] should be 10"
+assert block.values[4] == 50, "block.values[4] should be 50"
+assert block.count == 5, "block.count should be 5"
+println "  [#2]✓ data_block_t from C correct[#-]"
+
+println "\n[#6]Test 7: Pass data_block to C[#-]"
+sum = test_c::sum_data_block(block)
+println "  Sum of values:", sum
+assert sum == 150, "Sum should be 10+20+30+40+50 = 150"
+println "  [#2]✓ Passing data_block to C works[#-]"
+
+println "\n[#2]✅ All AUTO Struct Import Tests Passed![#-]"
+println "\n[#3]Successfully demonstrated:[#-]"
+println "  • C structs automatically registered from headers"
+println "  • Fully qualified VAR declarations work: var c test_c::color_t"
+println "  • Structs returned from C functions have correct values"
+println "  • Structs can be passed to C functions"
+println "  • Array fields in structs work correctly"
+println "  • No manual STRUCT/ENDSTRUCT definitions needed"

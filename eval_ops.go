@@ -1418,55 +1418,220 @@ func deepEqual(val1 any, val2 any) bool {
         return true
 
     case int:
-        int2, ok := val2.(int)
-        if ok {
-            return typ1 == int2
-        }
-        intsixfour, ok := val2.(int64)
-        if ok {
-            return int64(typ1) == intsixfour
-        }
-        float2, ok := val2.(float64)
-        if ok {
-            return float64(typ1) == float2
+        // Handle int comparisons with other numeric types
+        switch v2 := val2.(type) {
+        case int:
+            return typ1 == v2
+        case int64:
+            return int64(typ1) == v2
+        case uint8:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint16:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint32:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint64:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == v2
+        case uint:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
         return false
 
     case uint64:
-        uintsixfour, ok := val2.(uint64)
-        if ok {
-            return typ1 == uintsixfour
+        // Handle uint64 comparisons with other numeric types
+        switch v2 := val2.(type) {
+        case uint64:
+            return typ1 == v2
+        case uint8:
+            return typ1 == uint64(v2)
+        case uint16:
+            return typ1 == uint64(v2)
+        case uint32:
+            return typ1 == uint64(v2)
+        case uint:
+            return typ1 == uint64(v2)
+        case int:
+            if v2 < 0 {
+                return false
+            }
+            return typ1 == uint64(v2)
+        case int64:
+            if v2 < 0 {
+                return false
+            }
+            return typ1 == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
-        int2, ok := val2.(int)
-        if ok {
-            return typ1 == uint64(int2)
+        return false
+
+    case uint8:
+        // Handle uint8 comparisons with other numeric types
+        val1_u64 := uint64(typ1)
+        switch v2 := val2.(type) {
+        case uint8:
+            return typ1 == v2
+        case uint16:
+            return val1_u64 == uint64(v2)
+        case uint32:
+            return val1_u64 == uint64(v2)
+        case uint64:
+            return val1_u64 == v2
+        case uint:
+            return val1_u64 == uint64(v2)
+        case int:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case int64:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
-        intsixfour, ok := val2.(int64)
-        if ok {
-            return typ1 == uint64(intsixfour)
+        return false
+
+    case uint16:
+        // Handle uint16 comparisons with other numeric types
+        val1_u64 := uint64(typ1)
+        switch v2 := val2.(type) {
+        case uint8:
+            return val1_u64 == uint64(v2)
+        case uint16:
+            return typ1 == v2
+        case uint32:
+            return val1_u64 == uint64(v2)
+        case uint64:
+            return val1_u64 == v2
+        case uint:
+            return val1_u64 == uint64(v2)
+        case int:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case int64:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
-        float2, ok := val2.(float64)
-        if ok {
-            return float64(typ1) == float2
+        return false
+
+    case uint32:
+        // Handle uint32 comparisons with other numeric types
+        val1_u64 := uint64(typ1)
+        switch v2 := val2.(type) {
+        case uint8:
+            return val1_u64 == uint64(v2)
+        case uint16:
+            return val1_u64 == uint64(v2)
+        case uint32:
+            return typ1 == v2
+        case uint64:
+            return val1_u64 == v2
+        case uint:
+            return val1_u64 == uint64(v2)
+        case int:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case int64:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
+        }
+        return false
+
+    case uint:
+        // Handle uint comparisons with other numeric types
+        val1_u64 := uint64(typ1)
+        switch v2 := val2.(type) {
+        case uint8:
+            return val1_u64 == uint64(v2)
+        case uint16:
+            return val1_u64 == uint64(v2)
+        case uint32:
+            return val1_u64 == uint64(v2)
+        case uint64:
+            return val1_u64 == v2
+        case uint:
+            return typ1 == v2
+        case int:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case int64:
+            if v2 < 0 {
+                return false
+            }
+            return val1_u64 == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
         return false
 
     case int64:
-        int2, ok := val2.(int)
-        if ok {
-            return typ1 == int64(int2)
-        }
-        uintsixfour, ok := val2.(uint64)
-        if ok {
-            return typ1 == int64(uintsixfour)
-        }
-        intsixfour, ok := val2.(int64)
-        if ok {
-            return typ1 == intsixfour
-        }
-        float2, ok := val2.(float64)
-        if ok {
-            return float64(typ1) == float2
+        // Handle int64 comparisons with other numeric types
+        switch v2 := val2.(type) {
+        case int64:
+            return typ1 == v2
+        case int:
+            return typ1 == int64(v2)
+        case uint8:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint16:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint32:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case uint64:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == v2
+        case uint:
+            if typ1 < 0 {
+                return false
+            }
+            return uint64(typ1) == uint64(v2)
+        case float64:
+            return float64(typ1) == v2
         }
         return false
 
@@ -1502,13 +1667,115 @@ func compare(val1 any, val2 any, operation int64) any {
 
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)
-    if int1OK && int2OK {
-        return compareInt(int1, int2, operation)
-    }
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
+    // Check for uint types and int64
+    var uint1, uint2, int64_1, int64_2 bool
+    switch val1.(type) {
+    case uint, uint8, uint16, uint32, uint64:
+        uint1 = true
+    case int64:
+        int64_1 = true
+    }
+    switch val2.(type) {
+    case uint, uint8, uint16, uint32, uint64:
+        uint2 = true
+    case int64:
+        int64_2 = true
+    }
+
+    // If both are plain int and no uint types or int64, use fast path
+    if int1OK && int2OK && !uint1 && !uint2 && !int64_1 && !int64_2 {
+        return compareInt(int1, int2, operation)
+    }
+
+    // If any integer type mixing (int/int64 with uint), coerce to uint64
+    // This includes: int vs uint, int64 vs uint64, uint8 vs int, etc.
+    if (int1OK || uint1 || int64_1) && (int2OK || uint2 || int64_2) {
+        // Convert both to uint64 for comparison
+        var u1, u2 uint64
+        var err1, err2 bool
+
+        // Convert val1
+        switch v := val1.(type) {
+        case int:
+            if v < 0 {
+                err1 = true
+            } else {
+                u1 = uint64(v)
+            }
+        case int64:
+            if v < 0 {
+                err1 = true
+            } else {
+                u1 = uint64(v)
+            }
+        case uint:
+            u1 = uint64(v)
+        case uint8:
+            u1 = uint64(v)
+        case uint16:
+            u1 = uint64(v)
+        case uint32:
+            u1 = uint64(v)
+        case uint64:
+            u1 = v
+        default:
+            err1 = true
+        }
+
+        // Convert val2
+        switch v := val2.(type) {
+        case int:
+            if v < 0 {
+                err2 = true
+            } else {
+                u2 = uint64(v)
+            }
+        case int64:
+            if v < 0 {
+                err2 = true
+            } else {
+                u2 = uint64(v)
+            }
+        case uint:
+            u2 = uint64(v)
+        case uint8:
+            u2 = uint64(v)
+        case uint16:
+            u2 = uint64(v)
+        case uint32:
+            u2 = uint64(v)
+        case uint64:
+            u2 = v
+        default:
+            err2 = true
+        }
+
+        if err1 || err2 {
+            return false
+        }
+
+        // Compare as uint64
+        switch operation {
+        case SYM_LT:
+            return u1 < u2
+        case SYM_LE:
+            return u1 <= u2
+        case SYM_GT:
+            return u1 > u2
+        case SYM_GE:
+            return u1 >= u2
+        case SYM_EQ:
+            return u1 == u2
+        case SYM_NE:
+            return u1 != u2
+        }
+    }
+
+    // Handle float coercion
     if int1OK {
         float1 = float64(int1)
         float1OK = true
@@ -1555,6 +1822,7 @@ func compare(val1 any, val2 any, operation int64) any {
         return compareBigInt(v1, v2, operation)
     }
 
+    // Handle int64 types
     if i164 || i264 {
         i1, e1 := GetAsInt64(val1)
         i2, e2 := GetAsInt64(val2)
@@ -2207,7 +2475,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     // fmt.Printf("[DEBUG] Calling C function: library='%s', function='%s'\n", libraryName, functionName)
                     result, notes := CallCFunction(libraryName, functionName, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
-                    if len(notes) > 0 && str.Contains(notes[0], "[ERROR:") {
+                    if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
                     }
                     return result, false, nil, nil
@@ -2218,7 +2486,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     // fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
                     result, notes := CallCFunction(foundNamespace, name, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
-                    if len(notes) > 0 && str.Contains(notes[0], "[ERROR:") {
+                    if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
                     }
                     return result, false, nil, nil

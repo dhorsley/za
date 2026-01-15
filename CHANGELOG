@@ -95,17 +95,36 @@ language changes
           * module-scoped typedefs (isolated per library alias)
           * limitation: function pointer typedefs, array typedefs deferred
           * processes C preprocessor directives before parsing header content
-          * supported directives: #ifdef, #ifndef, #else, #endif, #define
-          * platform macro auto-detection: __linux__, __unix__, __LP64__, __GNUC__
-          * feature macros: __USE_MISC, __USE_XOPEN
-          * nested conditionals supported (unlimited depth via stack-based tracking)
+          * supported directives: #ifdef, #ifndef, #if, #elif, #else, #endif, #define, #include
+          * #if and #elif with full expression evaluation:
+              - numeric comparisons: >, <, ==, !=, >=, <=
+              - boolean operators: &&, ||
+              - defined() operator: defined(MACRO), defined MACRO
+              - undefined macros treated as 0 (C preprocessor semantics)
+              - macro names prefixed internally to avoid Za keyword conflicts (e.g., VERSION)
+          * #include directive with recursion and cycle detection
+          * nested conditionals supported (unlimited? depth via stack-based tracking)
           * skips inactive platform-specific blocks automatically
-      - graceful degradation with warnings if headers not found
-      - test files: za_tests/test_headers_simple.za, za_tests/test_auto_functions.za,
+                - graceful degradation with warnings if headers not found
+                - test files: za_tests/test_headers_simple.za, za_tests/test_auto_functions.za,
         za_tests/test_auto_string_float_constants.za (includes cross-reference tests),
-        za_tests/test_auto_typedef.za, za_tests/test_auto_preprocessor.za
-      - limitations: function-like macros, forward references, character literals, function pointer typedefs
-      - future enhancements: #include recursion, complex #if expressions, struct definition import
+        za_tests/test_auto_typedef.za, za_tests/test_auto_preprocessor.za,
+        za_tests/test_auto_if_elif.za
+          * struct definition import from C headers:
+              - C structs automatically registered as Za types in structmaps
+              - supports VAR declarations: var c test_c::color_t
+              - structs can be received from C functions (by value or pointer)
+              - structs can be passed to C functions
+              - array fields in structs fully supported
+              - backward compatible: Za map-based structs still work
+              - test scripts at za_tests/test_auto_struct*.za
+          * numeric type coercion for comparisons:
+              - uint8, uint16, uint32, uint64 can be compared with int/int64
+              - automatic value range checking and promotion
+              - example: uint8_field == 255 now works (was assert failure)
+              - preserves bit precision for uint64 values
+              - test scripts at za_tests/test_uint64_topbit.za
+      - limitations: function-like macros, forward references, character literals, function pointer typedefs, nested structs
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
       - MODULE extension: module "libfoo.so" as foo
@@ -135,8 +154,23 @@ language changes
           - automatic marshaling when passing struct<typename> parameters to C functions
           - c_alloc_struct(), c_free_struct(), c_unmarshal_struct() for manual struct handling
           - supports basic types (int, float, double, bool), strings, pointers
+          - fixed-size arrays in structs (uint8_t rgb[3], int values[10])
+          - union types with field selection
           - out parameter support for C functions that fill structs
           - test scripts at za_tests/test_ffi_struct_*.za
+      - struct-by-value FFI support (critical stability fix):
+          - FIXED: crash bug when calling C functions that return structs by value
+          - FIXED: memory corruption when functions accept structs by value as parameters
+          - full support for passing/returning structs by value via libffi
+          - automatic ffi_type descriptor creation for struct layouts
+          - array fields properly expanded (rgb[3] → 3 sequential uint8 elements)
+          - struct type caching for performance (created once, reused)
+          - works transparently with AUTO clause parsed functions
+          - round-trip fidelity: C → Za → C with correct data preservation
+          - example: Point make_point(int x, int y); int distance(Point p);
+          - enables graphics APIs, game engines, scientific libraries
+          - backward compatible: pointer-based struct passing still works
+          - test scripts at za_tests/test_ffi_struct_arrays.za
       - callback support (C calling Za functions):
           - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
           - Za functions can be passed as callbacks to C APIs

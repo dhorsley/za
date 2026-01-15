@@ -3,7 +3,7 @@ println "[#4]═══ AUTO Clause Tests ═══[#-]\n"
 # Test 1: Explicit header path with test file
 println "[#3]Test 1: AUTO with explicit header path[#-]"
 try
-    module "libc.so.6" as test auto "za_tests/test_enum.h"
+    module "libc.so.6" as test auto "test_enum.h"
     use +test
 
     # Check if constants are defined

@@ -1,0 +1,99 @@
+#!/usr/bin/env za
+
+# Test #if and #elif preprocessor directives
+
+println "[#4]Testing #if and #elif Directives[#-]"
+println "=" * 60
+
+module "libc.so.6" as test_c auto "/home/daniel/go/src/za/za_tests/test_if_elif.h"
+use +test_c
+
+println "\n[#6]Test 1: Simple #if with numeric comparison[#-]"
+if defined("TEST1")
+    println "  TEST1 = " + TEST1
+    assert TEST1 == "version_greater_than_1", "TEST1 should be 'version_greater_than_1'"
+    println "  ✓ #if VERSION > 1 worked"
+else
+    println "  ✗ TEST1 not defined"
+    assert false, "TEST1 should be defined"
+endif
+
+println "\n[#6]Test 2: #if with defined() operator[#-]"
+if defined("TEST2")
+    println "  TEST2 = " + TEST2
+    assert TEST2 == "linux_defined", "TEST2 should be 'linux_defined'"
+    println "  ✓ #if defined(LINUX) worked"
+else
+    println "  ✗ TEST2 not defined"
+    assert false, "TEST2 should be defined"
+endif
+
+println "\n[#6]Test 3: #if with complex expression[#-]"
+if defined("TEST3")
+    println "  TEST3 = " + TEST3
+    assert TEST3 == "linux_and_version_2", "TEST3 should be 'linux_and_version_2'"
+    println "  ✓ #if defined(LINUX) && VERSION == 2 worked"
+else
+    println "  ✗ TEST3 not defined"
+    assert false, "TEST3 should be defined"
+endif
+
+println "\n[#6]Test 4: #if false, #elif true[#-]"
+if defined("TEST4")
+    println "  TEST4 = " + TEST4
+    assert TEST4 == "version_2", "TEST4 should be 'version_2'"
+    println "  ✓ #elif took the correct branch"
+else
+    println "  ✗ TEST4 not defined"
+    assert false, "TEST4 should be defined"
+endif
+
+println "\n[#6]Test 5: Multiple #elif with first one true[#-]"
+if defined("TEST5")
+    println "  TEST5 = " + TEST5
+    assert TEST5 == "one", "TEST5 should be 'one' (first elif)"
+    println "  ✓ First #elif activated, subsequent ones skipped"
+else
+    println "  ✗ TEST5 not defined"
+    assert false, "TEST5 should be defined"
+endif
+
+println "\n[#6]Test 6: All #if/#elif false, #else activates[#-]"
+if defined("TEST6")
+    println "  TEST6 = " + TEST6
+    assert TEST6 == "else", "TEST6 should be 'else'"
+    println "  ✓ #else activated when all conditions were false"
+else
+    println "  ✗ TEST6 not defined"
+    assert false, "TEST6 should be defined"
+endif
+
+println "\n[#6]Test 7: #if with undefined macro[#-]"
+if defined("TEST7")
+    println "  TEST7 = " + TEST7
+    assert TEST7 == "undefined_was_false", "TEST7 should be 'undefined_was_false'"
+    println "  ✓ Undefined macro treated as false"
+else
+    println "  ✗ TEST7 not defined"
+    assert false, "TEST7 should be defined"
+endif
+
+println "\n[#6]Test 8: Complex boolean expression[#-]"
+if defined("TEST8")
+    println "  TEST8 = " + TEST8
+    assert TEST8 == "complex_true", "TEST8 should be 'complex_true'"
+    println "  ✓ Complex expression (VERSION > 1) && (LINUX == 1) worked"
+else
+    println "  ✗ TEST8 not defined"
+    assert false, "TEST8 should be defined"
+endif
+
+println "\n[#2]✅ All #if and #elif Tests Passed![#-]"
+println "\n[#3]Verified:[#-]"
+println "  • #if with numeric comparisons"
+println "  • #if with defined() operator"
+println "  • #if with complex boolean expressions (&&, ||)"
+println "  • #elif directive (multiple branches)"
+println "  • #elif chain (only first true condition activates)"
+println "  • #else activation when all conditions false"
+println "  • Undefined macros treated as false"

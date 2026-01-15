@@ -847,13 +847,51 @@ func buildInternalLib() {
         return runtime.NumCPU(), nil
     }
 
-    slhelp["defined"] = LibHelp{in: "string", out: "bool", action: "checks if a constant or variable is defined in the current scope or USE chain"}
+    slhelp["defined"] = LibHelp{in: "string", out: "bool", action: "checks if a constant, variable, or map key is defined in the current scope or USE chain"}
     stdlib["defined"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if len(args) != 1 {
-            return nil, fmt.Errorf("defined() requires exactly 1 argument (constant name)")
+            return nil, fmt.Errorf("defined() requires exactly 1 argument (constant/variable name or map access)")
         }
 
-        constantName := GetAsString(args[0])
+        exprStr := GetAsString(args[0])
+
+        // Check if this is a map key access expression (contains '[')
+        if strings.Contains(exprStr, "[") {
+            // Parse map access: varname["key"] or varname[index]
+            bracketPos := strings.Index(exprStr, "[")
+            if bracketPos > 0 {
+                varName := strings.TrimSpace(exprStr[:bracketPos])
+
+                // Get the variable
+                bin := bind_int(evalfs, varName)
+                if bin >= uint64(len(*ident)) || !(*ident)[bin].declared {
+                    return false, nil // Variable doesn't exist
+                }
+
+                varValue := (*ident)[bin].IValue
+
+                // Check if it's a map
+                if m, ok := varValue.(map[string]any); ok {
+                    // Extract the key from the brackets
+                    keyPart := exprStr[bracketPos+1:]
+                    if endBracket := strings.Index(keyPart, "]"); endBracket > 0 {
+                        keyExpr := strings.TrimSpace(keyPart[:endBracket])
+                        // Remove surrounding quotes if present
+                        keyExpr = strings.Trim(keyExpr, "\"")
+
+                        // Check if key exists in map
+                        _, exists := m[keyExpr]
+                        return exists, nil
+                    }
+                }
+
+                // Not a map, return false
+                return false, nil
+            }
+        }
+
+        // Original behavior: check constants and simple variables
+        constantName := exprStr
 
         // Check module constants in USE chain
         chainlock.RLock()

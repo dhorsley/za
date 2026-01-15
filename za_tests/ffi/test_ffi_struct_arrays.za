@@ -1,0 +1,86 @@
+# Test FFI with Fixed-Size Array Structs
+# Tests actual C marshaling/unmarshaling of structs with array fields
+
+println "[#4]Testing FFI Fixed-Size Array Structs[#-]"
+println "=" * 60
+
+# Load C library with AUTO - should now parse struct definitions
+module "./libtest_struct_array.so" as test_c auto "./test_struct_array_lib.h"
+use +test_c
+
+println "\n[#6]Test 1: Create color from C, verify array fields[#-]"
+color = test_c::make_color(255, 128, 64, 200)
+
+println "  Color from C:"
+println "    R: ", color.rgb[0]
+println "    G: ", color.rgb[1]
+println "    B: ", color.rgb[2]
+println "    Alpha: ", color.alpha
+println " .rgb[0] type : ",kind(color.rgb[0])
+
+assert color.rgb[0] == 255, "Red component should be 255"
+assert color.rgb[1] == 128, "Green component should be 128"
+assert color.rgb[2] == 64, "Blue component should be 64"
+assert color.alpha == 200, "Alpha should be 200"
+println "  [#2]✓ C-created color struct unmarshaled correctly[#-]"
+
+println "\n[#6]Test 2: Pass color to C function[#-]"
+avg = test_c::get_avg_rgb(color)
+println "  Average RGB value: ", avg
+assert avg == 149, "Average should be (255+128+64)/3 = 149"
+println "  [#2]✓ Color struct marshaled to C correctly[#-]"
+
+println "\n[#6]Test 3: Create color in Za, pass to C[#-]"
+za_color = map()
+za_color.rgb = [100, 150, 200]
+za_color.alpha = 255
+
+
+za_avg = test_c::get_avg_rgb(za_color)
+println "  Za-created color average RGB: ", za_avg
+assert za_avg == 150, "Average should be (100+150+200)/3 = 150"
+println "  [#2]✓ Za-created color with array literal marshaled correctly[#-]"
+
+println "\n[#6]Test 4: Data block with int[5] array[#-]"
+
+ block = test_c::make_data_block(42, 10, 20, 30, 40, 50)
+
+println "  Data block from C:"
+println "    ID: ", block.id
+println "    Values[0]: ", block.values[0]
+println "    Values[2]: ", block.values[2]
+println "    Values[4]: ", block.values[4]
+println "    Count: ", block.count
+
+assert block.id == 42, "ID should be 42"
+assert block.values[0] == 10, "First value should be 10"
+assert block.values[2] == 30, "Third value should be 30"
+assert block.values[4] == 50, "Fifth value should be 50"
+assert block.count == 5, "Count should be 5"
+println "  [#2]✓ Data block unmarshaled correctly[#-]"
+
+println "\n[#6]Test 5: Pass data block to C[#-]"
+
+sum = test_c::sum_data_block(block)
+println "  Sum of data block values: ", sum
+assert sum == 150, "Sum should be 10+20+30+40+50 = 150"
+println "  [#2]✓ Data block marshaled to C correctly[#-]"
+
+println "\n[#6]Test 6: Create data block in Za, pass to C[#-]"
+za_block = map()
+za_block.id = 99
+za_block.values = [5, 10, 15, 20, 25]
+za_block.count = 5
+
+
+za_sum = test_c::sum_data_block(za_block)
+println "  Za-created block sum: ", za_sum
+assert za_sum == 75, "Sum should be 5+10+15+20+25 = 75"
+println "  [#2]✓ Za-created block with array literal marshaled correctly[#-]"
+
+println "\n[#2]✓ All FFI Fixed-Size Array Tests Passed![#-]"
+println "\nSuccessfully tested:"
+println "  • Unmarshaling C structs with uint8[N] arrays"
+println "  • Unmarshaling C structs with int[N] arrays"
+println "  • Marshaling Za structs with array literals to C"
+println "  • Round-trip conversion of array fields"

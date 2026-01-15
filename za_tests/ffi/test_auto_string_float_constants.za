@@ -1,7 +1,7 @@
 println "[#4]═══ AUTO String & Float Constants Test ═══[#-]\n"
 
 try
-    module "libc.so.6" as tconst auto "za_tests/test_string_float_constants.h"
+    module "libc.so.6" as tconst auto "test_string_float_constants.h"
     use +tconst
 
     # ===== STRING TESTS =====

@@ -1,0 +1,105 @@
+# Test Fixed-Size Arrays in C Structs
+# Tests the new array field support for FFI structs
+
+println "[#4]Testing Fixed-Size Arrays in C Structs[#-]"
+println "=" * 60
+
+# Test 1: Simple struct with uint8 array (like RGB color)
+println "\n[#6]Test 1: RGB Color Struct with uint8[3] Array[#-]"
+
+struct color_with_array
+    rgb []uint8
+    alpha uint8
+endstruct
+
+var color1 color_with_array
+color1.rgb = [255, 128, 64]
+color1.alpha = 200
+
+println "  Created color_with_array struct:"
+println "    RGB: {color1.rgb}"
+println "    Alpha: {color1.alpha}"
+assert color1.rgb[0] == 255, "RGB red component should be 255"
+assert color1.rgb[1] == 128, "RGB green component should be 128"
+assert color1.rgb[2] == 64, "RGB blue component should be 64"
+assert color1.alpha == 200, "Alpha should be 200"
+println "  [#2]✓ RGB color struct test passed[#-]"
+
+# Test 2: Integer array in struct
+println "\n[#6]Test 2: Data Block with int[5] Array[#-]"
+
+struct data_block
+    id int
+    values []int
+    count int
+endstruct
+
+var block1 data_block
+block1.id = 100
+block1.values = [10, 20, 30, 40, 50]
+block1.count = 5
+
+println "  Created data_block struct:"
+println "    ID: {block1.id}"
+println "    Values: {block1.values}"
+println "    Count: {block1.count}"
+assert block1.id == 100, "ID should be 100"
+assert block1.values[2] == 30, "Third value should be 30"
+assert block1.count == 5, "Count should be 5"
+println "  [#2]✓ Data block struct test passed[#-]"
+
+# Test 3: Float array in struct
+println "\n[#6]Test 3: Matrix Row with float[4] Array[#-]"
+
+struct matrix_row
+    row_index int
+    elements []float
+endstruct
+
+var row1 matrix_row
+row1.row_index = 0
+row1.elements = [1.0, 2.5, 3.7, 4.2]
+
+println "  Created matrix_row struct:"
+println "    Row Index: {row1.row_index}"
+println "    Elements: {row1.elements}"
+assert row1.row_index == 0, "Row index should be 0"
+assert row1.elements[1] == 2.5, "Second element should be 2.5"
+println "  [#2]✓ Matrix row struct test passed[#-]"
+
+# Test 4: Mixed struct with array and regular fields
+println "\n[#6]Test 4: Network Packet with Mixed Fields[#-]"
+
+struct network_packet
+    packet_id int
+    header []uint8
+    payload_size int
+    checksum int
+endstruct
+
+var packet1 network_packet
+packet1.packet_id = 12345
+packet1.header = [0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6, 0xF5, 0xF4, 0xF3, 0xF2, 0xF1, 0xF0]
+packet1.payload_size = 256
+packet1.checksum = 0xABCD
+
+println "  Created network_packet struct:"
+println "    Packet ID: {packet1.packet_id}"
+println "    Header (first 4 bytes): [{packet1.header[0]}, {packet1.header[1]}, {packet1.header[2]}, {packet1.header[3]}]"
+println "    Payload Size: {packet1.payload_size}"
+println "    Checksum: {packet1.checksum}"
+assert packet1.packet_id == 12345, "Packet ID should be 12345"
+assert packet1.header[0] == 0xFF, "First header byte should be 0xFF"
+assert packet1.payload_size == 256, "Payload size should be 256"
+println "  [#2]✓ Network packet struct test passed[#-]"
+
+# Summary
+println "\n[#2]✓ All Fixed-Size Array Tests Completed![#-]"
+println "\nTested Za struct arrays with:"
+println "  • uint8 arrays - 8-bit unsigned integers"
+println "  • int arrays - 32-bit signed integers"
+println "  • float arrays - floating point numbers"
+println "  • Mixed fields - arrays and regular fields together"
+println ""
+println "[#3]Note:[#-] These tests verify Za struct array handling"
+println "[#3]Note:[#-] C FFI struct arrays with type[N] syntax are now supported"

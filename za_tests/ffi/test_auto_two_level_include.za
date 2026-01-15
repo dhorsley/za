@@ -1,0 +1,39 @@
+#!/usr/bin/env za
+
+# Test AUTO clause with 2-level #include
+
+println "[#4]Testing AUTO with 2-Level #include[#-]"
+
+# Load with ZA_DEBUG_AUTO to see what's happening
+# Run with: ZA_DEBUG_AUTO=1 ./za this_test.za
+
+module "/lib64/libc.so.6" as test auto "/home/daniel/go/src/za/za_tests/test_include_level2.h"
+use +test
+
+println "\n[#6]Test: 2-Level Include Constants[#-]"
+
+# From level1.h (included by level2.h)
+if defined("LEVEL1_CONSTANT")
+    println "  ✓ LEVEL1_CONSTANT defined (from included file)"
+    assert LEVEL1_CONSTANT == 100, "LEVEL1_CONSTANT should be 100"
+else
+    println "  ✗ LEVEL1_CONSTANT not defined (FAILED - include didn't work)"
+endif
+
+# From level2.h (top level)
+if defined("LEVEL2_CONSTANT")
+    println "  ✓ LEVEL2_CONSTANT defined"
+    assert LEVEL2_CONSTANT == 200, "LEVEL2_CONSTANT should be 200"
+else
+    println "  ✗ LEVEL2_CONSTANT not defined"
+endif
+
+# Combined value (uses constant from included file)
+if defined("COMBINED_VALUE")
+    println "  ✓ COMBINED_VALUE defined (cross-file constant reference)"
+    assert COMBINED_VALUE == 300, "COMBINED_VALUE should be 300"
+else
+    println "  ✗ COMBINED_VALUE not defined (FAILED - cross-file reference didn't work)"
+endif
+
+println "\n[#2]✓ 2-level include test complete![#-]"

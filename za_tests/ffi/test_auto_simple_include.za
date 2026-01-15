@@ -1,0 +1,24 @@
+#!/usr/bin/env za
+
+# Test AUTO clause with simple header (no nested includes)
+
+println "[#4]Testing AUTO with Simple Header[#-]"
+
+# Load a module with the simple test header
+module "/lib64/libc.so.6" as test auto "/home/daniel/go/src/za/za_tests/test_simple_include.h"
+use +test
+
+println "[#6]Test: Simple Header Constants[#-]"
+if defined("SIMPLE_CONSTANT")
+    println "  ✓ SIMPLE_CONSTANT is defined: {SIMPLE_CONSTANT}"
+else
+    println "  ✗ SIMPLE_CONSTANT not defined"
+endif
+
+if defined("SIMPLE_STRING")
+    println "  ✓ SIMPLE_STRING is defined: {SIMPLE_STRING}"
+else
+    println "  ✗ SIMPLE_STRING not defined"
+endif
+
+println "\n[#2]✓ Simple header test passed![#-]"

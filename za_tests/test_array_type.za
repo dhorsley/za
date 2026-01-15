@@ -1,0 +1,26 @@
+#!/usr/bin/env za
+
+# Test 1: Plain array
+println "Test 1: Plain array"
+x = [255, 128, 64]
+println "Value of x[0]:", x[0]
+assert x[0] == 255, "Plain array should work"
+println "✓ Plain array works"
+
+# Test 2: Struct with []uint8 field
+println "\nTest 2: Struct with []uint8 field"
+struct test_struct
+    data []uint8
+endstruct
+
+var s test_struct
+s.data = [255, 128, 64]
+println "Value of s.data[0]:", s.data[0]
+
+# Test comparison without assert
+result = (s.data[0] == 255)
+println "Comparison result:", result
+
+# Now try assert
+assert s.data[0] == 255, "Struct field array should work"
+println "✓ Struct field array works"
