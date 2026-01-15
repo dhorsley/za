@@ -140,7 +140,7 @@ The intended readership is **Linux system administrators**, from novice to exper
 
 ## Version coverage
 
-This text is written for **Za 1.2.1**.
+This text is written for **Za 1.2.2**.
 
 ---
 
@@ -4212,7 +4212,336 @@ use +gd
 
 **Finding library paths:** System libraries are typically in `/usr/lib`, `/usr/lib64`, or `/lib`. Use `ldconfig -p` or `find /usr/lib -name "lib*.so*"` to locate specific libraries.
 
-## F.3 Declaring Function Signatures with LIB
+## F.3 Automatic Header Parsing with AUTO
+
+The `AUTO` clause enables automatic discovery and parsing of C header files to extract constants, enums, and function signatures, eliminating the need to manually declare `#define` values and LIB function signatures.
+
+### F.3.1 Basic Usage
+
+**Auto-discovery** (searches standard include paths):
+
+```za
+module "libm.so.6" as m auto
+use +m
+
+# M_PI, M_E, and other math constants now available
+println M_PI  # 3.141592653589793
+```
+
+**Explicit header path:**
+
+```za
+module "libc.so.6" as c auto "/usr/include/limits.h"
+use +c
+
+println INT_MAX  # 2147483647
+```
+
+**Multiple headers:**
+
+```za
+module "libgl.so" as gl auto "gl.h" "glext.h"
+use +gl
+```
+
+### F.3.2 What Gets Parsed
+
+The AUTO clause parses C headers and extracts:
+
+1. **Integer constants** from `#define`:
+   - Decimal: `#define MAX_SIZE 1024`
+   - Hexadecimal: `#define COLOR_RED 0xFF0000`
+   - Octal: `#define PERMS 0o644`
+   - Binary: `#define MASK 0b11110000`
+   - Bit shifts: `#define FLAG_ENABLED (1 << 3)`
+   - Expressions: `#define BUFFER_SIZE (1024 * 1024)`
+
+2. **Float constants** from `#define`:
+   - Decimal: `#define PI 3.14159265358979323846`
+   - Scientific notation: `#define AVOGADRO 6.02214076e23`
+
+3. **String constants** from `#define`:
+   - Simple strings: `#define VERSION "1.0.0"`
+   - With escape sequences: `#define NEWLINE "line1\nline2"`
+   - String concatenation: `#define MSG "Hello " "World"` (transformed to Za syntax)
+
+4. **Enum definitions** (single-line or multiline):
+   ```c
+   enum Status {
+       OK = 0,
+       ERROR = -1,
+       PENDING = 100
+   };
+   ```
+
+5. **Function signatures** (auto-generates LIB declarations):
+   ```c
+   size_t strlen(const char *s);
+   void *malloc(size_t size);
+   int printf(const char *format, ...);
+   ```
+   - Supports simple and pointer return types
+   - Supports multiline declarations
+   - Supports variadic functions (...)
+   - Supports extern and const qualifiers
+   - Skips static inline, typedef, and private functions (_prefix)
+
+6. **Constants referencing earlier constants**:
+   ```c
+   #define BASE_SIZE 1024
+   #define BUFFER_SIZE (BASE_SIZE * 2)      // Works! = 2048
+   #define LARGE_BUFFER (BUFFER_SIZE * 4)   // Works! = 8192
+   ```
+   - Supports chained references (A → B → C)
+   - Limitation: Forward references not supported (constants must be defined in order)
+   - Limitation: Circular references fail gracefully (silently skipped)
+
+7. **Typedef declarations**:
+   ```c
+   typedef unsigned int uint32_t;
+   typedef struct Point { int x, y; } Point;
+   typedef Point* PointPtr;
+   ```
+   - Simple type aliases
+   - Typedef chains (multi-level resolution)
+   - Struct and pointer typedefs
+   - Recursive resolution up to 10 levels with cycle detection
+   - Module-scoped (isolated per library alias)
+   - Eliminates reliance on heuristics for type guessing
+   - **Not parsed**: Function pointer typedefs, array typedefs (future enhancement)
+
+8. **Preprocessor conditionals** (platform-aware parsing):
+   ```c
+   #ifdef __linux__
+     #define BUFFER_SIZE 2048
+     int linux_only_func(void);
+   #endif
+
+   #ifndef __WINDOWS__
+     #define UNIX_FLAG 1
+   #endif
+
+   #ifdef __LP64__
+     typedef unsigned long size_t;  // 64-bit
+   #else
+     typedef unsigned int size_t;   // 32-bit
+   #endif
+   ```
+   - Supported directives: `#ifdef`, `#ifndef`, `#else`, `#endif`
+   - Nested conditionals supported (unlimited depth via stack)
+   - Platform macros auto-defined:
+     - `__linux__` = "1" (on Linux/BSD systems)
+     - `__unix__` = "1" (on Unix-like systems)
+     - `__LP64__` = "1" (on 64-bit platforms: amd64, arm64)
+     - `__GNUC__` = "4" (always, for GCC compatibility)
+     - `__USE_MISC` = "1" (common feature macro)
+     - `__USE_XOPEN` = "1" (X/Open compliance)
+   - Inactive blocks automatically skipped (not parsed)
+   - Enables parsing real system headers (stdio.h, stdlib.h, sys/types.h)
+   - Debug output: Set `ZA_DEBUG_AUTO=1` to see condition evaluation
+   - **Not supported** (future phases):
+     - `#include` recursion (Phase 7)
+     - Complex `#if` expressions: `#if defined(A) && defined(B)` (Phase 8)
+     - `#elif` directive (Phase 8)
+     - Macro expansion in values: `#define SIZE BUFFER_SIZE` (Phase 9)
+
+**Not parsed** (limitations):
+- Function-like macros: `#define MAX(a,b) ((a)>(b)?(a):(b))`
+- Forward references: `#define B (A * 2)` where A is defined later
+- Function pointer typedefs: `typedef int (*callback_t)(void*);`
+- Array typedefs: `typedef int IntArray[10];`
+- Struct definitions (struct layout parsing)
+- Character literals: `#define NEWLINE_CHAR '\n'`
+- `#include` directives (headers must be explicitly listed)
+
+### F.3.3 Accessing Constants
+
+Constants are accessible via the USE chain or namespace qualification:
+
+```za
+module "libpng.so" as png auto
+use +png
+
+# Via USE chain (unqualified)
+color_type = PNG_COLOR_TYPE_RGB
+
+# Via namespace (qualified)
+alpha = png::PNG_COLOR_TYPE_RGBA
+```
+
+### F.3.4 Header Auto-Discovery
+
+When no explicit path is provided, AUTO searches for headers in standard locations:
+
+**Search paths** (in order):
+1. `/usr/include/<header>`
+2. `/usr/local/include/<header>`
+3. `/usr/include/<arch>-linux-gnu/<header>` (e.g., x86_64-linux-gnu)
+4. `/usr/include/<libname>/<header>` (e.g., curl/curl.h)
+
+**Header name derivation:**
+- `libpng.so` → searches for `png.h`
+- `libcurl.so` → searches for `curl.h`
+- `libjson-c.so` → searches for `json.h`, `json-c/json.h`
+
+### F.3.5 Checking if Constants Exist
+
+Use the `defined()` function to check if a constant is available:
+
+```za
+module "libm.so.6" as m auto
+use +m
+
+if defined("M_PI")
+    println "Pi is available: " + as_string(M_PI)
+else
+    println "M_PI not found"
+endif
+```
+
+### F.3.6 Auto-Discovered Function Signatures
+
+AUTO automatically parses function prototypes from headers and generates LIB declarations, eliminating manual function signature declarations.
+
+**Without AUTO:**
+```za
+module "libc.so.6" as c
+use +c
+
+# Must manually declare every function
+lib c::strlen(s:string) -> int64
+lib c::strcmp(s1:string, s2:string) -> int
+lib c::malloc(size:int64) -> pointer
+lib c::free(ptr:pointer) -> void
+
+len = strlen("hello")  # Requires manual LIB declaration above
+```
+
+**With AUTO:**
+```za
+module "libc.so.6" as c auto
+use +c
+
+# Functions automatically discovered from headers - no LIB needed!
+len = strlen("hello")       # ✓ Works automatically
+cmp = strcmp("a", "b")      # ✓ Works automatically
+ptr = malloc(100)           # ✓ Works automatically
+free(ptr)                   # ✓ Works automatically
+```
+
+**What gets auto-discovered:**
+- Simple functions: `int foo(int x);`
+- Pointer returns: `void *malloc(size_t size);`, `char *strcpy(...);`
+- Multiline declarations (automatically normalized)
+- Variadic functions: `int printf(const char *fmt, ...);`
+- Const/extern qualifiers: `extern size_t fread(...);`
+
+**What gets skipped:**
+- `typedef` statements
+- `#define` macros
+- `static inline` functions
+- Functions starting with `_` (considered private)
+
+**Override mechanism:**
+
+Explicit LIB declarations override auto-discovered signatures:
+
+```za
+module "libc.so.6" as c auto
+use +c
+
+# AUTO discovers strlen, but we want to override the return type
+lib c::strlen(s:string) -> int   # Override: use int instead of int64
+
+len = strlen("hello")  # Uses our override signature
+```
+
+### F.3.7 Error Handling
+
+If AUTO cannot find or parse headers:
+- A **warning** is printed to stderr
+- Module still loads successfully
+- Functions remain accessible (constants unavailable)
+
+```
+Warning: failed to parse headers for png: header file not found
+  Searched: /usr/include/png.h, /usr/local/include/png.h, ...
+  Hint: Specify explicit path: module "libpng.so" as png auto "/path/to/png.h"
+```
+
+### F.3.8 Complete Example
+
+```za
+# Load libpng with automatic header parsing
+module "libpng.so.16" as png auto
+use +png
+
+# No LIB declarations needed - AUTO discovers function signatures!
+# Constants and functions automatically available from png.h
+
+def create_png_reader()
+    # PNG_LIBPNG_VER_STRING, PNG_COLOR_TYPE_RGB, etc. are auto-discovered constants
+    # png_create_read_struct is auto-discovered function (no LIB needed)
+    ver = PNG_LIBPNG_VER_STRING
+    rs = png_create_read_struct(ver, c_null(), c_null(), c_null())
+
+    if c_ptr_is_null(rs)
+        panic("Failed to create PNG read struct")
+    endif
+
+    return rs
+end
+
+def cleanup_png_reader(rs, ps, is)
+    # png_destroy_read_struct is also auto-discovered
+    png_destroy_read_struct(rs, ps, is)
+end
+```
+
+### F.3.9 Benefits Over Manual Constants and LIB Declarations
+
+**Before AUTO (manual constants and LIB declarations):**
+```za
+module "libpng.so.16" as png
+use +png
+
+# Must manually declare every constant
+PNG_COLOR_TYPE_GRAY = 0
+PNG_COLOR_TYPE_RGB = 2
+PNG_COLOR_TYPE_RGBA = 6
+PNG_INTERLACE_NONE = 0
+PNG_INTERLACE_ADAM7 = 1
+# ... dozens more ...
+
+# Must manually declare every function signature
+lib png::png_create_read_struct(ver:string, err:ptr, warn:ptr, user:ptr) -> ptr
+lib png::png_create_info_struct(png:ptr) -> ptr
+lib png::png_destroy_read_struct(png:ptr, info:ptr, end:ptr) -> void
+lib png::png_read_info(png:ptr, info:ptr) -> void
+lib png::png_read_image(png:ptr, rows:ptr) -> void
+# ... dozens more ...
+```
+
+**After AUTO (everything automatic):**
+```za
+module "libpng.so.16" as png auto
+use +png
+
+# All constants and functions automatically available!
+color = PNG_COLOR_TYPE_RGB
+rs = png_create_read_struct(PNG_LIBPNG_VER_STRING, c_null(), c_null(), c_null())
+info = png_create_info_struct(rs)
+# ... etc - no manual declarations needed!
+```
+
+**Summary of benefits:**
+- ✅ No manual constant definitions
+- ✅ No manual LIB function declarations
+- ✅ Automatically synchronized with header file changes
+- ✅ Type-safe function calls with auto-discovered signatures
+- ✅ Reduces boilerplate code by 80-90%
+
+## F.4 Declaring Function Signatures with LIB
 
 C functions require explicit type declarations using the `LIB` keyword. This tells Za how to marshal arguments and return values.
 
@@ -4305,7 +4634,7 @@ lib c::printf(fmt:string, ...args) -> int
 
 **Optional return types:** Functions that perform side effects without returning meaningful values use `-> void`.
 
-## F.4 Calling C Functions
+## F.5 Calling C Functions
 
 Once declared with `LIB`, C functions are called using the (optional) `namespace::function(args)` syntax. If no namespace is specified, then lookup is performed against the USE chain:
 
@@ -4339,7 +4668,7 @@ path = c::getenv("PATH")
 
 **Type conversions:** Za automatically converts between Za types and C types. Strings become `char*`, integers map to appropriate C integer types, and floats/doubles are preserved. Pointers remain opaque.
 
-## F.5 Helper Functions for FFI
+## F.6 Helper Functions for FFI
 
 Za provides built-in helper functions to work with C pointers and memory:
 
@@ -4479,7 +4808,7 @@ println "File size:", stats.st_size
 c_free_struct(statbuf)
 ```
 
-## F.6 Discovering Functions with help plugin
+## F.7 Discovering Functions with help plugin
 
 Za's help system provides runtime introspection of loaded C libraries.
 
@@ -4559,7 +4888,7 @@ help plugin find glib::g_malloc
 
 **Man page integration:** Za automatically looks up function signatures from system man pages (section 3) and suggests appropriate `LIB` declarations with C-to-Za type mappings.
 
-## F.7 Type Mapping Reference
+## F.8 Type Mapping Reference
 
 **Integer types:**
 
@@ -4602,7 +4931,7 @@ help plugin find glib::g_malloc
 
 **Struct marshaling:** Za supports marshaling structs between Za and C memory. Use `struct<typename>` in LIB declarations for automatic marshaling of input parameters. For "out parameters" where C fills the struct, use manual marshaling with `c_alloc_struct()`, `c_unmarshal_struct()`, and `c_free_struct()`.
 
-## F.8 Complete Working Examples
+## F.9 Complete Working Examples
 
 ### F.8.1 Math Operations (libm)
 
@@ -4786,7 +5115,7 @@ nc::getch()
 nc::endwin()
 ```
 
-## F.9 Advanced Topics
+## F.10 Advanced Topics
 
 ### F.9.1 Opaque Structure Pointers
 
@@ -5074,7 +5403,7 @@ obj = json::json_object_new_object()
 json::json_object_put(obj)  # Library's cleanup function
 ```
 
-## F.10 Callback Functions
+## F.11 Callback Functions
 
 Za supports passing Za functions to C as callbacks (function pointers). This enables integration with C APIs that require callbacks such as `qsort_r()`, `pthread_create()`, signal handlers, and event-driven libraries.
 
@@ -5090,13 +5419,65 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 
 ### F.10.2 Supported Callback Signatures
 
+**Za now supports unlimited callback signatures via libffi closures!** The system automatically chooses between:
+- **Hardcoded trampolines** (19 common signatures) - optimal performance
+- **Dynamic closures** (any signature) - generated at runtime via libffi
+
+#### Hardcoded Trampolines (Fast Path)
+
+**Core Signatures:**
 | Signature | C Type | Use Case |
 |-----------|--------|----------|
-| `ptr,ptr->int` | `int (*)(void*, void*, void*)` | qsort_r comparator |
-| `int,int->int` | `int (*)(int, int, void*)` | Integer comparator with context |
-| `ptr->ptr` | `void* (*)(void*)` | pthread_create thread function |
-| `int,ptr,ptr->void` | `void (*)(int, siginfo_t*, void*)` | sigaction with SA_SIGINFO |
-| `int->void` | `void (*)(int)` | Simple signal handler (limited) |
+| `ptr,ptr->int` | `int (*)(void*, void*, void*)` | qsort_r comparators |
+| `int,int->int` | `int (*)(int, int, void*)` | Integer comparators |
+| `ptr->ptr` | `void* (*)(void*)` | pthread_create threads |
+| `int,ptr,ptr->void` | `void (*)(int, siginfo_t*, void*)` | sigaction handlers |
+| `int->void` | `void (*)(int)` | Simple signal handlers |
+
+**Math Signatures:**
+| Signature | C Type | Use Case |
+|-----------|--------|----------|
+| `double->double` | `double (*)(double, void*)` | Math transformations |
+| `float->float` | `float (*)(float, void*)` | Single-precision math |
+| `double,double->double` | `double (*)(double, double, void*)` | Binary math ops |
+
+**Pointer Signatures:**
+| Signature | C Type | Use Case |
+|-----------|--------|----------|
+| `ptr,ptr,ptr->int` | `int (*)(void*, void*, void*, void*)` | 3-argument comparators |
+| `void->void` | `void (*)(void*)` | Simple callbacks |
+| `ptr->void` | `void (*)(void*, void*)` | Cleanup/destructors |
+| `ptr,ptr->void` | `void (*)(void*, void*, void*)` | Iteration callbacks |
+| `ptr,int->void` | `void (*)(void*, int, void*)` | Buffer processors |
+| `ptr,int->int` | `int (*)(void*, int, void*)` | Buffer validators |
+| `ptr,ptr->bool` | `int (*)(void*, void*, void*)` | Predicate filters |
+
+**Primitive Signatures:**
+| Signature | C Type | Use Case |
+|-----------|--------|----------|
+| `int->int` | `int (*)(int, void*)` | Hash functions |
+| `string->void` | `void (*)(char*, void*)` | Logging callbacks |
+| `string->int` | `int (*)(char*, void*)` | String validators |
+| `int,int->void` | `void (*)(int, int, void*)` | Progress callbacks |
+
+#### Dynamic Closures (Unlimited Signatures)
+
+Any signature not in the above list is automatically created as a dynamic closure at runtime. Example custom signatures:
+
+```za
+# Triple integer comparator
+c_register_callback("my_func", "int,int,int->int")
+
+# Quad pointer callback
+c_register_callback("my_func", "ptr,ptr,ptr,ptr->ptr")
+
+# Mixed types
+c_register_callback("my_func", "int64,float,double->uint32")
+```
+
+**Supported Types:** `int8`, `uint8`, `int16`, `uint16`, `int32`/`int`, `uint32`/`uint`, `int64`, `uint64`, `float`, `double`, `ptr`/`pointer`, `string`, `bool`, `void`
+
+**Not Yet Supported:** struct-by-value, variadic signatures
 
 **Note:** Most callbacks require C APIs that support a **context parameter** (also called `user_data`, `thunk`, or `arg`). This is where the `.handle` is passed.
 
@@ -5172,7 +5553,70 @@ endif
 c_unregister_callback(cb)
 ```
 
-### F.10.5 Callback Lifecycle
+### F.10.5 Custom Callback Signatures (Dynamic Closures)
+
+For signatures not in the hardcoded list, Za automatically creates dynamic closures at runtime. This enables integration with any C API that uses callbacks.
+
+#### Example: Custom 3-Parameter Callback
+
+```za
+module "libcustom.so" as custom
+use +custom
+
+# Hypothetical C API that takes a callback with 3 integers
+LIB custom::process_data(callback:pointer, context:pointer) -> int
+
+def my_processor(a, b, c)
+    println "Processing: " + as_string(a) + ", " + as_string(b) + ", " + as_string(c)
+    return a + b + c
+end
+
+# Register with custom signature (not in hardcoded list)
+cb = c_register_callback("main::my_processor", "int,int,int->int")
+
+# Use it - Za automatically creates a dynamic closure
+result = custom::process_data(cb.trampoline, cb.handle)
+
+c_unregister_callback(cb)
+```
+
+#### Example: Mixed Type Callback
+
+```za
+# Define callback with mixed types
+def mixed_callback(int_val, float_val, ptr_val)
+    println "Got int: " + as_string(int_val)
+    println "Got float: " + as_string(float_val)
+    println "Got pointer: " + sf("%p", ptr_val)
+    return 42  # Return int
+end
+
+# Any combination of supported types works
+cb = c_register_callback("main::mixed_callback", "int32,float,ptr->int64")
+
+# Za creates the appropriate closure automatically
+```
+
+#### Type Mapping Reference
+
+| Za Signature Type | C Type | Size |
+|-------------------|--------|------|
+| `int8` | `int8_t` | 1 byte |
+| `uint8` / `byte` | `uint8_t` | 1 byte |
+| `int16` | `int16_t` | 2 bytes |
+| `uint16` | `uint16_t` | 2 bytes |
+| `int32` / `int` | `int32_t` / `int` | 4 bytes |
+| `uint32` / `uint` | `uint32_t` / `unsigned int` | 4 bytes |
+| `int64` | `int64_t` | 8 bytes |
+| `uint64` | `uint64_t` | 8 bytes |
+| `float` | `float` | 4 bytes |
+| `double` | `double` | 8 bytes |
+| `ptr` / `pointer` | `void*` | Platform size |
+| `string` | `char*` | Platform size |
+| `bool` | `int` (0/1) | 4 bytes |
+| `void` | `void` | - |
+
+### F.10.6 Callback Lifecycle
 
 **Registration:**
 ```za
@@ -5192,7 +5636,7 @@ c_unregister_callback(cb)
 # Must be called when C will no longer call the callback
 ```
 
-### F.10.6 Thread Safety
+### F.10.7 Thread Safety
 
 **Important:** Callbacks are serialized with a mutex to protect Za's interpreter. This means:
 
@@ -5200,7 +5644,7 @@ c_unregister_callback(cb)
 - Callbacks execute sequentially, never in parallel
 - Performance may be impacted with high-frequency callbacks from many threads
 
-### F.10.7 Limitations
+### F.10.8 Limitations
 
 1. **Context parameter required:** Most callbacks need C APIs with a context/user_data parameter. Simple callbacks without context (like old `signal()`) have limited support.
 
@@ -5212,7 +5656,14 @@ c_unregister_callback(cb)
 
 5. **Error handling:** Callback errors cannot propagate to C. Errors return safe default values (0, nil) to C.
 
-### F.10.8 Best Practices
+6. **Dynamic closure limitations:** While any signature can be registered, dynamic closures currently do not support:
+   - Struct-by-value parameters or returns (use pointers instead)
+   - Variadic callbacks (callbacks with `...` parameters)
+   - These will be rejected with a clear error message
+
+7. **Performance consideration:** Hardcoded trampolines have zero overhead. Dynamic closures add a small runtime marshaling cost (~1-2μs per call). For high-frequency callbacks, prefer signatures from the hardcoded list when possible.
+
+### F.10.9 Best Practices
 
 1. **Always cleanup:** Use try/catch blocks to ensure callbacks are unregistered:
    ```za
@@ -5234,15 +5685,20 @@ c_unregister_callback(cb)
 
 5. **Test thread safety:** If C library uses threads, test that callbacks work correctly with concurrent invocations.
 
-## F.11 Limitations and Best Practices
+## F.12 Limitations and Best Practices
 
 **Limitations:**
 
 1. **Manual memory management:** Unlike Za's garbage collection, C memory must be manually freed with `free()` or library-specific cleanup functions.
 
-2. **Preprocessor macros not accessible:** C `#define` constants are not symbols and cannot be accessed via FFI. Define them in Za:
+2. **Preprocessor macros:** C `#define` constants are not symbols in the .so file, but can be extracted using the `AUTO` clause (see F.3). For simple cases without headers, define them in Za:
    ```za
-   # Cannot access C's NULL or EOF directly
+   # With AUTO clause (recommended):
+   module "libc.so.6" as c auto
+   use +c
+   # EOF, NULL, etc. now available from stdio.h
+
+   # Without AUTO (manual definition):
    NULL = c_null()
    EOF = -1
    ```
@@ -5302,7 +5758,7 @@ c_unregister_callback(cb)
 
 8. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
 
-## F.12 Platform Support and Build Requirements
+## F.13 Platform Support and Build Requirements
 
 **Unix/Linux:**
 

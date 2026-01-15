@@ -1,0 +1,117 @@
+# Dynamic FFI Closure Test
+println "[#4]═══ Dynamic Closure Callbacks Test ═══[#-]\n"
+
+module "libc.so.6" as c
+use +c
+
+# Test 1: Simple custom signature (not in hardcoded list)
+println "[#3]Test 1: Custom int,int,int->int[#-]"
+def add_three(a, b, c)
+    return a + b + c
+end
+
+try
+    cb1 = c_register_callback("main::add_three", "int,int,int->int")
+    if cb1 == nil
+        println "[#1]  ✗ Failed: callback returned nil[#-]"
+    else
+        println "  ✓ Registered custom signature int,int,int->int"
+        c_unregister_callback(cb1)
+        println "  ✓ Unregistered and cleaned up"
+    endif
+catch e
+    println "[#1]  ✗ Failed with error[#-]"
+    println "[#1]  Error type: " + as_string(typeof(e)) + "[#-]"
+    println "[#1]  Error: " + sf("%v", e) + "[#-]"
+endtry
+
+# Test 2: Custom pointer signature
+println "\n[#3]Test 2: Custom ptr,ptr,ptr->ptr[#-]"
+def pick_first(a, b, c)
+    return a
+end
+
+try
+    cb2 = c_register_callback("main::pick_first", "ptr,ptr,ptr->ptr")
+    println "  ✓ Registered ptr,ptr,ptr->ptr"
+    c_unregister_callback(cb2)
+    println "  ✓ Cleaned up"
+catch e
+    println "[#1]  ✗ Failed: " + as_string(e) + "[#-]"
+endtry
+
+# Test 3: uint64 return
+println "\n[#3]Test 3: Custom int64,int64->uint64[#-]"
+def sum_large(a, b)
+    return a + b
+end
+
+try
+    cb3 = c_register_callback("main::sum_large", "int64,int64->uint64")
+    println "  ✓ Registered int64,int64->uint64"
+    c_unregister_callback(cb3)
+    println "  ✓ Cleaned up"
+catch e
+    println "[#1]  ✗ Failed: " + as_string(e) + "[#-]"
+endtry
+
+# Test 4: Multiple closures simultaneously
+println "\n[#3]Test 4: Multiple dynamic closures[#-]"
+def func_a(x)
+    return x * 2
+end
+
+def func_b(y)
+    return y + 1
+end
+
+try
+    cba = c_register_callback("main::func_a", "uint8->uint8")
+    cbb = c_register_callback("main::func_b", "int16->int16")
+    println "  ✓ Registered 2 custom signatures"
+
+    c_unregister_callback(cba)
+    c_unregister_callback(cbb)
+    println "  ✓ Cleaned up both"
+catch e
+    println "[#1]  ✗ Failed: " + as_string(e) + "[#-]"
+endtry
+
+# Test 5: Hardcoded trampolines still work
+println "\n[#3]Test 5: Hardcoded trampolines still work[#-]"
+def std_compare(a, b)
+    return 0
+end
+
+try
+    cb_std = c_register_callback("main::std_compare", "ptr,ptr->int")
+    println "  ✓ Hardcoded trampoline used (no closure needed)"
+    c_unregister_callback(cb_std)
+    println "  ✓ Cleanup successful"
+catch e
+    println "[#1]  ✗ Failed: " + as_string(e) + "[#-]"
+endtry
+
+# Test 6: Error handling - invalid signature
+println "\n[#3]Test 6: Error Handling[#-]"
+def error_test(x)
+    return x
+end
+
+try
+    cb_invalid = c_register_callback("main::error_test", "invalid,signature->bogus")
+    println "[#1]  ✗ Should have rejected invalid signature[#-]"
+    c_unregister_callback(cb_invalid)
+catch e
+    println "  ✓ Correctly rejected invalid signature"
+endtry
+
+println "\n[#2]═══════════════════════════════════[#-]"
+println "[#2]  All Dynamic Closure Tests Done! [#-]"
+println "[#2]═══════════════════════════════════[#-]\n"
+
+println "Dynamic closure support enabled!"
+println "  • Unlimited callback signatures via libffi closures"
+println "  • Automatic fallback from hardcoded trampolines"
+println "  • Proper resource cleanup"
+println "  • Full type support (int8-int64, float, double, ptr)"

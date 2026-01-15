@@ -1,6 +1,12 @@
 //go:build windows
 // +build windows
 
+// Windows FFI Support Status:
+// FFI (Foreign Function Interface) is NOT supported on Windows.
+// Za's FFI feature is designed for and only available on Linux and BSD platforms.
+// This file provides stub implementations that return clear error messages
+// when MODULE or LIB statements attempt to use FFI on Windows.
+
 package main
 
 import (
@@ -10,9 +16,9 @@ import (
 )
 
 // LoadCLibrary loads a C shared library using LoadLibrary on Windows
-// Currently returns an error as Windows FFI is not yet fully implemented
+// Windows FFI support has been removed. Za focuses on Linux and BSD platforms.
 func LoadCLibrary(path string) (*CLibrary, error) {
-    return nil, fmt.Errorf("C FFI not yet supported on Windows: %s", path)
+    return nil, fmt.Errorf("FFI is not supported on Windows.\nZa's FFI feature is only available on Linux and BSD platforms.\nLibrary path: %s", path)
 }
 
 // LoadCLibraryWithAlias loads a C library with a specific alias name
@@ -27,19 +33,19 @@ func LoadCLibraryWithAlias(path string, alias string) (*CLibrary, error) {
 }
 
 // DiscoverLibrarySymbols discovers symbols from a loaded C library
-// On Windows, this would use PE parsing instead of ELF
+// Windows FFI support has been removed.
 func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
-    return fmt.Errorf("symbol discovery not yet supported on Windows")
+    return fmt.Errorf("FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms.")
 }
 
 // DiscoverSymbolsWithAlias discovers symbols and returns them as a slice
 func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrary) ([]*CSymbol, error) {
-    return nil, fmt.Errorf("symbol discovery not yet supported on Windows")
+    return nil, fmt.Errorf("FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms.")
 }
 
 // callCFunctionPlatform attempts to call a C function with given arguments
 func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any, []string) {
-    return nil, []string{"[ERROR: C FFI function calls not yet supported on Windows]"}
+    return nil, []string{"FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms."}
 }
 
 // shouldProcessSymbol checks if a symbol should be processed
@@ -72,7 +78,7 @@ func createFunctionSymbolWithAlias(name string, alias string) *CSymbol {
         Library:      alias,
         ReturnType:   CVoid,
         Parameters:   []CParameter{},
-        SupportNotes: []string{"[UNSUPPORTED: Windows FFI not implemented]"},
+        SupportNotes: []string{"FFI not supported on Windows (Linux/BSD only)"},
     }
 }
 
@@ -83,7 +89,7 @@ func createDataSymbolWithAlias(name string, alias string) *CSymbol {
         IsFunction:   false,
         Library:      alias,
         ReturnType:   CVoid,
-        SupportNotes: []string{"[UNSUPPORTED: Windows FFI not implemented]"},
+        SupportNotes: []string{"FFI not supported on Windows (Linux/BSD only)"},
     }
 }
 
@@ -116,5 +122,5 @@ func CSetByte(p *CPointerValue, offset int, value byte) {
 }
 
 func CGetDataSymbol(libName, symbolName string) (any, error) {
-    return nil, fmt.Errorf("FFI not yet supported on Windows")
+    return nil, fmt.Errorf("FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms.")
 }

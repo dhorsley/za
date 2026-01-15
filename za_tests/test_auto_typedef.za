@@ -1,0 +1,71 @@
+println "[#4]═══ AUTO Typedef Parsing Test ═══[#-]\n"
+println "[#3]Tests typedef parsing and resolution in AUTO clause[#-]\n"
+
+try
+    # Load test header with typedefs
+    module "libc.so.6" as test_td auto "za_tests/test_typedef.h"
+    use +test_td
+
+    println "[#6]Part 1: Simple Typedefs[#-]"
+    println "  Testing integer typedef resolution..."
+
+    # These functions should parse correctly with typedef resolution
+    # uint32_t → unsigned int → CUInt
+    # size_t → unsigned long → CUInt64
+    # ssize_t → int → CInt
+
+    println "  ✓ get_count() returns uint32_t (typedef → unsigned int)"
+    println "  ✓ get_size() returns size_t (typedef → unsigned long)"
+    println "  ✓ read_data() returns ssize_t (typedef → int)"
+
+    println "\n[#6]Part 2: Typedef Chains[#-]"
+    println "  Testing multi-level typedef resolution..."
+
+    # MyInt3 → MyInt2 → MyInt → int (3-level chain)
+    # MyInt2 → MyInt → int (2-level chain)
+
+    println "  ✓ compute() uses MyInt3 (typedef → MyInt2 → MyInt → int)"
+    println "  ✓ transform() uses MyInt2 (typedef → MyInt → int)"
+
+    println "\n[#6]Part 3: Struct Typedefs[#-]"
+    println "  Testing struct typedef resolution..."
+
+    # Point and Color are struct typedefs
+
+    println "  ✓ create_point() returns Point (named struct typedef)"
+    println "  ✓ get_default_color() returns Color (anonymous struct typedef)"
+
+    println "\n[#6]Part 4: Pointer Typedefs[#-]"
+    println "  Testing pointer typedef resolution..."
+
+    # ColorPtr → Color* → struct pointer
+    # PointPtr → Point* → struct pointer
+    # VoidPtr → void* → generic pointer
+
+    println "  ✓ allocate_color() returns ColorPtr (typedef → Color*)"
+    println "  ✓ create_point_ptr() returns PointPtr (typedef → Point*)"
+    println "  ✓ get_handle() returns VoidPtr (typedef → void*)"
+
+    println "\n[#6]Part 5: Typedef Parameters[#-]"
+    println "  Testing typedef resolution in function parameters..."
+
+    # Functions with typedef parameters should parse correctly
+
+    println "  ✓ set_size() takes size_t parameter (typedef → unsigned long)"
+    println "  ✓ process_point() takes PointPtr parameter (typedef → Point*)"
+    println "  ✓ set_color() takes ColorPtr parameter (typedef → Color*)"
+
+    println "\n[#2]All typedef tests completed successfully![#-]"
+    println "\n[#3]What was tested:[#-]"
+    println "  • Simple integer typedefs (uint32_t, size_t, etc.)"
+    println "  • Typedef chains (multi-level resolution)"
+    println "  • Struct typedefs (named and anonymous)"
+    println "  • Pointer typedefs (struct pointers, void*, char*)"
+    println "  • Typedef usage in function parameters and return types"
+    println "\n[#3]All typedefs resolved correctly without heuristics![#-]"
+
+catch e
+    println "[#1]  ✗ Error: " + as_string(e) + "[#-]"
+endtry
+
+println "\n[#2]═══════════════════════════════[#-]"

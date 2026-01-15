@@ -1,0 +1,153 @@
+println "[#4]═══ AUTO String & Float Constants Test ═══[#-]\n"
+
+try
+    module "libc.so.6" as tconst auto "za_tests/test_string_float_constants.h"
+    use +tconst
+
+    # ===== STRING TESTS =====
+    println "[#6]Part 1: String Constants[#-]"
+
+    println "[#3]Simple strings[#-]"
+    if defined("TEST_STRING_1")
+        println "  ✓ TEST_STRING_1 = \"" + TEST_STRING_1 + "\""
+    else
+        println "  ✗ TEST_STRING_1 not found"
+    endif
+
+    if defined("TEST_STRING_2")
+        println "  ✓ TEST_STRING_2 = \"" + TEST_STRING_2 + "\""
+    else
+        println "  ✗ TEST_STRING_2 not found"
+    endif
+
+    println "\n[#3]Strings with metadata[#-]"
+    if defined("TEST_VERSION")
+        println "  ✓ TEST_VERSION = \"" + TEST_VERSION + "\""
+    else
+        println "  ✗ TEST_VERSION not found"
+    endif
+
+    if defined("TEST_AUTHOR")
+        println "  ✓ TEST_AUTHOR = \"" + TEST_AUTHOR + "\""
+    else
+        println "  ✗ TEST_AUTHOR not found"
+    endif
+
+    println "\n[#3]Strings with escape sequences[#-]"
+    if defined("TEST_NEWLINE")
+        println "  ✓ TEST_NEWLINE defined (contains newline)"
+    else
+        println "  ✗ TEST_NEWLINE not found"
+    endif
+
+    if defined("TEST_EMPTY")
+        println "  ✓ TEST_EMPTY defined (empty string)"
+    else
+        println "  ✗ TEST_EMPTY not found"
+    endif
+
+    # ===== FLOAT TESTS =====
+    println "\n[#6]Part 2: Float Constants[#-]"
+
+    println "[#3]Math constants[#-]"
+    if defined("TEST_PI")
+        println "  ✓ TEST_PI = " + as_string(TEST_PI)
+    else
+        println "  ✗ TEST_PI not found"
+    endif
+
+    if defined("TEST_E")
+        println "  ✓ TEST_E = " + as_string(TEST_E)
+    else
+        println "  ✗ TEST_E not found"
+    endif
+
+    println "\n[#3]Scientific notation[#-]"
+    if defined("TEST_AVOGADRO")
+        println "  ✓ TEST_AVOGADRO = " + as_string(TEST_AVOGADRO) + " (Avogadro's number)"
+    else
+        println "  ✗ TEST_AVOGADRO not found"
+    endif
+
+    if defined("TEST_PLANCK")
+        println "  ✓ TEST_PLANCK = " + as_string(TEST_PLANCK) + " (Planck constant)"
+    else
+        println "  ✗ TEST_PLANCK not found"
+    endif
+
+    println "\n[#3]Simple floats[#-]"
+    if defined("TEST_TIMEOUT")
+        println "  ✓ TEST_TIMEOUT = " + as_string(TEST_TIMEOUT)
+    else
+        println "  ✗ TEST_TIMEOUT not found"
+    endif
+
+    if defined("TEST_RATIO")
+        println "  ✓ TEST_RATIO = " + as_string(TEST_RATIO)
+    else
+        println "  ✗ TEST_RATIO not found"
+    endif
+
+    # ===== INTEGER TESTS (verify backward compatibility) =====
+    println "\n[#6]Part 3: Integer Constants (backward compatibility)[#-]"
+
+    if defined("TEST_INT_DEC")
+        println "  ✓ TEST_INT_DEC = " + as_string(TEST_INT_DEC)
+    else
+        println "  ✗ TEST_INT_DEC not found"
+    endif
+
+    if defined("TEST_INT_HEX")
+        println "  ✓ TEST_INT_HEX = " + as_string(TEST_INT_HEX) + " (0xFF)"
+    else
+        println "  ✗ TEST_INT_HEX not found"
+    endif
+
+    if defined("TEST_INT_SHIFT")
+        println "  ✓ TEST_INT_SHIFT = " + as_string(TEST_INT_SHIFT) + " (1<<5)"
+    else
+        println "  ✗ TEST_INT_SHIFT not found"
+    endif
+
+    # ===== EXPRESSION TESTS (bonus feature) =====
+    println "\n[#6]Part 4: Expression Constants (bonus via ev())[#-]"
+
+    if defined("TEST_EXPR_ARITH")
+        println "  ✓ TEST_EXPR_ARITH = " + as_string(TEST_EXPR_ARITH) + " (100 + 50)"
+    else
+        println "  ✗ TEST_EXPR_ARITH not found"
+    endif
+
+    if defined("TEST_EXPR_BITWISE")
+        println "  ✓ TEST_EXPR_BITWISE = " + as_string(TEST_EXPR_BITWISE) + " (0xFF00 | 0x00FF)"
+    else
+        println "  ✗ TEST_EXPR_BITWISE not found"
+    endif
+
+    # ===== REFERENCE TESTS (constants referencing other constants) =====
+    println "\n[#6]Part 5: Constants Referencing Other Constants[#-]"
+
+    if defined("BASE_SIZE")
+        println "  ✓ BASE_SIZE = " + as_string(BASE_SIZE) + " (1024)"
+    else
+        println "  ✗ BASE_SIZE not found"
+    endif
+
+    if defined("BUFFER_SIZE")
+        println "  ✓ BUFFER_SIZE = " + as_string(BUFFER_SIZE) + " (BASE_SIZE * 2 = 2048)"
+    else
+        println "  ✗ BUFFER_SIZE not found"
+    endif
+
+    if defined("LARGE_BUFFER")
+        println "  ✓ LARGE_BUFFER = " + as_string(LARGE_BUFFER) + " (BUFFER_SIZE * 4 = 8192)"
+    else
+        println "  ✗ LARGE_BUFFER not found"
+    endif
+
+    println "\n[#2]All constant tests completed successfully![#-]"
+catch e
+    println "[#1]  ✗ Error: " + as_string(e) + "[#-]"
+endtry
+
+println "\n[#2]═══════════════════════════════[#-]"

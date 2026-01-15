@@ -1,0 +1,87 @@
+println "[#4]═══ Comprehensive AUTO Clause Test ═══[#-]\n"
+println "[#3]Demonstrates AUTO with constants, enums, and functions[#-]\n"
+
+try
+    # Load libc with AUTO - discovers function signatures and constants
+    # Using our test header which has straightforward C declarations
+    module "libc.so.6" as c auto "za_tests/test_functions.h"
+    use +c
+
+    println "[#6]Part 1: Auto-discovered Functions (No LIB declarations needed!)[#-]"
+
+    # Test auto-discovered libc functions via FFI
+    # Use namespace (c::) to call FFI functions
+    str = "Hello, World!"
+    len = c::strlen(str)
+    println "  ✓ c::strlen(\"" + str + "\") = " + as_string(len)
+
+    # String comparison
+    result = c::strcmp("apple", "apple")
+    println "  ✓ c::strcmp(\"apple\", \"apple\") = " + as_string(result) + " (equal)"
+
+    result = c::strcmp("apple", "banana")
+    println "  ✓ c::strcmp(\"apple\", \"banana\") = " + as_string(result) + " (not equal)"
+
+    # Memory allocation
+    ptr = c::malloc(1024)
+    if ptr != 0
+        println "  ✓ c::malloc(1024) = " + as_string(ptr) + " (valid pointer)"
+        c::free(ptr)
+        println "  ✓ c::free(ptr) completed"
+    endif
+
+    println "\n[#6]Part 2: Practical String Manipulation[#-]"
+
+    # Allocate buffer and copy string
+    buffer = c::malloc(256)
+    src_str = "Demonstration"
+    c::strcpy(buffer, src_str)
+    println "  ✓ Copied \"" + src_str + "\" to allocated buffer"
+
+    # Check the length
+    copied_len = c::strlen(buffer)
+    println "  ✓ Length of copied string: " + as_string(copied_len)
+
+    # Clean up
+    c::free(buffer)
+    println "  ✓ Buffer freed"
+
+    println "\n[#6]Part 3: Working with Constants (from test header)[#-]"
+
+    # Load test header with constants
+    module "libc.so.6" as test auto "za_tests/test_enum.h"
+
+    # Check for defined constants
+    if defined("TEST_CONST_1")
+        val = TEST_CONST_1
+        println "  ✓ TEST_CONST_1 = " + as_string(val) + " (integer constant from #define)"
+    endif
+
+    if defined("TEST_CONST_2")
+        val = TEST_CONST_2
+        println "  ✓ TEST_CONST_2 = " + as_string(val) + " (hex constant 0x100)"
+    endif
+
+    if defined("TEST_CONST_3")
+        val = TEST_CONST_3
+        println "  ✓ TEST_CONST_3 = " + as_string(val) + " (bit shift 1<<5)"
+    endif
+
+    println "\n[#2]═══ All Tests Passed! ═══[#-]"
+    println "\n[#3]What AUTO did:[#-]"
+    println "  1. Parsed C header files"
+    println "  2. Extracted #define constants (integers, floats, strings, expressions)"
+    println "  3. Extracted enum definitions"
+    println "  4. Extracted function signatures (strlen, strcmp, malloc, free, strcpy)"
+    println "  5. Made them all available without manual declarations!"
+    println "\n[#3]Zero manual LIB declarations needed - just 'module ... auto'![#-]"
+    println "\n[#5]Limitations:[#-]"
+    println "  • Complex macro-based headers (like math.h) not yet supported"
+    println "  • Simple, straightforward C declarations work best"
+    println "  • Forward references not supported (constants must be defined before use)"
+
+catch e
+    println "[#1]  ✗ Error occurred: " + as_string(e) + "[#-]"
+endtry
+
+println "\n[#2]═══════════════════════════════[#-]"

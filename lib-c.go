@@ -3,10 +3,12 @@ package main
 import (
     "fmt"
     "io/ioutil"
+    "os"
     "os/exec"
     "path/filepath"
     "plugin"
     "regexp"
+    "runtime"
     "strconv"
     "strings"
     "sync"
@@ -137,6 +139,16 @@ type CPointerValue struct {
 // IsNull returns true if the pointer is null
 func (p *CPointerValue) IsNull() bool {
     return p == nil || p.Ptr == nil
+}
+
+// ToInt converts the pointer value to an integer
+// This is useful for size_t, uintptr_t, and other integer-valued pointer returns
+// Equivalent to c_ptr_to_int() but can be called as a method: ptr.ToInt()
+func (p *CPointerValue) ToInt() int {
+    if p == nil || p.Ptr == nil {
+        return 0
+    }
+    return int(uintptr(p.Ptr))
 }
 
 // String representation for debugging
@@ -956,13 +968,13 @@ func buildFfiLib() {
         return nil, nil
     }
 
-    slhelp["c_ptr_to_int"] = LibHelp{in: "ptr", out: "int", action: "Converts a C pointer to an integer. Useful for size_t values returned as pointers."}
+    slhelp["c_ptr_to_int"] = LibHelp{in: "ptr", out: "int", action: "Converts a C pointer to an integer. Useful for size_t, uintptr_t, and other integer-valued returns. Tip: Can also use ptr.ToInt() method for convenience."}
     stdlib["c_ptr_to_int"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("c_ptr_to_int", args, 1, "1", "any"); !ok {
             return nil, err
         }
         if p, ok := args[0].(*CPointerValue); ok {
-            return int(uintptr(p.Ptr)), nil
+            return p.ToInt(), nil
         }
         return nil, fmt.Errorf("c_ptr_to_int: argument is not a C pointer")
     }
@@ -1065,7 +1077,17 @@ func extractLibraryBaseName(libraryPath string) string {
 
 // mapCTypeStringToZa converts a C type string to Za CType enum
 // Handles common C types including modifiers and pointers
-func mapCTypeStringToZa(cTypeStr string) (CType, string, error) {
+func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
+    // NEW: Try typedef resolution first
+    if alias != "" {
+        if resolved := resolveTypedef(cTypeStr, alias, 0); resolved != "" {
+            if os.Getenv("ZA_DEBUG_AUTO") != "" {
+                fmt.Printf("[AUTO] Resolved typedef: %s → %s (alias: %s)\n", cTypeStr, resolved, alias)
+            }
+            cTypeStr = resolved  // Replace with resolved type
+        }
+    }
+
     // Remove leading/trailing whitespace
     cTypeStr = strings.TrimSpace(cTypeStr)
 
@@ -1339,7 +1361,7 @@ func parseManPageLocal(functionName string, libraryAlias string, libraryPath str
 
 // parseCFunctionSignature parses a C function signature string
 // Example input: "size_t strlen(const char *s)"
-func parseCFunctionSignature(sigStr string, functionName string) (*FunctionSignature, error) {
+func parseCFunctionSignature(sigStr string, functionName string, alias string) (*FunctionSignature, error) {
     // Clean up the signature
     sigStr = strings.TrimSpace(sigStr)
     sigStr = strings.TrimSuffix(sigStr, ";")
@@ -1384,7 +1406,7 @@ func parseCFunctionSignature(sigStr string, functionName string) (*FunctionSigna
     }
 
     // Parse return type
-    returnType, _, err := mapCTypeStringToZa(returnTypeStr)
+    returnType, _, err := mapCTypeStringToZa(returnTypeStr, alias)
     if err != nil {
         return nil, fmt.Errorf("failed to parse return type '%s': %w", returnTypeStr, err)
     }
@@ -1433,7 +1455,7 @@ func parseCFunctionSignature(sigStr string, functionName string) (*FunctionSigna
             }
 
             // Map C type to Za type
-            zaType, _, err := mapCTypeStringToZa(paramType)
+            zaType, _, err := mapCTypeStringToZa(paramType, alias)
             if err != nil {
                 zaType = CPointer // Default to pointer if unknown
             }
@@ -1580,7 +1602,7 @@ func lookupFunctionSignature(functionName string, lib *CLibrary) (*FunctionSigna
 
     if err == nil {
         // Successfully got signature from man page, parse it
-        sig, parseErr := parseCFunctionSignature(sigStr, functionName)
+        sig, parseErr := parseCFunctionSignature(sigStr, functionName, "")
         if parseErr == nil {
             return sig, nil
         }
@@ -1591,7 +1613,7 @@ func lookupFunctionSignature(functionName string, lib *CLibrary) (*FunctionSigna
     sigStr, err = parseManPageOnline(functionName)
     if err == nil {
         // Successfully got signature from online, parse it
-        sig, parseErr := parseCFunctionSignature(sigStr, functionName)
+        sig, parseErr := parseCFunctionSignature(sigStr, functionName, "")
         if parseErr == nil {
             return sig, nil
         }
@@ -1599,9 +1621,32 @@ func lookupFunctionSignature(functionName string, lib *CLibrary) (*FunctionSigna
 
     return nil, fmt.Errorf("could not find signature for function '%s'", functionName)
 }
-// parseManPageOnline fetches function signature from man7.org
+// getPlatformManPageURL returns the appropriate online man page URL for the current platform
+func getPlatformManPageURL(functionName string) string {
+    switch runtime.GOOS {
+    case "freebsd":
+        // FreeBSD man pages
+        return fmt.Sprintf("https://man.freebsd.org/cgi/man.cgi?query=%s&sektion=3", functionName)
+    case "openbsd":
+        // OpenBSD man pages
+        return fmt.Sprintf("https://man.openbsd.org/%s.3", functionName)
+    case "netbsd":
+        // NetBSD man pages
+        return fmt.Sprintf("https://man.netbsd.org/%s.3", functionName)
+    case "dragonfly":
+        // DragonFly BSD uses FreeBSD man pages as fallback
+        return fmt.Sprintf("https://man.dragonflybsd.org/?command=%s&section=3", functionName)
+    case "linux":
+        fallthrough
+    default:
+        // Linux (default) - man7.org
+        return fmt.Sprintf("https://man7.org/linux/man-pages/man3/%s.3.html", functionName)
+    }
+}
+
+// parseManPageOnline fetches function signature from platform-specific man page URL
 func parseManPageOnline(functionName string) (string, error) {
-    url := fmt.Sprintf("https://man7.org/linux/man-pages/man3/%s.3.html", functionName)
+    url := getPlatformManPageURL(functionName)
 
     // Fetch the HTML page
     resp, err := web_client.Get(url)

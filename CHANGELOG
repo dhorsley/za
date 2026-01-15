@@ -35,7 +35,79 @@ library changes
 language changes
 ----------------
 
-  * (experimental) (VERY) added C Foreign Function Interface (FFI) for dynamic library integration
+  * FFI callback system enhancements
+      - Dynamic closure support via libffi - callbacks now support unlimited signatures
+      - automatic fallback from hardcoded trampolines to dynamic closures
+      - expanded hardcoded trampolines from 5 to 19 signatures for optimal performance:
+          * Core: ptr,ptr->int, int,int->int, ptr->ptr, int,ptr,ptr->void, int->void
+          * Math: double->double, float->float, double,double->double
+          * Pointers: ptr,ptr,ptr->int, void->void, ptr->void, ptr,ptr->void, ptr,int->void, ptr,int->int, ptr,ptr->bool
+          * Primitives: int->int, string->void, string->int, int,int->void
+      - universal closure handler dynamically marshals arbitrary callback signatures
+      - full type support: int8-64, uint8-64, float, double, ptr, string, bool
+      - proper memory management with automatic cleanup
+      - signature validation rejects unsupported patterns (struct-by-value, variadic)
+      - zero overhead for hardcoded trampolines (fast path preserved)
+      - test coverage in za_tests/test_callback_dynamic.za
+      - BSD compatibility improvements: FreeBSD, OpenBSD, NetBSD paths and symbol versioning
+      - runtime ABI detection for x86-64, ARM64, x86-32, ARM-32, RISC-V 64, PPC64
+      - platform-aware help plugin with BSD-specific man page URLs
+
+  * added AUTO clause for MODULE statements - automatic C header parsing
+      - syntax: module "libfoo.so" as foo auto
+      - automatically discovers and parses C header files
+      - constants now accessible from headers
+      - can eliminate the need for manual LIB declarations - functions auto-discovered
+      - supports explicit header paths: module "lib.so" as name auto "/path/to/header.h"
+      - supports multiple headers: module "lib.so" as name auto "a.h" "b.h"
+      - header auto-discovery searches standard paths:
+          * /usr/include, /usr/local/include
+          * architecture-specific paths (x86_64-linux-gnu, aarch64-linux-gnu)
+          * subdirectories (e.g., /usr/include/curl/curl.h)
+          * parses #define integer constants (decimal, hex like 0xFF, bit shifts like 1<<5)
+          * parses enum definitions (single-line and multiline)
+          * constants accessible via USE chain or namespace qualification
+          * new stdlib function: defined(name) - checks if constant exists
+          * auto-generates LIB declarations from C function prototypes
+          * eliminates need for manual function signature declarations
+          * supports pointer return types (void *malloc, char *strcpy)
+          * supports multiline function declarations
+          * supports variadic functions (printf, scanf)
+          * supports extern and const qualifiers
+          * skips static inline, private functions (_prefix)
+          * explicit LIB statements override auto-discovered signatures
+          * reuses existing parseCFunctionSignature() from help plugin
+          * replaced custom parsers with Za's ev() expression evaluator
+          * parses float constants: 3.14159, scientific notation (6.02e23)
+          * parses string constants: "version 1.0", escape sequences (\n, \t, \", \\)
+          * transforms C string concatenation: "part1" "part2" → Za syntax
+          * evaluates complex expressions ((100+50)*2, 0xFF00|0x00FF)
+          * constants can now reference earlier constants: #define BUFFER (BASE * 2)
+          * supports chained references: A → B → C
+          * limitation: forward references not supported (must be defined in order)
+          * limitation: circular references fail gracefully (silently skipped)
+          * resolves typedef declarations from C headers for accurate type mapping
+          * simple typedefs: typedef unsigned int uint32_t;
+          * typedef chains: typedef int A; typedef A B; typedef B C; (recursive)
+          * struct typedefs: typedef struct Point { int x; } Point;
+          * pointer typedefs: typedef void* VoidPtr;
+          * recursive resolution up to 10 levels with cycle detection
+          * module-scoped typedefs (isolated per library alias)
+          * limitation: function pointer typedefs, array typedefs deferred
+          * processes C preprocessor directives before parsing header content
+          * supported directives: #ifdef, #ifndef, #else, #endif, #define
+          * platform macro auto-detection: __linux__, __unix__, __LP64__, __GNUC__
+          * feature macros: __USE_MISC, __USE_XOPEN
+          * nested conditionals supported (unlimited depth via stack-based tracking)
+          * skips inactive platform-specific blocks automatically
+      - graceful degradation with warnings if headers not found
+      - test files: za_tests/test_headers_simple.za, za_tests/test_auto_functions.za,
+        za_tests/test_auto_string_float_constants.za (includes cross-reference tests),
+        za_tests/test_auto_typedef.za, za_tests/test_auto_preprocessor.za
+      - limitations: function-like macros, forward references, character literals, function pointer typedefs
+      - future enhancements: #include recursion, complex #if expressions, struct definition import
+
+  * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
       - MODULE extension: module "libfoo.so" as foo
       - automatic function discovery via ELF symbol table parsing
       - GNU IFUNC and symbol versioning (@@GLIBC) support
@@ -68,15 +140,13 @@ language changes
       - callback support (C calling Za functions):
           - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
           - Za functions can be passed as callbacks to C APIs
-          - supported signatures: ptr,ptr->int, int,int->int, ptr->ptr, int,ptr,ptr->void, int->void
-          - examples: qsort_r comparators, pthread_create, sigaction handlers
+          - unlimited callback signatures via libffi closures (automatic fallback)
+          - 19 hardcoded trampolines for optimal performance on common signatures
+          - dynamic closure generation for custom signatures at runtime
+          - supported types: int8-64, uint8-64, float, double, ptr, string, bool
+          - examples: qsort_r comparators, pthread_create, custom C API callbacks
           - thread-safe invocation (serialized with mutex)
           - test scripts at za_tests/test_callback*.za
-      - current limitations:
-          - no parameter type information from symbols alone (use LIB declarations)
-          - constants (#define macros) not discoverable from .so files
-          - callback signatures limited to predefined trampolines
-          - Windows implementation is stubbed only
 
   * (experimental) added optional type specifications to function definitions
       - typed parameters: def func(a:int, b:string)
