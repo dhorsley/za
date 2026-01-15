@@ -418,13 +418,18 @@ func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, 
     if value == nil {
         field.Set(reflect.Zero(field.Type()))
     } else {
-        valToSet := reflect.ValueOf(value)
+        // Use convertAssignmentValue to handle type conversions (e.g., []interface{} to []uint8)
+        convertedValue, err := convertAssignmentValue(field.Type(), value)
+        if err != nil {
+            return fmt.Errorf("cannot assign result (%T) to %v.%v (%v): %w", value, varToken.tokText, fieldName, field.Type(), err)
+        }
+        valToSet := reflect.ValueOf(convertedValue)
         if valToSet.Type().AssignableTo(field.Type()) {
             field.Set(valToSet)
             // pf("latest dest field value: %+v\n",field.Interface())
             // pf("latest dest tmp value  : %+v\n",tmp.Interface())
         } else {
-            return fmt.Errorf("cannot assign result (%T) to %v.%v (%v)", value, varToken.tokText, fieldName, field.Type())
+            return fmt.Errorf("cannot assign result (%T) to %v.%v (%v)", convertedValue, varToken.tokText, fieldName, field.Type())
         }
     }
 
@@ -509,11 +514,16 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
     if value == nil {
         field.Set(reflect.Zero(field.Type()))
     } else {
-        valToSet := reflect.ValueOf(value)
+        // Use convertAssignmentValue to handle type conversions (e.g., []interface{} to []uint8)
+        convertedValue, err := convertAssignmentValue(field.Type(), value)
+        if err != nil {
+            return fmt.Errorf("cannot assign result (%T) to field %s (%v): %w", value, fieldName, field.Type(), err)
+        }
+        valToSet := reflect.ValueOf(convertedValue)
         if valToSet.Type().AssignableTo(field.Type()) {
             field.Set(valToSet)
         } else {
-            return fmt.Errorf("cannot assign result (%T) to field %s (%v)", value, fieldName, field.Type())
+            return fmt.Errorf("cannot assign result (%T) to field %s (%v)", convertedValue, fieldName, field.Type())
         }
     }
 

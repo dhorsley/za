@@ -58,16 +58,21 @@ type CParameter struct {
 
 // StructField represents a field in a C struct
 type StructField struct {
-    Name   string
-    Type   CType
-    Offset uintptr
+    Name        string
+    Type        CType
+    Offset      uintptr
+    ArraySize   int   // 0 for non-arrays, >0 for fixed-size arrays
+    ElementType CType // For arrays, the type of array elements
+    IsUnion     bool  // true if this field is a union type
+    UnionDef    *CLibraryStruct // Union definition if IsUnion=true
 }
 
-// CLibraryStruct represents a C struct definition
+// CLibraryStruct represents a C struct or union definition
 type CLibraryStruct struct {
-    Name   string
-    Fields []StructField
-    Size   uintptr
+    Name    string
+    Fields  []StructField
+    Size    uintptr
+    IsUnion bool // true for unions, false for structs
 }
 
 // CLibrary represents a loaded C library
@@ -1045,10 +1050,11 @@ func buildFfiLib() {
 }
 // FunctionSignature represents a parsed C function signature from man pages
 type FunctionSignature struct {
-    ReturnType   CType
-    Parameters   []CParameter
-    IsVariadic   bool
-    RawSignature string // Original C signature
+    ReturnType         CType
+    ReturnStructName   string // For struct/union return types, the type name
+    Parameters         []CParameter
+    IsVariadic         bool
+    RawSignature       string // Original C signature
 }
 
 // extractLibraryBaseName extracts base library name from file path
@@ -1078,7 +1084,33 @@ func extractLibraryBaseName(libraryPath string) string {
 // mapCTypeStringToZa converts a C type string to Za CType enum
 // Handles common C types including modifiers and pointers
 func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
-    // NEW: Try typedef resolution first
+    // Remove leading/trailing whitespace first
+    cTypeStr = strings.TrimSpace(cTypeStr)
+
+    // Check if this is a known struct/union typedef BEFORE resolution
+    // This allows us to preserve the original type name for struct/union references
+    if alias != "" {
+        cleanType := strings.TrimSpace(cTypeStr)
+        cleanType = strings.TrimPrefix(cleanType, "const ")
+        cleanType = strings.TrimPrefix(cleanType, "struct ")
+        cleanType = strings.TrimPrefix(cleanType, "union ")
+        cleanType = strings.TrimSpace(cleanType)
+
+        // Check if it's a known struct/union from AUTO parsing
+        ffiStructLock.RLock()
+        if def, exists := ffiStructDefinitions[cleanType]; exists {
+            ffiStructLock.RUnlock()
+            // Return CStruct with the original typedef name
+            if os.Getenv("ZA_DEBUG_AUTO") != "" {
+                fmt.Fprintf(os.Stderr, "[AUTO] Type %s is known %s, using as struct reference\n",
+                    cleanType, map[bool]string{true: "union", false: "struct"}[def.IsUnion])
+            }
+            return CStruct, cleanType, nil
+        }
+        ffiStructLock.RUnlock()
+    }
+
+    // Try typedef resolution for other types
     if alias != "" {
         if resolved := resolveTypedef(cTypeStr, alias, 0); resolved != "" {
             if os.Getenv("ZA_DEBUG_AUTO") != "" {
@@ -1087,9 +1119,6 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             cTypeStr = resolved  // Replace with resolved type
         }
     }
-
-    // Remove leading/trailing whitespace
-    cTypeStr = strings.TrimSpace(cTypeStr)
 
     // Split on * to separate pointers from types and modifiers
     // e.g., "char *restrict" -> handle separately
@@ -1406,7 +1435,7 @@ func parseCFunctionSignature(sigStr string, functionName string, alias string) (
     }
 
     // Parse return type
-    returnType, _, err := mapCTypeStringToZa(returnTypeStr, alias)
+    returnType, returnStructName, err := mapCTypeStringToZa(returnTypeStr, alias)
     if err != nil {
         return nil, fmt.Errorf("failed to parse return type '%s': %w", returnTypeStr, err)
     }
@@ -1455,14 +1484,15 @@ func parseCFunctionSignature(sigStr string, functionName string, alias string) (
             }
 
             // Map C type to Za type
-            zaType, _, err := mapCTypeStringToZa(paramType, alias)
+            zaType, structTypeName, err := mapCTypeStringToZa(paramType, alias)
             if err != nil {
                 zaType = CPointer // Default to pointer if unknown
             }
 
             parameters = append(parameters, CParameter{
-                Name: paramName,
-                Type: zaType,
+                Name:           paramName,
+                Type:           zaType,
+                StructTypeName: structTypeName,
             })
         }
     }
@@ -1507,10 +1537,11 @@ func parseCFunctionSignature(sigStr string, functionName string, alias string) (
     }
 
     return &FunctionSignature{
-        ReturnType:   returnType,
-        Parameters:   parameters,
-        IsVariadic:   isVariadic,
-        RawSignature: sigStr,
+        ReturnType:       returnType,
+        ReturnStructName: returnStructName,
+        Parameters:       parameters,
+        IsVariadic:       isVariadic,
+        RawSignature:     sigStr,
     }, nil
 }
 
@@ -1855,6 +1886,80 @@ func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
         // Convert Za type string to CType
         var fieldCType CType
         var fieldSize uintptr
+        var arraySize int = 0
+        var elementType CType
+
+        // Check for array syntax: type[size]
+        if strings.Contains(fieldTypeStr, "[") && strings.HasSuffix(fieldTypeStr, "]") {
+            openBracket := strings.Index(fieldTypeStr, "[")
+            closeBracket := strings.LastIndex(fieldTypeStr, "]")
+
+            if openBracket > 0 && closeBracket > openBracket {
+                elementTypeStr := strings.TrimSpace(fieldTypeStr[:openBracket])
+                arraySizeStr := strings.TrimSpace(fieldTypeStr[openBracket+1 : closeBracket])
+
+                // Parse array size
+                size, err := strconv.Atoi(arraySizeStr)
+                if err != nil || size <= 0 {
+                    return nil, fmt.Errorf("invalid array size '%s' for field %s", arraySizeStr, fieldName)
+                }
+                arraySize = size
+
+                // Parse element type
+                var elemSize uintptr
+                switch strings.ToLower(elementTypeStr) {
+                case "int", "uint":
+                    elementType = CInt
+                    elemSize = 4
+                case "int8":
+                    elementType = CInt8
+                    elemSize = 1
+                case "uint8", "byte":
+                    elementType = CUInt8
+                    elemSize = 1
+                case "int16":
+                    elementType = CInt16
+                    elemSize = 2
+                case "uint16":
+                    elementType = CUInt16
+                    elemSize = 2
+                case "int64":
+                    elementType = CInt64
+                    elemSize = 8
+                case "uint64":
+                    elementType = CUInt64
+                    elemSize = 8
+                case "float":
+                    elementType = CFloat
+                    elemSize = 4
+                case "double":
+                    elementType = CDouble
+                    elemSize = 8
+                case "char":
+                    elementType = CChar
+                    elemSize = 1
+                default:
+                    return nil, fmt.Errorf("unsupported array element type '%s' for field %s", elementTypeStr, fieldName)
+                }
+
+                // For arrays, we use the element type as the field type
+                // The marshaling code will use ArraySize to handle the array
+                fieldCType = elementType
+                fieldSize = elemSize * uintptr(arraySize)
+
+                // Add this field and skip the normal type parsing
+                fields = append(fields, StructField{
+                    Name:        fieldName,
+                    Type:        fieldCType,
+                    Offset:      currentOffset,
+                    ArraySize:   arraySize,
+                    ElementType: elementType,
+                })
+
+                currentOffset += fieldSize
+                continue
+            }
+        }
 
         switch strings.ToLower(fieldTypeStr) {
         case "int", "uint":

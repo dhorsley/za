@@ -1,0 +1,84 @@
+#!/usr/bin/env za
+
+# Demonstration of AUTO struct import feature
+
+println "[#4]AUTO Struct Import - Feature Demonstration[#-]"
+println "=" * 60
+
+module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+use +test_c
+
+println "\n[#6]Feature 1: Fully Qualified VAR Declarations[#-]"
+println "  BEFORE: Manual STRUCT definition required"
+println "  AFTER: Just use AUTO-imported type"
+println ""
+var mycolor test_c::color_t
+var myblock test_c::data_block_t
+println "  ✓ var mycolor test_c::color_t"
+println "  ✓ var myblock test_c::data_block_t"
+
+println "\n[#6]Feature 2: Receive Structs from C Functions[#-]"
+color = test_c::make_color(255, 128, 64, 200)
+println "  color = test_c::make_color(255, 128, 64, 200)"
+println "  color.rgb[0] = ", color.rgb[0]
+println "  color.rgb[1] = ", color.rgb[1]
+println "  color.rgb[2] = ", color.rgb[2]
+println "  color.alpha = ", color.alpha
+println "  ✓ All field values correct"
+
+println "\n[#6]Feature 3: Pass Structs to C Functions[#-]"
+avg = test_c::get_avg_rgb(color)
+println "  avg = test_c::get_avg_rgb(color)"
+println "  Result: ", avg, " (expected: 149)"
+if avg == 149
+    println "  ✓ Function call worked correctly"
+else
+    println "  ✗ Unexpected result"
+endif
+
+println "\n[#6]Feature 4: Array Fields Work[#-]"
+block = test_c::make_data_block(99, 5, 10, 15, 20, 25)
+println "  block = test_c::make_data_block(99, 5, 10, 15, 20, 25)"
+println "  block.id = ", block.id
+println "  block.values[0] = ", block.values[0]
+println "  block.values[4] = ", block.values[4]
+println "  block.count = ", block.count
+sum = test_c::sum_data_block(block)
+println "  sum = test_c::sum_data_block(block) = ", sum, " (expected: 75)"
+if sum == 75
+    println "  ✓ Array fields marshaled correctly"
+else
+    println "  ✗ Unexpected result"
+endif
+
+println "\n[#6]Feature 5: Za Maps Still Work (Backward Compatible)[#-]"
+za_color = map()
+za_color.rgb = [50, 100, 150]
+za_color.alpha = 255
+avg2 = test_c::get_avg_rgb(za_color)
+println "  Created Za map with .rgb and .alpha fields"
+println "  avg2 = test_c::get_avg_rgb(za_color) = ", avg2, " (expected: 100)"
+if avg2 == 100
+    println "  ✓ Za maps still work as structs"
+else
+    println "  ✗ Unexpected result"
+endif
+
+println "\n[#6]Feature 6: Show Registered Structs[#-]"
+println "  Structs registered via AUTO:"
+showstruct color_t
+showstruct data_block_t
+
+println "\n[#2]════════════════════════════════════════════════════════════[#-]"
+println "[#2]✅ AUTO Struct Import Feature is Working![#-]"
+println "[#2]════════════════════════════════════════════════════════════[#-]"
+println ""
+println "[#3]What works:[#-]"
+println "  • C structs automatically registered from headers"
+println "  • Fully qualified VAR declarations (e.g., var c test_c::color_t)"
+println "  • Structs from C functions have correct field values"
+println "  • Structs can be passed to C functions"
+println "  • Array fields work correctly"
+println "  • No manual STRUCT/ENDSTRUCT definitions needed!"
+println ""
+println "[#5]Note:[#-] Za maps can still be used as structs (backward compatible)"

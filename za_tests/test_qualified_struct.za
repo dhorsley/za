@@ -1,0 +1,20 @@
+#!/usr/bin/env za
+
+println "Testing fully qualified struct names"
+
+module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+use +test_c
+
+println "\nTest 1: Fully qualified VAR declaration"
+var c test_c::color_t
+println "Declared c:", c
+
+println "\nTest 2: Unqualified struct instantiation"
+c2 = color_t(.rgb [255, 128, 64], .alpha 200)
+println "Created c2.rgb[0]:", c2.rgb[0]
+
+println "\nTest 3: Pass struct to C function"
+avg = test_c::get_avg_rgb(c2)
+println "Average:", avg
+
+println "\nDone"

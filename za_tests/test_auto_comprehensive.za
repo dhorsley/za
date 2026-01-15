@@ -4,7 +4,7 @@ println "[#3]Demonstrates AUTO with constants, enums, and functions[#-]\n"
 try
     # Load libc with AUTO - discovers function signatures and constants
     # Using our test header which has straightforward C declarations
-    module "libc.so.6" as c auto "za_tests/test_functions.h"
+    module "libc.so.6" as c auto "test_functions.h"
     use +c
 
     println "[#6]Part 1: Auto-discovered Functions (No LIB declarations needed!)[#-]"

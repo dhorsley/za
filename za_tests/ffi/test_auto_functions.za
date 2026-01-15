@@ -3,7 +3,7 @@ println "[#4]═══ AUTO Function Signature Tests ═══[#-]\n"
 # Test 1: Auto-discover function signatures from explicit header
 println "[#3]Test 1: AUTO with explicit function header[#-]"
 try
-    module "libc.so.6" as testc auto "za_tests/test_functions.h"
+    module "libc.so.6" as testc auto "test_functions.h"
     use +testc
 
     # Test if functions are callable without explicit LIB declarations

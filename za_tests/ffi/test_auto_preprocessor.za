@@ -2,7 +2,7 @@ println "[#4]═══ AUTO Preprocessor Test ═══[#-]\n"
 println "[#3]Tests preprocessor conditional parsing in AUTO clause[#-]\n"
 
 try
-    module "libc.so.6" as preproc auto "za_tests/test_preprocessor.h"
+    module "libc.so.6" as preproc auto "test_preprocessor.h"
     use +preproc
 
     println "[#6]Part 1: Platform Detection[#-]"

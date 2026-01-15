@@ -1,0 +1,340 @@
+#!/usr/bin/env za
+
+println "\n[#4]═══ Union Support Test Suite ═══[#-]\n"
+
+# Load test library - functions are auto-discovered from headers
+module "/home/daniel/go/src/za/za_tests/libtest_union.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_union_lib.h"
+use +test_c
+
+test_count = 0
+pass_count = 0
+fail_count = 0
+
+# =============================================================================
+# TEST 1: Union Typedef Parsing
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union typedef parsing from C headers[#-]"
+
+try uses pass_count,fail_count
+    # If we got here, AUTO parsing succeeded
+    # Module loaded without error means union typedef was parsed
+    assert true, "Module loaded successfully"
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 2: Unmarshal Union - Int Value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Unmarshal union with int value[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_int(42)
+
+    # Check that we got a map back
+    assert returned != nil, "Return value should not be nil"
+
+    # Check int_value field
+    assert defined("returned[\"int_value\"]"), "Missing int_value field"
+    assert returned["int_value"] == 42, "int_value should be 42, got " + as_string(returned["int_value"])
+
+    # Check float_value field exists (will be reinterpretation of int bits)
+    assert defined("returned[\"float_value\"]"), "Missing float_value field"
+
+    # Check bytes field exists
+    assert defined("returned[\"bytes\"]"), "Missing bytes field"
+    bytes_arr = returned["bytes"]
+    assert len(bytes_arr) == 4, "bytes array should have 4 elements"
+    assert as_int(bytes_arr[0]) == 42 or as_int(bytes_arr[3]) == 42, "First or last byte should be 42"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 3: Unmarshal Union - Float Value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Unmarshal union with float value[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_float(3.14)
+
+    assert returned != nil, "Return value should not be nil"
+
+    # Check float_value field
+    assert defined("returned[\"float_value\"]"), "Missing float_value field"
+    fval = returned["float_value"]
+    assert fval > 3.13 and fval < 3.15, "float_value should be ~3.14, got " + as_string(fval)
+
+    # Check int_value field exists (reinterpretation of float bits)
+    assert defined("returned[\"int_value\"]"), "Missing int_value field"
+
+    # Check bytes field
+    assert defined("returned[\"bytes\"]"), "Missing bytes field"
+    assert len(returned["bytes"]) == 4, "bytes array should have 4 elements"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 4: Zero Value Handling
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union with zero value[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_int(0)
+
+    assert returned != nil, "Return value should not be nil"
+    assert returned["int_value"] == 0, "int_value should be 0"
+    assert returned["float_value"] == 0.0, "float_value should be 0.0"
+
+    bytes_arr = returned["bytes"]
+    assert as_int(bytes_arr[0]) == 0, "All bytes should be 0"
+    assert as_int(bytes_arr[1]) == 0, "All bytes should be 0"
+    assert as_int(bytes_arr[2]) == 0, "All bytes should be 0"
+    assert as_int(bytes_arr[3]) == 0, "All bytes should be 0"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 5: Memory Overlap Verification
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Memory overlap (all fields at offset 0)[#-]"
+
+try uses pass_count,fail_count
+    # Test with a specific bit pattern: 0x12345678
+    returned = make_union_from_int(0x12345678)
+
+    assert returned != nil, "Return value should not be nil"
+
+    int_val = returned["int_value"]
+    assert int_val == 0x12345678 or int_val == 305419896, "int_value mismatch"
+
+    bytes_arr = returned["bytes"]
+
+    # On little-endian: bytes = [0x78, 0x56, 0x34, 0x12] = [120, 86, 52, 18]
+    # On big-endian: bytes = [0x12, 0x34, 0x56, 0x78] = [18, 52, 86, 120]
+    first_byte = as_int(bytes_arr[0])
+    last_byte = as_int(bytes_arr[3])
+
+    # At least one byte should match the expected endianness
+    assert first_byte == 120 or first_byte == 18, "First byte should be 0x78 or 0x12, got " + as_string(first_byte)
+    assert last_byte == 18 or last_byte == 120, "Last byte should be 0x12 or 0x78, got " + as_string(last_byte)
+
+    # Verify byte order is consistent
+    if first_byte == 120
+        # Little-endian
+        assert as_int(bytes_arr[1]) == 86, "Byte 1 should be 0x56 (86)"
+        assert as_int(bytes_arr[2]) == 52, "Byte 2 should be 0x34 (52)"
+        assert as_int(bytes_arr[3]) == 18, "Byte 3 should be 0x12 (18)"
+    else
+        # Big-endian
+        assert as_int(bytes_arr[1]) == 52, "Byte 1 should be 0x34 (52)"
+        assert as_int(bytes_arr[2]) == 86, "Byte 2 should be 0x56 (86)"
+        assert as_int(bytes_arr[3]) == 120, "Byte 3 should be 0x78 (120)"
+    endif
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 6: Large Value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union with large int value[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_int(0x7FFFFFFF)
+
+    assert returned != nil, "Return value should not be nil"
+    assert returned["int_value"] == 0x7FFFFFFF or returned["int_value"] == 2147483647, "int_value mismatch"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 7: Negative Value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union with negative int value[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_int(-42)
+
+    assert returned != nil, "Return value should not be nil"
+    assert returned["int_value"] == -42, "int_value should be -42, got " + as_string(returned["int_value"])
+
+    # Negative int should have different bit pattern
+    bytes_arr = returned["bytes"]
+    # -42 in two's complement has high bit set somewhere
+    assert len(bytes_arr) == 4, "Should have 4 bytes"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 8: Round-trip Consistency
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Round-trip consistency[#-]"
+
+try uses pass_count,fail_count
+    u1 = make_union_from_int(100)
+    u2 = make_union_from_int(100)
+
+    assert u1 != nil, "First call should not return nil"
+    assert u2 != nil, "Second call should not return nil"
+
+    assert u1["int_value"] == u2["int_value"], "Both calls should return same int_value"
+    assert u1["float_value"] == u2["float_value"], "Both calls should return same float_value"
+
+    bytes1 = u1["bytes"]
+    bytes2 = u2["bytes"]
+    assert bytes1[0] == bytes2[0], "Byte arrays should match"
+    assert bytes1[1] == bytes2[1], "Byte arrays should match"
+    assert bytes1[2] == bytes2[2], "Byte arrays should match"
+    assert bytes1[3] == bytes2[3], "Byte arrays should match"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 9: Float Special Values
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union with special float value (0.0)[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_float(0.0)
+
+    assert returned != nil, "Return value should not be nil"
+    assert returned["float_value"] == 0.0, "float_value should be 0.0"
+    assert returned["int_value"] == 0, "float 0.0 should have bit pattern 0"
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 10: All Fields Present
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: All union fields present in returned map[#-]"
+
+try uses pass_count,fail_count
+    returned = make_union_from_int(12345)
+
+    assert returned != nil, "Return value should not be nil"
+
+    # All three fields must be present
+    assert defined("returned[\"int_value\"]"), "int_value field must be present"
+    assert defined("returned[\"float_value\"]"), "float_value field must be present"
+    assert defined("returned[\"bytes\"]"), "bytes field must be present"
+
+    # Count fields
+    field_count = 0
+    if defined("returned[\"int_value\"]")
+        field_count = field_count + 1
+    endif
+    if defined("returned[\"float_value\"]")
+        field_count = field_count + 1
+    endif
+    if defined("returned[\"bytes\"]")
+        field_count = field_count + 1
+    endif
+
+    assert field_count == 3, "Should have exactly 3 fields, got " + as_string(field_count)
+
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS[#-]"
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# SUMMARY
+# =============================================================================
+println "[#4]═══════════════════════════════════════[#-]"
+println "[#4]Test Summary[#-]"
+println "  Total:  {test_count}"
+println "  [#2]Passed: {pass_count}[#-]"
+println "  [#1]Failed: {fail_count}[#-]"
+println "[#4]═══════════════════════════════════════[#-]"
+
+if fail_count == 0
+    println "\n[#2]✓✓✓ All tests PASSED! ✓✓✓[#-]"
+    println "\n[#3]Union Support Summary:[#-]"
+    println "  ✓ Union typedefs parsed from C headers (AUTO clause)"
+    println "  ✓ Unions returned by value from C functions"
+    println "  ✓ Unmarshal unions to Za maps with all field interpretations"
+    println "  ✓ Memory overlap verified (all fields at offset 0)"
+    println "  ✓ Zero values, negative values, special float values"
+    println "  ✓ Round-trip consistency"
+    println "  ✓ Byte array access"
+    println
+else
+    println "\n[#1]✗ {fail_count} test(s) FAILED - see details above[#-]"
+    exit 1
+endif
+
+

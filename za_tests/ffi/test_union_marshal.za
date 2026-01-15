@@ -1,0 +1,293 @@
+#!/usr/bin/env za
+
+println "\n[#4]═══ Union Marshal Test (Za → C) ═══[#-]\n"
+
+# Load test library - functions are auto-discovered from headers
+module "/home/daniel/go/src/za/za_tests/libtest_union.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_union_lib.h"
+use +test_c
+
+test_count = 0
+pass_count = 0
+fail_count = 0
+
+# =============================================================================
+# TEST 1: Marshal map with int field to C
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal map with int_value to C[#-]"
+
+try uses pass_count,fail_count
+    # Create a map with single field
+    u = map(.int_value 42)
+
+    # Pass to C function
+    result = get_union_as_int(u)
+
+    if result == 42
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Successfully marshaled map to union[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected 42, got " + as_string(result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 2: Marshal map with float field to C
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal map with float_value to C[#-]"
+
+try uses pass_count,fail_count
+    u = map(.float_value 3.14)
+
+    result = get_union_as_float(u)
+
+    if result > 3.13 and result < 3.15
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Successfully marshaled float map to union[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected ~3.14, got " + as_string(result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 3: Marshal map with zero value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal map with zero value[#-]"
+
+try uses pass_count,fail_count
+    u = map(.int_value 0)
+
+    result = get_union_as_int(u)
+
+    if result == 0
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Zero value marshaled correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected 0, got " + as_string(result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 4: Marshal negative value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal map with negative value[#-]"
+
+try uses pass_count,fail_count
+    u = map(.int_value -100)
+
+    result = get_union_as_int(u)
+
+    if result == -100
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Negative value marshaled correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected -100, got " + as_string(result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 5: Marshal large value
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal map with large value[#-]"
+
+try uses pass_count,fail_count
+    u = map(.int_value 0x7FFFFFFF)
+
+    result = get_union_as_int(u)
+
+    if result == 0x7FFFFFFF or result == 2147483647
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Large value marshaled correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Value mismatch, got " + as_string(result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 6: Marshal and verify byte access
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal and verify first byte[#-]"
+
+try uses pass_count,fail_count
+    # 0x12345678 - first byte should be 0x78 (little-endian) or 0x12 (big-endian)
+    u = map(.int_value 0x12345678)
+
+    byte_val = get_first_byte(u)
+
+    # Convert to int for comparison since byte_val is uint8
+    byte_int = as_int(byte_val)
+    if byte_int == 120 or byte_int == 18
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Byte access verified[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected 0x78 or 0x12, got " + as_string(byte_val) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 7: Round-trip marshal and unmarshal
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Round-trip marshal/unmarshal[#-]"
+
+try uses pass_count,fail_count
+    # Create map and marshal to C
+    u_out = map(.int_value 999)
+    int_result = get_union_as_int(u_out)
+
+    if int_result == 999
+        # Now get same value back from C as union
+        u_in = make_union_from_int(999)
+
+        if u_in["int_value"] == 999
+            pass_count = pass_count + 1
+            println "  [#2]✓ PASS - Round-trip successful[#-]"
+        else
+            fail_count = fail_count + 1
+            println "  [#1]✗ FAIL: Unmarshal failed, got " + as_string(u_in["int_value"]) + "[#-]"
+        endif
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Marshal failed, got " + as_string(int_result) + "[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println ""
+
+# =============================================================================
+# TEST 8: Error - map with multiple fields (should fail)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Error handling - multiple fields[#-]"
+
+try uses pass_count,fail_count
+    # This should fail - unions require exactly 1 active field
+    u = map(.int_value 42, .float_value 3.14)
+
+    result = get_union_as_int(u)??
+
+    # If we got here, the validation didn't work
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL - Should have rejected map with multiple fields[#-]"
+catch e
+    # Expected to fail
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS - Correctly rejected multiple fields[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 9: Error - empty map (should fail)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Error handling - empty map[#-]"
+
+try uses pass_count,fail_count
+    # This should fail - unions require exactly 1 field
+    u = map()
+
+    result = get_union_as_int(u)??
+
+    # If we got here, the validation didn't work
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL - Should have rejected empty map[#-]"
+catch e
+    # Expected to fail
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS - Correctly rejected empty map[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 10: Error - invalid field name (should fail)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Error handling - invalid field name[#-]"
+
+try uses pass_count,fail_count
+    # This should fail - not a valid union field
+    u = map(.invalid_field 42)
+
+    result = get_union_as_int(u)??
+
+    # If we got here, the validation didn't work
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL - Should have rejected invalid field name[#-]"
+catch e
+    # Expected to fail
+    pass_count = pass_count + 1
+    println "  [#2]✓ PASS - Correctly rejected invalid field name[#-]"
+endtry
+
+println
+
+# =============================================================================
+# SUMMARY
+# =============================================================================
+println "[#4]═══════════════════════════════════════[#-]"
+println "[#4]Test Summary[#-]"
+println "  Total:  {test_count}"
+println "  [#2]Passed: {pass_count}[#-]"
+println "  [#1]Failed: {fail_count}[#-]"
+println "[#4]═══════════════════════════════════════[#-]"
+
+if fail_count == 0
+    println "\n[#2]✓✓✓ All marshal tests PASSED! ✓✓✓[#-]"
+    println "\n[#3]Union Marshal Support:[#-]"
+    println "  ✓ Map literals can be passed to C functions expecting unions"
+    println "  ✓ Single-field maps marshal correctly (active field)"
+    println "  ✓ Integer, float, and byte values all work"
+    println "  ✓ Zero, negative, and large values handled"
+    println "  ✓ Round-trip marshal/unmarshal consistent"
+    println "  ✓ Proper error handling for invalid maps"
+    println ""
+else
+    println "\n[#1]✗ {fail_count} test(s) FAILED - see details above[#-]"
+    exit 1
+endif

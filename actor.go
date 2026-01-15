@@ -1716,10 +1716,39 @@ tco_reentry:
                 }
 
                 // check for valid types:
-                switch str.ToLower(cet.text) {
+                typeText := str.ToLower(cet.text)
+                isValidType := false
+
+                // Check for basic types
+                switch typeText {
                 case "int", "float", "string", "bool", "uint", "uint8", "bigi", "bigf", "byte", "mixed", "any", "[]":
+                    isValidType = true
                 case "[]int", "[]float", "[]string", "[]bool", "[]uint", "[]uint8", "[]bigi", "[]bigf", "[]byte":
+                    isValidType = true
+                case "int8", "int16", "int64", "uint16", "uint64", "double", "char":
+                    isValidType = true
                 default:
+                    // Check for fixed-size array syntax: type[size]
+                    if str.Contains(typeText, "[") && str.HasSuffix(typeText, "]") {
+                        openBracket := str.Index(typeText, "[")
+                        closeBracket := str.LastIndex(typeText, "]")
+                        if openBracket > 0 && closeBracket > openBracket {
+                            elemType := str.TrimSpace(typeText[:openBracket])
+                            sizeStr := str.TrimSpace(typeText[openBracket+1 : closeBracket])
+
+                            // Validate element type
+                            switch elemType {
+                            case "int", "uint", "int8", "uint8", "int16", "uint16", "int64", "uint64", "float", "double", "byte", "char":
+                                // Validate size is a number
+                                if _, err := strconv.Atoi(sizeStr); err == nil {
+                                    isValidType = true
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !isValidType {
                     parser.report(inbound.SourceLine, sf("Invalid type in STRUCT '%s'", cet.text))
                     finish(false, ERR_SYNTAX)
                     typeInvalid = true
@@ -4438,33 +4467,79 @@ tco_reentry:
 
             // Non-test mode: exit early with lightweight checks
             if !under_test {
+                // Check if we're inside a try block using the state information
+                insideTryBlock := calltable[ifs].isTryBlock
+
+                var needsThrow bool
+                var throwMessage string
+
                 if isAssertError {
                     if !we.evalError {
-                        parser.report(inbound.SourceLine, "ASSERT ERROR: expression did not throw an error")
-                        finish(false, ERR_ASSERT)
+                        throwMessage = "ASSERT ERROR: expression did not throw an error"
+                        parser.report(inbound.SourceLine, throwMessage)
+                        if insideTryBlock {
+                            needsThrow = true
+                        } else {
+                            finish(false, ERR_ASSERT)
+                        }
                     }
-                    // Passed: errored as expected
-                    break
+                    if !needsThrow {
+                        // Passed: errored as expected
+                        break
+                    }
+                } else {
+                    // Normal ASSERT
+                    if we.assign {
+                        throwMessage = "Assert contained an assignment"
+                        parser.report(inbound.SourceLine, "[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
+                        if insideTryBlock {
+                            needsThrow = true
+                        } else {
+                            finish(false, ERR_ASSERT)
+                        }
+                    } else if we.evalError {
+                        throwMessage = "Could not evaluate expression in ASSERT statement"
+                        parser.report(inbound.SourceLine, throwMessage)
+                        if insideTryBlock {
+                            needsThrow = true
+                        } else {
+                            finish(false, ERR_EVAL)
+                        }
+                    } else if b, ok := we.result.(bool); !ok || !b {
+                        if customMessage != "" {
+                            throwMessage = sf("Could not assert! (%s)", customMessage)
+                        } else {
+                            throwMessage = "Could not assert! (assertion failed)"
+                        }
+                        parser.report(inbound.SourceLine, throwMessage)
+                        if insideTryBlock {
+                            needsThrow = true
+                        } else {
+                            finish(false, ERR_ASSERT)
+                        }
+                    }
                 }
 
-                // Normal ASSERT
-                if we.assign {
-                    parser.report(inbound.SourceLine, "[#2][#bold]Warning! Assert contained an assignment![#-][#boff]")
-                    finish(false, ERR_ASSERT)
-                    break
-                }
-                if we.evalError {
-                    parser.report(inbound.SourceLine, "Could not evaluate expression in ASSERT statement")
-                    finish(false, ERR_EVAL)
-                    break
-                }
-                if b, ok := we.result.(bool); !ok || !b {
-                    if customMessage != "" {
-                        parser.report(inbound.SourceLine, sf("Could not assert! (%s)", customMessage))
-                    } else {
-                        parser.report(inbound.SourceLine, "Could not assert! (assertion failed)")
+                // Inject throw statement if needed
+                if needsThrow {
+                    // Create tokens for: throw "assert" with throwMessage
+                    p := Phrase{}
+                    p.Tokens = []Token{
+                        {tokType: C_Throw, tokText: "throw"},
+                        {tokType: StringLiteral, tokText: "\"assert\"", tokVal: "assert"},
+                        {tokType: C_With, tokText: "with"},
+                        {tokType: StringLiteral, tokText: sf("\"%s\"", throwMessage), tokVal: throwMessage},
                     }
-                    finish(false, ERR_ASSERT)
+                    p.TokenCount = int16(len(p.Tokens))
+                    p.SourceLine = inbound.SourceLine
+
+                    b := BaseCode{}
+                    b.Original = basecode[source_base][parser.pc].Original
+
+                    // Re-enter the switch with the throw statement
+                    inbound = &p
+                    basecode_entry = &b
+                    goto ondo_reenter
                 }
                 break
             }
@@ -5483,7 +5558,7 @@ tco_reentry:
 
                 // Parse header files if AUTO clause was specified
                 if hasAuto {
-                    if err := parseModuleHeaders(libPath, currentModule, headerPaths); err != nil {
+                    if err := parseModuleHeaders(libPath, currentModule, headerPaths, parser.fs); err != nil {
                         parser.report(inbound.SourceLine, sf("AUTO clause failed: %v\n\nSolution: Specify explicit header path:\n  module \"%s\" as %s auto \"/path/to/header.h\"",
                             err, libPath, currentModule))
                         finish(false, ERR_MODULE)

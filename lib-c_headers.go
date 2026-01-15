@@ -7,8 +7,11 @@ import (
     "path/filepath"
     "regexp"
     "runtime"
+    "strconv"
     "strings"
     "sync"
+    "unicode"
+    "unicode/utf8"
 )
 
 // Global typedef registry
@@ -20,17 +23,22 @@ var moduleTypedefsLock sync.RWMutex
 
 // PreprocessorState tracks conditional compilation state while parsing a header
 type PreprocessorState struct {
-    definedMacros  map[string]string // NAME → VALUE from #define
-    conditionStack []bool             // Stack: true=include, false=skip
-    includeDepth   int                // Current #ifdef nesting level
+    definedMacros  map[string]string  // NAME → VALUE from #define
+    conditionStack []bool              // Stack: true=include, false=skip
+    chainSatisfied []bool              // Stack: true=any condition in if/elif chain was true
+    includeDepth   int                 // Current #ifdef nesting level
+    visitedHeaders map[string]bool     // Tracks visited headers for cycle detection
+    alias          string               // Library alias for context
 }
 
 // newPreprocessorState creates a new preprocessor state with platform macros
-func newPreprocessorState() *PreprocessorState {
+func newPreprocessorState(alias string) *PreprocessorState {
     state := &PreprocessorState{
         definedMacros:  make(map[string]string),
         conditionStack: []bool{true}, // Start with including (top level)
         includeDepth:   0,
+        visitedHeaders: make(map[string]bool),
+        alias:          alias,
     }
 
     // Define platform macros based on runtime
@@ -72,28 +80,122 @@ func (s *PreprocessorState) isDefined(name string) bool {
 }
 
 // pushCondition adds a new conditional level
+// For #if/#elif, satisfied indicates if this condition was true
+// For #ifdef/#ifndef, use the same value for both
 func (s *PreprocessorState) pushCondition(include bool) {
     s.conditionStack = append(s.conditionStack, include)
+    s.chainSatisfied = append(s.chainSatisfied, include)
+    s.includeDepth++
+}
+
+// pushConditionInChain adds a condition that's part of an if/elif/else chain
+// If alreadySatisfied is true, this condition is skipped regardless of include value
+func (s *PreprocessorState) pushConditionInChain(include bool, alreadySatisfied bool) {
+    effectiveInclude := include && !alreadySatisfied
+    s.conditionStack = append(s.conditionStack, effectiveInclude)
+    s.chainSatisfied = append(s.chainSatisfied, alreadySatisfied || include)
     s.includeDepth++
 }
 
 // popCondition removes the top conditional level
 func (s *PreprocessorState) popCondition() {
-    if len(s.conditionStack) > 1 { // Keep base level
+    if len(s.conditionStack) > 0 {
         s.conditionStack = s.conditionStack[:len(s.conditionStack)-1]
+        s.chainSatisfied = s.chainSatisfied[:len(s.chainSatisfied)-1]
         s.includeDepth--
     }
 }
 
-// toggleCondition flips the current condition (#else handling)
-func (s *PreprocessorState) toggleCondition() {
-    if len(s.conditionStack) > 0 {
-        s.conditionStack[len(s.conditionStack)-1] = !s.conditionStack[len(s.conditionStack)-1]
+// replaceConditionInChain replaces the current condition (for #elif)
+// Only includes the block if no previous condition in the chain was satisfied
+func (s *PreprocessorState) replaceConditionInChain(include bool) {
+    if len(s.conditionStack) > 0 && len(s.chainSatisfied) > 0 {
+        alreadySatisfied := s.chainSatisfied[len(s.chainSatisfied)-1]
+        effectiveInclude := include && !alreadySatisfied
+        s.conditionStack[len(s.conditionStack)-1] = effectiveInclude
+        // Update chainSatisfied if this condition is true
+        if include {
+            s.chainSatisfied[len(s.chainSatisfied)-1] = true
+        }
     }
 }
 
+// toggleCondition flips the current condition (#else handling)
+// Only activates if no previous condition in the chain was satisfied
+func (s *PreprocessorState) toggleCondition() {
+    if len(s.conditionStack) > 0 && len(s.chainSatisfied) > 0 {
+        alreadySatisfied := s.chainSatisfied[len(s.chainSatisfied)-1]
+        s.conditionStack[len(s.conditionStack)-1] = !alreadySatisfied
+        s.chainSatisfied[len(s.chainSatisfied)-1] = true // #else is the final block
+    }
+}
+
+// getMacrosAsIdent converts definedMacros to ident array for expression evaluation
+// This allows macros to be referenced in #if expressions (e.g., #if VERSION > 1)
+// Macro names are prefixed with __c_ to avoid Za keyword conflicts
+func (s *PreprocessorState) getMacrosAsIdent() []Variable {
+    ident := make([]Variable, 0, len(s.definedMacros))
+    for name, value := range s.definedMacros {
+        // Try to parse the value as a number
+        var val any = value
+        if intVal, err := strconv.ParseInt(value, 0, 64); err == nil {
+            val = int(intVal)
+        } else if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+            val = floatVal
+        }
+        ident = append(ident, Variable{
+            IName:    "__c_" + name,  // Prefix to avoid Za keyword conflicts
+            IValue:   val,
+            declared: true,
+        })
+    }
+    return ident
+}
+
+// preprocessIfExpression replaces defined(NAME) with 1 or 0 and prefixes macro names
+// to avoid conflicts with Za keywords (e.g., VERSION is a Za keyword)
+// Handles: defined(NAME), defined NAME (without parens)
+func (s *PreprocessorState) preprocessIfExpression(expr string) string {
+    // Handle defined(NAME)
+    re := regexp.MustCompile(`defined\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)`)
+    expr = re.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract the macro name
+        name := re.FindStringSubmatch(match)[1]
+        if s.isDefined(name) {
+            return "1"
+        }
+        return "0"
+    })
+
+    // Handle defined NAME (without parentheses)
+    re2 := regexp.MustCompile(`defined\s+([A-Za-z_][A-Za-z0-9_]*)`)
+    expr = re2.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract the macro name
+        name := re2.FindStringSubmatch(match)[1]
+        if s.isDefined(name) {
+            return "1"
+        }
+        return "0"
+    })
+
+    // Replace macro names with prefixed versions or 0 for undefined
+    // Defined macros: VERSION → __c_VERSION (to avoid Za keyword conflicts)
+    // Undefined macros: UNDEFINED → 0 (C preprocessor semantics)
+    re3 := regexp.MustCompile(`\b([A-Z_][A-Z0-9_]*)\b`)
+    expr = re3.ReplaceAllStringFunc(expr, func(match string) string {
+        if s.isDefined(match) {
+            // Defined macro - prefix to avoid keyword conflicts
+            return "__c_" + match
+        }
+        // Undefined macro - replace with 0 (C preprocessor semantics)
+        return "0"
+    })
+
+    return expr
+}
+
 // parseModuleHeaders finds and parses header files for a C library
-func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string) error {
+func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string, fs uint32) error {
     var headerPaths []string
 
     if len(explicitPaths) > 0 {
@@ -130,7 +232,7 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
     }
 
     for _, hpath := range headerPaths {
-        if err := parseHeaderFile(hpath, alias); err != nil {
+        if err := parseHeaderFile(hpath, alias, fs); err != nil {
             return fmt.Errorf("failed to parse %s: %w", hpath, err)
         }
     }
@@ -180,7 +282,7 @@ func discoverHeaders(libraryPath string) []string {
 }
 
 // parseHeaderFile parses a single C header file
-func parseHeaderFile(path string, alias string) error {
+func parseHeaderFile(path string, alias string, fs uint32) error {
     content, err := os.ReadFile(path)
     if err != nil {
         return err
@@ -189,7 +291,7 @@ func parseHeaderFile(path string, alias string) error {
     text := string(content)
 
     // Step 0.5: Parse preprocessor conditionals FIRST
-    text = parsePreprocessor(text, alias)
+    text = parsePreprocessor(text, alias, path, fs)
 
     // Step 1: Strip comments
     text = stripCComments(text)
@@ -206,13 +308,31 @@ func parseHeaderFile(path string, alias string) error {
         // Don't fail on typedef parsing errors - continue with other parsing
     }
 
+    // Step 1.8: Parse union typedefs
+    if err := parseUnionTypedefs(text, alias); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: union parsing failed for %s: %v\n",
+                path, err)
+        }
+        // Don't fail on union parsing errors - continue with other parsing
+    }
+
+    // Step 1.9: Parse struct typedefs
+    if err := parseStructTypedefs(text, alias); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: struct parsing failed for %s: %v\n",
+                path, err)
+        }
+        // Don't fail on struct parsing errors - continue with other parsing
+    }
+
     // Step 2: Parse #define constants
-    if err := parseDefines(text, alias); err != nil {
+    if err := parseDefines(text, alias, fs); err != nil {
         return err
     }
 
     // Step 3: Parse enums
-    if err := parseEnums(text, alias); err != nil {
+    if err := parseEnums(text, alias, fs); err != nil {
         return err
     }
 
@@ -224,10 +344,91 @@ func parseHeaderFile(path string, alias string) error {
     return nil
 }
 
+// resolveIncludePath resolves an #include directive to an absolute file path
+// Handles both #include "file.h" (local) and #include <file.h> (system)
+// Returns empty string if not found
+func resolveIncludePath(includeLine string, currentFile string) string {
+    // Parse the include directive
+    // #include "file.h" → file.h (local first)
+    // #include <file.h> → file.h (system only)
+    includeLine = strings.TrimSpace(includeLine)
+
+    var filename string
+    isSystemInclude := false
+
+    if strings.HasPrefix(includeLine, "<") && strings.HasSuffix(includeLine, ">") {
+        // System include: <stdio.h>
+        filename = strings.TrimSuffix(strings.TrimPrefix(includeLine, "<"), ">")
+        isSystemInclude = true
+    } else if strings.HasPrefix(includeLine, "\"") && strings.HasSuffix(includeLine, "\"") {
+        // Local include: "myheader.h"
+        filename = strings.TrimSuffix(strings.TrimPrefix(includeLine, "\""), "\"")
+        isSystemInclude = false
+    } else {
+        // Malformed include
+        return ""
+    }
+
+    // Try local directory first (for "file.h" includes)
+    if !isSystemInclude && currentFile != "" {
+        localDir := filepath.Dir(currentFile)
+        localPath := filepath.Join(localDir, filename)
+        if _, err := os.Stat(localPath); err == nil {
+            absPath, _ := filepath.Abs(localPath)
+            return absPath
+        }
+    }
+
+    // Try standard include paths
+    searchPaths := []string{
+        "/usr/include/" + filename,
+        "/usr/local/include/" + filename,
+    }
+
+    // Add architecture-specific paths
+    if runtime.GOARCH == "amd64" {
+        searchPaths = append(searchPaths, "/usr/include/x86_64-linux-gnu/"+filename)
+    } else if runtime.GOARCH == "arm64" {
+        searchPaths = append(searchPaths, "/usr/include/aarch64-linux-gnu/"+filename)
+    }
+
+    // Also try subdirectories (e.g., /usr/include/curl/curl.h)
+    parts := strings.Split(filename, "/")
+    if len(parts) > 1 {
+        // It's already a path like "curl/curl.h", just use it
+    } else {
+        // Try common subdirectory pattern: /usr/include/<name>/<name>.h
+        // For "png.h" try /usr/include/png/png.h
+        baseName := strings.TrimSuffix(filename, filepath.Ext(filename))
+        searchPaths = append(searchPaths, "/usr/include/"+baseName+"/"+filename)
+    }
+
+    // Search for the file
+    for _, path := range searchPaths {
+        if _, err := os.Stat(path); err == nil {
+            absPath, _ := filepath.Abs(path)
+            return absPath
+        }
+    }
+
+    return ""
+}
+
 // parsePreprocessor filters header text based on preprocessor conditionals
 // Returns the filtered text with only active blocks included
-func parsePreprocessor(text string, alias string) string {
-    state := newPreprocessorState()
+func parsePreprocessor(text string, alias string, headerPath string, fs uint32) string {
+    state := newPreprocessorState(alias)
+    // Mark the initial header as visited
+    if headerPath != "" {
+        absPath, _ := filepath.Abs(headerPath)
+        state.visitedHeaders[absPath] = true
+    }
+    return parsePreprocessorWithState(text, state, headerPath, fs)
+}
+
+// parsePreprocessorWithState filters header text using an existing preprocessor state
+// This allows recursive #include processing with shared state
+func parsePreprocessorWithState(text string, state *PreprocessorState, currentFile string, fs uint32) string {
     lines := strings.Split(text, "\n")
     var result []string
 
@@ -258,6 +459,71 @@ func parsePreprocessor(text string, alias string) string {
                 if debugAuto {
                     fmt.Printf("[AUTO] Line %d: #ifndef %s → %v (depth %d)\n",
                         lineNum+1, arg, condition, state.includeDepth)
+                }
+                continue
+
+            case "if":
+                // #if expression
+                // Preprocess defined() operators, then evaluate the expression using Za's ev() evaluator
+                preprocessed := state.preprocessIfExpression(arg)
+                // Populate ident with defined macros so they can be referenced in the expression
+                ident := state.getMacrosAsIdent()
+
+                if debugAuto {
+                    fmt.Printf("[AUTO] Line %d: #if %s → preprocessed: %s\n", lineNum+1, arg, preprocessed)
+                    fmt.Printf("[AUTO]   Macros available: ")
+                    for i, v := range ident {
+                        fmt.Printf("%s=%v(%T) ", v.IName, v.IValue, v.IValue)
+                        if i > 5 {
+                            fmt.Printf("...")
+                            break
+                        }
+                    }
+                    fmt.Printf("\n")
+                }
+
+                // Evaluate the expression - if it fails, treat as false
+                condition := false
+                if debugAuto {
+                    fmt.Printf("[AUTO]   → About to call evaluateConstant() with expr=%q, fs=%d\n", preprocessed, fs)
+                }
+                result, ok := evaluateConstant(preprocessed, &ident, fs)
+                if debugAuto {
+                    fmt.Printf("[AUTO]   → evaluateConstant() returned: result=%v, ok=%v\n", result, ok)
+                }
+                if ok {
+                    condition = isTruthy(result)
+                } else {
+                    if debugAuto {
+                        fmt.Printf("[AUTO]   → evaluation failed, treating as false\n")
+                    }
+                }
+
+                state.pushCondition(condition)
+                if debugAuto {
+                    fmt.Printf("[AUTO]   → result=%v, ok=%v, condition=%v, depth=%d\n",
+                        result, ok, condition, state.includeDepth)
+                }
+                continue
+
+            case "elif":
+                // #elif expression
+                // Only evaluate and activate if no previous condition in chain was satisfied
+                preprocessed := state.preprocessIfExpression(arg)
+                // Populate ident with defined macros so they can be referenced in the expression
+                ident := state.getMacrosAsIdent()
+
+                // Evaluate the expression - if it fails, treat as false
+                condition := false
+                result, ok := evaluateConstant(preprocessed, &ident, fs)
+                if ok {
+                    condition = isTruthy(result)
+                }
+
+                state.replaceConditionInChain(condition)
+                if debugAuto {
+                    fmt.Printf("[AUTO] Line %d: #elif %s → preprocessed: %s → %v (result=%v, ok=%v, depth %d, active=%v)\n",
+                        lineNum+1, arg, preprocessed, condition, result, ok, state.includeDepth, state.isActive())
                 }
                 continue
 
@@ -297,6 +563,48 @@ func parsePreprocessor(text string, alias string) string {
                 }
                 // Include line so parseDefines can process it
                 // (but only if in active block - handled by isActive() check below)
+
+            case "include":
+                // #include "file.h" or #include <file.h>
+                if state.isActive() {
+                    includePath := resolveIncludePath(arg, currentFile)
+                    if includePath != "" {
+                        // Check for cycles
+                        if state.visitedHeaders[includePath] {
+                            if debugAuto {
+                                fmt.Printf("[AUTO] Line %d: #include %s SKIPPED (already visited)\n", lineNum+1, arg)
+                            }
+                            continue
+                        }
+
+                        // Mark as visited
+                        state.visitedHeaders[includePath] = true
+
+                        if debugAuto {
+                            fmt.Printf("[AUTO] Line %d: #include %s → %s\n", lineNum+1, arg, includePath)
+                        }
+
+                        // Read and process the included file
+                        includeContent, err := os.ReadFile(includePath)
+                        if err != nil {
+                            if debugAuto {
+                                fmt.Printf("[AUTO] Line %d: Failed to read %s: %v\n", lineNum+1, includePath, err)
+                            }
+                            continue
+                        }
+
+                        // Recursively process the included file
+                        processedInclude := parsePreprocessorWithState(string(includeContent), state, includePath, fs)
+
+                        // Append the processed content to results
+                        if processedInclude != "" {
+                            result = append(result, processedInclude)
+                        }
+                    } else if debugAuto {
+                        fmt.Printf("[AUTO] Line %d: #include %s NOT FOUND\n", lineNum+1, arg)
+                    }
+                }
+                continue // Don't include the #include directive itself
             }
         }
 
@@ -352,7 +660,7 @@ func stripCComments(text string) string {
 }
 
 // parseDefines extracts #define constants from header text
-func parseDefines(text string, alias string) error {
+func parseDefines(text string, alias string, fs uint32) error {
     // Match: #define NAME VALUE
     // Support: integers, hex, floats, strings, and expressions using ev()
     // Note: Use [ \t]+ instead of \s+ to avoid matching newlines (which would match across lines)
@@ -400,7 +708,7 @@ func parseDefines(text string, alias string) error {
 
         // Use ev() to evaluate the constant - handles all types automatically
         // Note: String concatenation ("str1" "str2") is transformed to Za syntax ("str1" + "str2")
-        if val, ok := evaluateConstant(valueStr, &ident); ok {
+        if val, ok := evaluateConstant(valueStr, &ident, fs); ok {
             moduleConstants[alias][name] = val
 
             // Add constant to ident table so later constants can reference it
@@ -431,37 +739,58 @@ func transformStringConcatenation(s string) string {
 // evaluateConstant uses Za's expression evaluator to parse #define values
 // Handles integers, floats, strings, and constant expressions automatically
 // The ident parameter allows constants to reference previously-defined constants
-func evaluateConstant(valueStr string, ident *[]Variable) (any, bool) {
+// The fs parameter is the function space from the calling context (passed from Call())
+func evaluateConstant(valueStr string, ident *[]Variable, fs uint32) (any, bool) {
     // Transform C string concatenation to Za syntax
     valueStr = transformStringConcatenation(valueStr)
 
-    // Follow stdlib eval() pattern from lib-internal.go (lines 985-994)
+    // Follow stdlib eval() pattern from lib-internal.go (lines 1023-1032)
+    // Use the caller's fs (from Call() context via parser.fs)
     parser := &leparser{}
     parser.ident = ident
-    parser.fs = 0
+    parser.fs = fs
     parser.namespace = "auto_parse"
     parser.ctx = context.Background()
     parser.prectable = default_prectable
 
     // Pre-bind existing constants so they can be referenced
-    // Only bind constants that are already declared (from earlier #defines)
+    // Clear previous bindings for this fs to avoid stale index mappings
+    // (ident array order can change between evaluations due to map iteration)
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     bindlock.Lock()
+    // Clear previous bindings for macro names to avoid index mismatches
+    if bindings[fs] != nil {
+        for name := range bindings[fs] {
+            if strings.HasPrefix(name, "__c_") {
+                delete(bindings[fs], name)
+            }
+        }
+    }
+    if bindings[fs] == nil {
+        bindings[fs] = make(map[string]uint64)
+    }
+    // Bind all ident variables for this evaluation
     for i := range *ident {
         if (*ident)[i].declared {
             name := (*ident)[i].IName
-            // Only add to bindings if not already present
-            if bindings[0] == nil {
-                bindings[0] = make(map[string]uint64)
-            }
-            if _, exists := bindings[0][name]; !exists {
-                bindings[0][name] = uint64(i)
+            bindings[fs][name] = uint64(i)
+            if debugAuto {
+                fmt.Printf("[AUTO]     → Bound %s = %v (index %d) in fs=%d\n", name, (*ident)[i].IValue, i, fs)
             }
         }
     }
     bindlock.Unlock()
 
+    if debugAuto {
+        fmt.Printf("[AUTO]     → Calling ev() with expr=%q, fs=%d\n", valueStr, fs)
+    }
+
     // Use ev() to evaluate the constant expression
-    result, err := ev(parser, 0, valueStr)
+    result, err := ev(parser, fs, valueStr)
+
+    if debugAuto {
+        fmt.Printf("[AUTO]     → ev() returned: result=%v, err=%v\n", result, err)
+    }
     if err != nil {
         // Evaluation failed - skip this constant
         return nil, false
@@ -471,7 +800,7 @@ func evaluateConstant(valueStr string, ident *[]Variable) (any, bool) {
 }
 
 // parseEnums extracts enum definitions from header text
-func parseEnums(text string, alias string) error {
+func parseEnums(text string, alias string, fs uint32) error {
     // Match: enum Name { ... } or enum { ... }
     // Handle both single-line and multiline
 
@@ -516,7 +845,7 @@ func parseEnums(text string, alias string) error {
                 // For enum values, we expect integers
                 // Create a temporary ident table (enums don't usually reference each other across members)
                 var enumIdent []Variable
-                if val, ok := evaluateConstant(valueStr, &enumIdent); ok {
+                if val, ok := evaluateConstant(valueStr, &enumIdent, fs); ok {
                     // Accept any numeric type (int, int64, float64) and convert to int
                     intVal := 0
                     switch v := val.(type) {
@@ -646,12 +975,13 @@ func parseTypedefs(text string, alias string) error {
         // typedef struct { int x; } Point; is OK
         // typedef struct Point Point; is OK
         // But skip: typedef struct { struct { int x; } nested; } Complex;
+        // Also skip: partial matches like "union { int" (unmatched braces)
         if strings.Contains(baseType, "struct") || strings.Contains(baseType, "union") {
-            // Count braces to detect nested structs
+            // Count braces to detect incomplete or nested struct/union definitions
             openBraces := strings.Count(baseType, "{")
             closeBraces := strings.Count(baseType, "}")
-            if openBraces > 1 || closeBraces > 1 {
-                // Nested struct/union - skip for now
+            if openBraces != closeBraces || openBraces > 1 {
+                // Unmatched braces or nested struct/union - skip
                 continue
             }
         }
@@ -703,6 +1033,508 @@ func resolveTypedef(typeName string, alias string, depth int) string {
     return ""
 }
 
+// parseUnionTypedefs extracts union typedef declarations from header text
+// and stores them in the FFI struct registry with IsUnion=true
+func parseUnionTypedefs(text string, alias string) error {
+    // Pattern to match: typedef union { fields } name;
+    // Also handles: typedef union name { fields } name;
+    // Matches both multiline and single-line declarations
+
+    re := regexp.MustCompile(`(?s)typedef\s+union\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{([^}]+)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`)
+    matches := re.FindAllStringSubmatch(text, -1)
+
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    for _, match := range matches {
+        fieldBlock := match[1]  // Content between { }
+        unionName := match[2]   // Type name after }
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Found union typedef: %s\n", unionName)
+        }
+
+        // Parse fields from the field block
+        fields, maxSize, err := parseUnionFields(fieldBlock, alias, debugAuto)
+        if err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: failed to parse union %s: %v\n", unionName, err)
+            }
+            continue // Skip this union but continue parsing others
+        }
+
+        // Create CLibraryStruct for the union
+        unionStruct := &CLibraryStruct{
+            Name:    unionName,
+            Fields:  fields,
+            Size:    maxSize,
+            IsUnion: true,
+        }
+
+        // Store in FFI struct registry (from lib-c.go)
+        ffiStructLock.Lock()
+        fullName := alias + "::" + unionName
+        ffiStructDefinitions[fullName] = unionStruct
+        // Also store without namespace for easier lookup
+        ffiStructDefinitions[unionName] = unionStruct
+        ffiStructLock.Unlock()
+
+        // ALSO register as typed Za struct (makes AUTO unions available in Za code)
+        registerStructInZa(alias, unionName, unionStruct)
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Registered union %s (size: %d bytes, %d fields)\n",
+                unionName, maxSize, len(fields))
+        }
+    }
+
+    return nil
+}
+
+// parseUnionFields parses the field declarations inside a union definition
+// Returns the fields, the max size, and any error
+func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructField, uintptr, error) {
+    var fields []StructField
+    var maxSize uintptr = 0
+
+    // Split by semicolons to get individual field declarations
+    declarations := strings.Split(fieldBlock, ";")
+
+    for _, decl := range declarations {
+        decl = strings.TrimSpace(decl)
+        if decl == "" {
+            continue
+        }
+
+        // Parse field declaration: type field_name or type field_name[size]
+        // Examples: "int x", "float values[4]", "unsigned char bytes[16]"
+
+        // Handle array fields: type name[size]
+        var fieldName string
+        var fieldType CType
+        var fieldSize uintptr
+        var arraySize int = 0
+        var elementType CType
+
+        if strings.Contains(decl, "[") && strings.HasSuffix(decl, "]") {
+            // Array field
+            openBracket := strings.Index(decl, "[")
+            closeBracket := strings.LastIndex(decl, "]")
+
+            if openBracket > 0 && closeBracket > openBracket {
+                // Extract size
+                arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
+                size, err := strconv.Atoi(arraySizeStr)
+                if err != nil {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: invalid array size in union field: %s\n", decl)
+                    }
+                    continue
+                }
+                arraySize = size
+
+                // Extract type and name before [
+                beforeBracket := strings.TrimSpace(decl[:openBracket])
+                parts := strings.Fields(beforeBracket)
+                if len(parts) < 2 {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: invalid array field declaration: %s\n", decl)
+                    }
+                    continue
+                }
+
+                // Last part is field name, everything else is type
+                fieldName = parts[len(parts)-1]
+                typeStr := strings.Join(parts[:len(parts)-1], " ")
+
+                // Parse element type
+                elemType, elemSize := parseCTypeString(typeStr, alias)
+                if elemType == CVoid {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: unsupported array element type: %s\n", typeStr)
+                    }
+                    continue
+                }
+
+                elementType = elemType
+                fieldType = elemType // For arrays, store element type
+                fieldSize = elemSize * uintptr(arraySize)
+            }
+        } else {
+            // Regular field (non-array)
+            parts := strings.Fields(decl)
+            if len(parts) < 2 {
+                if debug {
+                    fmt.Printf("[AUTO] Warning: invalid field declaration: %s\n", decl)
+                }
+                continue
+            }
+
+            // Last part is field name, everything else is type
+            fieldName = parts[len(parts)-1]
+            typeStr := strings.Join(parts[:len(parts)-1], " ")
+
+            // Parse type
+            fType, fSize := parseCTypeString(typeStr, alias)
+            if fType == CVoid {
+                if debug {
+                    fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                }
+                continue
+            }
+
+            fieldType = fType
+            fieldSize = fSize
+        }
+
+        // All union fields have offset 0 (they overlap)
+        field := StructField{
+            Name:        fieldName,
+            Type:        fieldType,
+            Offset:      0, // All union fields start at offset 0
+            ArraySize:   arraySize,
+            ElementType: elementType,
+        }
+
+        fields = append(fields, field)
+
+        // Update max size
+        if fieldSize > maxSize {
+            maxSize = fieldSize
+        }
+
+        if debug {
+            if arraySize > 0 {
+                fmt.Printf("[AUTO]   Field: %s %s[%d] (size: %d bytes, offset: 0)\n",
+                    fieldType, fieldName, arraySize, fieldSize)
+            } else {
+                fmt.Printf("[AUTO]   Field: %s %s (size: %d bytes, offset: 0)\n",
+                    fieldType, fieldName, fieldSize)
+            }
+        }
+    }
+
+    return fields, maxSize, nil
+}
+
+// parseStructTypedefs extracts struct typedef declarations from header text
+// and stores them in the FFI struct registry with IsUnion=false
+func parseStructTypedefs(text string, alias string) error {
+    // Pattern to match: typedef struct { fields } name;
+    // Also handles: typedef struct name { fields } name;
+    // Matches both multiline and single-line declarations
+
+    re := regexp.MustCompile(`(?s)typedef\s+struct\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{([^}]+)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`)
+    matches := re.FindAllStringSubmatch(text, -1)
+
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    for _, match := range matches {
+        fieldBlock := match[1]  // Content between { }
+        structName := match[2]  // Type name after }
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Found struct typedef: %s\n", structName)
+        }
+
+        // Parse fields from the field block
+        fields, totalSize, err := parseStructFields(fieldBlock, alias, debugAuto)
+        if err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: failed to parse struct %s: %v\n", structName, err)
+            }
+            continue // Skip this struct but continue parsing others
+        }
+
+        // Create CLibraryStruct for the struct
+        structDef := &CLibraryStruct{
+            Name:    structName,
+            Fields:  fields,
+            Size:    totalSize,
+            IsUnion: false,
+        }
+
+        // Store in FFI struct registry (from lib-c.go)
+        ffiStructLock.Lock()
+        fullName := alias + "::" + structName
+        ffiStructDefinitions[fullName] = structDef
+        // Also store without namespace for easier lookup
+        ffiStructDefinitions[structName] = structDef
+        ffiStructLock.Unlock()
+
+        // ALSO register as typed Za struct (makes AUTO structs available in Za code)
+        registerStructInZa(alias, structName, structDef)
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Registered struct %s (size: %d bytes, %d fields)\n",
+                structName, totalSize, len(fields))
+        }
+    }
+
+    return nil
+}
+
+// parseStructFields parses the field declarations inside a struct definition
+// Returns the fields, the total size, and any error
+// Unlike unions, struct fields have sequential offsets
+func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructField, uintptr, error) {
+    var fields []StructField
+    var currentOffset uintptr = 0
+
+    // Split by semicolons to get individual field declarations
+    declarations := strings.Split(fieldBlock, ";")
+
+    for _, decl := range declarations {
+        decl = strings.TrimSpace(decl)
+        if decl == "" {
+            continue
+        }
+
+        // Parse field declaration: type field_name or type field_name[size]
+        // Examples: "int x", "float values[4]", "unsigned char bytes[16]"
+
+        // Handle array fields: type name[size]
+        var fieldName string
+        var fieldType CType
+        var fieldSize uintptr
+        var arraySize int = 0
+        var elementType CType
+
+        if strings.Contains(decl, "[") && strings.HasSuffix(decl, "]") {
+            // Array field
+            openBracket := strings.Index(decl, "[")
+            closeBracket := strings.LastIndex(decl, "]")
+
+            if openBracket > 0 && closeBracket > openBracket {
+                // Extract size
+                arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
+                size, err := strconv.Atoi(arraySizeStr)
+                if err != nil {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: invalid array size in struct field: %s\n", decl)
+                    }
+                    continue
+                }
+                arraySize = size
+
+                // Extract type and name before [
+                beforeBracket := strings.TrimSpace(decl[:openBracket])
+                parts := strings.Fields(beforeBracket)
+                if len(parts) < 2 {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: invalid array field declaration: %s\n", decl)
+                    }
+                    continue
+                }
+
+                // Last part is field name, everything else is type
+                fieldName = parts[len(parts)-1]
+                typeStr := strings.Join(parts[:len(parts)-1], " ")
+
+                // Parse element type
+                elemType, elemSize := parseCTypeString(typeStr, alias)
+                if elemType == CVoid {
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: unsupported array element type: %s\n", typeStr)
+                    }
+                    continue
+                }
+
+                elementType = elemType
+                fieldType = elemType // For arrays, store element type
+                fieldSize = elemSize * uintptr(arraySize)
+            }
+        } else {
+            // Regular field (non-array)
+            parts := strings.Fields(decl)
+            if len(parts) < 2 {
+                if debug {
+                    fmt.Printf("[AUTO] Warning: invalid field declaration: %s\n", decl)
+                }
+                continue
+            }
+
+            // Last part is field name, everything else is type
+            fieldName = parts[len(parts)-1]
+            typeStr := strings.Join(parts[:len(parts)-1], " ")
+
+            // Parse type
+            fType, fSize := parseCTypeString(typeStr, alias)
+            if fType == CVoid {
+                if debug {
+                    fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                }
+                continue
+            }
+
+            fieldType = fType
+            fieldSize = fSize
+        }
+
+        // Struct fields have sequential offsets (not overlapping like unions)
+        field := StructField{
+            Name:        fieldName,
+            Type:        fieldType,
+            Offset:      currentOffset,
+            ArraySize:   arraySize,
+            ElementType: elementType,
+        }
+
+        fields = append(fields, field)
+
+        // Update offset for next field
+        currentOffset += fieldSize
+
+        if debug {
+            if arraySize > 0 {
+                fmt.Printf("[AUTO]   Field: %s %s[%d] (size: %d bytes, offset: %d)\n",
+                    fieldType, fieldName, arraySize, fieldSize, field.Offset)
+            } else {
+                fmt.Printf("[AUTO]   Field: %s %s (size: %d bytes, offset: %d)\n",
+                    fieldType, fieldName, fieldSize, field.Offset)
+            }
+        }
+    }
+
+    return fields, currentOffset, nil
+}
+
+// capitalizeFieldName capitalizes the first letter of a field name for Go reflection
+// This matches Za's renameSF() function behavior
+func capitalizeFieldName(name string) string {
+    r, i := utf8.DecodeRuneInString(name)
+    return string(unicode.ToTitle(r)) + name[i:]
+}
+
+// cTypeToZaType converts a CType enum to Za type string
+// Used for registering C structs in Za's structmaps
+func cTypeToZaType(ctype CType) string {
+    switch ctype {
+    case CInt, CInt8, CInt16, CInt64:
+        return "int"
+    case CUInt, CUInt8, CUInt16, CUInt64:
+        return "int" // Za uses int for unsigned types
+    case CFloat, CDouble:
+        return "float"
+    case CString:
+        return "string"
+    case CPointer:
+        return "any" // Pointers map to any type (opaque handles)
+    case CStruct:
+        return "any" // Nested struct (full support in future phase)
+    case CChar:
+        return "int" // char maps to int in Za
+    case CBool:
+        return "bool"
+    default:
+        return "any"
+    }
+}
+
+// cTypeToZaTypeString converts CType to Za type string with array handling
+// For arrays, uses "any" type to avoid strict type checking issues
+func cTypeToZaTypeString(ctype CType, arraySize int, elemType CType) string {
+    if arraySize > 0 {
+        // For array fields, use "any" type
+        // Za's type system doesn't strictly distinguish array element types in struct instantiation
+        return "any"
+    }
+    return cTypeToZaType(ctype)
+}
+
+// registerStructInZa registers a C struct from ffiStructDefinitions into Za's structmaps
+// This makes AUTO-parsed structs available as typed Za structs
+// Za structs are namespace-scoped, so we register with module alias prefix
+func registerStructInZa(alias string, structName string, structDef *CLibraryStruct) {
+    // Convert CLibraryStruct.Fields to structmaps format
+    // Format: [name1, type1, hasDefault1, default1, name2, type2, ...]
+    var fields []any
+
+    for _, field := range structDef.Fields {
+        // [0] field name (capitalize first letter for Go reflection)
+        fields = append(fields, capitalizeFieldName(field.Name))
+
+        // [1] field type string
+        zaType := cTypeToZaTypeString(field.Type, field.ArraySize, field.ElementType)
+        fields = append(fields, zaType)
+
+        // [2] has default (always false for C structs)
+        fields = append(fields, false)
+
+        // [3] default value (nil for C structs)
+        fields = append(fields, nil)
+    }
+
+    // Register in structmaps with namespace prefix (like Za-defined structs)
+    structmapslock.Lock()
+    fullName := alias + "::" + structName
+    structmaps[fullName] = fields
+    // Also register without namespace for backward compatibility
+    structmaps[structName] = fields
+    structmapslock.Unlock()
+
+    if os.Getenv("ZA_DEBUG_AUTO") != "" {
+        fmt.Printf("[AUTO] Registered %s as Za struct type (%d fields)\n",
+            structName, len(structDef.Fields))
+    }
+}
+
+// parseCTypeString converts a C type string to CType and returns its size
+// Handles types like "int", "float", "unsigned char", "unsigned int", etc.
+func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
+    // Normalize type string
+    typeStr = strings.TrimSpace(typeStr)
+    typeStr = strings.ToLower(typeStr)
+
+    // Remove qualifiers
+    typeStr = strings.ReplaceAll(typeStr, "const ", "")
+    typeStr = strings.ReplaceAll(typeStr, "volatile ", "")
+    typeStr = strings.ReplaceAll(typeStr, "restrict ", "")
+    typeStr = strings.TrimSpace(typeStr)
+
+    // Map C types to CType and size
+    switch typeStr {
+    case "int", "signed int":
+        return CInt, 4
+    case "unsigned int", "unsigned":
+        return CUInt, 4
+    case "float":
+        return CFloat, 4
+    case "double":
+        return CDouble, 8
+    case "char", "signed char":
+        return CChar, 1
+    case "unsigned char":
+        return CUInt8, 1
+    case "short", "short int", "signed short":
+        return CInt16, 2
+    case "unsigned short", "unsigned short int":
+        return CUInt16, 2
+    case "long long", "long long int", "signed long long":
+        return CInt64, 8
+    case "unsigned long long", "unsigned long long int":
+        return CUInt64, 8
+    case "int8_t":
+        return CInt8, 1
+    case "uint8_t":
+        return CUInt8, 1
+    case "int16_t":
+        return CInt16, 2
+    case "uint16_t":
+        return CUInt16, 2
+    case "int32_t":
+        return CInt, 4
+    case "uint32_t":
+        return CUInt, 4
+    case "int64_t":
+        return CInt64, 8
+    case "uint64_t":
+        return CUInt64, 8
+    default:
+        // Unknown type
+        return CVoid, 0
+    }
+}
+
 // parseFunctionSignatures extracts function signatures from header text
 // and auto-generates LIB declarations using the existing C parser
 func parseFunctionSignatures(text string, alias string) error {
@@ -711,14 +1543,13 @@ func parseFunctionSignatures(text string, alias string) error {
     // We'll parse the left part to extract return type and function name
 
     // Regex pattern explanation:
-    // (?m) = multiline mode
-    // ^[\t ]* = optional leading whitespace
-    // ([^(]+) = everything before opening paren (capture group 1)
+    // ([a-zA-Z_][a-zA-Z0-9_\s\*]*) = return type + function name (capture group 1)
     // \( = opening paren
     // ([^)]*) = parameters (capture group 2)
     // \)\s*; = closing paren + semicolon
+    // Note: removed ^ anchor since preprocessor may collapse lines
 
-    re := regexp.MustCompile(`(?m)^[\t ]*([^(]+)\(([^)]*)\)\s*;`)
+    re := regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_\s\*]*)\(([^)]*)\)\s*;`)
     matches := re.FindAllStringSubmatch(text, -1)
 
     if len(matches) == 0 {
@@ -728,6 +1559,13 @@ func parseFunctionSignatures(text string, alias string) error {
 
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     warnAuto := os.Getenv("ZA_WARN_AUTO") != ""
+
+    if debugAuto {
+        fmt.Fprintf(os.Stderr, "Found %d potential function declarations\n", len(matches))
+        for i, match := range matches {
+            fmt.Fprintf(os.Stderr, "  Match %d: %s(%s)\n", i+1, match[1], match[2])
+        }
+    }
     discoveredCount := 0
 
     for _, match := range matches {
@@ -776,6 +1614,10 @@ func parseFunctionSignatures(text string, alias string) error {
         // Reconstruct C signature format expected by parseCFunctionSignature
         signature := returnType + " " + funcName + "(" + params + ")"
 
+        if debugAuto {
+            fmt.Fprintf(os.Stderr, "[AUTO] Parsing signature: %s\n", signature)
+        }
+
         // Call existing parser from help plugin (lib-c.go)
         sig, err := parseCFunctionSignature(signature, funcName, alias)
         if err != nil {
@@ -794,9 +1636,8 @@ func parseFunctionSignatures(text string, alias string) error {
             paramStructNames[i] = param.StructTypeName
         }
 
-        // For return type struct name, check if return type is CStruct
-        // For now, we don't have this info from header parsing, so leave empty
-        returnStructName := ""
+        // Use return struct name from parsed signature (for unions/structs)
+        returnStructName := sig.ReturnStructName
 
         // Store in global function registry
         DeclareCFunction(

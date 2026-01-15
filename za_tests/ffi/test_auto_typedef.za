@@ -3,7 +3,7 @@ println "[#3]Tests typedef parsing and resolution in AUTO clause[#-]\n"
 
 try
     # Load test header with typedefs
-    module "libc.so.6" as test_td auto "za_tests/test_typedef.h"
+    module "libc.so.6" as test_td auto "test_typedef.h"
     use +test_td
 
     println "[#6]Part 1: Simple Typedefs[#-]"
