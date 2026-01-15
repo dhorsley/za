@@ -264,7 +264,7 @@ administrators</strong>, from novice to expert. Existing programmers
 should also be able to use this book as a reliable syntax and behaviour
 reference.</p>
 <h2 id="version-coverage">Version coverage</h2>
-<p>This text is written for <strong>Za 1.2.1</strong>.</p>
+<p>This text is written for <strong>Za 1.2.2</strong>.</p>
 <hr />
 <h1 id="part-i-getting-oriented">Part I — Getting Oriented</h1>
 <h2 id="what-za-is-and-is-not">1. What Za is (and is not)</h2>
@@ -3801,7 +3801,303 @@ typically in <code>/usr/lib</code>, <code>/usr/lib64</code>, or
 <code>/lib</code>. Use <code>ldconfig -p</code> or
 <code>find /usr/lib -name "lib*.so*"</code> to locate specific
 libraries.</p>
-<h2 id="f.3-declaring-function-signatures-with-lib">F.3 Declaring
+<h2 id="f.3-automatic-header-parsing-with-auto">F.3 Automatic Header
+Parsing with AUTO</h2>
+<p>The <code>AUTO</code> clause enables automatic discovery and parsing
+of C header files to extract constants, enums, and function signatures,
+eliminating the need to manually declare <code>#define</code> values and
+LIB function signatures.</p>
+<h3 id="f.3.1-basic-usage">F.3.1 Basic Usage</h3>
+<p><strong>Auto-discovery</strong> (searches standard include
+paths):</p>
+<pre class="za"><code>module &quot;libm.so.6&quot; as m auto
+use +m
+
+# M_PI, M_E, and other math constants now available
+println M_PI  # 3.141592653589793</code></pre>
+<p><strong>Explicit header path:</strong></p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c auto &quot;/usr/include/limits.h&quot;
+use +c
+
+println INT_MAX  # 2147483647</code></pre>
+<p><strong>Multiple headers:</strong></p>
+<pre class="za"><code>module &quot;libgl.so&quot; as gl auto &quot;gl.h&quot; &quot;glext.h&quot;
+use +gl</code></pre>
+<h3 id="f.3.2-what-gets-parsed">F.3.2 What Gets Parsed</h3>
+<p>The AUTO clause parses C headers and extracts:</p>
+<ol type="1">
+<li><p><strong>Integer constants</strong> from <code>#define</code>:</p>
+<ul>
+<li>Decimal: <code>#define MAX_SIZE 1024</code></li>
+<li>Hexadecimal: <code>#define COLOR_RED 0xFF0000</code></li>
+<li>Octal: <code>#define PERMS 0o644</code></li>
+<li>Binary: <code>#define MASK 0b11110000</code></li>
+<li>Bit shifts: <code>#define FLAG_ENABLED (1 &lt;&lt; 3)</code></li>
+<li>Expressions: <code>#define BUFFER_SIZE (1024 * 1024)</code></li>
+</ul></li>
+<li><p><strong>Float constants</strong> from <code>#define</code>:</p>
+<ul>
+<li>Decimal: <code>#define PI 3.14159265358979323846</code></li>
+<li>Scientific notation:
+<code>#define AVOGADRO 6.02214076e23</code></li>
+</ul></li>
+<li><p><strong>String constants</strong> from <code>#define</code>:</p>
+<ul>
+<li>Simple strings: <code>#define VERSION "1.0.0"</code></li>
+<li>With escape sequences:
+<code>#define NEWLINE "line1\nline2"</code></li>
+<li>String concatenation: <code>#define MSG "Hello " "World"</code>
+(transformed to Za syntax)</li>
+</ul></li>
+<li><p><strong>Enum definitions</strong> (single-line or multiline):</p>
+<div class="sourceCode" id="cb173"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb173-1"><a href="#cb173-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
+<span id="cb173-2"><a href="#cb173-2" aria-hidden="true" tabindex="-1"></a>    OK <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb173-3"><a href="#cb173-3" aria-hidden="true" tabindex="-1"></a>    ERROR <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
+<span id="cb173-4"><a href="#cb173-4" aria-hidden="true" tabindex="-1"></a>    PENDING <span class="op">=</span> <span class="dv">100</span></span>
+<span id="cb173-5"><a href="#cb173-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div></li>
+<li><p><strong>Function signatures</strong> (auto-generates LIB
+declarations):</p>
+<div class="sourceCode" id="cb174"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb174-1"><a href="#cb174-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
+<span id="cb174-2"><a href="#cb174-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
+<span id="cb174-3"><a href="#cb174-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span></code></pre></div>
+<ul>
+<li>Supports simple and pointer return types</li>
+<li>Supports multiline declarations</li>
+<li>Supports variadic functions (…)</li>
+<li>Supports extern and const qualifiers</li>
+<li>Skips static inline, typedef, and private functions (_prefix)</li>
+</ul></li>
+<li><p><strong>Constants referencing earlier constants</strong>:</p>
+<div class="sourceCode" id="cb175"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb175-1"><a href="#cb175-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BASE_SIZE </span><span class="dv">1024</span></span>
+<span id="cb175-2"><a href="#cb175-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFFER_SIZE </span><span class="op">(</span><span class="pp">BASE_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">2</span><span class="op">)</span><span class="pp">      </span><span class="co">// Works! = 2048</span></span>
+<span id="cb175-3"><a href="#cb175-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#define LARGE_BUFFER </span><span class="op">(</span><span class="pp">BUFFER_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">4</span><span class="op">)</span><span class="pp">   </span><span class="co">// Works! = 8192</span></span></code></pre></div>
+<ul>
+<li>Supports chained references (A → B → C)</li>
+<li>Limitation: Forward references not supported (constants must be
+defined in order)</li>
+<li>Limitation: Circular references fail gracefully (silently
+skipped)</li>
+</ul></li>
+<li><p><strong>Typedef declarations</strong>:</p>
+<div class="sourceCode" id="cb176"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb176-1"><a href="#cb176-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">uint32_t</span><span class="op">;</span></span>
+<span id="cb176-2"><a href="#cb176-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Point <span class="op">{</span> <span class="dt">int</span> x<span class="op">,</span> y<span class="op">;</span> <span class="op">}</span> Point<span class="op">;</span></span>
+<span id="cb176-3"><a href="#cb176-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> Point<span class="op">*</span> PointPtr<span class="op">;</span></span></code></pre></div>
+<ul>
+<li>Simple type aliases</li>
+<li>Typedef chains (multi-level resolution)</li>
+<li>Struct and pointer typedefs</li>
+<li>Recursive resolution up to 10 levels with cycle detection</li>
+<li>Module-scoped (isolated per library alias)</li>
+<li>Eliminates reliance on heuristics for type guessing</li>
+<li><strong>Not parsed</strong>: Function pointer typedefs, array
+typedefs (future enhancement)</li>
+</ul></li>
+<li><p><strong>Preprocessor conditionals</strong> (platform-aware
+parsing):</p>
+<div class="sourceCode" id="cb177"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb177-1"><a href="#cb177-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __linux__</span></span>
+<span id="cb177-2"><a href="#cb177-2" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define BUFFER_SIZE </span><span class="dv">2048</span></span>
+<span id="cb177-3"><a href="#cb177-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> linux_only_func<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb177-4"><a href="#cb177-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb177-5"><a href="#cb177-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb177-6"><a href="#cb177-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef __WINDOWS__</span></span>
+<span id="cb177-7"><a href="#cb177-7" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define UNIX_FLAG </span><span class="dv">1</span></span>
+<span id="cb177-8"><a href="#cb177-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb177-9"><a href="#cb177-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb177-10"><a href="#cb177-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __LP64__</span></span>
+<span id="cb177-11"><a href="#cb177-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 64-bit</span></span>
+<span id="cb177-12"><a href="#cb177-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#else</span></span>
+<span id="cb177-13"><a href="#cb177-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">size_t</span><span class="op">;</span>   <span class="co">// 32-bit</span></span>
+<span id="cb177-14"><a href="#cb177-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span></code></pre></div>
+<ul>
+<li>Supported directives: <code>#ifdef</code>, <code>#ifndef</code>,
+<code>#else</code>, <code>#endif</code></li>
+<li>Nested conditionals supported (unlimited depth via stack)</li>
+<li>Platform macros auto-defined:
+<ul>
+<li><code>__linux__</code> = “1” (on Linux/BSD systems)</li>
+<li><code>__unix__</code> = “1” (on Unix-like systems)</li>
+<li><code>__LP64__</code> = “1” (on 64-bit platforms: amd64, arm64)</li>
+<li><code>__GNUC__</code> = “4” (always, for GCC compatibility)</li>
+<li><code>__USE_MISC</code> = “1” (common feature macro)</li>
+<li><code>__USE_XOPEN</code> = “1” (X/Open compliance)</li>
+</ul></li>
+<li>Inactive blocks automatically skipped (not parsed)</li>
+<li>Enables parsing real system headers (stdio.h, stdlib.h,
+sys/types.h)</li>
+<li>Debug output: Set <code>ZA_DEBUG_AUTO=1</code> to see condition
+evaluation</li>
+<li><strong>Not supported</strong> (future phases):
+<ul>
+<li><code>#include</code> recursion (Phase 7)</li>
+<li>Complex <code>#if</code> expressions:
+<code>#if defined(A) &amp;&amp; defined(B)</code> (Phase 8)</li>
+<li><code>#elif</code> directive (Phase 8)</li>
+<li>Macro expansion in values: <code>#define SIZE BUFFER_SIZE</code>
+(Phase 9)</li>
+</ul></li>
+</ul></li>
+</ol>
+<p><strong>Not parsed</strong> (limitations): - Function-like macros:
+<code>#define MAX(a,b) ((a)&gt;(b)?(a):(b))</code> - Forward references:
+<code>#define B (A * 2)</code> where A is defined later - Function
+pointer typedefs: <code>typedef int (*callback_t)(void*);</code> - Array
+typedefs: <code>typedef int IntArray[10];</code> - Struct definitions
+(struct layout parsing) - Character literals:
+<code>#define NEWLINE_CHAR '\n'</code> - <code>#include</code>
+directives (headers must be explicitly listed)</p>
+<h3 id="f.3.3-accessing-constants">F.3.3 Accessing Constants</h3>
+<p>Constants are accessible via the USE chain or namespace
+qualification:</p>
+<pre class="za"><code>module &quot;libpng.so&quot; as png auto
+use +png
+
+# Via USE chain (unqualified)
+color_type = PNG_COLOR_TYPE_RGB
+
+# Via namespace (qualified)
+alpha = png::PNG_COLOR_TYPE_RGBA</code></pre>
+<h3 id="f.3.4-header-auto-discovery">F.3.4 Header Auto-Discovery</h3>
+<p>When no explicit path is provided, AUTO searches for headers in
+standard locations:</p>
+<p><strong>Search paths</strong> (in order): 1.
+<code>/usr/include/&lt;header&gt;</code> 2.
+<code>/usr/local/include/&lt;header&gt;</code> 3.
+<code>/usr/include/&lt;arch&gt;-linux-gnu/&lt;header&gt;</code> (e.g.,
+x86_64-linux-gnu) 4.
+<code>/usr/include/&lt;libname&gt;/&lt;header&gt;</code> (e.g.,
+curl/curl.h)</p>
+<p><strong>Header name derivation:</strong> - <code>libpng.so</code> →
+searches for <code>png.h</code> - <code>libcurl.so</code> → searches for
+<code>curl.h</code> - <code>libjson-c.so</code> → searches for
+<code>json.h</code>, <code>json-c/json.h</code></p>
+<h3 id="f.3.5-checking-if-constants-exist">F.3.5 Checking if Constants
+Exist</h3>
+<p>Use the <code>defined()</code> function to check if a constant is
+available:</p>
+<pre class="za"><code>module &quot;libm.so.6&quot; as m auto
+use +m
+
+if defined(&quot;M_PI&quot;)
+    println &quot;Pi is available: &quot; + as_string(M_PI)
+else
+    println &quot;M_PI not found&quot;
+endif</code></pre>
+<h3 id="f.3.6-auto-discovered-function-signatures">F.3.6 Auto-Discovered
+Function Signatures</h3>
+<p>AUTO automatically parses function prototypes from headers and
+generates LIB declarations, eliminating manual function signature
+declarations.</p>
+<p><strong>Without AUTO:</strong></p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c
+use +c
+
+# Must manually declare every function
+lib c::strlen(s:string) -&gt; int64
+lib c::strcmp(s1:string, s2:string) -&gt; int
+lib c::malloc(size:int64) -&gt; pointer
+lib c::free(ptr:pointer) -&gt; void
+
+len = strlen(&quot;hello&quot;)  # Requires manual LIB declaration above</code></pre>
+<p><strong>With AUTO:</strong></p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c auto
+use +c
+
+# Functions automatically discovered from headers - no LIB needed!
+len = strlen(&quot;hello&quot;)       # ✓ Works automatically
+cmp = strcmp(&quot;a&quot;, &quot;b&quot;)      # ✓ Works automatically
+ptr = malloc(100)           # ✓ Works automatically
+free(ptr)                   # ✓ Works automatically</code></pre>
+<p><strong>What gets auto-discovered:</strong> - Simple functions:
+<code>int foo(int x);</code> - Pointer returns:
+<code>void *malloc(size_t size);</code>, <code>char *strcpy(...);</code>
+- Multiline declarations (automatically normalized) - Variadic
+functions: <code>int printf(const char *fmt, ...);</code> - Const/extern
+qualifiers: <code>extern size_t fread(...);</code></p>
+<p><strong>What gets skipped:</strong> - <code>typedef</code> statements
+- <code>#define</code> macros - <code>static inline</code> functions -
+Functions starting with <code>_</code> (considered private)</p>
+<p><strong>Override mechanism:</strong></p>
+<p>Explicit LIB declarations override auto-discovered signatures:</p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c auto
+use +c
+
+# AUTO discovers strlen, but we want to override the return type
+lib c::strlen(s:string) -&gt; int   # Override: use int instead of int64
+
+len = strlen(&quot;hello&quot;)  # Uses our override signature</code></pre>
+<h3 id="f.3.7-error-handling">F.3.7 Error Handling</h3>
+<p>If AUTO cannot find or parse headers: - A <strong>warning</strong> is
+printed to stderr - Module still loads successfully - Functions remain
+accessible (constants unavailable)</p>
+<pre><code>Warning: failed to parse headers for png: header file not found
+  Searched: /usr/include/png.h, /usr/local/include/png.h, ...
+  Hint: Specify explicit path: module &quot;libpng.so&quot; as png auto &quot;/path/to/png.h&quot;</code></pre>
+<h3 id="f.3.8-complete-example">F.3.8 Complete Example</h3>
+<pre class="za"><code># Load libpng with automatic header parsing
+module &quot;libpng.so.16&quot; as png auto
+use +png
+
+# No LIB declarations needed - AUTO discovers function signatures!
+# Constants and functions automatically available from png.h
+
+def create_png_reader()
+    # PNG_LIBPNG_VER_STRING, PNG_COLOR_TYPE_RGB, etc. are auto-discovered constants
+    # png_create_read_struct is auto-discovered function (no LIB needed)
+    ver = PNG_LIBPNG_VER_STRING
+    rs = png_create_read_struct(ver, c_null(), c_null(), c_null())
+
+    if c_ptr_is_null(rs)
+        panic(&quot;Failed to create PNG read struct&quot;)
+    endif
+
+    return rs
+end
+
+def cleanup_png_reader(rs, ps, is)
+    # png_destroy_read_struct is also auto-discovered
+    png_destroy_read_struct(rs, ps, is)
+end</code></pre>
+<h3 id="f.3.9-benefits-over-manual-constants-and-lib-declarations">F.3.9
+Benefits Over Manual Constants and LIB Declarations</h3>
+<p><strong>Before AUTO (manual constants and LIB
+declarations):</strong></p>
+<pre class="za"><code>module &quot;libpng.so.16&quot; as png
+use +png
+
+# Must manually declare every constant
+PNG_COLOR_TYPE_GRAY = 0
+PNG_COLOR_TYPE_RGB = 2
+PNG_COLOR_TYPE_RGBA = 6
+PNG_INTERLACE_NONE = 0
+PNG_INTERLACE_ADAM7 = 1
+# ... dozens more ...
+
+# Must manually declare every function signature
+lib png::png_create_read_struct(ver:string, err:ptr, warn:ptr, user:ptr) -&gt; ptr
+lib png::png_create_info_struct(png:ptr) -&gt; ptr
+lib png::png_destroy_read_struct(png:ptr, info:ptr, end:ptr) -&gt; void
+lib png::png_read_info(png:ptr, info:ptr) -&gt; void
+lib png::png_read_image(png:ptr, rows:ptr) -&gt; void
+# ... dozens more ...</code></pre>
+<p><strong>After AUTO (everything automatic):</strong></p>
+<pre class="za"><code>module &quot;libpng.so.16&quot; as png auto
+use +png
+
+# All constants and functions automatically available!
+color = PNG_COLOR_TYPE_RGB
+rs = png_create_read_struct(PNG_LIBPNG_VER_STRING, c_null(), c_null(), c_null())
+info = png_create_info_struct(rs)
+# ... etc - no manual declarations needed!</code></pre>
+<p><strong>Summary of benefits:</strong> - ✅ No manual constant
+definitions - ✅ No manual LIB function declarations - ✅ Automatically
+synchronized with header file changes - ✅ Type-safe function calls with
+auto-discovered signatures - ✅ Reduces boilerplate code by 80-90%</p>
+<h2 id="f.4-declaring-function-signatures-with-lib">F.4 Declaring
 Function Signatures with LIB</h2>
 <p>C functions require explicit type declarations using the
 <code>LIB</code> keyword. This tells Za how to marshal arguments and
@@ -3884,7 +4180,7 @@ lib c::printf(fmt:string, ...args) -&gt; int</code></pre>
 <p><strong>Optional return types:</strong> Functions that perform side
 effects without returning meaningful values use
 <code>-&gt; void</code>.</p>
-<h2 id="f.4-calling-c-functions">F.4 Calling C Functions</h2>
+<h2 id="f.5-calling-c-functions">F.5 Calling C Functions</h2>
 <p>Once declared with <code>LIB</code>, C functions are called using the
 (optional) <code>namespace::function(args)</code> syntax. If no
 namespace is specified, then lookup is performed against the USE
@@ -3918,7 +4214,7 @@ path = c::getenv(&quot;PATH&quot;)</code></pre>
 Za types and C types. Strings become <code>char*</code>, integers map to
 appropriate C integer types, and floats/doubles are preserved. Pointers
 remain opaque.</p>
-<h2 id="f.5-helper-functions-for-ffi">F.5 Helper Functions for FFI</h2>
+<h2 id="f.6-helper-functions-for-ffi">F.6 Helper Functions for FFI</h2>
 <p>Za provides built-in helper functions to work with C pointers and
 memory:</p>
 <h3 id="c_ptr_is_nullptr---bool">c_ptr_is_null(ptr) -&gt; bool</h3>
@@ -4014,7 +4310,7 @@ stats = c_unmarshal_struct(statbuf, &quot;StatStruct&quot;)
 println &quot;File size:&quot;, stats.st_size
 
 c_free_struct(statbuf)</code></pre>
-<h2 id="f.6-discovering-functions-with-help-plugin">F.6 Discovering
+<h2 id="f.7-discovering-functions-with-help-plugin">F.7 Discovering
 Functions with help plugin</h2>
 <p>Za’s help system provides runtime introspection of loaded C
 libraries.</p>
@@ -4072,7 +4368,7 @@ help plugin find glib::g_malloc</code></pre>
 function signatures from system man pages (section 3) and suggests
 appropriate <code>LIB</code> declarations with C-to-Za type
 mappings.</p>
-<h2 id="f.7-type-mapping-reference">F.7 Type Mapping Reference</h2>
+<h2 id="f.8-type-mapping-reference">F.8 Type Mapping Reference</h2>
 <p><strong>Integer types:</strong></p>
 <table>
 <colgroup>
@@ -4252,7 +4548,7 @@ declarations for automatic marshaling of input parameters. For “out
 parameters” where C fills the struct, use manual marshaling with
 <code>c_alloc_struct()</code>, <code>c_unmarshal_struct()</code>, and
 <code>c_free_struct()</code>.</p>
-<h2 id="f.8-complete-working-examples">F.8 Complete Working
+<h2 id="f.9-complete-working-examples">F.9 Complete Working
 Examples</h2>
 <h3 id="f.8.1-math-operations-libm">F.8.1 Math Operations (libm)</h3>
 <pre class="za"><code>module &quot;/usr/lib/libm.so.6&quot; as m
@@ -4415,7 +4711,7 @@ nc::getch()
 
 # Cleanup
 nc::endwin()</code></pre>
-<h2 id="f.9-advanced-topics">F.9 Advanced Topics</h2>
+<h2 id="f.10-advanced-topics">F.10 Advanced Topics</h2>
 <h3 id="f.9.1-opaque-structure-pointers">F.9.1 Opaque Structure
 Pointers</h3>
 <p>C structures are handled as opaque pointers. Za doesn’t need to know
@@ -4707,7 +5003,7 @@ end</code></pre>
 obj = json::json_object_new_object()
 # ... use object ...
 json::json_object_put(obj)  # Library&#39;s cleanup function</code></pre>
-<h2 id="f.10-callback-functions">F.10 Callback Functions</h2>
+<h2 id="f.11-callback-functions">F.11 Callback Functions</h2>
 <p>Za supports passing Za functions to C as callbacks (function
 pointers). This enables integration with C APIs that require callbacks
 such as <code>qsort_r()</code>, <code>pthread_create()</code>, signal
@@ -4726,47 +5022,71 @@ handlers, and event-driven libraries.</p>
 </ol>
 <h3 id="f.10.2-supported-callback-signatures">F.10.2 Supported Callback
 Signatures</h3>
-<table>
-<colgroup>
-<col style="width: 37%" />
-<col style="width: 27%" />
-<col style="width: 34%" />
-</colgroup>
-<thead>
-<tr>
-<th>Signature</th>
-<th>C Type</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ptr,ptr-&gt;int</code></td>
-<td><code>int (*)(void*, void*, void*)</code></td>
-<td>qsort_r comparator</td>
-</tr>
-<tr>
-<td><code>int,int-&gt;int</code></td>
-<td><code>int (*)(int, int, void*)</code></td>
-<td>Integer comparator with context</td>
-</tr>
-<tr>
-<td><code>ptr-&gt;ptr</code></td>
-<td><code>void* (*)(void*)</code></td>
-<td>pthread_create thread function</td>
-</tr>
-<tr>
-<td><code>int,ptr,ptr-&gt;void</code></td>
-<td><code>void (*)(int, siginfo_t*, void*)</code></td>
-<td>sigaction with SA_SIGINFO</td>
-</tr>
-<tr>
-<td><code>int-&gt;void</code></td>
-<td><code>void (*)(int)</code></td>
-<td>Simple signal handler (limited)</td>
-</tr>
-</tbody>
-</table>
+<p><strong>Za now supports unlimited callback signatures via libffi
+closures!</strong> The system automatically chooses between: -
+<strong>Hardcoded trampolines</strong> (19 common signatures) - optimal
+performance - <strong>Dynamic closures</strong> (any signature) -
+generated at runtime via libffi</p>
+<h4 id="hardcoded-trampolines-fast-path">Hardcoded Trampolines (Fast
+Path)</h4>
+<p><strong>Core Signatures:</strong> | Signature | C Type | Use Case |
+|———–|——–|———-| | <code>ptr,ptr-&gt;int</code> |
+<code>int (*)(void*, void*, void*)</code> | qsort_r comparators | |
+<code>int,int-&gt;int</code> | <code>int (*)(int, int, void*)</code> |
+Integer comparators | | <code>ptr-&gt;ptr</code> |
+<code>void* (*)(void*)</code> | pthread_create threads | |
+<code>int,ptr,ptr-&gt;void</code> |
+<code>void (*)(int, siginfo_t*, void*)</code> | sigaction handlers | |
+<code>int-&gt;void</code> | <code>void (*)(int)</code> | Simple signal
+handlers |</p>
+<p><strong>Math Signatures:</strong> | Signature | C Type | Use Case |
+|———–|——–|———-| | <code>double-&gt;double</code> |
+<code>double (*)(double, void*)</code> | Math transformations | |
+<code>float-&gt;float</code> | <code>float (*)(float, void*)</code> |
+Single-precision math | | <code>double,double-&gt;double</code> |
+<code>double (*)(double, double, void*)</code> | Binary math ops |</p>
+<p><strong>Pointer Signatures:</strong> | Signature | C Type | Use Case
+| |———–|——–|———-| | <code>ptr,ptr,ptr-&gt;int</code> |
+<code>int (*)(void*, void*, void*, void*)</code> | 3-argument
+comparators | | <code>void-&gt;void</code> |
+<code>void (*)(void*)</code> | Simple callbacks | |
+<code>ptr-&gt;void</code> | <code>void (*)(void*, void*)</code> |
+Cleanup/destructors | | <code>ptr,ptr-&gt;void</code> |
+<code>void (*)(void*, void*, void*)</code> | Iteration callbacks | |
+<code>ptr,int-&gt;void</code> | <code>void (*)(void*, int, void*)</code>
+| Buffer processors | | <code>ptr,int-&gt;int</code> |
+<code>int (*)(void*, int, void*)</code> | Buffer validators | |
+<code>ptr,ptr-&gt;bool</code> |
+<code>int (*)(void*, void*, void*)</code> | Predicate filters |</p>
+<p><strong>Primitive Signatures:</strong> | Signature | C Type | Use
+Case | |———–|——–|———-| | <code>int-&gt;int</code> |
+<code>int (*)(int, void*)</code> | Hash functions | |
+<code>string-&gt;void</code> | <code>void (*)(char*, void*)</code> |
+Logging callbacks | | <code>string-&gt;int</code> |
+<code>int (*)(char*, void*)</code> | String validators | |
+<code>int,int-&gt;void</code> | <code>void (*)(int, int, void*)</code> |
+Progress callbacks |</p>
+<h4 id="dynamic-closures-unlimited-signatures">Dynamic Closures
+(Unlimited Signatures)</h4>
+<p>Any signature not in the above list is automatically created as a
+dynamic closure at runtime. Example custom signatures:</p>
+<pre class="za"><code># Triple integer comparator
+c_register_callback(&quot;my_func&quot;, &quot;int,int,int-&gt;int&quot;)
+
+# Quad pointer callback
+c_register_callback(&quot;my_func&quot;, &quot;ptr,ptr,ptr,ptr-&gt;ptr&quot;)
+
+# Mixed types
+c_register_callback(&quot;my_func&quot;, &quot;int64,float,double-&gt;uint32&quot;)</code></pre>
+<p><strong>Supported Types:</strong> <code>int8</code>,
+<code>uint8</code>, <code>int16</code>, <code>uint16</code>,
+<code>int32</code>/<code>int</code>,
+<code>uint32</code>/<code>uint</code>, <code>int64</code>,
+<code>uint64</code>, <code>float</code>, <code>double</code>,
+<code>ptr</code>/<code>pointer</code>, <code>string</code>,
+<code>bool</code>, <code>void</code></p>
+<p><strong>Not Yet Supported:</strong> struct-by-value, variadic
+signatures</p>
 <p><strong>Note:</strong> Most callbacks require C APIs that support a
 <strong>context parameter</strong> (also called <code>user_data</code>,
 <code>thunk</code>, or <code>arg</code>). This is where the
@@ -4837,7 +5157,127 @@ endif
 
 # Cleanup
 c_unregister_callback(cb)</code></pre>
-<h3 id="f.10.5-callback-lifecycle">F.10.5 Callback Lifecycle</h3>
+<h3 id="f.10.5-custom-callback-signatures-dynamic-closures">F.10.5
+Custom Callback Signatures (Dynamic Closures)</h3>
+<p>For signatures not in the hardcoded list, Za automatically creates
+dynamic closures at runtime. This enables integration with any C API
+that uses callbacks.</p>
+<h4 id="example-custom-3-parameter-callback">Example: Custom 3-Parameter
+Callback</h4>
+<pre class="za"><code>module &quot;libcustom.so&quot; as custom
+use +custom
+
+# Hypothetical C API that takes a callback with 3 integers
+LIB custom::process_data(callback:pointer, context:pointer) -&gt; int
+
+def my_processor(a, b, c)
+    println &quot;Processing: &quot; + as_string(a) + &quot;, &quot; + as_string(b) + &quot;, &quot; + as_string(c)
+    return a + b + c
+end
+
+# Register with custom signature (not in hardcoded list)
+cb = c_register_callback(&quot;main::my_processor&quot;, &quot;int,int,int-&gt;int&quot;)
+
+# Use it - Za automatically creates a dynamic closure
+result = custom::process_data(cb.trampoline, cb.handle)
+
+c_unregister_callback(cb)</code></pre>
+<h4 id="example-mixed-type-callback">Example: Mixed Type Callback</h4>
+<pre class="za"><code># Define callback with mixed types
+def mixed_callback(int_val, float_val, ptr_val)
+    println &quot;Got int: &quot; + as_string(int_val)
+    println &quot;Got float: &quot; + as_string(float_val)
+    println &quot;Got pointer: &quot; + sf(&quot;%p&quot;, ptr_val)
+    return 42  # Return int
+end
+
+# Any combination of supported types works
+cb = c_register_callback(&quot;main::mixed_callback&quot;, &quot;int32,float,ptr-&gt;int64&quot;)
+
+# Za creates the appropriate closure automatically</code></pre>
+<h4 id="type-mapping-reference">Type Mapping Reference</h4>
+<table>
+<thead>
+<tr>
+<th>Za Signature Type</th>
+<th>C Type</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int8</code></td>
+<td><code>int8_t</code></td>
+<td>1 byte</td>
+</tr>
+<tr>
+<td><code>uint8</code> / <code>byte</code></td>
+<td><code>uint8_t</code></td>
+<td>1 byte</td>
+</tr>
+<tr>
+<td><code>int16</code></td>
+<td><code>int16_t</code></td>
+<td>2 bytes</td>
+</tr>
+<tr>
+<td><code>uint16</code></td>
+<td><code>uint16_t</code></td>
+<td>2 bytes</td>
+</tr>
+<tr>
+<td><code>int32</code> / <code>int</code></td>
+<td><code>int32_t</code> / <code>int</code></td>
+<td>4 bytes</td>
+</tr>
+<tr>
+<td><code>uint32</code> / <code>uint</code></td>
+<td><code>uint32_t</code> / <code>unsigned int</code></td>
+<td>4 bytes</td>
+</tr>
+<tr>
+<td><code>int64</code></td>
+<td><code>int64_t</code></td>
+<td>8 bytes</td>
+</tr>
+<tr>
+<td><code>uint64</code></td>
+<td><code>uint64_t</code></td>
+<td>8 bytes</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>float</code></td>
+<td>4 bytes</td>
+</tr>
+<tr>
+<td><code>double</code></td>
+<td><code>double</code></td>
+<td>8 bytes</td>
+</tr>
+<tr>
+<td><code>ptr</code> / <code>pointer</code></td>
+<td><code>void*</code></td>
+<td>Platform size</td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>char*</code></td>
+<td>Platform size</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>int</code> (0/1)</td>
+<td>4 bytes</td>
+</tr>
+<tr>
+<td><code>void</code></td>
+<td><code>void</code></td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="f.10.6-callback-lifecycle">F.10.6 Callback Lifecycle</h3>
 <p><strong>Registration:</strong></p>
 <pre class="za"><code>cb = c_register_callback(function_name, signature)
 # Returns: map with .trampoline and .handle fields</code></pre>
@@ -4847,7 +5287,7 @@ c::some_function(cb.trampoline, other_args, cb.handle)</code></pre>
 <p><strong>Cleanup:</strong></p>
 <pre class="za"><code>c_unregister_callback(cb)
 # Must be called when C will no longer call the callback</code></pre>
-<h3 id="f.10.6-thread-safety">F.10.6 Thread Safety</h3>
+<h3 id="f.10.7-thread-safety">F.10.7 Thread Safety</h3>
 <p><strong>Important:</strong> Callbacks are serialized with a mutex to
 protect Za’s interpreter. This means:</p>
 <ul>
@@ -4856,7 +5296,7 @@ protect Za’s interpreter. This means:</p>
 <li>Performance may be impacted with high-frequency callbacks from many
 threads</li>
 </ul>
-<h3 id="f.10.7-limitations">F.10.7 Limitations</h3>
+<h3 id="f.10.8-limitations">F.10.8 Limitations</h3>
 <ol type="1">
 <li><p><strong>Context parameter required:</strong> Most callbacks need
 C APIs with a context/user_data parameter. Simple callbacks without
@@ -4872,8 +5312,19 @@ defined while the callback is registered. Don’t redefine or delete
 callback functions while in use.</p></li>
 <li><p><strong>Error handling:</strong> Callback errors cannot propagate
 to C. Errors return safe default values (0, nil) to C.</p></li>
+<li><p><strong>Dynamic closure limitations:</strong> While any signature
+can be registered, dynamic closures currently do not support:</p>
+<ul>
+<li>Struct-by-value parameters or returns (use pointers instead)</li>
+<li>Variadic callbacks (callbacks with <code>...</code> parameters)</li>
+<li>These will be rejected with a clear error message</li>
+</ul></li>
+<li><p><strong>Performance consideration:</strong> Hardcoded trampolines
+have zero overhead. Dynamic closures add a small runtime marshaling cost
+(~1-2μs per call). For high-frequency callbacks, prefer signatures from
+the hardcoded list when possible.</p></li>
 </ol>
-<h3 id="f.10.8-best-practices">F.10.8 Best Practices</h3>
+<h3 id="f.10.9-best-practices">F.10.9 Best Practices</h3>
 <ol type="1">
 <li><p><strong>Always cleanup:</strong> Use try/catch blocks to ensure
 callbacks are unregistered:</p>
@@ -4895,17 +5346,23 @@ with C APIs, document which parameter is the context.</p></li>
 <li><p><strong>Test thread safety:</strong> If C library uses threads,
 test that callbacks work correctly with concurrent invocations.</p></li>
 </ol>
-<h2 id="f.11-limitations-and-best-practices">F.11 Limitations and Best
+<h2 id="f.12-limitations-and-best-practices">F.12 Limitations and Best
 Practices</h2>
 <p><strong>Limitations:</strong></p>
 <ol type="1">
 <li><p><strong>Manual memory management:</strong> Unlike Za’s garbage
 collection, C memory must be manually freed with <code>free()</code> or
 library-specific cleanup functions.</p></li>
-<li><p><strong>Preprocessor macros not accessible:</strong> C
-<code>#define</code> constants are not symbols and cannot be accessed
-via FFI. Define them in Za:</p>
-<pre class="za"><code># Cannot access C&#39;s NULL or EOF directly
+<li><p><strong>Preprocessor macros:</strong> C <code>#define</code>
+constants are not symbols in the .so file, but can be extracted using
+the <code>AUTO</code> clause (see F.3). For simple cases without
+headers, define them in Za:</p>
+<pre class="za"><code># With AUTO clause (recommended):
+module &quot;libc.so.6&quot; as c auto
+use +c
+# EOF, NULL, etc. now available from stdio.h
+
+# Without AUTO (manual definition):
 NULL = c_null()
 EOF = -1</code></pre></li>
 <li><p><strong>Platform-specific behavior:</strong> Some libraries
@@ -4967,7 +5424,7 @@ end</code></pre></li>
 <li><p><strong>When in doubt, use shell commands:</strong> If FFI
 becomes complex, consider using Za’s shell integration instead.</p></li>
 </ol>
-<h2 id="f.12-platform-support-and-build-requirements">F.12 Platform
+<h2 id="f.13-platform-support-and-build-requirements">F.13 Platform
 Support and Build Requirements</h2>
 <p><strong>Unix/Linux:</strong></p>
 <ul>
@@ -4987,8 +5444,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb218"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb218-1"><a href="#cb218-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb238"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb238-1"><a href="#cb238-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

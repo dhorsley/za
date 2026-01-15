@@ -380,7 +380,7 @@ func buildInternalLib() {
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term", "term", "has_colour",
         "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "get_mem", "zainfo", "get_cores", "permit",
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
-        "ast", "varbind", "sizeof", "dup", "log_queue_status",
+        "ast", "varbind", "sizeof", "dup", "defined", "log_queue_status",
         "set_depth",
         "logging_stats", "exreg", "format_stack_trace", "panic", "array_format", "array_colours",
         // "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
@@ -845,6 +845,37 @@ func buildInternalLib() {
             return nil, err
         }
         return runtime.NumCPU(), nil
+    }
+
+    slhelp["defined"] = LibHelp{in: "string", out: "bool", action: "checks if a constant or variable is defined in the current scope or USE chain"}
+    stdlib["defined"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 1 {
+            return nil, fmt.Errorf("defined() requires exactly 1 argument (constant name)")
+        }
+
+        constantName := GetAsString(args[0])
+
+        // Check module constants in USE chain
+        chainlock.RLock()
+        moduleConstantsLock.RLock()
+        defer moduleConstantsLock.RUnlock()
+        defer chainlock.RUnlock()
+
+        for p := 0; p < len(uchain); p += 1 {
+            if constMap, exists := moduleConstants[uchain[p]]; exists {
+                if _, found := constMap[constantName]; found {
+                    return true, nil
+                }
+            }
+        }
+
+        // Check local variables directly in ident table
+        bin := bind_int(evalfs, constantName)
+        if bin < uint64(len(*ident)) && (*ident)[bin].declared {
+            return true, nil
+        }
+
+        return false, nil
     }
 
     slhelp["term_h"] = LibHelp{in: "", out: "int", action: "Returns the current terminal height."}

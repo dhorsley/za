@@ -2171,6 +2171,28 @@ func (p *leparser) identifier(token *Token) (any, error) {
         return nil, nil
     }
 
+    // Check for module constants (from HEADERS clause)
+    if p.prev.tokType == SYM_DoubleColon {
+        // Qualified name: namespace provided explicitly
+        // The namespace is in p.tokens[p.pos-2].tokText
+        if p.pos >= 2 {
+            namespaceName := p.tokens[p.pos-2].tokText
+            moduleConstantsLock.RLock()
+            if constMap, exists := moduleConstants[namespaceName]; exists {
+                if val, found := constMap[token.tokText]; found {
+                    moduleConstantsLock.RUnlock()
+                    return val, nil
+                }
+            }
+            moduleConstantsLock.RUnlock()
+        }
+    } else {
+        // Unqualified name: search USE chain
+        if _, val, found := uc_match_constant(token.tokText); found {
+            return val, nil
+        }
+    }
+
     // permit namespace:: names
     var ename string
     if p.prev.tokType != SYM_DoubleColon {

@@ -289,11 +289,19 @@ func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
 
     symbolCount := 0
     for _, sym := range dynamicSymbols {
-        // Strip version suffixes (e.g., @@GLIBC_2.2.5 or @GLIBC_2.2.5)
+        // Strip version suffixes from symbol names
+        // Examples:
+        //   Linux/GLIBC: malloc@@GLIBC_2.2.5 -> malloc
+        //   FreeBSD: strcmp@@FBSD_1.0 -> strcmp
+        //   OpenBSD: memcpy@Base -> memcpy
+        //   NetBSD: strlen@@NetBSD_6.0 -> strlen
+        // Format: symbol@@version (default) or symbol@version (weak)
         cleanName := sym.Name
         if idx := strings.Index(cleanName, "@@"); idx > 0 {
+            // Default version (@@) - most common
             cleanName = cleanName[:idx]
         } else if idx := strings.Index(cleanName, "@"); idx > 0 {
+            // Weak version (@) or alternate formats
             cleanName = cleanName[:idx]
         }
 

@@ -72,6 +72,10 @@ var calltable = make([]call_s, CALL_CAP)
 // enum storage
 var enum = make(map[string]*enum_s)
 
+// module constants storage (from HEADERS clause)
+var moduleConstants = make(map[string]map[string]any)
+var moduleConstantsLock = &sync.RWMutex{}
+
 // id of func space which points to the source which contains
 // the DEFINE..ENDDEF for a defined function
 var sourceMap = make(map[uint32]uint32)

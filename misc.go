@@ -2129,6 +2129,24 @@ func checkLibrariesLoaded() bool {
     return true
 }
 
+// getPlatformName returns a human-readable name for the current platform
+func getPlatformName() string {
+    switch runtime.GOOS {
+    case "freebsd":
+        return "FreeBSD"
+    case "openbsd":
+        return "OpenBSD"
+    case "netbsd":
+        return "NetBSD"
+    case "dragonfly":
+        return "DragonFly BSD"
+    case "linux":
+        return "Linux"
+    default:
+        return runtime.GOOS
+    }
+}
+
 // parseQualifiedFunctionName parses a function name that may include a library namespace
 // Returns (library, function) where library is empty string if no namespace is specified
 func parseQualifiedFunctionName(name string) (library, function string) {
@@ -2327,7 +2345,8 @@ func help_plugin_find(ns string, functionName string) {
     }
 
     // Try to lookup function signature from man pages
-    pf("\n[#dim]Looking up function signature...[#-]\n")
+    platformName := getPlatformName()
+    pf(sf("\n[#dim]Looking up function signature (%s man pages)...[#-]\n", platformName))
 
     _, sig, err := tryGenerateLIBDeclaration(foundIn[0], actualFunctionName, firstLib)
 
@@ -2353,7 +2372,7 @@ func help_plugin_find(ns string, functionName string) {
         // Show manual reference for more details
         pf("\n[#4]For more details:[#-]\n")
         pf(sf("  • Run: [#6]man 3 %s[#-]\n", actualFunctionName))
-        pf(sf("  • Online: [#6]https://man7.org/linux/man-pages/man3/%s.3.html[#-]\n", actualFunctionName))
+        pf(sf("  • Online: [#6]%s[#-]\n", getPlatformManPageURL(actualFunctionName)))
     } else {
         // Signature lookup failed - fall back to manual guidance
         pf(sf("\n[#dim]Could not auto-lookup signature (%s)[#-]\n", err.Error()))
@@ -2368,7 +2387,7 @@ func help_plugin_find(ns string, functionName string) {
         pf("\n[#4]To find the function signature:[#-]\n")
         pf("  • Check the library's documentation\n")
         pf(sf("  • Run: [#6]man 3 %s[#-]\n", actualFunctionName))
-        pf(sf("  • Search online: [#6]https://man7.org/linux/man-pages/man3/%s.3.html[#-]\n", actualFunctionName))
+        pf(sf("  • Search online: [#6]%s[#-]\n", getPlatformManPageURL(actualFunctionName)))
 
         pf("\n[#4]Example LIB declarations:[#-]\n")
         pf("  [#dim]LIB c::strlen(s:string) -> int[#-]\n")
@@ -2694,7 +2713,7 @@ func help_plugin_convert(cDeclaration string) {
     functionName := strings.TrimPrefix(lastWord, "*")
 
     // Parse the C signature
-    sig, err := parseCFunctionSignature(cDeclaration, functionName)
+    sig, err := parseCFunctionSignature(cDeclaration, functionName, "")
     if err != nil {
         pf("[#1]Error parsing C declaration:[#-] %v\n", err)
         pf("Declaration: %s\n", cDeclaration)

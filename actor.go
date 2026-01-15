@@ -5268,18 +5268,59 @@ tco_reentry:
             asAt := findDelim(inbound.Tokens, C_As, 2)
             modGivenAlias := ""
             aliased := false
+            hasAuto := false
+            headerPaths := []string{}
 
+            // Check for AUTO keyword
+            autoAt := int16(-1)
+            for i := int16(2); i < inbound.TokenCount; i++ {
+                if inbound.Tokens[i].tokType == Identifier &&
+                    str.ToUpper(inbound.Tokens[i].tokText) == "AUTO" {
+                    autoAt = i
+                    hasAuto = true
+                    break
+                }
+            }
+
+            // Determine where AS clause ends
+            asEndAt := inbound.TokenCount
             if asAt > 1 {
-                // optional AS - if present, set the name of the namespace for this inclusion
-                if inbound.TokenCount-asAt != 2 {
-                    parser.report(inbound.SourceLine, "MODULE only accepts a single token for AS aliases")
+                aliased = true
+                // AS keyword is at asAt, alias name is at asAt+1
+                if asAt+1 >= inbound.TokenCount {
+                    parser.report(inbound.SourceLine, "MODULE AS requires an alias name")
                     finish(false, ERR_MODULE)
                     break
                 }
-                aliased = true
                 modGivenAlias = inbound.Tokens[asAt+1].tokText
+                asEndAt = asAt + 2
+
+                // If AUTO present, it should be after AS
+                if hasAuto && autoAt < asEndAt {
+                    parser.report(inbound.SourceLine, "AUTO clause must appear after AS clause")
+                    finish(false, ERR_MODULE)
+                    break
+                }
             } else {
                 asAt = inbound.TokenCount
+                asEndAt = inbound.TokenCount
+            }
+
+            // Parse AUTO clause if present
+            if hasAuto {
+                // Collect string literals after AUTO keyword (explicit header paths)
+                for i := autoAt + 1; i < inbound.TokenCount; i++ {
+                    if inbound.Tokens[i].tokType == StringLiteral {
+                        headerPaths = append(headerPaths, inbound.Tokens[i].tokText)
+                    } else if inbound.Tokens[i].tokType != O_Comma {
+                        // Stop at first non-string, non-comma token
+                        break
+                    }
+                }
+                // asAt is now end of library path + AS clause, before AUTO
+                if autoAt > 0 {
+                    asAt = autoAt
+                }
             }
 
             if inbound.TokenCount > 1 {
@@ -5439,6 +5480,16 @@ tco_reentry:
 
                 // Add C library to use chain for namespace resolution
                 uc_add(currentModule)
+
+                // Parse header files if AUTO clause was specified
+                if hasAuto {
+                    if err := parseModuleHeaders(libPath, currentModule, headerPaths); err != nil {
+                        parser.report(inbound.SourceLine, sf("AUTO clause failed: %v\n\nSolution: Specify explicit header path:\n  module \"%s\" as %s auto \"/path/to/header.h\"",
+                            err, libPath, currentModule))
+                        finish(false, ERR_MODULE)
+                        break
+                    }
+                }
 
                 modlist[currentModule] = true
 

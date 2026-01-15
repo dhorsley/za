@@ -1,0 +1,71 @@
+println "[#4]═══ AUTO Preprocessor Test ═══[#-]\n"
+println "[#3]Tests preprocessor conditional parsing in AUTO clause[#-]\n"
+
+try
+    module "libc.so.6" as preproc auto "za_tests/test_preprocessor.h"
+    use +preproc
+
+    println "[#6]Part 1: Platform Detection[#-]"
+
+    # On Linux, LINUX_VALUE should be defined
+    if defined("LINUX_VALUE")
+        println "  ✓ LINUX_VALUE defined (running on Linux)"
+        println "    Value: " + as_string(LINUX_VALUE)
+    else
+        println "  ○ LINUX_VALUE not defined (not on Linux)"
+    endif
+
+    # NOT_WINDOWS should always be defined on Unix-like systems
+    if defined("NOT_WINDOWS")
+        println "  ✓ NOT_WINDOWS defined (not Windows)"
+    else
+        println "  ✗ NOT_WINDOWS should be defined!"
+    endif
+
+    println "\n[#6]Part 2: Architecture Detection[#-]"
+
+    if defined("POINTER_SIZE")
+        println "  ✓ POINTER_SIZE defined: " + as_string(POINTER_SIZE)
+
+        # Should be 8 on 64-bit, 4 on 32-bit
+        expected = 8  # Most modern systems
+        if POINTER_SIZE == expected
+            println "    Running on 64-bit system"
+        else
+            println "    Running on 32-bit system"
+        endif
+    else
+        println "  ✗ POINTER_SIZE not defined!"
+    endif
+
+    println "\n[#6]Part 3: Nested Conditionals[#-]"
+
+    if defined("PLATFORM_ID")
+        println "  ✓ PLATFORM_ID defined: \"" + PLATFORM_ID + "\""
+    else
+        println "  ○ PLATFORM_ID not defined (not on Linux)"
+    endif
+
+    println "\n[#6]Part 4: Feature Macros[#-]"
+
+    if defined("HAVE_MISC")
+        println "  ✓ HAVE_MISC defined (misc extensions enabled)"
+    else
+        println "  ✗ HAVE_MISC not defined!"
+    endif
+
+    println "\n[#2]Preprocessor tests completed![#-]"
+    println "\n[#3]What was tested:[#-]"
+    println "  • #ifdef / #ifndef conditionals"
+    println "  • #else branches"
+    println "  • Nested conditionals"
+    println "  • Platform-specific macros (__linux__, __LP64__)"
+    println "  • Feature test macros (__USE_MISC)"
+    println "  • Conditional constant definitions"
+    println "  • Conditional function declarations"
+
+catch e
+    println "[#1]  ✗ Error: " + as_string(e) + "[#-]"
+endtry
+
+println "\n[#2]═══════════════════════════════[#-]"

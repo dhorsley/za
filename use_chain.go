@@ -126,6 +126,22 @@ func uc_match_enum(s string) string {
     return ""
 }
 
+func uc_match_constant(s string) (string, any, bool) {
+    chainlock.RLock()
+    moduleConstantsLock.RLock()
+    defer moduleConstantsLock.RUnlock()
+    defer chainlock.RUnlock()
+
+    for p := 0; p < len(uchain); p += 1 {
+        if constMap, exists := moduleConstants[uchain[p]]; exists {
+            if val, found := constMap[s]; found {
+                return uchain[p], val, true
+            }
+        }
+    }
+    return "", nil, false
+}
+
 func uc_match_struct(s string) string {
     chainlock.RLock()
     globlock.RLock()
