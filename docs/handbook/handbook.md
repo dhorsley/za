@@ -5852,12 +5852,7 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 
 ### F.11.2 Supported Callback Signatures
 
-**Za supports callback signatures via libffi closures!** The system automatically chooses between:
-
-- **Hardcoded trampolines** (19 common signatures) - optimal performance
-- **Dynamic closures** (any signature) - generated at runtime via libffi
-
-#### Hardcoded Trampolines (Fast Path)
+**Za supports callback signatures via libffi closures!** The system automatically generates closures for any signature.
 
 **Core Signatures:**
 
@@ -5868,19 +5863,9 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 | `ptr->ptr` | `void* (*)(void*)` | pthread_create threads |
 | `int,ptr,ptr->void` | `void (*)(int, siginfo_t*, void*)` | sigaction handlers |
 | `int->void` | `void (*)(int)` | Simple signal handlers |
-
-**Math Signatures:**
-
-| Signature | C Type | Use Case |
-|-----------|--------|----------|
 | `double->double` | `double (*)(double, void*)` | Math transformations |
 | `float->float` | `float (*)(float, void*)` | Single-precision math |
 | `double,double->double` | `double (*)(double, double, void*)` | Binary math ops |
-
-**Pointer Signatures:**
-
-| Signature | C Type | Use Case |
-|-----------|--------|----------|
 | `ptr,ptr,ptr->int` | `int (*)(void*, void*, void*, void*)` | 3-argument comparators |
 | `void->void` | `void (*)(void*)` | Simple callbacks |
 | `ptr->void` | `void (*)(void*, void*)` | Cleanup/destructors |
@@ -5888,19 +5873,12 @@ Za uses a **trampoline pattern** with `cgo.Handle` to safely pass Za functions t
 | `ptr,int->void` | `void (*)(void*, int, void*)` | Buffer processors |
 | `ptr,int->int` | `int (*)(void*, int, void*)` | Buffer validators |
 | `ptr,ptr->bool` | `int (*)(void*, void*, void*)` | Predicate filters |
-
-**Primitive Signatures:**
-
-| Signature | C Type | Use Case |
-|-----------|--------|----------|
 | `int->int` | `int (*)(int, void*)` | Hash functions |
 | `string->void` | `void (*)(char*, void*)` | Logging callbacks |
 | `string->int` | `int (*)(char*, void*)` | String validators |
 | `int,int->void` | `void (*)(int, int, void*)` | Progress callbacks |
 
-#### Dynamic Closures (Unlimited Signatures)
-
-Any signature not in the above list is automatically created as a dynamic closure at runtime. Example custom signatures:
+Any signature can be used - Za automatically generates the appropriate closure at runtime. Example custom signatures:
 
 ```za
 # Triple integer comparator
@@ -5962,38 +5940,54 @@ c_unregister_callback(cb)
 ### F.11.4 Example: Thread Creation
 
 ```za
-module "libpthread.so.0" as pthread
+module "libpthread.so.0" as pthread auto "/usr/include/pthread.h"
 use +pthread
-
-LIB pthread::pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -> int
-LIB pthread::pthread_join(thread:pointer, retval:pointer) -> int
 
 # Define thread function
 def worker_thread(arg)
-    println "Thread running"
-    # Do work...
+    thread_id = c_ptr_to_int(arg)
+    println "Thread {thread_id}: Starting work"
+
+    for i = 1 to 5
+        println "Thread {thread_id}: Work iteration {i}"
+        pause(100)
+    endfor
+
+    println "Thread {thread_id}: Work completed"
     return c_null()
 end
 
 # Register callback
 cb = c_register_callback("worker_thread", "ptr->ptr")
 
-# Create thread
-VAR thread_id pointer
-result = pthread::pthread_create(&thread_id, c_null(), cb.trampoline, cb.handle)
+# Create thread - allocate memory for pthread_t handle
+VAR thread_handle pointer
+VAR thread_arg pointer
+
+thread_handle = c_alloc(8)     # pthread_t storage
+thread_arg = c_alloc(8)         # Thread argument
+c_set_byte(thread_arg, 0, 42)   # Pass ID = 42
+
+result = pthread::pthread_create(thread_handle, c_null(), cb.trampoline, thread_arg)
 
 if result == 0
-    # Wait for thread to complete
+    # pthread_join needs the pthread_t VALUE, not pointer
+    thread_id = c_get_uint64(thread_handle, 0)
     pthread::pthread_join(thread_id, c_null())
+    c_unregister_callback(cb)
+else
+    println "Failed to create thread"
+    c_unregister_callback(cb)
 endif
 
 # Cleanup
-c_unregister_callback(cb)
+c_free(thread_handle)
+c_free(thread_arg)
 ```
 
-### F.11.5 Custom Callback Signatures (Dynamic Closures)
+### F.11.5 Custom Callback Signatures
 
-For signatures not in the hardcoded list, Za automatically creates dynamic closures at runtime. This enables integration with any C API that uses callbacks.
+Za automatically generates closures for custom callback signatures at runtime. This enables integration with any C API that uses callbacks.
 
 #### Example: Custom 3-Parameter Callback
 
@@ -6009,10 +6003,10 @@ def my_processor(a, b, c)
     return a + b + c
 end
 
-# Register with custom signature (not in hardcoded list)
+# Register with custom signature
 cb = c_register_callback("main::my_processor", "int,int,int->int")
 
-# Use it - Za automatically creates a dynamic closure
+# Use it - Za automatically generates the closure
 result = custom::process_data(cb.trampoline, cb.handle)
 
 c_unregister_callback(cb)
@@ -6094,12 +6088,12 @@ c_unregister_callback(cb)
 
 5. **Error handling:** Callback errors cannot propagate to C. Errors return safe default values (0, nil) to C.
 
-6. **Dynamic closure limitations:** While any signature can be registered, dynamic closures currently do not support:
+6. **Limitations:** While any signature can be registered, callbacks currently do not support:
    - Struct-by-value parameters or returns (use pointers instead)
    - Variadic callbacks (callbacks with `...` parameters)
    - These will be rejected with a clear error message
 
-7. **Performance consideration:** Hardcoded trampolines have zero overhead. Dynamic closures add a small runtime marshaling cost (~1-2μs per call). For high-frequency callbacks, prefer signatures from the hardcoded list when possible.
+7. **Performance consideration:** Callback generation adds a small runtime marshaling cost (~1-2μs per call). This is negligible for most use cases.
 
 ### F.11.9 Best Practices
 

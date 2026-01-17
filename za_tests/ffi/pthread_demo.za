@@ -1,0 +1,64 @@
+#!/usr/bin/env za
+
+# pthread_demo.za - Working Za FFI threading example
+# Demonstrates correct patterns for using pthreads with current Za implementation
+
+module "libpthread.so.0" as pthread auto "/usr/include/pthread.h"
+use +pthread
+
+# Define thread function
+def worker_thread(arg)
+    thread_id = c_ptr_to_int(arg)
+    println "Thread {thread_id}: Starting work"
+    
+    # Simulate work
+    for i = 1 to 5
+        println "Thread {thread_id}: Work iteration {i}"
+        pause(100)  # milliseconds
+    endfor
+    
+    println "Thread {thread_id}: Work completed"
+    return c_null()
+end
+
+println "Main: Starting thread creation demo"
+
+# Register callback
+cb = c_register_callback("worker_thread", "ptr->ptr")
+
+# Create thread - now using pointer type declarations
+VAR thread_handle pointer
+VAR thread_arg pointer
+
+thread_handle = c_alloc(8)  # Allocate memory for pthread_t
+thread_arg = c_alloc(8)   # Pass thread ID as argument
+c_set_byte(thread_arg, 0, 42)  # Thread ID = 42
+
+result = pthread::pthread_create(thread_handle, c_null(), cb.trampoline, thread_arg)
+
+if result == 0
+    println "Main: Thread created successfully"
+    
+    # Read the pthread_t value from the handle
+    # pthread_join expects pthread_t (uint64), not pthread_t*
+    thread_id = c_get_uint64(thread_handle, 0)
+    println "Main: Read pthread_t value from handle: {thread_id}"
+    
+    # Wait for thread to complete - pass the value, not the pointer
+    # IMPORTANT: Keep callback registered until after pthread_join!
+    join_result = pthread::pthread_join(thread_id, c_null())
+    println "Main: Thread joined with result: {join_result}"
+    
+    # Now it's safe to unregister the callback
+    c_unregister_callback(cb)
+    println "Main: Callback unregistered"
+else
+    println "Main: Failed to create thread, error code: {result}"
+    c_unregister_callback(cb)
+endif
+
+# Cleanup
+c_free(thread_handle)
+c_free(thread_arg)
+
+println "Main: Demo completed"

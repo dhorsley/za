@@ -5518,15 +5518,7 @@ handlers, and event-driven libraries.</p>
 <h3 id="f.11.2-supported-callback-signatures">F.11.2 Supported Callback
 Signatures</h3>
 <p><strong>Za supports callback signatures via libffi closures!</strong>
-The system automatically chooses between:</p>
-<ul>
-<li><strong>Hardcoded trampolines</strong> (19 common signatures) -
-optimal performance</li>
-<li><strong>Dynamic closures</strong> (any signature) - generated at
-runtime via libffi</li>
-</ul>
-<h4 id="hardcoded-trampolines-fast-path">Hardcoded Trampolines (Fast
-Path)</h4>
+The system automatically generates closures for any signature.</p>
 <p><strong>Core Signatures:</strong></p>
 <table>
 <colgroup>
@@ -5567,23 +5559,6 @@ Path)</h4>
 <td><code>void (*)(int)</code></td>
 <td>Simple signal handlers</td>
 </tr>
-</tbody>
-</table>
-<p><strong>Math Signatures:</strong></p>
-<table>
-<colgroup>
-<col style="width: 37%" />
-<col style="width: 27%" />
-<col style="width: 34%" />
-</colgroup>
-<thead>
-<tr>
-<th>Signature</th>
-<th>C Type</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>double-&gt;double</code></td>
 <td><code>double (*)(double, void*)</code></td>
@@ -5599,23 +5574,6 @@ Path)</h4>
 <td><code>double (*)(double, double, void*)</code></td>
 <td>Binary math ops</td>
 </tr>
-</tbody>
-</table>
-<p><strong>Pointer Signatures:</strong></p>
-<table>
-<colgroup>
-<col style="width: 37%" />
-<col style="width: 27%" />
-<col style="width: 34%" />
-</colgroup>
-<thead>
-<tr>
-<th>Signature</th>
-<th>C Type</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>ptr,ptr,ptr-&gt;int</code></td>
 <td><code>int (*)(void*, void*, void*, void*)</code></td>
@@ -5651,18 +5609,6 @@ Path)</h4>
 <td><code>int (*)(void*, void*, void*)</code></td>
 <td>Predicate filters</td>
 </tr>
-</tbody>
-</table>
-<p><strong>Primitive Signatures:</strong></p>
-<table>
-<thead>
-<tr>
-<th>Signature</th>
-<th>C Type</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
 <tr>
 <td><code>int-&gt;int</code></td>
 <td><code>int (*)(int, void*)</code></td>
@@ -5685,10 +5631,8 @@ Path)</h4>
 </tr>
 </tbody>
 </table>
-<h4 id="dynamic-closures-unlimited-signatures">Dynamic Closures
-(Unlimited Signatures)</h4>
-<p>Any signature not in the above list is automatically created as a
-dynamic closure at runtime. Example custom signatures:</p>
+<p>Any signature can be used - Za automatically generates the
+appropriate closure at runtime. Example custom signatures:</p>
 <pre class="za"><code># Triple integer comparator
 c_register_callback(&quot;my_func&quot;, &quot;int,int,int-&gt;int&quot;)
 
@@ -5749,38 +5693,54 @@ c_unregister_callback(cb)
 # arr is now sorted</code></pre>
 <h3 id="f.11.4-example-thread-creation">F.11.4 Example: Thread
 Creation</h3>
-<pre class="za"><code>module &quot;libpthread.so.0&quot; as pthread
+<pre class="za"><code>module &quot;libpthread.so.0&quot; as pthread auto &quot;/usr/include/pthread.h&quot;
 use +pthread
-
-LIB pthread::pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -&gt; int
-LIB pthread::pthread_join(thread:pointer, retval:pointer) -&gt; int
 
 # Define thread function
 def worker_thread(arg)
-    println &quot;Thread running&quot;
-    # Do work...
+    thread_id = c_ptr_to_int(arg)
+    println &quot;Thread {thread_id}: Starting work&quot;
+
+    for i = 1 to 5
+        println &quot;Thread {thread_id}: Work iteration {i}&quot;
+        pause(100)
+    endfor
+
+    println &quot;Thread {thread_id}: Work completed&quot;
     return c_null()
 end
 
 # Register callback
 cb = c_register_callback(&quot;worker_thread&quot;, &quot;ptr-&gt;ptr&quot;)
 
-# Create thread
-VAR thread_id pointer
-result = pthread::pthread_create(&amp;thread_id, c_null(), cb.trampoline, cb.handle)
+# Create thread - allocate memory for pthread_t handle
+VAR thread_handle pointer
+VAR thread_arg pointer
+
+thread_handle = c_alloc(8)     # pthread_t storage
+thread_arg = c_alloc(8)         # Thread argument
+c_set_byte(thread_arg, 0, 42)   # Pass ID = 42
+
+result = pthread::pthread_create(thread_handle, c_null(), cb.trampoline, thread_arg)
 
 if result == 0
-    # Wait for thread to complete
+    # pthread_join needs the pthread_t VALUE, not pointer
+    thread_id = c_get_uint64(thread_handle, 0)
     pthread::pthread_join(thread_id, c_null())
+    c_unregister_callback(cb)
+else
+    println &quot;Failed to create thread&quot;
+    c_unregister_callback(cb)
 endif
 
 # Cleanup
-c_unregister_callback(cb)</code></pre>
-<h3 id="f.11.5-custom-callback-signatures-dynamic-closures">F.11.5
-Custom Callback Signatures (Dynamic Closures)</h3>
-<p>For signatures not in the hardcoded list, Za automatically creates
-dynamic closures at runtime. This enables integration with any C API
-that uses callbacks.</p>
+c_free(thread_handle)
+c_free(thread_arg)</code></pre>
+<h3 id="f.11.5-custom-callback-signatures">F.11.5 Custom Callback
+Signatures</h3>
+<p>Za automatically generates closures for custom callback signatures at
+runtime. This enables integration with any C API that uses
+callbacks.</p>
 <h4 id="example-custom-3-parameter-callback">Example: Custom 3-Parameter
 Callback</h4>
 <pre class="za"><code>module &quot;libcustom.so&quot; as custom
@@ -5794,10 +5754,10 @@ def my_processor(a, b, c)
     return a + b + c
 end
 
-# Register with custom signature (not in hardcoded list)
+# Register with custom signature
 cb = c_register_callback(&quot;main::my_processor&quot;, &quot;int,int,int-&gt;int&quot;)
 
-# Use it - Za automatically creates a dynamic closure
+# Use it - Za automatically generates the closure
 result = custom::process_data(cb.trampoline, cb.handle)
 
 c_unregister_callback(cb)</code></pre>
@@ -5931,17 +5891,16 @@ defined while the callback is registered. Don’t redefine or delete
 callback functions while in use.</p></li>
 <li><p><strong>Error handling:</strong> Callback errors cannot propagate
 to C. Errors return safe default values (0, nil) to C.</p></li>
-<li><p><strong>Dynamic closure limitations:</strong> While any signature
-can be registered, dynamic closures currently do not support:</p>
+<li><p><strong>Limitations:</strong> While any signature can be
+registered, callbacks currently do not support:</p>
 <ul>
 <li>Struct-by-value parameters or returns (use pointers instead)</li>
 <li>Variadic callbacks (callbacks with <code>...</code> parameters)</li>
 <li>These will be rejected with a clear error message</li>
 </ul></li>
-<li><p><strong>Performance consideration:</strong> Hardcoded trampolines
-have zero overhead. Dynamic closures add a small runtime marshaling cost
-(~1-2μs per call). For high-frequency callbacks, prefer signatures from
-the hardcoded list when possible.</p></li>
+<li><p><strong>Performance consideration:</strong> Callback generation
+adds a small runtime marshaling cost (~1-2μs per call). This is
+negligible for most use cases.</p></li>
 </ol>
 <h3 id="f.11.9-best-practices">F.11.9 Best Practices</h3>
 <ol type="1">

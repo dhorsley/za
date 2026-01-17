@@ -2022,7 +2022,7 @@ tco_reentry:
                     tokType := inbound.Tokens[i].tokType
                     if tokType == T_Map || tokType == T_Int || tokType == T_String || tokType == T_Float ||
                         tokType == T_Bool || tokType == T_Uint || tokType == T_Bigi || tokType == T_Bigf ||
-                        tokType == T_Any || tokType == T_Array {
+                        tokType == T_Any || tokType == T_Array || tokType == T_Pointer {
                         baseType = inbound.Tokens[i].tokText
                         break
                     }
@@ -2131,6 +2131,8 @@ tco_reentry:
                             t.IKind = kany
                         case "any":
                             t.IKind = kany
+                        case "pointer":
+                            t.IKind = kpointer
                         case "[]bool":
                             t.IKind = ksbool
                             t.IValue = make([]bool, size, size)
@@ -9077,6 +9079,9 @@ func setupTypedParameter(fs uint32, ident *[]Variable, name string, typeStr stri
     case "map":
         t.IKind = kmap
         t.IValue = make(map[string]any)
+    case "pointer":
+        t.IKind = kpointer
+        t.IValue = nil
     default:
         // Unknown type - might be a struct or complex type
         // Don't enable strict type checking for unknown types
@@ -9196,6 +9201,9 @@ func isCompatibleType(value any, expectedType string, namespace string) bool {
         return ok
     case "nil":
         return value == nil
+    case "pointer":
+        _, ok := value.(*CPointerValue)
+        return ok || value == nil
     }
 
     return true // Unknown type, accept
