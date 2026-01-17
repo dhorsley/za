@@ -1046,89 +1046,10 @@ func init() {
 }
 
 // getTrampolineForSignature returns the appropriate trampoline function pointer for a signature
+// NOTE: Always returns an error to force libffi closure usage for all callbacks.
+// This ensures consistent behavior and avoids edge cases where hardcoded trampolines can't
+// access callback context when the library controls what data is passed to the callback.
 func getTrampolineForSignature(sig string) (unsafe.Pointer, error) {
-    switch sig {
-    case "ptr,ptr->int":
-        // qsort_r comparator: int (*)(const void*, const void*, void*)
-        return C.za_callback_with_context_ptr_ptr_int, nil
-
-    case "int,int->int":
-        // Integer comparator with context
-        return C.za_callback_with_context_int_int_int, nil
-
-    case "ptr->ptr":
-        // pthread_create: void* (*)(void*)
-        return C.za_callback_ptr_ptr, nil
-
-    case "int,ptr,ptr->void":
-        // sigaction with SA_SIGINFO: void (*)(int, siginfo_t*, void*)
-        return C.za_callback_sigaction, nil
-
-    case "int->void":
-        // Simple signal handler: void (*)(int)
-        return C.za_callback_int_void, nil
-
-    // NEW SIGNATURES
-    case "double->double":
-        // Math transformations: double (*)(double, void*)
-        return C.za_callback_double_double, nil
-
-    case "ptr,ptr,ptr->int":
-        // 3-pointer comparator: int (*)(void*, void*, void*, void*)
-        return C.za_callback_ptr_ptr_ptr_int, nil
-
-    case "void->void":
-        // Simple callback: void (*)(void*)
-        return C.za_callback_void_void, nil
-
-    case "ptr->void":
-        // Cleanup/destructor: void (*)(void*, void*)
-        return C.za_callback_ptr_void, nil
-
-    // HIGH PRIORITY ADDITIONS
-    case "int->int":
-        // Hash functions, transforms: int (*)(int, void*)
-        return C.za_callback_int_int, nil
-
-    case "ptr,int->void":
-        // Buffer processors: void (*)(void*, size_t, void*)
-        return C.za_callback_ptr_int_void, nil
-
-    case "ptr,int->int":
-        // Validators with length: int (*)(void*, size_t, void*)
-        return C.za_callback_ptr_int_int, nil
-
-    case "ptr,ptr->void":
-        // Iteration callbacks: void (*)(void*, void*, void*)
-        return C.za_callback_ptr_ptr_void, nil
-
-    case "float->float":
-        // Single-precision math: float (*)(float, void*)
-        return C.za_callback_float_float, nil
-
-    case "string->void":
-        // Logging callbacks: void (*)(const char*, void*)
-        return C.za_callback_string_void, nil
-
-    case "double,double->double":
-        // Binary math operations: double (*)(double, double, void*)
-        return C.za_callback_double_double_double, nil
-
-    // ADDITIONAL USEFUL SIGNATURES
-    case "string->int":
-        // String validators/parsers: int (*)(const char*, void*)
-        return C.za_callback_string_int, nil
-
-    case "int,int->void":
-        // Progress callbacks, range handlers: void (*)(int, int, void*)
-        return C.za_callback_int_int_void, nil
-
-    case "ptr,ptr->bool":
-        // Predicate functions: int (*)(void*, void*, void*) returning bool as int
-        return C.za_callback_ptr_ptr_bool, nil
-
-    default:
-        return nil, fmt.Errorf("no trampoline available for signature %s\nSupported signatures:\n  Core: ptr,ptr->int, int,int->int, ptr->ptr, int,ptr,ptr->void, int->void\n  Math: double->double, float->float, double,double->double\n  Pointers: ptr,ptr,ptr->int, void->void, ptr->void, ptr,ptr->void, ptr,int->void, ptr,int->int, ptr,ptr->bool\n  Primitives: int->int, string->void, string->int, int,int->void", sig)
-    }
+    return nil, fmt.Errorf("all callbacks use libffi closures for consistency and safety")
 }
 

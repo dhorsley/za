@@ -568,6 +568,24 @@ func CGetInt32(p *CPointerValue, offset int) int32 {
     return 0
 }
 
+// CGetUint64 reads a uint64 at an offset in a buffer
+func CGetUint64(p *CPointerValue, offset int) uint64 {
+    if p != nil && p.Ptr != nil {
+        uint64Ptr := (*uint64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *uint64Ptr
+    }
+    return 0
+}
+
+// CGetInt64 reads an int64 at an offset in a buffer
+func CGetInt64(p *CPointerValue, offset int) int64 {
+    if p != nil && p.Ptr != nil {
+        int64Ptr := (*int64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *int64Ptr
+    }
+    return 0
+}
+
 // CGetDataSymbol reads a data symbol value from a loaded C library
 // Returns the value as int, float64, or string depending on what works
 func CGetDataSymbol(libName, symbolName string) (any, error) {

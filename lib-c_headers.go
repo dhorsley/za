@@ -2,6 +2,7 @@ package main
 
 import (
     "context"
+    "errors"
     "fmt"
     "math"
     "os"
@@ -3438,23 +3439,46 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     }
 }
 
+// extractBalancedParentheses extracts the content between balanced parentheses
+// starting from the position right after an opening '('.
+// It returns the content (between the parentheses), the position after the closing ')', and any error.
+func extractBalancedParentheses(text string, startPos int) (content string, endPos int, err error) {
+    if startPos < 0 || startPos >= len(text) {
+        return "", -1, errors.New("invalid start position")
+    }
+
+    depth := 1
+    for i := startPos; i < len(text); i++ {
+        switch text[i] {
+        case '(':
+            depth++
+        case ')':
+            depth--
+            if depth == 0 {
+                content = text[startPos:i]
+                endPos = i + 1
+                return content, endPos, nil
+            }
+        }
+    }
+
+    return "", -1, errors.New("unclosed parentheses")
+}
+
 // parseFunctionSignatures extracts function signatures from header text
 // and auto-generates LIB declarations using the existing C parser
 func parseFunctionSignatures(text string, alias string) error {
-    // Pattern to match function declarations:
-    // Captures everything before '(' and the parameters
-    // We'll parse the left part to extract return type and function name
+    // Pattern to match function declarations with simple regex:
+    // Find return type + function name + opening paren
+    // Then use character-by-character parser to handle nested parentheses in function pointers
 
     // Regex pattern explanation:
     // ([a-zA-Z_][a-zA-Z0-9_ \t\*]*) = return type + function name (capture group 1)
-    // \( = opening paren
-    // ([^)]*) = parameters (capture group 2)
-    // \)\s*(?:[^;\n]+)?\s*; = closing paren + optional GCC attributes + semicolon
-    // Note: Using [ \t] instead of \s in first group, and [^;\n] to prevent matching across newlines
-    // The (?:[^;\n]+)? group matches optional attributes like __wur, __attribute_malloc__, etc.
+    // \( = opening paren (starting position for parameter extraction)
+    // We use a simpler regex that just finds the start of potential declarations
 
-    re := regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_ \t\*]*)\(([^)]*)\)\s*(?:[^;\n]+)?\s*;`)
-    matches := re.FindAllStringSubmatch(text, -1)
+    re := regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_ \t\*]*)\(`)
+    matches := re.FindAllStringSubmatchIndex(text, -1)
 
     if len(matches) == 0 {
         // No function signatures found - not an error
@@ -3466,15 +3490,43 @@ func parseFunctionSignatures(text string, alias string) error {
 
     if debugAuto {
         fmt.Fprintf(os.Stderr, "Found %d potential function declarations\n", len(matches))
-        for i, match := range matches {
-            fmt.Fprintf(os.Stderr, "  Match %d: %s(%s)\n", i+1, match[1], match[2])
-        }
     }
+
     discoveredCount := 0
 
-    for _, match := range matches {
-        leftPart := strings.TrimSpace(match[1])
-        params := strings.TrimSpace(match[2])
+    // Process each match
+    for _, matchIdx := range matches {
+        // matchIdx contains: [fullStart, fullEnd, group1Start, group1End]
+        leftPartStart := matchIdx[2]
+        leftPartEnd := matchIdx[3]
+        openParenEnd := matchIdx[1]
+
+        leftPart := strings.TrimSpace(text[leftPartStart:leftPartEnd])
+
+        // Extract parameters using parenthesis-aware parser
+        // openParenEnd points to the character after '('
+        if openParenEnd >= len(text) {
+            continue
+        }
+
+        params, endPos, err := extractBalancedParentheses(text, openParenEnd)
+        if err != nil {
+            if debugAuto {
+                fmt.Fprintf(os.Stderr, "  Error extracting parameters for %s: %v\n", leftPart, err)
+            }
+            continue
+        }
+
+        // Check if this looks like a complete function declaration by looking for semicolon
+        // Skip past any GCC attributes after the closing paren
+        restOfLine := text[endPos:]
+        semiIdx := strings.IndexByte(restOfLine, ';')
+        if semiIdx == -1 {
+            // No semicolon found on this line, might be multi-line or not a function declaration
+            continue
+        }
+
+        params = strings.TrimSpace(params)
 
         // Skip unwanted patterns by checking if leftPart contains exclusion keywords
         if strings.Contains(leftPart, "typedef") ||
@@ -3504,6 +3556,22 @@ func parseFunctionSignatures(text string, alias string) error {
 
         // Skip internal/private functions (those starting with underscore)
         if strings.HasPrefix(funcName, "_") {
+            continue
+        }
+
+        // Skip C language keywords (control flow, type keywords)
+        keywordSkips := map[string]bool{
+            "if": true, "else": true, "while": true, "for": true, "do": true,
+            "switch": true, "case": true, "default": true, "return": true,
+            "break": true, "continue": true, "sizeof": true, "define": true,
+            "defined": true, "include": true, "ifdef": true, "ifndef": true,
+            "endif": true, "pragma": true, "error": true,
+            "warning": true, "line": true, "undef": true,
+        }
+        if keywordSkips[funcName] {
+            if debugAuto {
+                fmt.Fprintf(os.Stderr, "  Skipping keyword: %s\n", funcName)
+            }
             continue
         }
 
@@ -3543,6 +3611,12 @@ func parseFunctionSignatures(text string, alias string) error {
         // Use return struct name from parsed signature (for unions/structs)
         returnStructName := sig.ReturnStructName
 
+        /*
+        if warnAuto {
+            fmt.Fprintf(os.Stderr, "about to declare c function : %s -> %s\n",alias,funcName)
+        }
+        */
+
         // Store in global function registry
         DeclareCFunction(
             alias,
@@ -3554,10 +3628,25 @@ func parseFunctionSignatures(text string, alias string) error {
             sig.IsVariadic,
         )
 
+        // Also add to library's Symbols so help plugin can display it
+        if lib, exists := loadedCLibraries[alias]; exists {
+            if lib.Symbols == nil {
+                lib.Symbols = make(map[string]*CSymbol)
+            }
+            lib.Symbols[funcName] = &CSymbol{
+                Name:       funcName,
+                ReturnType: sig.ReturnType,
+                Parameters: sig.Parameters,
+                IsFunction: true,
+                Library:    alias,
+            }
+        }
+
         discoveredCount++
 
         if debugAuto {
             fmt.Fprintf(os.Stderr, "  Auto-discovered: %s\n", signature)
+            fmt.Fprintf(os.Stderr, "  Registered as: %s::%s with %d parameters\n", alias, funcName, len(paramTypes))
         }
     }
 

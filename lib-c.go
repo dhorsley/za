@@ -189,6 +189,8 @@ func ConvertZaToCType(zaType uint8) (CType, []string) {
         return CString, nil
     case kbool:
         return CBool, nil
+    case kpointer:
+        return CPointer, nil
     default:
         return CVoid, []string{fmt.Sprintf("[UNSUPPORTED: Cannot convert Za type %d to C type]", zaType)}
     }
@@ -1057,6 +1059,28 @@ func buildFfiLib() {
         return nil, fmt.Errorf("c_ptr_to_int: argument is not a C pointer")
     }
 
+    slhelp["c_get_uint64"] = LibHelp{in: "ptr,offset", out: "uint", action: "Reads a uint64 at the given offset in a buffer."}
+    stdlib["c_get_uint64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_uint64", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetUint64(p, args[1].(int)), nil
+        }
+        return uint64(0), fmt.Errorf("c_get_uint64: first argument must be a C pointer")
+    }
+
+    slhelp["c_get_int64"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads an int64 at the given offset in a buffer."}
+    stdlib["c_get_int64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_int64", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetInt64(p, args[1].(int)), nil
+        }
+        return int64(0), fmt.Errorf("c_get_int64: first argument must be a C pointer")
+    }
+
     slhelp["c_get_symbol"] = LibHelp{in: "library_alias,symbol_name", out: "any", action: "Reads a data symbol (constant/variable) from a loaded C library. Note: C preprocessor #defines are NOT symbols and cannot be read this way."}
     stdlib["c_get_symbol"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("c_get_symbol", args, 1, "2", "string", "string"); !ok {
@@ -1424,9 +1448,9 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
            baseType == "intptr_t" || baseType == "ptrdiff_t" {
             return CInt64, baseType + " mapped to int64", nil
         }
-        // Default to 32-bit for int, signed, signed int, ssize_t, pid_t, time_t
+        // Default to 32-bit for int, signed, signed int, pid_t, time_t
         if baseType == "ssize_t" {
-            return CInt, baseType + " mapped to int", nil
+            return CInt64, baseType + " mapped to int64", nil
         }
         return CInt, "", nil
 

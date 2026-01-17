@@ -64,6 +64,11 @@ language changes
       - runtime ABI detection for x86-64, ARM64, x86-32, ARM-32, RISC-V 64, PPC64
       - platform-aware help plugin with BSD-specific man page URLs
 
+  * added C pointer type (pointer) as a VAR declarable type.
+      - this does not allocate memory, you must still do this either
+         with c_alloc()+c_free() or assign a *value returned by a C call to it.
+      - declaration allows the variable to be auto-converted during FFI operations.
+
   * added AUTO clause for MODULE statements - automatic C header parsing
       - syntax: module "libfoo.so" as foo auto
       - automatically discovers and parses C header files

@@ -18,11 +18,11 @@ println
 total_tests = 0
 passed_tests = 0
 
-def test(name, condition)
-    total_tests = total_tests + 1
+def rtest(name, condition)
+    @ total_tests += 1
     if condition
         println "  ✓ " + name
-        passed_tests = passed_tests + 1
+        @ passed_tests += 1
     else
         println "  ✗ " + name + " FAILED"
     endif
@@ -37,18 +37,18 @@ println "[#6]Test 1: Integer formatting[#-]"
 println "  About to call printf..."
 bytes_written = c::printf("Integer: %d\n", 42)
 println "  Printf returned: " + as_string(bytes_written)
-println "  About to call test()..."
-test("printf with single int", bytes_written > 0)
+println "  About to call rtest()..."
+rtest("printf with single int", bytes_written > 0)
 println "  Test completed"
 
 # Multiple integers
 println "  Testing multiple integers..."
 bytes_written = c::printf("Two ints: %d %d\n", 10, 20)
-test("printf with two ints", bytes_written > 0)
+rtest("printf with two ints", bytes_written > 0)
 
 # Various integer formats
 bytes_written = c::printf("Dec: %d, Hex: %x, Oct: %o\n", 255, 255, 255)
-test("printf with multiple formats", bytes_written > 0)
+rtest("printf with multiple formats", bytes_written > 0)
 
 println
 
@@ -58,13 +58,13 @@ println
 println "[#6]Test 2: Floating point formatting[#-]"
 
 bytes_written = c::printf("Float: %f\n", 3.14159)
-test("printf with float", bytes_written > 0)
+rtest("printf with float", bytes_written > 0)
 
 bytes_written = c::printf("Scientific: %e\n", 12345.67)
-test("printf with scientific notation", bytes_written > 0)
+rtest("printf with scientific notation", bytes_written > 0)
 
 bytes_written = c::printf("Multiple floats: %f %f %f\n", 1.1, 2.2, 3.3)
-test("printf with multiple floats", bytes_written > 0)
+rtest("printf with multiple floats", bytes_written > 0)
 
 println
 
@@ -74,10 +74,10 @@ println
 println "[#6]Test 3: String formatting[#-]"
 
 bytes_written = c::printf("String: %s\n", "Hello")
-test("printf with string", bytes_written > 0)
+rtest("printf with string", bytes_written > 0)
 
 bytes_written = c::printf("Two strings: %s %s\n", "Hello", "World")
-test("printf with two strings", bytes_written > 0)
+rtest("printf with two strings", bytes_written > 0)
 
 println
 
@@ -87,10 +87,10 @@ println
 println "[#6]Test 4: Mixed type formatting[#-]"
 
 bytes_written = c::printf("Mixed: %d %f %s\n", 42, 3.14, "test")
-test("printf with int, float, string", bytes_written > 0)
+rtest("printf with int, float, string", bytes_written > 0)
 
 bytes_written = c::printf("Complex: %s=%d, pi=%f, hex=%x\n", "answer", 42, 3.14159, 255)
-test("printf with complex mix", bytes_written > 0)
+rtest("printf with complex mix", bytes_written > 0)
 
 println
 
@@ -104,15 +104,15 @@ buffer = c_alloc(256)
 
 # Simple sprintf
 bytes = c::sprintf(buffer, "Value: %d", 123)
-test("sprintf with int", bytes > 0)
+rtest("sprintf with int", bytes > 0)
 
 # Multiple values
 bytes = c::sprintf(buffer, "%d + %d = %d", 5, 3, 8)
-test("sprintf with multiple ints", bytes > 0)
+rtest("sprintf with multiple ints", bytes > 0)
 
 # Mixed types
 bytes = c::sprintf(buffer, "Name: %s, Age: %d, Score: %f", "Alice", 25, 95.5)
-test("sprintf with mixed types", bytes > 0)
+rtest("sprintf with mixed types", bytes > 0)
 
 c_free(buffer)
 
@@ -124,10 +124,10 @@ println
 println "[#6]Test 6: Many arguments (stress test)[#-]"
 
 bytes_written = c::printf("Many: %d %d %d %d %d %d %d %d\n", 1, 2, 3, 4, 5, 6, 7, 8)
-test("printf with 8 integers", bytes_written > 0)
+rtest("printf with 8 integers", bytes_written > 0)
 
 bytes_written = c::printf("%d %d %d %d %d %d %d %d %d %d\n", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-test("printf with 10 integers", bytes_written > 0)
+rtest("printf with 10 integers", bytes_written > 0)
 
 println
 
@@ -138,19 +138,19 @@ println "[#6]Test 7: Edge cases[#-]"
 
 # Zero values
 bytes_written = c::printf("Zero int: %d, Zero float: %f\n", 0, 0.0)
-test("printf with zero values", bytes_written > 0)
+rtest("printf with zero values", bytes_written > 0)
 
 # Negative values
 bytes_written = c::printf("Negative: %d %f\n", -42, -3.14)
-test("printf with negative values", bytes_written > 0)
+rtest("printf with negative values", bytes_written > 0)
 
 # Large values
 bytes_written = c::printf("Large: %d\n", 2147483647)
-test("printf with large int (INT_MAX)", bytes_written > 0)
+rtest("printf with large int (INT_MAX)", bytes_written > 0)
 
 # Empty string
 bytes_written = c::printf("Empty string: '%s'\n", "")
-test("printf with empty string", bytes_written > 0)
+rtest("printf with empty string", bytes_written > 0)
 
 println
 
@@ -160,13 +160,13 @@ println
 println "[#6]Test 8: Format specifiers with width/precision[#-]"
 
 bytes_written = c::printf("Width: |%10d|\n", 42)
-test("printf with width specifier", bytes_written > 0)
+rtest("printf with width specifier", bytes_written > 0)
 
 bytes_written = c::printf("Precision: %.2f\n", 3.14159)
-test("printf with precision", bytes_written > 0)
+rtest("printf with precision", bytes_written > 0)
 
 bytes_written = c::printf("Both: |%10.2f|\n", 3.14159)
-test("printf with width and precision", bytes_written > 0)
+rtest("printf with width and precision", bytes_written > 0)
 
 println
 
@@ -177,7 +177,7 @@ println "[#6]Test 9: Pointer formatting[#-]"
 
 test_ptr = c_alloc(64)
 bytes_written = c::printf("Pointer: %p\n", test_ptr)
-test("printf with pointer", bytes_written > 0)
+rtest("printf with pointer", bytes_written > 0)
 c_free(test_ptr)
 
 println
@@ -188,10 +188,10 @@ println
 println "[#6]Test 10: Character formatting[#-]"
 
 bytes_written = c::printf("Char: %c\n", 65)  # 'A'
-test("printf with character code", bytes_written > 0)
+rtest("printf with character code", bytes_written > 0)
 
 bytes_written = c::printf("Multiple chars: %c%c%c\n", 72, 105, 33)  # "Hi!"
-test("printf with multiple chars", bytes_written > 0)
+rtest("printf with multiple chars", bytes_written > 0)
 
 println
 

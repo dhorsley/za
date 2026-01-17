@@ -84,6 +84,7 @@ func init() {
     var ts string
     var tbi *big.Int
     var tbf *big.Float
+    var tptr *CPointerValue
 
     var stb []bool
     var stu []uint
@@ -135,6 +136,7 @@ func init() {
     Typemap["[]"] = reflect.TypeOf(stmixed)
     Typemap["[]dirent"] = reflect.TypeOf(stdirent)
     Typemap["map"] = nil
+    Typemap["pointer"] = reflect.TypeOf(tptr)
 }
 
 // growSlice ensures a slice has enough capacity and length for a given index.

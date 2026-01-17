@@ -38,7 +38,7 @@ var tokNames = [...]string{"ERROR", "EOL", "EOF",
     "TRY", "CATCH", "THEN", "THROWS", "THROW", "ENDTRY",
     "BLOCK", "ABLOCK", "RBLOCK",
     "T_NUMBER", "T_NIL", "T_BOOL", "T_INT", "T_UINT", "T_FLOAT", "T_BIGI",
-    "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY",
+    "T_BIGF", "T_STRING", "T_MAP", "T_ARRAY", "T_ANY", "T_POINTER",
 }
 
 type lcstruct struct {
@@ -910,6 +910,8 @@ get_nt_eval_point:
             tokType = T_Array
         case "any":
             tokType = T_Any
+        case "pointer":
+            tokType = T_Pointer
         }
     }
 

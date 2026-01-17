@@ -2540,6 +2540,14 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kpointer:
+            _, ok = value.(*CPointerValue)
+            if !ok && value == nil {
+                ok = true
+            }
+            if ok {
+                (*ident)[bin].IValue = value
+            }
         case ksany:
             _, ok = value.([]any)
             if ok {

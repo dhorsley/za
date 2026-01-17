@@ -141,6 +141,14 @@ func CGetInt32(p *CPointerValue, offset int) int32 {
     return 0
 }
 
+func CGetUint64(p *CPointerValue, offset int) uint64 {
+    return 0
+}
+
+func CGetInt64(p *CPointerValue, offset int) int64 {
+    return 0
+}
+
 func CGetDataSymbol(libName, symbolName string) (any, error) {
     return nil, fmt.Errorf("FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms.")
 }

@@ -169,6 +169,7 @@ const (
     ksany
     ksbyte
     kdynamic // for dynamically constructed multi-dimensional types
+    kpointer // for pointer types
 )
 
 type TokenType = int64
@@ -340,6 +341,7 @@ const (
     T_Map
     T_Array
     T_Any
+    T_Pointer
     END_STATEMENTS
 )
 
