@@ -4,18 +4,23 @@
 println "Loading libc..."
 module "/usr/lib/libc.so.6" as c
 use +c
+LIB c::malloc(size:int) -> ptr
+LIB c::free(p:ptr) -> void
 println "Library loaded"
 
-println "Calling strlen..."
-ptr_result = strlen("test")
-println "strlen returned: {ptr_result}"
+println "Calling malloc(100)..."
+ptr_result = malloc(100)
+println "malloc returned a pointer"
 
-println "Converting to int..."
+println "Converting pointer to int..."
 int_result = c_ptr_to_int(ptr_result)
 println "c_ptr_to_int returned: {int_result}"
 
-if int_result == 4
-    println "SUCCESS: strlen('test') == 4"
+println "Freeing memory..."
+free(ptr_result)
+
+if int_result > 0
+    println "SUCCESS: pointer converted to positive integer: {int_result}"
 else
-    println "FAIL: expected 4, got {int_result}"
+    println "FAIL: expected positive integer, got {int_result}"
 endif

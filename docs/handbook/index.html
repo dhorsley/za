@@ -3849,6 +3849,20 @@ use +gl</code></pre>
 <li>String concatenation: <code>#define MSG "Hello " "World"</code>
 (transformed to Za syntax)</li>
 </ul></li>
+<li><p><strong>Character literals</strong> from <code>#define</code>
+(converted to numeric values):</p>
+<ul>
+<li>Simple characters: <code>#define TAB_CHAR '\t'</code> → 9</li>
+<li>Escape sequences: <code>#define NULL_CHAR '\0'</code> → 0,
+<code>#define NEWLINE '\n'</code> → 10</li>
+<li>ASCII characters: <code>#define LETTER_A 'A'</code> → 65</li>
+<li>Wide character literals: <code>#define WCHAR_NULL L'\0'</code> →
+0</li>
+<li>Unicode prefixes: <code>u'x'</code>, <code>U'x'</code>,
+<code>u8"str"</code> (prefixes preserved during parsing)</li>
+<li>Used in conditionals: <code>#if L'\0' - 1 &gt; 0</code> (tests
+signedness of wide char)</li>
+</ul></li>
 <li><p><strong>Enum definitions</strong> (single-line or multiline):</p>
 <div class="sourceCode" id="cb173"><pre
 class="sourceCode c"><code class="sourceCode c"><span id="cb173-1"><a href="#cb173-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
@@ -3928,6 +3942,8 @@ expression evaluation:
 <li>Boolean operators: <code>&amp;&amp;</code>, <code>||</code></li>
 <li><code>defined()</code> operator: <code>defined(MACRO)</code> or
 <code>defined MACRO</code></li>
+<li>Character literals: <code>#if L'\0' - 1 &gt; 0</code> (converted to
+numeric values)</li>
 <li>Undefined macros treated as 0 (C preprocessor semantics)</li>
 <li>Only first true condition in if/elif/else chain activates</li>
 <li>Example:
@@ -3952,30 +3968,41 @@ sys/types.h)</li>
 evaluation</li>
 <li><strong>Note</strong>: Macro names prefixed internally to avoid Za
 keyword conflicts (e.g., VERSION)</li>
+<li><strong>Note</strong>: C literal prefixes preserved during
+evaluation (<code>L'x'</code>, <code>u'x'</code>, <code>U'x'</code>,
+<code>u8"str"</code>)</li>
 </ul></li>
 <li><p><strong>Struct definitions</strong> (automatically registered as
-Za types):</p>
+Za types):</p></li>
+</ol>
 <div class="sourceCode" id="cb178"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb178-1"><a href="#cb178-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb178-2"><a href="#cb178-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">;</span></span>
-<span id="cb178-3"><a href="#cb178-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> y<span class="op">;</span></span>
-<span id="cb178-4"><a href="#cb178-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Point<span class="op">;</span></span>
+class="sourceCode c"><code class="sourceCode c"><span id="cb178-1"><a href="#cb178-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb178-2"><a href="#cb178-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> x<span class="op">;</span></span>
+<span id="cb178-3"><a href="#cb178-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> y<span class="op">;</span></span>
+<span id="cb178-4"><a href="#cb178-4" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Point<span class="op">;</span></span>
 <span id="cb178-5"><a href="#cb178-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb178-6"><a href="#cb178-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb178-7"><a href="#cb178-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
-<span id="cb178-8"><a href="#cb178-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
-<span id="cb178-9"><a href="#cb178-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
+<span id="cb178-6"><a href="#cb178-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb178-7"><a href="#cb178-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
+<span id="cb178-8"><a href="#cb178-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
+<span id="cb178-9"><a href="#cb178-9" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>C structs automatically registered in Za’s
 <code>structmaps</code></li>
 <li>Supports VAR declarations: <code>var p Point</code>,
 <code>var c mylib::Color</code></li>
-<li>Can be received from C functions (by value or pointer)</li>
-<li>Can be passed to C functions</li>
-<li>Array fields fully supported</li>
-<li>Backward compatible: Za map-based structs still work</li>
+<li><strong>VAR-declared AUTO structs are Go structs</strong> - use
+<strong>dot notation</strong> to access fields</li>
+<li><strong>Struct instantiation</strong> uses Za syntax:
+<code>color_t(.rgb [255, 128, 64], .alpha 200)</code></li>
+<li>Can be received from C functions (by value or pointer) - returns as
+Za map</li>
+<li>Can be passed to C functions (marshaled automatically)</li>
+<li>Array fields fully supported in both instantiation and
+marshaling</li>
+<li>Field names work in both lowercase and capitalized forms</li>
 <li>See test: <code>za_tests/test_auto_struct*.za</code></li>
-</ul></li>
+</ul>
+<ol start="11" type="1">
 <li><p><strong>Numeric type coercion</strong> (comparison
 operators):</p>
 <ul>
@@ -3989,18 +4016,68 @@ int literal)</li>
 <li>Applies to: <code>==</code>, <code>!=</code>, <code>&gt;</code>,
 <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code></li>
 </ul></li>
-</ol>
-<p><strong>Not parsed</strong> (limitations):</p>
+<li><p><strong>wchar_t support</strong> (platform-aware implicit type
+alias):</p>
+<div class="sourceCode" id="cb179"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb179-1"><a href="#cb179-1" aria-hidden="true" tabindex="-1"></a><span class="co">// C header</span></span>
+<span id="cb179-2"><a href="#cb179-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_wchar_size<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb179-3"><a href="#cb179-3" aria-hidden="true" tabindex="-1"></a><span class="dt">wchar_t</span> wchar_echo<span class="op">(</span><span class="dt">wchar_t</span> c<span class="op">);</span></span>
+<span id="cb179-4"><a href="#cb179-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> wchar_fill_array<span class="op">(</span><span class="dt">wchar_t</span> <span class="op">*</span>arr<span class="op">,</span> <span class="dt">int</span> len<span class="op">);</span></span></code></pre></div>
+<pre class="za"><code># Za code - wchar_t automatically mapped
+module &quot;./libtest.so&quot; as tw auto &quot;./test.h&quot;
+use +tw
+
+size = get_wchar_size()    # Returns 4 on Linux, 2 on Windows
+result = wchar_echo(65)    # wchar_t as value → uint16/uint32
+wchar_fill_array(ptr, 5)   # wchar_t* as pointer → CPointer</code></pre>
+<p><strong>How it works:</strong></p>
 <ul>
-<li>Function-like macros:
+<li>wchar_t size detected at Za startup via
+<code>unsafe.Sizeof(C.wchar_t(0))</code></li>
+<li><strong>Linux/BSD/macOS</strong>: wchar_t = 4 bytes → maps to
+<code>uint32</code></li>
+<li><strong>Windows</strong>: wchar_t = 2 bytes → maps to
+<code>uint16</code></li>
+<li><strong>wchar_t</strong> (value) → mapped to appropriate uint
+type</li>
+<li><strong>wchar_t</strong>* (pointer) → mapped to
+<code>CPointer</code> for wide character strings</li>
+<li>No new CType needed - uses existing uint infrastructure</li>
+<li>Zero runtime overhead - detection happens once at startup</li>
+<li>Transparent to Za code - just pass/receive as integers</li>
+</ul>
+<p><strong>Compatible with typedefs:</strong></p>
+<div class="sourceCode" id="cb181"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb181-1"><a href="#cb181-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">wchar_t</span> WCHAR<span class="op">;</span></span>
+<span id="cb181-2"><a href="#cb181-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> WCHAR<span class="op">*</span> LPWSTR<span class="op">;</span></span></code></pre></div>
+<p>Already handled by existing typedef resolution (item 8 above).</p>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>ncursesw (wide character terminal UI)</li>
+<li>readline (Unicode input)</li>
+<li>ICU (if using wchar_t API)</li>
+<li>POSIX wcs* functions (wcslen, wcscpy, etc.)</li>
+<li>Windows wide character APIs (if Za supported Windows)</li>
+</ul></li>
+</ol>
+<p><strong>Not parsed</strong> (automatically skipped - not errors):</p>
+<ul>
+<li><strong>Function-like macros</strong>:
 <code>#define MAX(a,b) ((a)&gt;(b)?(a):(b))</code></li>
-<li>Forward references: <code>#define B (A * 2)</code> where A is
-defined later</li>
-<li>Function pointer typedefs:
+<li><strong>Function-like macro aliases</strong>:
+<code>#define __REDIRECT_FORTIFY __REDIRECT</code> (identifiers starting
+with <code>__</code> in macro values)</li>
+<li><strong>Type declarations</strong>:
+<code>#define __U_CHAR unsigned char</code> (contains C type
+keywords)</li>
+<li><strong>Forward references</strong>: <code>#define B (A * 2)</code>
+where A is defined later</li>
+<li><strong>Function pointer typedefs</strong>:
 <code>typedef int (*callback_t)(void*);</code></li>
-<li>Array typedefs: <code>typedef int IntArray[10];</code></li>
-<li>Character literals: <code>#define NEWLINE_CHAR '\n'</code></li>
-<li>Nested structs (struct fields that are themselves structs)</li>
+<li><strong>Array typedefs</strong>:
+<code>typedef int IntArray[10];</code></li>
+<li><strong>Nested structs</strong>: struct fields that are themselves
+structs</li>
 </ul>
 <h3 id="f.3.3-accessing-constants">F.3.3 Accessing Constants</h3>
 <p>Constants are accessible via the USE chain or namespace
@@ -4356,6 +4433,55 @@ offset:int, value:int)</h3>
 c_set_byte(buf, 0, 72)   # &#39;H&#39;
 c_set_byte(buf, 1, 105)  # &#39;i&#39;
 c_set_byte(buf, 2, 0)    # Null terminator</code></pre>
+<h3 id="c_get_byteptrpointer-offsetint---int">c_get_byte(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a byte at a specific offset in a buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_byte(buf, 0, 65)
+value = c_get_byte(buf, 0)  # Returns 65
+println value  # 65</code></pre>
+<h3
+id="c_get_uint16ptrpointer-offsetint---int">c_get_uint16(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a 16-bit unsigned integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(256)
+# Read uint16 at offset 0
+value = c_get_uint16(buf, 0)</code></pre>
+<h3
+id="c_get_uint32ptrpointer-offsetint---int">c_get_uint32(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a 32-bit unsigned integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(256)
+# Read uint32 at offset 0
+value = c_get_uint32(buf, 0)</code></pre>
+<h3 id="c_get_int16ptrpointer-offsetint---int">c_get_int16(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a 16-bit signed integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(256)
+# Read int16 at offset 4
+value = c_get_int16(buf, 4)</code></pre>
+<h3 id="c_get_int32ptrpointer-offsetint---int">c_get_int32(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a 32-bit signed integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(256)
+# Read int32 at offset 8
+value = c_get_int32(buf, 8)</code></pre>
+<p><strong>Example: Reading wchar_t array values</strong></p>
+<pre class="za"><code># On Linux, wchar_t is 4 bytes
+detected_size = get_wchar_size()  # Returns 4
+arr_ptr = c_alloc(detected_size * 5)
+wchar_fill_array(arr_ptr, 5)
+
+# Read back array elements
+for i = 0 to 4
+    if detected_size == 2
+        val = c_get_uint16(arr_ptr, i * 2)
+    else
+        val = c_get_uint32(arr_ptr, i * 4)
+    endif
+    println &quot;Value {i}: {val}&quot;
+endfor
+c_free(arr_ptr)</code></pre>
 <h3
 id="c_alloc_structstruct_type_namestring---pointer">c_alloc_struct(struct_type_name:string)
 -&gt; pointer</h3>
@@ -4455,6 +4581,86 @@ help plugin find glib::g_malloc</code></pre>
 function signatures from system man pages (section 3) and suggests
 appropriate <code>LIB</code> declarations with C-to-Za type
 mappings.</p>
+<h3 id="view-auto-discovered-macros">View AUTO-discovered macros</h3>
+<p>When using the AUTO clause to import C headers,
+<code>help plugin &lt;library&gt;</code> displays discovered macros with
+status indicators:</p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as pth auto &quot;/usr/include/pthread.h&quot;
+help plugin pth</code></pre>
+<p><strong>Output:</strong></p>
+<pre><code>C Library: pth
+Path: /usr/include/pthread.h
+Symbols found: 89
+
+Discovered Macros:
+  ✓ CLOCKS_PER_SEC = ((__clock_t) 1000000)
+  ○ PTHREAD_CANCEL_ASYNCHRONOUS = PTHREAD_CANCEL_ASYNCHRONOUS
+  ○ PTHREAD_MUTEX_INITIALIZER = { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_TIMED_NP) } }
+  ? pthread_cleanup_push = do {
+      __pthread_unwind_buf_t __cancel_buf;
+      void (*__cancel_routine) (void *) = (routine);
+      ...
+  ? pthread_cleanup_pop = do { } while (0);
+      } while (0);
+      __pthread_unregister_cancel (&amp;__cancel_buf);
+      ...
+
+Functions:
+  pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -&gt; int
+  pthread_join(thread:uint64, retval:pointer) -&gt; int
+  ...</code></pre>
+<p><strong>Macro status indicators:</strong></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 29%" />
+<col style="width: 37%" />
+</colgroup>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Color</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>✓</code></td>
+<td>Green</td>
+<td>Successfully evaluated - value available as constant</td>
+</tr>
+<tr>
+<td><code>○</code></td>
+<td>Gray</td>
+<td>Skipped - filtered out (references system macros, contains type
+keywords, etc.)</td>
+</tr>
+<tr>
+<td><code>✗</code></td>
+<td>Red</td>
+<td>Evaluation failed - attempted but encountered error</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td>Gray</td>
+<td>Unknown - function-like macro (not evaluated, displayed for
+reference only)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes:</strong></p>
+<ul>
+<li><strong>Evaluated macros</strong> (✓) are available as constants in
+your code</li>
+<li><strong>Function-like macros</strong> (?) with parameters are shown
+for reference but not evaluated</li>
+<li><strong>Multi-line macros</strong> preserve their original structure
+with backslash continuations converted to newlines</li>
+<li><strong>Skipped macros</strong> (○) are typically system internals
+or macros that reference undefined identifiers</li>
+<li>Use <code>ZA_DEBUG_AUTO=1</code> environment variable to see
+detailed evaluation diagnostics</li>
+</ul>
 <h2 id="f.8-type-mapping-reference">F.8 Type Mapping Reference</h2>
 <p><strong>Integer types:</strong></p>
 <table>
@@ -4798,6 +5004,92 @@ nc::getch()
 
 # Cleanup
 nc::endwin()</code></pre>
+<h3 id="f.9.7-x11-window-xlib---complete-auto-example">F.9.7 X11 Window
+(Xlib) - Complete AUTO Example</h3>
+<p>This example demonstrates Za’s comprehensive FFI/AUTO capabilities
+including unions, structs, and auto-discovered constants:</p>
+<pre class="za"><code>#!/usr/bin/za
+
+# Import X11 with auto header parsing
+module &quot;/usr/lib/libX11.so.6&quot; as x11 auto &quot;/usr/include/X11/Xlib.h&quot;
+use +x11
+
+WIDTH = 800
+HEIGHT = 600
+
+# Open connection to X server
+display = XOpenDisplay(c_null())
+if c_ptr_is_null(display)
+    println &quot;Error: Cannot open X display&quot;
+    exit 1
+endif
+
+screen = XDefaultScreen(display)
+root = XRootWindow(display, screen)
+black = XBlackPixel(display, screen)
+white = XWhitePixel(display, screen)
+
+# Create window
+window = XCreateSimpleWindow(display, root, 0, 0, WIDTH, HEIGHT, 1, black, white)
+XStoreName(display, window, &quot;Za FFI X11 Window&quot;)
+
+# Select events (using auto-generated constants)
+event_mask = x11::ExposureMask | x11::KeyPressMask | x11::ButtonPressMask
+XSelectInput(display, window, event_mask)
+
+# Show window
+XMapWindow(display, window)
+XFlush(display)
+
+println &quot;Window created! Press Ctrl+C in window to close&quot;
+
+# Event loop with XEvent union
+event_ptr = c_alloc_struct(&quot;XEvent&quot;)
+running = true
+
+while running
+    XNextEvent(display, event_ptr)
+    event = c_unmarshal_struct(event_ptr, &quot;XEvent&quot;)
+
+    event_type = event[&quot;type&quot;]
+
+    if event_type == x11::KeyPress
+        key_event = event[&quot;xkey&quot;]
+        state = key_event[&quot;state&quot;]
+        keycode = key_event[&quot;keycode&quot;]
+
+        println &quot;Key pressed: keycode=&quot; + as_string(keycode)
+
+        # Check for Ctrl+C (Control key + &#39;c&#39; key)
+        if (state &amp; x11::ControlMask) != 0 and keycode == 54
+            println &quot;Ctrl+C detected - exiting&quot;
+            running = false
+        endif
+    endif
+endwhile
+
+# Cleanup
+c_free(event_ptr)
+XDestroyWindow(display, window)
+XCloseDisplay(display)
+println &quot;Done!&quot;</code></pre>
+<p><strong>Key features demonstrated:</strong></p>
+<ul>
+<li><strong>AUTO header parsing</strong> from
+<code>/usr/include/X11/Xlib.h</code></li>
+<li><strong>Auto-generated constants</strong>
+(<code>ExposureMask</code>, <code>KeyPressMask</code>,
+<code>ControlMask</code>)</li>
+<li><strong>Union handling</strong> (<code>XEvent</code> union with
+proper unmarshaling)</li>
+<li><strong>Struct field access</strong> (nested:
+<code>event["xkey"]["state"]</code>)</li>
+<li><strong>No LIB declarations needed</strong> - all functions
+discovered from header</li>
+<li><strong>Complete integration</strong> - ~50 lines for a working X11
+window</li>
+</ul>
+<p>Full code: <code>eg/ffi-x11-window</code></p>
 <h2 id="f.10-advanced-topics">F.10 Advanced Topics</h2>
 <h3 id="f.10.1-opaque-structure-pointers">F.10.1 Opaque Structure
 Pointers</h3>
@@ -5011,6 +5303,52 @@ match C layouts exactly</li>
 <li>See <code>za_tests/test_ffi_struct_arrays.za</code> for
 comprehensive examples</li>
 </ul>
+<h4 id="union-support-v1.2.2">Union Support (v1.2.2+)</h4>
+<p>Za supports C unions through the AUTO clause. Unions are instantiated
+using Za’s <code>map()</code> constructor with a single active
+field:</p>
+<p><strong>Creating unions in Za:</strong></p>
+<pre class="za"><code># C union: typedef union { int int_value; float float_value; } Number;
+
+# Instantiate with one active field
+num1 = map(.int_value 42)
+num2 = map(.float_value 3.14)
+
+# Pass to C function
+result = process_number(num1)  # C receives union with int_value active</code></pre>
+<p><strong>Receiving unions from C:</strong></p>
+<pre class="za"><code># C function returns union by value
+color = make_color_union(255, 128, 64)
+
+# Access union fields as map keys
+println &quot;R: {color[&quot;rgb&quot;][0]}&quot;
+println &quot;Alpha: {color[&quot;alpha&quot;]}&quot;</code></pre>
+<p><strong>Union marshaling rules:</strong></p>
+<ol type="1">
+<li><strong>Creating unions</strong>: Use <code>map()</code> with
+exactly ONE field (the active union member)</li>
+<li><strong>Multi-field error</strong>:
+<code>map(.field1 value1, .field2 value2)</code> fails - unions require
+exactly one active field</li>
+<li><strong>Empty map error</strong>: <code>map()</code> with no fields
+fails - unions require exactly one field</li>
+<li><strong>Invalid field error</strong>: Field name must match a union
+member defined in C header</li>
+</ol>
+<p><strong>Key features:</strong></p>
+<ul>
+<li>Unions returned from C are unmarshaled as Za maps</li>
+<li>All union fields are accessible via map keys (C memory is
+reinterpreted)</li>
+<li>Only the active field (set in C) contains valid data</li>
+<li>Nested structs within unions work correctly</li>
+<li>Field validation ensures type safety</li>
+</ul>
+<p>See working examples in: - <code>za_tests/ffi/test_union.za</code> -
+Basic union support - <code>za_tests/ffi/test_union_marshal.za</code> -
+Comprehensive marshaling tests -
+<code>za_tests/test_union_struct_simple.za</code> - Unions with nested
+structs</p>
 <h4 id="best-practices">Best Practices</h4>
 <ol type="1">
 <li><strong>Match C layouts</strong>: Ensure Za struct field order and
@@ -5740,8 +6078,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb243"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb243-1"><a href="#cb243-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb257"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb257-1"><a href="#cb257-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

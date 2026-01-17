@@ -65,6 +65,8 @@ type StructField struct {
     ElementType CType // For arrays, the type of array elements
     IsUnion     bool  // true if this field is a union type
     UnionDef    *CLibraryStruct // Union definition if IsUnion=true
+    StructName  string // For nested struct fields (Type==CStruct), the struct type name
+    StructDef   *CLibraryStruct // For nested struct fields, the struct definition
 }
 
 // CLibraryStruct represents a C struct or union definition
@@ -884,10 +886,26 @@ func CTypeToString(cType CType) string {
         return "void"
     case CInt:
         return "int"
+    case CInt8:
+        return "int8"
+    case CInt16:
+        return "int16"
+    case CInt64:
+        return "int64"
+    case CUInt:
+        return "uint"
+    case CUInt8:
+        return "uint8"
+    case CUInt16:
+        return "uint16"
+    case CUInt64:
+        return "uint64"
     case CFloat:
         return "float"
     case CDouble:
         return "double"
+    case CLongDouble:
+        return "long double"
     case CChar:
         return "char"
     case CString:
@@ -906,7 +924,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -971,6 +989,61 @@ func buildFfiLib() {
             CSetByte(p, args[1].(int), byte(args[2].(int)))
         }
         return nil, nil
+    }
+
+    slhelp["c_get_byte"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads a byte at the given offset in a buffer."}
+    stdlib["c_get_byte"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_byte", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return int(CGetByte(p, args[1].(int))), nil
+        }
+        return 0, fmt.Errorf("c_get_byte: first argument must be a C pointer")
+    }
+
+    slhelp["c_get_uint16"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads a uint16 at the given offset in a buffer."}
+    stdlib["c_get_uint16"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_uint16", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return int(CGetUint16(p, args[1].(int))), nil
+        }
+        return 0, fmt.Errorf("c_get_uint16: first argument must be a C pointer")
+    }
+
+    slhelp["c_get_uint32"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads a uint32 at the given offset in a buffer."}
+    stdlib["c_get_uint32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_uint32", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return int(CGetUint32(p, args[1].(int))), nil
+        }
+        return 0, fmt.Errorf("c_get_uint32: first argument must be a C pointer")
+    }
+
+    slhelp["c_get_int16"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads an int16 at the given offset in a buffer."}
+    stdlib["c_get_int16"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_int16", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return int(CGetInt16(p, args[1].(int))), nil
+        }
+        return 0, fmt.Errorf("c_get_int16: first argument must be a C pointer")
+    }
+
+    slhelp["c_get_int32"] = LibHelp{in: "ptr,offset", out: "int", action: "Reads an int32 at the given offset in a buffer."}
+    stdlib["c_get_int32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_int32", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return int(CGetInt32(p, args[1].(int))), nil
+        }
+        return 0, fmt.Errorf("c_get_int32: first argument must be a C pointer")
     }
 
     slhelp["c_ptr_to_int"] = LibHelp{in: "ptr", out: "int", action: "Converts a C pointer to an integer. Useful for size_t, uintptr_t, and other integer-valued returns. Tip: Can also use ptr.ToInt() method for convenience."}
@@ -1044,7 +1117,10 @@ func buildFfiLib() {
             return nil, fmt.Errorf("c_unmarshal_struct: %v", err)
         }
 
-        // Unmarshal C memory to Za struct
+        // Unmarshal C memory to Za struct or union
+        if structDef.IsUnion {
+            return unmarshalUnion(ptr.Ptr, structDef)
+        }
         return UnmarshalStructFromC(ptr.Ptr, structDef, structName)
     }
 }
@@ -1080,12 +1156,137 @@ func extractLibraryBaseName(libraryPath string) string {
 
     return base // Return as-is if no pattern match
 }
+// stripNonTypeTokens removes API macros and qualifiers, keeping only valid C type components
+func stripNonTypeTokens(typeStr string) string {
+    // Known C type keywords that should be preserved
+    validTypeKeywords := map[string]bool{
+        // Basic types
+        "void": true, "char": true, "short": true, "int": true, "long": true,
+        "float": true, "double": true,
+        "signed": true, "unsigned": true,
+        "_Bool": true, "_Complex": true, "_Imaginary": true,
+
+        // Type qualifiers (usually stripped later, but valid)
+        "const": true, "volatile": true, "restrict": true, "_Atomic": true,
+
+        // Type prefixes
+        "struct": true, "union": true, "enum": true,
+    }
+
+    // Storage class and other specifiers to strip
+    stripKeywords := map[string]bool{
+        "static": true, "extern": true, "auto": true, "register": true,
+        "typedef": true, "inline": true, "__inline": true, "__inline__": true,
+    }
+
+    // Tokenize preserving * as separate tokens
+    var tokens []string
+    currentToken := ""
+    for _, ch := range typeStr {
+        if ch == '*' {
+            if currentToken != "" {
+                tokens = append(tokens, strings.TrimSpace(currentToken))
+                currentToken = ""
+            }
+            tokens = append(tokens, "*")
+        } else if ch == ' ' || ch == '\t' {
+            if currentToken != "" {
+                tokens = append(tokens, currentToken)
+                currentToken = ""
+            }
+        } else {
+            currentToken += string(ch)
+        }
+    }
+    if currentToken != "" {
+        tokens = append(tokens, currentToken)
+    }
+
+    // Filter tokens
+    var kept []string
+    expectTypeNameAfter := false // true after struct/union/enum
+
+    for _, token := range tokens {
+        // Always keep pointers
+        if token == "*" {
+            kept = append(kept, token)
+            continue
+        }
+
+        // Keep valid type keywords
+        if validTypeKeywords[token] {
+            kept = append(kept, token)
+            // If this is struct/union/enum, next identifier is the type name
+            if token == "struct" || token == "union" || token == "enum" {
+                expectTypeNameAfter = true
+            }
+            continue
+        }
+
+        // Strip known non-type keywords
+        if stripKeywords[token] {
+            continue
+        }
+
+        // If we're expecting a type name after struct/union/enum, keep it
+        if expectTypeNameAfter {
+            kept = append(kept, token)
+            expectTypeNameAfter = false
+            continue
+        }
+
+        // For remaining identifiers:
+        // - If it's all uppercase or has underscores at start/end, likely a macro -> strip
+        // - Otherwise, might be a typedef -> keep it
+        isLikelyMacro := false
+        if strings.ToUpper(token) == token && len(token) > 2 {
+            // All uppercase and longer than 2 chars -> likely macro
+            isLikelyMacro = true
+        }
+        if strings.HasPrefix(token, "__") || strings.HasSuffix(token, "__") {
+            // Double underscore prefix/suffix -> likely compiler macro
+            isLikelyMacro = true
+        }
+        if strings.HasSuffix(token, "_t") {
+            // POSIX typedef convention (uint32_t, size_t, etc.) -> keep
+            isLikelyMacro = false
+        }
+
+        if !isLikelyMacro {
+            kept = append(kept, token)
+        }
+        // else: strip this token (it's likely a macro)
+    }
+
+    result := strings.Join(kept, " ")
+
+    // Handle edge case: if we're left with only pointer(s) and no type
+    // e.g., "XMLPUBFUN*" → ["*"] after filtering
+    // Default to void* in this case
+    result = strings.TrimSpace(result)
+    if result == "*" || result == "* *" || result == "**" {
+        result = "void *"
+    } else if strings.HasPrefix(result, "* ") {
+        // Starts with dangling pointer (no type before it)
+        result = "void " + result
+    }
+
+    return result
+}
 
 // mapCTypeStringToZa converts a C type string to Za CType enum
 // Handles common C types including modifiers and pointers
 func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
     // Remove leading/trailing whitespace first
     cTypeStr = strings.TrimSpace(cTypeStr)
+
+    // Strip storage class specifiers BEFORE typedef resolution
+    // These keywords are not part of the type name and prevent typedef matching
+    storageClassSpecifiers := []string{"extern", "static", "auto", "register", "typedef"}
+    for _, keyword := range storageClassSpecifiers {
+        cTypeStr = strings.TrimPrefix(cTypeStr, keyword+" ")
+        cTypeStr = strings.TrimSpace(cTypeStr)
+    }
 
     // Check if this is a known struct/union typedef BEFORE resolution
     // This allows us to preserve the original type name for struct/union references
@@ -1128,11 +1329,16 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
     // Clean up the base type (everything before *)
     baseTypePart := strings.TrimSpace(parts[0])
 
-    // Remove modifiers from base type
-    modifiers := []string{"const", "volatile", "static", "inline", "restrict", "unsigned", "signed"}
-    for _, mod := range modifiers {
-        baseTypePart = strings.Replace(baseTypePart, mod+" ", "", -1)
-        baseTypePart = strings.Replace(baseTypePart, mod, "", -1)
+    // Strip non-type tokens (API macros, qualifiers, etc.) using whitelist approach
+    baseTypePart = stripNonTypeTokens(baseTypePart)
+
+    // Remove type qualifiers and storage class specifiers
+    // NOTE: Do NOT remove "unsigned" or "signed" - they are part of the type name!
+    // "unsigned int" is a different type than "int"
+    qualifiers := []string{"const", "volatile", "static", "inline", "restrict"}
+    for _, qual := range qualifiers {
+        baseTypePart = strings.Replace(baseTypePart, qual+" ", "", -1)
+        baseTypePart = strings.Replace(baseTypePart, qual, "", -1)
     }
     baseType := strings.TrimSpace(baseTypePart)
 
@@ -1144,13 +1350,13 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
     // Examples: png_charp, png_const_charp, json_charp, etc.
     if strings.HasSuffix(lowerType, "charp") || strings.HasSuffix(lowerType, "char_p") ||
        strings.HasSuffix(lowerType, "char_ptr") || strings.Contains(lowerType, "charp") {
-        return CString, baseType + " (char pointer typedef) mapped to string", nil
+        return CString, baseType, nil
     }
 
     // Pattern 2: Types containing "string" are likely strings
     // Examples: string_t, StringPtr, etc.
     if strings.Contains(lowerType, "string") {
-        return CString, baseType + " (string typedef) mapped to string", nil
+        return CString, baseType, nil
     }
 
     // Pattern 3: Types ending in 'p' or 'ptr' (except common non-pointer types)
@@ -1185,12 +1391,16 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
 
     case "char":
         if isPointer {
-            return CString, "char* mapped to string", nil // char* → string
+            return CString, "", nil // char* → string
         }
         return CChar, "", nil
 
     // Signed integer types
-    case "int", "long", "short", "long long",
+    // Note: "signed" alone means "signed int", "long" alone means "long int"
+    case "int", "signed", "signed int",
+        "long", "long int", "signed long", "signed long int",
+        "short", "short int", "signed short", "signed short int",
+        "long long", "long long int", "signed long long", "signed long long int",
         "int8_t", "int16_t", "int32_t", "int64_t",
         "ssize_t", "off_t", "pid_t", "time_t",
         "intptr_t", "ptrdiff_t":
@@ -1199,22 +1409,33 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             return CInt8, baseType + " mapped to int8", nil
         }
         // 16-bit signed integers
-        if baseType == "short" || baseType == "int16_t" {
+        if baseType == "short" || baseType == "short int" ||
+           baseType == "signed short" || baseType == "signed short int" ||
+           baseType == "int16_t" {
             return CInt16, baseType + " mapped to int16", nil
         }
         // 64-bit signed integers
-        if baseType == "long long" || baseType == "int64_t" || baseType == "off_t" ||
+        // Note: On LP64 systems (Linux, macOS, BSD), "long" is 64-bit
+        if baseType == "long long" || baseType == "long long int" ||
+           baseType == "signed long long" || baseType == "signed long long int" ||
+           baseType == "long" || baseType == "long int" ||
+           baseType == "signed long" || baseType == "signed long int" ||
+           baseType == "int64_t" || baseType == "off_t" ||
            baseType == "intptr_t" || baseType == "ptrdiff_t" {
             return CInt64, baseType + " mapped to int64", nil
         }
-        // Default to 32-bit for int, long (on most platforms), ssize_t, pid_t, time_t
+        // Default to 32-bit for int, signed, signed int, ssize_t, pid_t, time_t
         if baseType == "ssize_t" {
             return CInt, baseType + " mapped to int", nil
         }
         return CInt, "", nil
 
     // Unsigned integer types
-    case "unsigned int", "unsigned long", "unsigned short", "unsigned long long",
+    // Note: "unsigned" alone means "unsigned int"
+    case "unsigned", "unsigned int",
+        "unsigned long", "unsigned long int",
+        "unsigned short", "unsigned short int",
+        "unsigned long long", "unsigned long long int",
         "uint8_t", "uint16_t", "uint32_t", "uint64_t",
         "size_t", "uid_t", "gid_t", "mode_t",
         "uintptr_t":
@@ -1223,12 +1444,15 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             return CUInt8, baseType + " mapped to uint8", nil
         }
         // 16-bit unsigned integers
-        if baseType == "unsigned short" || baseType == "uint16_t" {
+        if baseType == "unsigned short" || baseType == "unsigned short int" ||
+           baseType == "uint16_t" {
             return CUInt16, baseType + " mapped to uint16", nil
         }
         // 64-bit unsigned integers
-        if baseType == "unsigned long long" || baseType == "uint64_t" ||
-           baseType == "uintptr_t" {
+        // Note: On LP64 systems (Linux, macOS, BSD), "unsigned long" is 64-bit
+        if baseType == "unsigned long long" || baseType == "unsigned long long int" ||
+           baseType == "unsigned long" || baseType == "unsigned long int" ||
+           baseType == "uint64_t" || baseType == "uintptr_t" {
             return CUInt64, baseType + " mapped to uint64", nil
         }
         // size_t handling: typically 64-bit on 64-bit systems, 32-bit on 32-bit systems
@@ -1236,7 +1460,7 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         if baseType == "size_t" {
             return CUInt64, baseType + " mapped to uint64", nil
         }
-        // Default to 32-bit for unsigned int, uid_t, gid_t, mode_t
+        // Default to 32-bit for unsigned, unsigned int, uid_t, gid_t, mode_t
         return CUInt, "", nil
 
     case "float":
@@ -1251,17 +1475,38 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
     case "bool", "_Bool":
         return CBool, "", nil
 
+    case "wchar_t":
+        // wchar_t* is a pointer (wide character string)
+        if isPointer {
+            return CPointer, "wchar_t* mapped to pointer", nil
+        }
+        // Platform-dependent size detected at init
+        if wcharSize == 2 {
+            return CUInt16, "wchar_t mapped to uint16", nil
+        } else if wcharSize == 4 {
+            return CUInt, "wchar_t mapped to uint32", nil
+        }
+        // Fallback if size unknown
+        return CPointer, "wchar_t (unknown size) mapped to pointer", nil
+
     default:
+        // Check for enum types (should map to int)
+        if strings.HasPrefix(baseType, "enum ") ||
+           strings.HasPrefix(baseType, "enum{") ||
+           baseType == "enum" {
+            return CInt, "", nil
+        }
+
         // Heuristic: types containing "uint" are likely unsigned integers
         if strings.Contains(strings.ToLower(baseType), "uint") {
-            return CUInt, baseType + " mapped to uint (heuristic)", nil
+            return CUInt, baseType, nil
         }
 
         // Unknown types or struct/union pointers default to pointer
         if isPointer {
-            return CPointer, baseType + "* mapped to pointer", nil
+            return CPointer, baseType + "*", nil
         }
-        return CPointer, "unknown type '" + baseType + "' mapped to pointer", nil
+        return CPointer, baseType, nil
     }
 }
 

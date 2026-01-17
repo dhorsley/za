@@ -317,11 +317,21 @@ func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
             // STT_GNU_IFUNC (10) = indirect function (used by glibc for optimized math functions)
             if symType == elf.STT_FUNC || symType == elf.SymType(10) {
                 // Function symbol (regular or IFUNC)
-                funcSym := createFunctionSymbolWithAlias(cleanName, lib.Name)
+                // Use lib.Alias if set, otherwise fall back to lib.Name for backwards compatibility
+                libraryIdentifier := lib.Alias
+                if libraryIdentifier == "" {
+                    libraryIdentifier = lib.Name
+                }
+                funcSym := createFunctionSymbolWithAlias(cleanName, libraryIdentifier)
                 lib.Symbols[funcSym.Name] = funcSym
             } else {
                 // Data symbol (constants, variables, etc.)
-                dataSym := createDataSymbolWithAlias(cleanName, lib.Name)
+                // Use lib.Alias if set, otherwise fall back to lib.Name
+                libraryIdentifier := lib.Alias
+                if libraryIdentifier == "" {
+                    libraryIdentifier = lib.Name
+                }
+                dataSym := createDataSymbolWithAlias(cleanName, libraryIdentifier)
                 if dataSym != nil {
                     lib.Symbols[dataSym.Name] = dataSym
                 }
@@ -511,6 +521,51 @@ func CSetByte(p *CPointerValue, offset int, value byte) {
         bytePtr := (*byte)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
         *bytePtr = value
     }
+}
+
+// CGetByte reads a byte at an offset in a buffer
+func CGetByte(p *CPointerValue, offset int) byte {
+    if p != nil && p.Ptr != nil {
+        bytePtr := (*byte)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *bytePtr
+    }
+    return 0
+}
+
+// CGetUint16 reads a uint16 at an offset in a buffer
+func CGetUint16(p *CPointerValue, offset int) uint16 {
+    if p != nil && p.Ptr != nil {
+        uint16Ptr := (*uint16)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *uint16Ptr
+    }
+    return 0
+}
+
+// CGetUint32 reads a uint32 at an offset in a buffer
+func CGetUint32(p *CPointerValue, offset int) uint32 {
+    if p != nil && p.Ptr != nil {
+        uint32Ptr := (*uint32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *uint32Ptr
+    }
+    return 0
+}
+
+// CGetInt16 reads an int16 at an offset in a buffer
+func CGetInt16(p *CPointerValue, offset int) int16 {
+    if p != nil && p.Ptr != nil {
+        int16Ptr := (*int16)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *int16Ptr
+    }
+    return 0
+}
+
+// CGetInt32 reads an int32 at an offset in a buffer
+func CGetInt32(p *CPointerValue, offset int) int32 {
+    if p != nil && p.Ptr != nil {
+        int32Ptr := (*int32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *int32Ptr
+    }
+    return 0
 }
 
 // CGetDataSymbol reads a data symbol value from a loaded C library

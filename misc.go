@@ -2283,15 +2283,215 @@ func help_plugin(ns string, libraryName string) {
         }
 
         // Display undeclared functions as comma-separated list
+        // If there are many undeclared functions, they're likely declared via macros we couldn't parse
         if len(undeclaredFuncs) > 0 {
-            pf("[#2]Undeclared Functions:[#-] [#dim]")
-            for i, fn := range undeclaredFuncs {
-                if i > 0 {
-                    pf(", ")
+            // If there are a huge number of undeclared functions (> 100), likely they're declared via macros
+            // Show a summary instead of listing them all
+            if len(undeclaredFuncs) > 100 {
+                pf("[#2]Undeclared/Private Functions:[#-] [#dim]%d functions (likely declared via macros)[#-]\n\n", len(undeclaredFuncs))
+            } else {
+                pf("[#2]Undeclared/Private Functions:[#-] [#dim]")
+                for i, fn := range undeclaredFuncs {
+                    if i > 0 {
+                        pf(", ")
+                    }
+                    pf(fn.Name)
                 }
-                pf(fn.Name)
+                pf("[#-]\n\n")
             }
-            pf("[#-]\n\n")
+        }
+    }
+
+    // Display declared constants from AUTO import
+    autoConstants := GetModuleConstants(lib.Alias)
+    if len(autoConstants) > 0 {
+        pf("\n[#2]Declared Constants:[#-] [#dim]")
+
+        // Sort constant names for consistent display
+        names := make([]string, 0, len(autoConstants))
+        for name := range autoConstants {
+            names = append(names, name)
+        }
+        sort.Strings(names)
+
+        // Display as comma-separated list with values
+        for i, name := range names {
+            if i > 0 {
+                pf(", ")
+            }
+            val := autoConstants[name]
+            // Format based on type
+            switch v := val.(type) {
+            case int, int64:
+                pf(sf("%s=%v", name, v))
+            case float64:
+                pf(sf("%s=%.6g", name, v))
+            case string:
+                pf(sf("%s=%q", name, v))
+            default:
+                pf(sf("%s=%v", name, v))
+            }
+        }
+        pf("[#-]\n\n")
+    }
+
+    // Display discovered macros from AUTO import (original source text)
+    // Only show macros that are NOT already in constants (i.e., function-like macros, complex expressions)
+    macros := GetModuleMacros(lib.Alias)
+    if len(macros) > 0 {
+        // Filter out macros that are already shown as constants
+        filteredMacros := make(map[string]string)
+        for name, value := range macros {
+            // Only include if NOT in constants
+            if _, isConstant := autoConstants[name]; !isConstant {
+                filteredMacros[name] = value
+            }
+        }
+
+        if len(filteredMacros) > 0 {
+            pf("\n[#2]Discovered Macros:[#-]\n")
+
+            // Sort macro names for consistent display
+            names := make([]string, 0, len(filteredMacros))
+            for name := range filteredMacros {
+                names = append(names, name)
+            }
+            sort.Strings(names)
+
+            // Display each macro on its own line with name and value
+            for _, name := range names {
+                value := filteredMacros[name]
+                status := GetMacroEvalStatus(lib.Alias, name)
+
+                // Try to get the original multi-line format (preserves backslash continuations)
+                var displayValue string
+
+                moduleMacrosOriginalLock.RLock()
+                originalText, hasOriginal := moduleMacrosOriginal[lib.Alias][name]
+                moduleMacrosOriginalLock.RUnlock()
+
+                if hasOriginal {
+                    // We have the original format - convert backslash continuations to newlines
+                    // First, strip the #define directive from the first line
+                    lines := strings.Split(originalText, "\n")
+                    if len(lines) > 0 {
+                        firstLine := lines[0]
+                        // Strip "#define NAME(params)" or "#define NAME"
+                        firstLine = strings.TrimSpace(firstLine)
+                        firstLine = strings.TrimPrefix(firstLine, "#")
+                        firstLine = strings.TrimSpace(firstLine)
+                        firstLine = strings.TrimPrefix(firstLine, "define")
+                        firstLine = strings.TrimSpace(firstLine)
+
+                        // Extract just the value part (after name and optional params)
+                        // For "pthread_cleanup_push(routine, arg) do { ...", we want "do { ..."
+                        // Skip the macro name first
+                        if idx := strings.IndexAny(firstLine, " \t("); idx != -1 {
+                            if firstLine[idx] == '(' {
+                                // Function-like macro: skip past parameter list
+                                parenDepth := 0
+                                i := idx
+                                for i < len(firstLine) {
+                                    if firstLine[i] == '(' {
+                                        parenDepth++
+                                    } else if firstLine[i] == ')' {
+                                        parenDepth--
+                                        if parenDepth == 0 {
+                                            // Found the closing paren, skip to value after it
+                                            rest := strings.TrimSpace(firstLine[i+1:])
+                                            lines[0] = rest
+                                            break
+                                        }
+                                    }
+                                    i++
+                                }
+                            } else {
+                                // Object-like macro: value starts after the space
+                                lines[0] = strings.TrimSpace(firstLine[idx:])
+                            }
+                        }
+
+                        // Convert backslash continuations to proper line breaks
+                        var formattedLines []string
+                        for _, line := range lines {
+                            // Remove trailing backslash and whitespace
+                            line = strings.TrimRight(line, " \t\r")
+                            if strings.HasSuffix(line, "\\") {
+                                line = strings.TrimSuffix(line, "\\")
+                                line = strings.TrimRight(line, " \t")
+                            }
+                            // Trim leading whitespace but preserve relative indentation
+                            if len(formattedLines) == 0 {
+                                line = strings.TrimLeft(line, " \t")
+                            }
+                            if line != "" || len(formattedLines) > 0 {
+                                formattedLines = append(formattedLines, line)
+                            }
+                        }
+
+                        displayValue = strings.Join(formattedLines, "\n")
+                    }
+                } else {
+                    // Fall back to the joined version
+                    // For function-like macros, strip the "name(params)" prefix to avoid duplication
+                    displayValue = value
+                    if strings.HasPrefix(value, name+"(") {
+                        // Find the end of the parameter list
+                        parenDepth := 0
+                        foundStart := false
+                        endIdx := 0
+                        for i, ch := range value[len(name):] {
+                            if ch == '(' {
+                                parenDepth++
+                                foundStart = true
+                            } else if ch == ')' {
+                                parenDepth--
+                                if foundStart && parenDepth == 0 {
+                                    endIdx = len(name) + i + 1
+                                    break
+                                }
+                            }
+                        }
+                        if endIdx > 0 && endIdx < len(value) {
+                            // Extract just the body after "name(params) "
+                            displayValue = strings.TrimSpace(value[endIdx:])
+                        }
+                    }
+                }
+
+                // Status indicators
+                var indicator string
+                switch status {
+                case "evaluated":
+                    indicator = "[#2]✓[#-] " // Green checkmark
+                case "skipped":
+                    indicator = "[#dim]○[#-] " // Gray circle
+                case "failed":
+                    indicator = "[#1]✗[#-] " // Red X
+                default:
+                    indicator = "[#dim]?[#-] " // Gray question mark
+                }
+
+                if displayValue == "" {
+                    // Empty value (header guards, etc.)
+                    pf(sf("  %s[#dim]%s[#-]\n", indicator, name))
+                } else {
+                    // For multi-line, show first line with indicator, rest indented
+                    if strings.Contains(displayValue, "\n") {
+                        lines := strings.Split(displayValue, "\n")
+                        pf(sf("  %s[#dim]%s = %s[#-]\n", indicator, name, lines[0]))
+                        for _, line := range lines[1:] {
+                            if line != "" {
+                                pf(sf("      [#dim]%s[#-]\n", line))
+                            }
+                        }
+                    } else {
+                        // Single line display
+                        pf(sf("  %s[#dim]%s = %s[#-]\n", indicator, name, displayValue))
+                    }
+                }
+            }
+            pf("\n")
         }
     }
 

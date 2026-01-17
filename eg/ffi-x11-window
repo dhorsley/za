@@ -1,0 +1,138 @@
+#!/home/daniel/go/src/za/za
+
+# X11 Window Example - Opens a simple window using FFI
+# This demonstrates Za's FFI auto-import capabilities including full union support
+# Features demonstrated:
+# - Auto header parsing with complex C types (structs, unions, typedefs)
+# - Union handling (XEvent union with proper unmarshaling)
+# - Struct field access including multi-declaration fields (int x, y;)
+# - Auto-generated constants from #define macros (KeyPress, ControlMask, etc.)
+# - Nested struct access (event["xkey"]["state"])
+
+# Import X11 library with auto header parsing
+module "/usr/lib/libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+use +x11
+
+# Constants for window creation
+WIDTH = 800
+HEIGHT = 600
+
+println "Opening X11 connection..."
+
+# Open connection to X server (c_null() = default display)
+display = XOpenDisplay(c_null())
+if c_ptr_is_null(display)
+    println "Error: Cannot open X display"
+    exit(1)
+endif
+
+println "Display opened successfully"
+
+# Get default screen
+screen = XDefaultScreen(display)
+println "Using screen: ", as_string(screen)
+
+# Get root window (returns Window which is unsigned long)
+root = XRootWindow(display, screen)
+
+# Get black and white pixels for the screen (return unsigned long)
+black = XBlackPixel(display, screen)
+white = XWhitePixel(display, screen)
+
+println "Creating window..."
+
+# Create a simple window
+window = XCreateSimpleWindow(
+    display,
+    root,
+    0,
+    0,
+    WIDTH,
+    HEIGHT,
+    1,
+    black,
+    white
+)
+
+# Set window title
+XStoreName(display, window, "Za FFI X11 Window Example")
+
+# Select input events we want to receive
+# Use auto-generated constants from x11 namespace
+event_mask = x11::ExposureMask | x11::KeyPressMask | x11::ButtonPressMask
+
+XSelectInput(display, window, event_mask)
+
+# Map (show) the window
+XMapWindow(display, window)
+
+println "Window created and mapped"
+println "Width: ", as_string(WIDTH), ", Height: ", as_string(HEIGHT)
+println
+println "Window is now visible!"
+println "Press Ctrl+C to close the window and exit"
+println
+
+# Flush all pending requests to the X server
+XFlush(display)
+
+# Event loop - wait for key press in window
+println
+println "Window is ready!"
+println "Press Ctrl+C in the window to close (or press Ctrl+C in terminal)"
+println
+
+running = true
+
+# Allocate memory for XEvent union using its actual size from auto-import
+# XEvent is a union of all event types
+event_ptr = c_alloc_struct("XEvent")
+
+while running
+    # XNextEvent blocks until an event arrives, then fills the event structure
+    # Returns 0 on success
+    result = XNextEvent(display, event_ptr)
+
+    # Unmarshal the XEvent union to access its fields
+    event = c_unmarshal_struct(event_ptr, "XEvent")
+
+    # Get event type from the union (all event types have 'type' as first field)
+    event_type = event["type"]
+
+    if event_type == x11::KeyPress
+        # This is a key press event
+        # Access the xkey member which contains XKeyEvent struct
+        key_event = event["xkey"]
+
+        state = key_event["state"]
+        keycode = key_event["keycode"]
+
+        println "Key pressed! keycode=", as_string(keycode), " state=", as_string(state)
+
+        # Check if Control key is held
+        if (state & x11::ControlMask) != 0
+            println "Control key is held!"
+            # Check if it's 'c' key (keycode 54 on most systems)
+            # Note: keycodes vary by keyboard layout, 54 is common for 'c'
+            if keycode == 54
+                println "Ctrl+C detected in window - exiting!"
+                running = false
+            endif
+        endif
+    else
+        # Other event types (Expose, etc.) - ignore them
+        # println "Received event type: ", as_string(event_type)
+    endif
+    pause 20 # don't hog
+endwhile
+
+# Free the event memory
+c_free(event_ptr)
+
+# Cleanup
+println "Closing window..."
+XDestroyWindow(display, window)
+XCloseDisplay(display)
+println "Done!"
+
+

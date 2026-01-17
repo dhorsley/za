@@ -5,7 +5,7 @@
 println "[#4]Testing #if and #elif Directives[#-]"
 println "=" * 60
 
-module "libc.so.6" as test_c auto "/home/daniel/go/src/za/za_tests/test_if_elif.h"
+module "libc.so.6" as test_c auto "./test_if_elif.h"
 use +test_c
 
 println "\n[#6]Test 1: Simple #if with numeric comparison[#-]"

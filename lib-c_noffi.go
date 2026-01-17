@@ -75,6 +75,26 @@ func CFreePtr(p *CPointerValue) {
 func CSetByte(p *CPointerValue, offset int, value byte) {
 }
 
+func CGetByte(p *CPointerValue, offset int) byte {
+    return 0
+}
+
+func CGetUint16(p *CPointerValue, offset int) uint16 {
+    return 0
+}
+
+func CGetUint32(p *CPointerValue, offset int) uint32 {
+    return 0
+}
+
+func CGetInt16(p *CPointerValue, offset int) int16 {
+    return 0
+}
+
+func CGetInt32(p *CPointerValue, offset int) int32 {
+    return 0
+}
+
 func CGetDataSymbol(libName, symbolName string) (any, error) {
     return nil, fmt.Errorf("FFI disabled in this build")
 }

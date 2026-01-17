@@ -3,6 +3,7 @@ package main
 import (
     "context"
     "fmt"
+    "math"
     "os"
     "path/filepath"
     "regexp"
@@ -12,6 +13,7 @@ import (
     "sync"
     "unicode"
     "unicode/utf8"
+    "unsafe"
 )
 
 // Global typedef registry
@@ -20,6 +22,31 @@ import (
 //          "c" → "size_t" → "unsigned long"
 var moduleTypedefs = make(map[string]map[string]string)
 var moduleTypedefsLock sync.RWMutex
+
+// cModuleIdents stores ident arrays for C module macros, keyed by function space id
+// These are kept separate from Za's normal ident/bindings system
+var cModuleIdentsLock sync.RWMutex
+var cModuleIdents = make(map[uint32][]Variable)
+
+// cModuleAliasMap maps C module aliases to their function space IDs
+// This is separate from basemodmap which is for Za namespaces
+var cModuleAliasMapLock sync.RWMutex
+var cModuleAliasMap = make(map[string]uint32)
+
+// macroEvaluating tracks macros currently being evaluated to detect cycles
+// alias → macroName → isEvaluating
+var macroEvaluating = make(map[string]map[string]bool)
+var macroEvaluatingLock = &sync.RWMutex{}
+
+// moduleMacrosOrder tracks the order in which macros were defined
+// This is critical for evaluating macros in dependency order
+var moduleMacrosOrder = make(map[string][]string) // alias → ordered list of macro names
+var moduleMacrosOrderLock = &sync.RWMutex{}
+
+// macroEvalStatus tracks the evaluation status of each macro for help display
+// Status values: "evaluated" (success), "skipped" (filtered), "failed" (attempted but failed)
+var macroEvalStatus = make(map[string]map[string]string) // alias → macroName → status
+var macroEvalStatusLock sync.RWMutex
 
 // PreprocessorState tracks conditional compilation state while parsing a header
 type PreprocessorState struct {
@@ -53,13 +80,84 @@ func newPreprocessorState(alias string) *PreprocessorState {
     }
 
     // Always define __GNUC__ for compatibility
-    state.definedMacros["__GNUC__"] = "4" // Claim GCC 4.x
+    state.definedMacros["__GNUC__"] = "4"       // Claim GCC 4.x
+    state.definedMacros["__GNUC_MINOR__"] = "9" // GCC 4.9
+
+    // glibc version macros
+    state.definedMacros["__GLIBC__"] = "2"       // glibc major version
+    state.definedMacros["__GLIBC_MINOR__"] = "31" // glibc minor version (conservative)
+
+    // Word size and time size macros
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["__WORDSIZE"] = "64"
+        state.definedMacros["__TIMESIZE"] = "64"
+    } else {
+        state.definedMacros["__WORDSIZE"] = "32"
+        state.definedMacros["__TIMESIZE"] = "32"
+    }
+    state.definedMacros["__WORDSIZE_TIME64_COMPAT32"] = "1"
 
     // Common feature test macros
     state.definedMacros["__USE_MISC"] = "1"  // Misc extensions
     state.definedMacros["__USE_XOPEN"] = "1" // X/Open compliance
 
+    // STDC macros
+    state.definedMacros["__STDC__"] = "1"
+    state.definedMacros["__STDC_VERSION__"] = "201710" // C17 (no L suffix)
+    state.definedMacros["__STDC_HOSTED__"] = "1"
+
+    // NOTE: __cplusplus is intentionally NOT defined (C mode, not C++)
+    // NOTE: __GLIBC_USE and __GLIBC_PREREQ are function-like macros that
+    // will be handled by being replaced with 0 when undefined
+
     return state
+}
+
+// GetModuleConstants returns a copy of the constants for a given module alias
+// Returns nil if the alias doesn't exist or has no constants
+func GetModuleConstants(alias string) map[string]any {
+    moduleConstantsLock.RLock()
+    defer moduleConstantsLock.RUnlock()
+
+    if constants, exists := moduleConstants[alias]; exists {
+        // Return a copy to avoid concurrent modification
+        result := make(map[string]any, len(constants))
+        for k, v := range constants {
+            result[k] = v
+        }
+        return result
+    }
+    return nil
+}
+
+// GetModuleMacros returns a copy of the macros (original source text) for a given module alias
+// Returns nil if the alias doesn't exist or has no macros
+func GetModuleMacros(alias string) map[string]string {
+    moduleMacrosLock.RLock()
+    defer moduleMacrosLock.RUnlock()
+
+    if macros, exists := moduleMacros[alias]; exists {
+        // Return a copy to avoid concurrent modification
+        result := make(map[string]string, len(macros))
+        for k, v := range macros {
+            result[k] = v
+        }
+        return result
+    }
+    return nil
+}
+
+// GetMacroEvalStatus returns the evaluation status for a macro
+// Status values: "evaluated", "skipped", "failed", "unknown"
+func GetMacroEvalStatus(alias, name string) string {
+    macroEvalStatusLock.RLock()
+    defer macroEvalStatusLock.RUnlock()
+    if statuses, exists := macroEvalStatus[alias]; exists {
+        if status, exists := statuses[name]; exists {
+            return status
+        }
+    }
+    return "unknown"
 }
 
 // isActive returns true if we're currently in an active (included) block
@@ -133,29 +231,123 @@ func (s *PreprocessorState) toggleCondition() {
 // getMacrosAsIdent converts definedMacros to ident array for expression evaluation
 // This allows macros to be referenced in #if expressions (e.g., #if VERSION > 1)
 // Macro names are prefixed with __c_ to avoid Za keyword conflicts
+// expandMacroValue recursively expands macro references in a value
+// Example: if value is "__WORDSIZE" and __WORDSIZE is "64", returns "64"
+func (s *PreprocessorState) expandMacroValue(value string, visited map[string]bool) string {
+    // Prevent infinite recursion
+    if visited == nil {
+        visited = make(map[string]bool)
+    }
+
+    // Check if the value is a simple macro reference
+    trimmed := strings.TrimSpace(value)
+    if s.isDefined(trimmed) && !visited[trimmed] {
+        visited[trimmed] = true
+        macroVal := s.definedMacros[trimmed]
+        return s.expandMacroValue(macroVal, visited)
+    }
+
+    return value
+}
+
 func (s *PreprocessorState) getMacrosAsIdent() []Variable {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Fprintf(os.Stderr, "[AUTO] getMacrosAsIdent START: %d macros\n", len(s.definedMacros))
+    }
+
     ident := make([]Variable, 0, len(s.definedMacros))
+
     for name, value := range s.definedMacros {
-        // Try to parse the value as a number
-        var val any = value
-        if intVal, err := strconv.ParseInt(value, 0, 64); err == nil {
-            val = int(intVal)
-        } else if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
-            val = floatVal
+        if debugAuto {
+            fmt.Fprintf(os.Stderr, "[AUTO]   Processing macro %s = %q\n", name, value)
         }
+        // Expand macro references first
+        expandedValue := s.expandMacroValue(value, nil)
+
+        // Try to parse the value as a number and annotate with C type
+        var val any = expandedValue
+        var ctype string
+
+        // First try parsing as integer literal
+        if intVal, err := strconv.ParseInt(expandedValue, 0, 64); err == nil {
+            val = int(intVal)
+            ctype = "c_int"
+        } else if floatVal, err := strconv.ParseFloat(expandedValue, 64); err == nil {
+            // Then try float literal
+            val = floatVal
+            ctype = "c_float"
+        } else {
+            // Not a number literal - check if it's a numeric value using GetAsInt
+            if intVal, ok := GetAsInt(expandedValue); ok {
+                val = intVal
+                ctype = "c_int"
+            } else {
+                // Not numeric - it's either a string or an expression
+                // For expressions, don't add to ident - they'll be expanded inline
+                if strings.ContainsAny(expandedValue, "()&|!<>=+-*/") {
+                    // Skip adding expression macros to ident - they'll be expanded inline
+                    continue
+                }
+                ctype = "c_string"
+            }
+        }
+
         ident = append(ident, Variable{
-            IName:    "__c_" + name,  // Prefix to avoid Za keyword conflicts
-            IValue:   val,
-            declared: true,
+            IName:         name,
+            IValue:        val,
+            Kind_override: ctype,
+            declared:      true,
         })
     }
+
+    if debugAuto {
+        fmt.Fprintf(os.Stderr, "[AUTO] getMacrosAsIdent: Built ident array with %d variables\n", len(ident))
+    }
+
     return ident
 }
 
-// preprocessIfExpression replaces defined(NAME) with 1 or 0 and prefixes macro names
-// to avoid conflicts with Za keywords (e.g., VERSION is a Za keyword)
+// preprocessIfExpression replaces defined(NAME) with 1 or 0 and expands macros
 // Handles: defined(NAME), defined NAME (without parens)
 func (s *PreprocessorState) preprocessIfExpression(expr string) string {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] preprocessIfExpression START: %q\n", expr)
+    }
+
+    // Do multiple passes to expand nested macros, but limit to prevent infinite loops
+    const maxPasses = 5
+    for pass := 0; pass < maxPasses; pass++ {
+        if debugAuto {
+            fmt.Printf("[AUTO]   Pass %d: %q\n", pass, expr)
+        }
+        oldExpr := expr
+        expr = s.preprocessIfExpressionPass(expr)
+        if debugAuto {
+            fmt.Printf("[AUTO]   After pass %d: %q\n", pass, expr)
+        }
+        // If nothing changed, we're done
+        if expr == oldExpr {
+            if debugAuto {
+                fmt.Printf("[AUTO]   No change, stopping\n")
+            }
+            break
+        }
+    }
+
+    if debugAuto {
+        fmt.Printf("[AUTO] preprocessIfExpression END: %q\n", expr)
+    }
+    return expr
+}
+
+func (s *PreprocessorState) preprocessIfExpressionPass(expr string) string {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO]     preprocessIfExpressionPass IN: %q\n", expr)
+    }
+
     // Handle defined(NAME)
     re := regexp.MustCompile(`defined\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)`)
     expr = re.ReplaceAllStringFunc(expr, func(match string) string {
@@ -178,24 +370,129 @@ func (s *PreprocessorState) preprocessIfExpression(expr string) string {
         return "0"
     })
 
-    // Replace macro names with prefixed versions or 0 for undefined
-    // Defined macros: VERSION → __c_VERSION (to avoid Za keyword conflicts)
-    // Undefined macros: UNDEFINED → 0 (C preprocessor semantics)
-    re3 := regexp.MustCompile(`\b([A-Z_][A-Z0-9_]*)\b`)
-    expr = re3.ReplaceAllStringFunc(expr, func(match string) string {
-        if s.isDefined(match) {
-            // Defined macro - prefix to avoid keyword conflicts
-            return "__c_" + match
-        }
-        // Undefined macro - replace with 0 (C preprocessor semantics)
-        return "0"
-    })
+    // Handle ALL function-like macros FIRST: __GLIBC_USE(x) → 0, __GNUC_PREREQ(4,1) → 0
+    // We don't have a full macro expansion engine, so we replace all function-like
+    // macros with 0 (which is safe for conditionals - if they were meant to be true,
+    // the header would have defined them differently)
+    // Must do this before simple macro replacement to avoid "0(x)" syntax errors
+    processedExpr := expr
+    offset := 0
+    re3 := regexp.MustCompile(`\b([A-Z_][A-Za-z0-9_]*)\s*\(`)
 
+    for {
+        loc := re3.FindStringIndex(processedExpr[offset:])
+        if loc == nil {
+            break
+        }
+
+        actualStart := offset + loc[0]
+        actualEnd := offset + loc[1]
+
+        // Process ALL macros (defined or undefined)
+        // Function-like macros need full expansion which we don't support,
+        // so we treat them all as 0 in conditionals
+        // Find matching closing paren
+        parenCount := 1
+        i := actualEnd
+        for i < len(processedExpr) && parenCount > 0 {
+            if processedExpr[i] == '(' {
+                parenCount++
+            } else if processedExpr[i] == ')' {
+                parenCount--
+            }
+            i++
+        }
+
+        // Replace entire function call with 0
+        processedExpr = processedExpr[:actualStart] + "0" + processedExpr[i:]
+        offset = actualStart + 1 // Continue from after the "0"
+    }
+    expr = processedExpr
+
+    // Replace macro names with their values or 0 for undefined
+    // If a macro's value is an expression (contains operators/parens), expand it inline
+    // Otherwise keep it as a variable reference
+    // IMPORTANT: Skip character/string literal prefixes (L, u, U, u8) followed by quotes
+    re4 := regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\b`)
+    matches := re4.FindAllStringIndex(expr, -1)
+    if matches != nil {
+        // Build result by processing matches in reverse order to maintain indices
+        result := expr
+        for i := len(matches) - 1; i >= 0; i-- {
+            start := matches[i][0]
+            end := matches[i][1]
+            match := expr[start:end]
+
+            // Check if this is a character/string literal prefix
+            // L'x', L"str", u'x', U'x', u8"str"
+            isLiteralPrefix := false
+            if end < len(expr) {
+                nextChar := expr[end]
+                if nextChar == '\'' || nextChar == '"' {
+                    // Check if it's a known literal prefix
+                    if match == "L" || match == "u" || match == "U" {
+                        isLiteralPrefix = true
+                    } else if match == "u8" {
+                        isLiteralPrefix = true
+                    }
+                }
+            }
+
+            // Don't replace literal prefixes
+            if isLiteralPrefix {
+                continue
+            }
+
+            // Replace with macro value or 0
+            replacement := ""
+            if s.isDefined(match) {
+                // Get the macro value
+                value := s.definedMacros[match]
+                // If the value looks like an expression (has operators or parens), expand it inline
+                // This handles cases like: #define X (A && B)
+                // The multi-pass loop will handle nested expansions
+                if strings.ContainsAny(value, "()&|!<>=+-*/") {
+                    replacement = "(" + value + ")"
+                } else {
+                    // Otherwise replace with the actual value (for simple integer/string macros)
+                    // Empty string means macro defined without value - treat as 1 per C semantics
+                    if value == "" {
+                        replacement = "1"
+                    } else {
+                        replacement = value
+                    }
+                }
+            } else {
+                // Undefined macro - replace with 0 (C preprocessor semantics)
+                replacement = "0"
+            }
+
+            result = result[:start] + replacement + result[end:]
+        }
+        expr = result
+    }
+
+    if debugAuto {
+        fmt.Printf("[AUTO]     preprocessIfExpressionPass OUT: %q\n", expr)
+    }
     return expr
 }
 
 // parseModuleHeaders finds and parses header files for a C library
 func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string, fs uint32) error {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] parseModuleHeaders START: lib=%s, alias=%s, fs=%d\n", libraryPath, alias, fs)
+    }
+
+    // Check if ident table already allocated for this namespace and reuse if exists
+    cModuleIdentsLock.Lock()
+    if cModuleIdents[fs] == nil {
+        cModuleIdents[fs] = make([]Variable, 0)
+    }
+    // If it exists, we reuse it - allowing namespace merging
+    cModuleIdentsLock.Unlock()
+
     var headerPaths []string
 
     if len(explicitPaths) > 0 {
@@ -231,10 +528,32 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
             alias, strings.Join(searched, ", "))
     }
 
+    // Collect processed text from all files for enum/function parsing after macro evaluation
+    allProcessedText := make([]string, 0)
+
     for _, hpath := range headerPaths {
-        if err := parseHeaderFile(hpath, alias, fs); err != nil {
+        processedText, err := parseHeaderFile(hpath, alias, fs)
+        if err != nil {
             return fmt.Errorf("failed to parse %s: %w", hpath, err)
         }
+        allProcessedText = append(allProcessedText, processedText)
+    }
+
+    // After all files are processed, evaluate all collected macros
+    if err := evaluateAllMacros(alias, fs); err != nil {
+        return fmt.Errorf("failed to evaluate macros: %w", err)
+    }
+
+    // Now parse enums and functions after macros are evaluated
+    // This ensures enum values that reference macros can be evaluated correctly
+    combinedText := strings.Join(allProcessedText, "\n")
+
+    if err := parseEnums(combinedText, alias, fs); err != nil {
+        return fmt.Errorf("failed to parse enums: %w", err)
+    }
+
+    if err := parseFunctionSignatures(combinedText, alias); err != nil {
+        return fmt.Errorf("failed to parse functions: %w", err)
     }
 
     return nil
@@ -282,22 +601,42 @@ func discoverHeaders(libraryPath string) []string {
 }
 
 // parseHeaderFile parses a single C header file
-func parseHeaderFile(path string, alias string, fs uint32) error {
+// parseHeaderFile parses a single C header file and returns the processed text
+// Enums and functions are not parsed here - they're parsed later after macro evaluation
+func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     content, err := os.ReadFile(path)
     if err != nil {
-        return err
+        return "", err
     }
 
     text := string(content)
 
-    // Step 0.5: Parse preprocessor conditionals FIRST
+    // Step 0: Strip comments FIRST (before preprocessor parsing)
+    // Otherwise, preprocessor directives inside comments will be processed
+    text = stripCComments(text)
+
+    // Step 0.5: Parse preprocessor conditionals
     text = parsePreprocessor(text, alias, path, fs)
 
-    // Step 1: Strip comments
-    text = stripCComments(text)
+    // Step 0.6: Remove known empty marker macros that interfere with parsing
+    // These are typically defined as empty and used for C++ compatibility
+    text = removeEmptyMarkerMacros(text)
+
+    // Step 0.7: Remove export macros with parameters (e.g., FT_EXPORT(type))
+    // These interfere with function signature regex matching
+    text = removeExportMacros(text)
 
     // Step 1.5: Normalize multiline declarations
     text = normalizeFunctionDeclarations(text)
+
+    // Step 1.6: Parse #define macros for simple constants (before typedefs)
+    if err := parseDefines(text, alias, fs); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: define parsing failed for %s: %v\n",
+                path, err)
+        }
+        // Don't fail on define parsing errors - continue with other parsing
+    }
 
     // Step 1.7: Parse typedefs FIRST so they're available for function parsing
     if err := parseTypedefs(text, alias); err != nil {
@@ -308,16 +647,7 @@ func parseHeaderFile(path string, alias string, fs uint32) error {
         // Don't fail on typedef parsing errors - continue with other parsing
     }
 
-    // Step 1.8: Parse union typedefs
-    if err := parseUnionTypedefs(text, alias); err != nil {
-        if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: union parsing failed for %s: %v\n",
-                path, err)
-        }
-        // Don't fail on union parsing errors - continue with other parsing
-    }
-
-    // Step 1.9: Parse struct typedefs
+    // Step 1.8: Parse struct typedefs (before unions so they can reference structs)
     if err := parseStructTypedefs(text, alias); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
             fmt.Fprintf(os.Stderr, "[AUTO] Warning: struct parsing failed for %s: %v\n",
@@ -326,22 +656,34 @@ func parseHeaderFile(path string, alias string, fs uint32) error {
         // Don't fail on struct parsing errors - continue with other parsing
     }
 
-    // Step 2: Parse #define constants
+    // Step 1.9: Parse union typedefs (after structs so they can use struct-typed fields)
+    if err := parseUnionTypedefs(text, alias); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: union parsing failed for %s: %v\n",
+                path, err)
+        }
+        // Don't fail on union parsing errors - continue with other parsing
+    }
+
+    // Step 2: Parse #define constants (just collect them, evaluation happens later)
     if err := parseDefines(text, alias, fs); err != nil {
-        return err
+        return "", err
     }
 
-    // Step 3: Parse enums
-    if err := parseEnums(text, alias, fs); err != nil {
-        return err
+    // Step 2.5: Remove #define lines now that they've been processed
+    // This prevents them from being mistaken for function signatures
+    lines := strings.Split(text, "\n")
+    var filteredLines []string
+    for _, line := range lines {
+        trimmed := strings.TrimSpace(line)
+        if !strings.HasPrefix(trimmed, "#define") {
+            filteredLines = append(filteredLines, line)
+        }
     }
+    text = strings.Join(filteredLines, "\n")
 
-    // Step 4: Parse function signatures
-    if err := parseFunctionSignatures(text, alias); err != nil {
-        return err
-    }
-
-    return nil
+    // Return the processed text for enum/function parsing after macro evaluation
+    return text, nil
 }
 
 // resolveIncludePath resolves an #include directive to an absolute file path
@@ -426,9 +768,125 @@ func parsePreprocessor(text string, alias string, headerPath string, fs uint32) 
     return parsePreprocessorWithState(text, state, headerPath, fs)
 }
 
+// extractOriginalMacros extracts #define directives from text before line joining
+// Returns map of macro_name → original_text (preserving backslash continuations)
+func extractOriginalMacros(text string) map[string]string {
+    result := make(map[string]string)
+    lines := strings.Split(text, "\n")
+
+    for i := 0; i < len(lines); i++ {
+        line := lines[i]
+        trimmed := strings.TrimSpace(line)
+
+        // Look for #define directives
+        if !strings.HasPrefix(trimmed, "#") {
+            continue
+        }
+
+        // Parse the directive
+        directive := strings.TrimPrefix(trimmed, "#")
+        directive = strings.TrimSpace(directive)
+
+        parts := strings.SplitN(directive, " ", 2)
+        if len(parts) < 2 || parts[0] != "define" {
+            continue
+        }
+
+        // Extract macro name and full definition with backslash continuations
+        macroStart := i
+        macroLines := []string{line}
+
+        // Follow backslash continuations
+        for i < len(lines)-1 {
+            lineContent := strings.TrimRight(lines[i], " \t\r")
+            if !strings.HasSuffix(lineContent, "\\") {
+                break
+            }
+            i++
+            macroLines = append(macroLines, lines[i])
+        }
+
+        // Join with newlines to preserve structure
+        fullMacro := strings.Join(macroLines, "\n")
+
+        // Extract macro name from the first line
+        firstLine := strings.TrimSpace(macroLines[0])
+        firstLine = strings.TrimPrefix(firstLine, "#")
+        firstLine = strings.TrimSpace(firstLine)
+        firstLine = strings.TrimPrefix(firstLine, "define")
+        firstLine = strings.TrimSpace(firstLine)
+
+        // Macro name is everything up to first space or (
+        var macroName string
+        if idx := strings.IndexAny(firstLine, " \t("); idx != -1 {
+            macroName = firstLine[:idx]
+        } else {
+            macroName = firstLine
+        }
+
+        if macroName != "" {
+            result[macroName] = fullMacro
+        }
+
+        _ = macroStart // unused but kept for clarity
+    }
+
+    return result
+}
+
+// joinLineContinuations handles C preprocessor line continuations (lines ending with \)
+// Joins lines ending with \ with the next line, removing the backslash
+func joinLineContinuations(text string) string {
+    lines := strings.Split(text, "\n")
+    var result []string
+
+    for i := 0; i < len(lines); i++ {
+        line := lines[i]
+
+        // Check if line ends with backslash (after trimming trailing whitespace)
+        trimmed := strings.TrimRight(line, " \t\r")
+        for strings.HasSuffix(trimmed, "\\") && i+1 < len(lines) {
+            // Remove the backslash and append next line
+            trimmed = strings.TrimSuffix(trimmed, "\\")
+            i++
+            nextLine := strings.TrimLeft(lines[i], " \t")
+            trimmed = trimmed + " " + nextLine
+            trimmed = strings.TrimRight(trimmed, " \t\r")
+        }
+
+        result = append(result, trimmed)
+    }
+
+    return strings.Join(result, "\n")
+}
+
 // parsePreprocessorWithState filters header text using an existing preprocessor state
 // This allows recursive #include processing with shared state
 func parsePreprocessorWithState(text string, state *PreprocessorState, currentFile string, fs uint32) string {
+    // Strip comments FIRST (before any preprocessing)
+    text = stripCComments(text)
+
+    // Extract original macro definitions (before line joining) for display purposes
+    if state.alias != "" {
+        originalMacros := extractOriginalMacros(text)
+        if len(originalMacros) > 0 {
+            moduleMacrosOriginalLock.Lock()
+            if moduleMacrosOriginal[state.alias] == nil {
+                moduleMacrosOriginal[state.alias] = make(map[string]string)
+            }
+            for name, originalText := range originalMacros {
+                // Only store if not already present (first definition wins)
+                if _, exists := moduleMacrosOriginal[state.alias][name]; !exists {
+                    moduleMacrosOriginal[state.alias][name] = originalText
+                }
+            }
+            moduleMacrosOriginalLock.Unlock()
+        }
+    }
+
+    // Handle line continuations
+    text = joinLineContinuations(text)
+
     lines := strings.Split(text, "\n")
     var result []string
 
@@ -487,7 +945,7 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                 if debugAuto {
                     fmt.Printf("[AUTO]   → About to call evaluateConstant() with expr=%q, fs=%d\n", preprocessed, fs)
                 }
-                result, ok := evaluateConstant(preprocessed, &ident, fs)
+                result, ok := evaluateConstant(preprocessed, state, state.alias, fs, true) // #if expression
                 if debugAuto {
                     fmt.Printf("[AUTO]   → evaluateConstant() returned: result=%v, ok=%v\n", result, ok)
                 }
@@ -510,12 +968,10 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                 // #elif expression
                 // Only evaluate and activate if no previous condition in chain was satisfied
                 preprocessed := state.preprocessIfExpression(arg)
-                // Populate ident with defined macros so they can be referenced in the expression
-                ident := state.getMacrosAsIdent()
 
                 // Evaluate the expression - if it fails, treat as false
                 condition := false
-                result, ok := evaluateConstant(preprocessed, &ident, fs)
+                result, ok := evaluateConstant(preprocessed, state, state.alias, fs, true) // #elif expression
                 if ok {
                     condition = isTruthy(result)
                 }
@@ -546,18 +1002,152 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                 continue
 
             case "define":
-                // #define NAME VALUE - Track for conditionals
+                // #define NAME[(params)] VALUE - Track for conditionals
                 if state.isActive() {
-                    parts := strings.Fields(arg)
-                    if len(parts) >= 1 {
-                        name := parts[0]
-                        value := ""
-                        if len(parts) > 1 {
-                            value = strings.Join(parts[1:], " ")
+                    // Use regex to properly parse #define directives
+                    // This preserves function-like macro parameter lists for display
+                    defineRegex := regexp.MustCompile(`^(\w+)(\([^)]*\))?\s*(.*)$`)
+                    matches := defineRegex.FindStringSubmatch(arg)
+
+                    if matches != nil && len(matches) >= 4 {
+                        name := matches[1]           // Macro name (e.g., "isless")
+                        params := matches[2]         // Parameter list with parens (e.g., "(x, y)") or empty
+                        body := matches[3]           // Macro body/value
+                        isFunctionLike := params != ""
+
+                        // Strip C integer/float suffixes from the body
+                        body = stripCIntegerSuffixes(body)
+
+                        // For conditional evaluation (#if expressions), store just the body
+                        state.definedMacros[name] = body
+
+                        // For help plugin display, store with full parameter list if function-like
+                        if state.alias != "" {
+                            moduleMacrosLock.Lock()
+                            if moduleMacros[state.alias] == nil {
+                                moduleMacros[state.alias] = make(map[string]string)
+                            }
+
+                            // Store display value
+                            var displayValue string
+                            if isFunctionLike {
+                                // Function-like: store as "name(params) body"
+                                displayValue = name + params + " " + body
+                            } else {
+                                // Object-like: store just the body
+                                displayValue = body
+                            }
+
+                            if _, exists := moduleMacros[state.alias][name]; !exists {
+                                moduleMacros[state.alias][name] = displayValue
+                            }
+
+                            // Record the order for evaluation
+                            // Skip function-like macros and system/compiler macros (those starting with __)
+                            // Also skip macros whose values reference system macros
+                            moduleMacrosOrderLock.Lock()
+                            if moduleMacrosOrder[state.alias] == nil {
+                                moduleMacrosOrder[state.alias] = make([]string, 0)
+                            }
+
+                            // Only add evaluatable macros: object-like macros that:
+                            // 1. Don't start with __
+                            // 2. Don't reference system macros (containing __)
+                            // 3. Don't contain sizeof, typedef, extern, etc.
+                            // 4. Aren't self-referential (value != name)
+                            // 5. Don't contain complex operators (?, :, ~)
+                            // 6. Aren't simple macro aliases (single UPPERCASE_WORD)
+                            // 7. Don't contain struct/array initializers (causes ev() to hang)
+                            // 8. Don't contain function-like macro calls
+                            // 9. Don't contain C keywords
+                            // 10. Don't contain type keywords
+                            // 11. Don't contain cast expressions
+
+                            hasStructInit := strings.Contains(body, "{") || strings.Contains(body, "}")
+
+                            // Filter function-like macro calls in body
+                            hasFunctionCall := regexp.MustCompile(`\w+\s*\(`).MatchString(body)
+
+                            // Filter C keywords
+                            cKeywords := []string{
+                                "inline", "__inline", "__inline__",
+                                "static", "const", "volatile", "restrict",
+                                "_Noreturn", "__noreturn__",
+                                "register", "auto", "_Thread_local",
+                            }
+                            hasKeyword := false
+                            for _, kw := range cKeywords {
+                                // Match as whole word: exact match, or with spaces around it
+                                if body == kw ||
+                                   strings.HasPrefix(body, kw+" ") ||
+                                   strings.HasSuffix(body, " "+kw) ||
+                                   strings.Contains(body, " "+kw+" ") {
+                                    hasKeyword = true
+                                    break
+                                }
+                            }
+
+                            // Filter type keywords
+                            typeKeywords := []string{
+                                "void", "char", "short", "int", "long", "float", "double",
+                                "signed", "unsigned",
+                                "size_t", "ssize_t", "ptrdiff_t", "wchar_t",
+                                "int8_t", "int16_t", "int32_t", "int64_t",
+                                "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+                                "intptr_t", "uintptr_t",
+                            }
+                            hasTypeKeyword := false
+                            for _, tk := range typeKeywords {
+                                // Check if body is exactly the type, or contains it
+                                if body == tk || strings.Contains(body, tk) {
+                                    hasTypeKeyword = true
+                                    break
+                                }
+                            }
+
+                            // Filter cast expressions (C-style casts)
+                            hasCast := regexp.MustCompile(`\([a-zA-Z_][a-zA-Z0-9_]*\)\s*\(`).MatchString(body)
+
+                            isSimpleAlias := regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`).MatchString(body)
+                            shouldEvaluate := !isFunctionLike &&
+                                              !strings.HasPrefix(name, "__") &&
+                                              !strings.Contains(body, "__") &&
+                                              !strings.Contains(body, "sizeof") &&
+                                              !strings.Contains(body, "typedef") &&
+                                              !strings.Contains(body, "extern") &&
+                                              !strings.Contains(body, "?") &&
+                                              !strings.Contains(body, "~") &&
+                                              !hasStructInit &&
+                                              !hasFunctionCall &&
+                                              !hasKeyword &&
+                                              !hasTypeKeyword &&
+                                              !hasCast &&
+                                              !isSimpleAlias &&
+                                              body != name
+
+                            if shouldEvaluate {
+                                moduleMacrosOrder[state.alias] = append(moduleMacrosOrder[state.alias], name)
+                            } else if !isFunctionLike {
+                                // Only mark object-like macros as skipped
+                                // Function-like macros don't get status tracking (will show "?" unknown)
+                                macroEvalStatusLock.Lock()
+                                if macroEvalStatus[state.alias] == nil {
+                                    macroEvalStatus[state.alias] = make(map[string]string)
+                                }
+                                macroEvalStatus[state.alias][name] = "skipped"
+                                macroEvalStatusLock.Unlock()
+                            }
+                            moduleMacrosOrderLock.Unlock()
+
+                            moduleMacrosLock.Unlock()
                         }
-                        state.definedMacros[name] = value
+
                         if debugAuto {
-                            fmt.Printf("[AUTO] Line %d: #define %s %s\n", lineNum+1, name, value)
+                            if isFunctionLike {
+                                fmt.Printf("[AUTO] Line %d: #define %s%s %s\n", lineNum+1, name, params, body)
+                            } else {
+                                fmt.Printf("[AUTO] Line %d: #define %s %s\n", lineNum+1, name, body)
+                            }
                         }
                     }
                 }
@@ -593,8 +1183,18 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                             continue
                         }
 
+                        // Strip comments from included file BEFORE recursive processing
+                        // This ensures function declarations aren't obscured by comments
+                        includeText := stripCComments(string(includeContent))
+
                         // Recursively process the included file
-                        processedInclude := parsePreprocessorWithState(string(includeContent), state, includePath, fs)
+                        processedInclude := parsePreprocessorWithState(includeText, state, includePath, fs)
+
+                        // CRITICAL: Process included content the same way as main file
+                        // Remove empty marker macros and export macros, then normalize function declarations
+                        processedInclude = removeEmptyMarkerMacros(processedInclude)
+                        processedInclude = removeExportMacros(processedInclude)
+                        processedInclude = normalizeFunctionDeclarations(processedInclude)
 
                         // Append the processed content to results
                         if processedInclude != "" {
@@ -659,29 +1259,123 @@ func stripCComments(text string) string {
     return text
 }
 
+// removeEmptyMarkerMacros removes known empty marker macros that interfere with parsing
+// These macros are typically defined as empty and used for C++ compatibility or attributes
+func removeEmptyMarkerMacros(text string) string {
+    // List of known empty marker macros to remove
+    emptyMacros := []string{
+        "__BEGIN_DECLS",
+        "__END_DECLS",
+        "__THROW",
+        "__THROWNL",
+        "__nonnull",
+        "__wur",
+        "__attribute_const__",
+        "__attribute_pure__",
+        "__attribute_malloc__",
+        "__attribute_artificial__",
+        "__attribute_maybe_unused__",
+        "__attribute_warn_unused_result__",
+        "__returns_nonnull",
+        "__attribute_deprecated__",
+        "__COLD",
+        "__LEAF",
+        "__LEAF_ATTR",
+    }
+
+    // Remove each macro as a standalone word
+    // Use word boundaries to avoid removing parts of other identifiers
+    for _, macro := range emptyMacros {
+        pattern := `\b` + regexp.QuoteMeta(macro) + `\b`
+        re := regexp.MustCompile(pattern)
+        text = re.ReplaceAllString(text, "")
+    }
+
+    // Clean up any resulting double spaces
+    text = regexp.MustCompile(`  +`).ReplaceAllString(text, " ")
+
+    return text
+}
+
+// removeExportMacros handles export/visibility macros that have parameters
+// These interfere with function signature regex matching because the regex
+// matches the first parenthesis it encounters, which would be the macro's
+// parameter list instead of the function's parameter list.
+//
+// For export macros like FT_EXPORT(type), the parameter IS the return type,
+// so we extract it. For attribute macros like __declspec(dllexport), we
+// remove the entire macro.
+func removeExportMacros(text string) string {
+    // Export macros where the parameter IS the return type
+    // Extract the type from MACRO(type) -> type
+    returnTypeMacros := []string{
+        "FT_EXPORT",
+        "FT_EXPORT_DEF",
+        "FT_EXPORT_FUNC",
+        "FT_BASE",
+        "FT_BASE_DEF",
+        "PNG_EXPORT",
+        "PNGAPI",
+        "ZEXPORT",
+        "ZEXPORTVA",
+    }
+
+    for _, macro := range returnTypeMacros {
+        // Match MACRO(...) and capture the content inside parentheses
+        // The captured group is the return type
+        pattern := regexp.MustCompile(regexp.QuoteMeta(macro) + `\s*\(([^)]*)\)\s*`)
+        // Replace with the captured content (the return type)
+        text = pattern.ReplaceAllString(text, "$1 ")
+    }
+
+    // Visibility/attribute macros where the parameter should be discarded
+    // Remove the entire macro including its parameter
+    attributeMacros := []string{
+        "__declspec",
+        "__attribute__",
+    }
+
+    for _, macro := range attributeMacros {
+        // Remove entire macro including its parameter
+        pattern := regexp.MustCompile(regexp.QuoteMeta(macro) + `\s*\([^)]*\)\s*`)
+        text = pattern.ReplaceAllString(text, " ")
+    }
+
+    // Clean up any resulting double spaces
+    text = regexp.MustCompile(`  +`).ReplaceAllString(text, " ")
+
+    return text
+}
+
 // parseDefines extracts #define constants from header text
 func parseDefines(text string, alias string, fs uint32) error {
     // Match: #define NAME VALUE
     // Support: integers, hex, floats, strings, and expressions using ev()
     // Note: Use [ \t]+ instead of \s+ to avoid matching newlines (which would match across lines)
+    // Changed to match any identifier (not just uppercase) to catch Bool, True, etc.
 
-    re := regexp.MustCompile(`(?m)^\s*#define\s+([A-Z_][A-Z0-9_]*)[ \t]+(.+)$`)
+    re := regexp.MustCompile(`(?m)^\s*#define\s+([A-Za-z_][A-Za-z0-9_]*)[ \t]+(.+)$`)
     matches := re.FindAllStringSubmatch(text, -1)
 
-    moduleConstantsLock.Lock()
-    defer moduleConstantsLock.Unlock()
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] parseDefines found %d #define statements\n", len(matches))
+    }
 
+    // Initialize moduleConstants map if needed
+    moduleConstantsLock.Lock()
     if moduleConstants[alias] == nil {
         moduleConstants[alias] = make(map[string]any)
     }
-
-    // TODO: Future enhancement - maintain ident table to allow constants to reference earlier ones
-    // Currently disabled due to variable lookup issues in ev()
-    var ident []Variable
+    moduleConstantsLock.Unlock()
 
     for _, match := range matches {
         name := match[1]
         valueStr := strings.TrimSpace(match[2])
+
+        if debugAuto {
+            fmt.Printf("[AUTO] parseDefines processing: %s = %s\n", name, valueStr)
+        }
 
         // Skip function-like macros: #define NAME(params) value
         // These look like: valueStr starts with "(identifier)" or "(a,b)"
@@ -701,27 +1395,446 @@ func parseDefines(text string, alias string, fs uint32) error {
                     }
                 }
                 if isMacro {
+                    if debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""; debugAuto {
+                        fmt.Printf("[AUTO]   → Skipping function-like macro: %s = %s\n", name, valueStr)
+                    }
                     continue // Skip function-like macros
                 }
             }
         }
 
-        // Use ev() to evaluate the constant - handles all types automatically
-        // Note: String concatenation ("str1" "str2") is transformed to Za syntax ("str1" + "str2")
-        if val, ok := evaluateConstant(valueStr, &ident, fs); ok {
-            moduleConstants[alias][name] = val
+        // Apply the same filtering as the preprocessor to avoid adding
+        // simple macro aliases that reference undefined identifiers
+        // This prevents ev() from hanging on expressions like:
+        // #define ft_encoding_gb2312 FT_ENCODING_PRC
+        // where FT_ENCODING_PRC is not defined
 
-            // Add constant to ident table so later constants can reference it
-            ident = append(ident, Variable{
-                IName:    name,
-                IValue:   val,
-                declared: true,
-            })
+        // Check for simple alias (single identifier referencing another undefined macro)
+        // Example: #define ft_encoding_gb2312 FT_ENCODING_PRC
+        isSimpleAlias := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(valueStr)
+
+        // Also apply other common filters from the preprocessor
+        hasStructInit := strings.Contains(valueStr, "{") || strings.Contains(valueStr, "}")
+        hasFunctionCall := regexp.MustCompile(`\w+\s*\(`).MatchString(valueStr)
+        hasSystemRef := strings.Contains(valueStr, "__")
+        hasComplexOps := strings.Contains(valueStr, "?") || strings.Contains(valueStr, "~")
+
+        // Check for type aliases like #define Bool int
+        // These should be added to typedef registry, not as constants
+        typeKeywords := []string{
+            "void", "char", "short", "int", "long", "float", "double",
+            "signed", "unsigned",
+            "size_t", "ssize_t", "ptrdiff_t", "wchar_t",
         }
-        // If evaluation fails, skip silently (complex macros, undefined symbols, etc.)
+        isTypeAlias := false
+        for _, tk := range typeKeywords {
+            if valueStr == tk {
+                // Exact match - this is a type alias
+                isTypeAlias = true
+                moduleTypedefsLock.Lock()
+                if moduleTypedefs[alias] == nil {
+                    moduleTypedefs[alias] = make(map[string]string)
+                }
+                moduleTypedefs[alias][name] = valueStr
+                moduleTypedefsLock.Unlock()
+                if debugAuto {
+                    fmt.Printf("[AUTO] Type alias (via #define): %s → %s\n", name, valueStr)
+                }
+                break
+            }
+        }
+
+        if isTypeAlias {
+            continue // Skip to next define
+        }
+
+        // Check for type/cast keywords in expressions (not type aliases)
+        hasTypeKeyword := false
+        for _, tk := range typeKeywords {
+            if strings.Contains(valueStr, tk) {
+                hasTypeKeyword = true
+                break
+            }
+        }
+
+        shouldSkip := isSimpleAlias || hasStructInit || hasFunctionCall ||
+            hasSystemRef || hasComplexOps || hasTypeKeyword ||
+            strings.Contains(valueStr, "sizeof") ||
+            strings.Contains(valueStr, "typedef") ||
+            strings.Contains(valueStr, "extern")
+
+        debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+        // Store macro in moduleMacros for display (always, even if filtered)
+        moduleMacrosLock.Lock()
+        if moduleMacros[alias] == nil {
+            moduleMacros[alias] = make(map[string]string)
+        }
+        if _, exists := moduleMacros[alias][name]; !exists {
+            // Only add if not already present from preprocessor
+            moduleMacros[alias][name] = valueStr
+        }
+        moduleMacrosLock.Unlock()
+
+        if shouldSkip {
+            if debugAuto {
+                fmt.Printf("[AUTO]   → Skipping macro (filtered): %s = %s\n", name, valueStr)
+            }
+
+            // Mark as skipped for help display
+            macroEvalStatusLock.Lock()
+            if macroEvalStatus[alias] == nil {
+                macroEvalStatus[alias] = make(map[string]string)
+            }
+            macroEvalStatus[alias][name] = "skipped"
+            macroEvalStatusLock.Unlock()
+
+            continue // Don't add to evaluation order
+        }
+
+        // For non-filtered macros, add to evaluation order
+        if debugAuto {
+            fmt.Printf("[AUTO] Stored macro for later evaluation: %s = %q\n", name, valueStr)
+        }
+
+        // Record the order
+        moduleMacrosOrderLock.Lock()
+        if moduleMacrosOrder[alias] == nil {
+            moduleMacrosOrder[alias] = make([]string, 0)
+        }
+        moduleMacrosOrder[alias] = append(moduleMacrosOrder[alias], name)
+        moduleMacrosOrderLock.Unlock()
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return fmt.Errorf("AUTO import aborted due to evaluation error")
+        }
     }
 
     return nil
+}
+
+// evaluateAllMacros evaluates all macros in moduleMacros after all files have been processed
+// Uses multiple passes to handle dependencies between macros
+func evaluateAllMacros(alias string, fs uint32) error {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    if debugAuto {
+        fmt.Printf("[AUTO] evaluateAllMacros: Processing all macros for alias=%s\n", alias)
+    }
+
+    // Initialize moduleConstants map if needed
+    moduleConstantsLock.Lock()
+    if moduleConstants[alias] == nil {
+        moduleConstants[alias] = make(map[string]any)
+    }
+    moduleConstantsLock.Unlock()
+
+    // Get macros in the order they were defined
+    moduleMacrosOrderLock.RLock()
+    orderedMacros := moduleMacrosOrder[alias]
+    moduleMacrosOrderLock.RUnlock()
+
+    moduleMacrosLock.RLock()
+    allMacros := moduleMacros[alias]
+    moduleMacrosLock.RUnlock()
+
+    if debugAuto {
+        fmt.Printf("[AUTO] evaluateAllMacros: Found %d macros to evaluate in definition order\n", len(orderedMacros))
+    }
+
+    // Use multiple passes to handle dependencies
+    // Evaluate macros in the order they were defined - this naturally handles most dependencies
+    // Additional passes catch any remaining dependencies (e.g., forward references)
+
+    // Set flag to prevent ev() from calling report()/finish() on errors during AUTO processing
+    autoProcessingLock.Lock()
+    inAutoProcessing = true
+    autoProcessingLock.Unlock()
+    defer func() {
+        autoProcessingLock.Lock()
+        inAutoProcessing = false
+        autoProcessingLock.Unlock()
+    }()
+
+    maxPasses := 10
+    for pass := 0; pass < maxPasses; pass++ {
+        evaluated := 0
+
+        if debugAuto {
+            fmt.Printf("[AUTO] evaluateAllMacros: Pass %d\n", pass+1)
+        }
+
+        // Iterate in definition order
+        for _, name := range orderedMacros {
+            valueStr := allMacros[name]
+            // Skip if already evaluated
+            moduleConstantsLock.RLock()
+            _, alreadyEvaluated := moduleConstants[alias][name]
+            moduleConstantsLock.RUnlock()
+
+            if alreadyEvaluated {
+                continue
+            }
+
+            // Check if user pressed Ctrl-C BEFORE this evaluation
+            lastlock.Lock()
+            wasInterrupted := sig_int
+            lastlock.Unlock()
+            if wasInterrupted {
+                // User pressed Ctrl-C before we even started this macro
+                return fmt.Errorf("AUTO import interrupted by user")
+            }
+
+            // Try to evaluate
+            if val, ok := evaluateConstant(valueStr, nil, alias, fs, false); ok {
+                if debugAuto {
+                    fmt.Printf("[AUTO] evaluateAllMacros: Evaluated %s = %v (type %T)\n", name, val, val)
+                }
+
+                // Store in moduleConstants
+                moduleConstantsLock.Lock()
+                if moduleConstants[alias] == nil {
+                    moduleConstants[alias] = make(map[string]any)
+                }
+                moduleConstants[alias][name] = val
+                moduleConstantsLock.Unlock()
+
+                // Mark as evaluated
+                macroEvalStatusLock.Lock()
+                if macroEvalStatus[alias] == nil {
+                    macroEvalStatus[alias] = make(map[string]string)
+                }
+                macroEvalStatus[alias][name] = "evaluated"
+                macroEvalStatusLock.Unlock()
+
+                // Store in cModuleIdents
+                cModuleIdentsLock.Lock()
+                cModuleIdents[fs] = append(cModuleIdents[fs], Variable{
+                    IName:    name,
+                    IValue:   val,
+                    declared: true,
+                })
+                cModuleIdentsLock.Unlock()
+
+                evaluated++
+            } else {
+                // Evaluation failed - this is expected for non-constant identifiers
+                // (function names, type names, etc.)
+                // Mark as failed
+                macroEvalStatusLock.Lock()
+                if macroEvalStatus[alias] == nil {
+                    macroEvalStatus[alias] = make(map[string]string)
+                }
+                macroEvalStatus[alias][name] = "failed"
+                macroEvalStatusLock.Unlock()
+            }
+        }
+
+        if debugAuto {
+            fmt.Printf("[AUTO] evaluateAllMacros: Pass %d evaluated %d macros\n", pass+1, evaluated)
+        }
+
+        // If no macros were evaluated in this pass, we're done (or stuck on cycles)
+        if evaluated == 0 {
+            break
+        }
+    }
+
+    if debugAuto {
+        moduleConstantsLock.RLock()
+        totalEvaluated := 0
+        if constants, exists := moduleConstants[alias]; exists {
+            totalEvaluated = len(constants)
+        }
+        moduleConstantsLock.RUnlock()
+        fmt.Printf("[AUTO] evaluateAllMacros: Completed. Total evaluated: %d out of %d\n", totalEvaluated, len(allMacros))
+    }
+
+    return nil
+}
+
+// convertCharacterLiterals converts C character literals to their numeric values
+// Examples: '\0' → 0, 'A' → 65, '\n' → 10, L'\0' → 0
+func convertCharacterLiterals(expr string) string {
+    // Match character literals with optional L/u/U prefix
+    // Pattern: optional prefix (L, u, U) + single quote + content + single quote
+    re := regexp.MustCompile(`([LuU])?'((?:\\.|[^'\\])+)'`)
+
+    expr = re.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract the character content (skip prefix and quotes)
+        submatches := re.FindStringSubmatch(match)
+        if len(submatches) < 3 {
+            return match // Keep as-is if parsing fails
+        }
+
+        content := submatches[2]
+
+        // Handle escape sequences
+        var value int
+        if len(content) > 0 && content[0] == '\\' {
+            if len(content) < 2 {
+                return match // Invalid escape sequence
+            }
+            switch content[1] {
+            case '0':
+                value = 0 // Null character
+            case 'n':
+                value = 10 // Newline
+            case 't':
+                value = 9 // Tab
+            case 'r':
+                value = 13 // Carriage return
+            case '\\':
+                value = 92 // Backslash
+            case '\'':
+                value = 39 // Single quote
+            case '"':
+                value = 34 // Double quote
+            default:
+                // For other escape sequences, keep the original
+                return match
+            }
+        } else if len(content) == 1 {
+            // Single character literal
+            value = int(content[0])
+        } else {
+            // Multi-character literal or unknown format
+            return match
+        }
+
+        return fmt.Sprintf("%d", value)
+    })
+
+    return expr
+}
+
+// addCPrefixToIdentifiers adds __c_ prefix to identifiers in expressions
+// to prevent conflicts with Za keywords during evaluation
+func addCPrefixToIdentifiers(expr string) string {
+    // Match identifiers (word characters starting with letter or underscore)
+    // Use word boundaries to match complete identifiers only
+    re := regexp.MustCompile(`\b([a-zA-Z_][a-zA-Z0-9_]*)\b`)
+
+    // Process matches in reverse order to maintain indices
+    matches := re.FindAllStringIndex(expr, -1)
+    if matches == nil {
+        return expr
+    }
+
+    result := expr
+    for i := len(matches) - 1; i >= 0; i-- {
+        start := matches[i][0]
+        end := matches[i][1]
+        match := expr[start:end]
+
+        // Check if this is a character/string literal prefix
+        // L'x', L"str", u'x', U'x', u8"str"
+        isLiteralPrefix := false
+        if end < len(expr) {
+            nextChar := expr[end]
+            if nextChar == '\'' || nextChar == '"' {
+                // Check if it's a known literal prefix
+                if match == "L" || match == "u" || match == "U" {
+                    isLiteralPrefix = true
+                } else if match == "u8" {
+                    isLiteralPrefix = true
+                }
+            }
+        }
+
+        // Don't prefix literal prefixes or Za keywords
+        if isLiteralPrefix {
+            continue
+        }
+
+        // Skip Za keywords and C keywords (except sizeof, which is handled separately)
+        if match == "true" || match == "false" ||
+            match == "typeof" || match == "alignof" ||
+            match == "_Alignof" || match == "__alignof__" || match == "__typeof__" {
+            continue
+        }
+
+        // Add __c_ prefix
+        result = result[:start] + "__c_" + match + result[end:]
+    }
+
+    return result
+}
+
+// getCTypeSize returns the size in bytes of a C type
+// Handles base types, resolves macros from moduleConstants, and resolves typedefs using moduleTypedefs
+func getCTypeSize(typeName string, alias string) (int, bool) {
+    // Remove qualifiers (const, volatile, restrict)
+    typeName = strings.TrimSpace(typeName)
+    typeName = strings.ReplaceAll(typeName, "const ", "")
+    typeName = strings.ReplaceAll(typeName, "volatile ", "")
+    typeName = strings.ReplaceAll(typeName, "restrict ", "")
+    typeName = strings.TrimSpace(typeName)
+
+    // First, try to resolve as a macro from moduleMacros
+    // This handles cases like #define __ss_aligntype unsigned long int
+    moduleMacrosLock.RLock()
+    if macros, exists := moduleMacros[alias]; exists {
+        if macroValue, found := macros[typeName]; found {
+            moduleMacrosLock.RUnlock()
+            // Recursively resolve the macro value
+            return getCTypeSize(macroValue, alias)
+        }
+    }
+    moduleMacrosLock.RUnlock()
+
+    // Base C types (64-bit architecture)
+    baseTypes := map[string]int{
+        "char":                1,
+        "signed char":         1,
+        "unsigned char":       1,
+        "short":               2,
+        "short int":           2,
+        "signed short":        2,
+        "signed short int":    2,
+        "unsigned short":      2,
+        "unsigned short int":  2,
+        "int":                 4,
+        "signed":              4,
+        "signed int":          4,
+        "unsigned":            4,
+        "unsigned int":        4,
+        "long":                8,
+        "long int":            8,
+        "signed long":         8,
+        "signed long int":     8,
+        "unsigned long":       8,
+        "unsigned long int":   8,
+        "long long":           8,
+        "long long int":       8,
+        "signed long long":    8,
+        "unsigned long long":  8,
+        "float":               4,
+        "double":              8,
+        "long double":         16,
+        "void *":              8,
+        "_Bool":               1,
+    }
+
+    // Check base types first
+    if size, ok := baseTypes[typeName]; ok {
+        return size, true
+    }
+
+    // Try typedef resolution
+    moduleTypedefsLock.RLock()
+    defer moduleTypedefsLock.RUnlock()
+
+    if typedefs, exists := moduleTypedefs[alias]; exists {
+        if resolvedType, found := typedefs[typeName]; found {
+            // Recursively resolve
+            return getCTypeSize(resolvedType, alias)
+        }
+    }
+
+    // Unknown type
+    return 0, false
 }
 
 // transformStringConcatenation converts C string concatenation to Za syntax
@@ -736,63 +1849,594 @@ func transformStringConcatenation(s string) string {
     return s
 }
 
+// stripCIntegerSuffixes removes C integer and float literal suffixes
+// Integer examples: 123L → 123, 0xFFULL → 0xFF, 42ul → 42
+// Float examples: 1e10000L → 1e10000, 3.14f → 3.14, 3.40282347e+38F → 3.40282347e+38
+func stripCIntegerSuffixes(s string) string {
+    // First strip integer literals with suffixes (U/L combinations)
+    // Pattern: digit or hex number followed by optional U/L suffixes
+    intRe := regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)([uU]?[lL]{0,2}|[lL]{0,2}[uU]?)\b`)
+    s = intRe.ReplaceAllString(s, "$1")
+
+    // Then strip float literals with suffixes (f/F/l/L/d/D)
+    // Patterns to match:
+    // - 1e10000L → 1e10000
+    // - 3.14f → 3.14
+    // - 3.40282347e+38F → 3.40282347e+38
+    // - 1.0e-5l → 1.0e-5
+    // Match: digits, optional decimal, optional exponent, followed by f/F/l/L/d/D
+    floatRe := regexp.MustCompile(`\b(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)[fFlLdD]\b`)
+    s = floatRe.ReplaceAllString(s, "$1")
+
+    return s
+}
+
+// convertTernaryConditions converts integer literals in ternary conditions to booleans
+// Za requires boolean conditions for ternary operators, not integers
+// Examples: 0 ? x : y → false ? x : y, 1 ? x : y → true ? x : y
+func convertTernaryConditions(expr string) string {
+    // Match: <integer> followed by ?
+    // Replace the integer with true/false based on C truthiness
+    re := regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)\s*\?`)
+    expr = re.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract the number
+        numPart := strings.TrimRight(match, " \t?")
+
+        // Parse as integer
+        var num int64
+        var err error
+        if strings.HasPrefix(numPart, "0x") || strings.HasPrefix(numPart, "0X") {
+            num, err = strconv.ParseInt(numPart[2:], 16, 64)
+        } else {
+            num, err = strconv.ParseInt(numPart, 10, 64)
+        }
+
+        if err != nil {
+            return match // Keep original if parse fails
+        }
+
+        // C semantics: 0 is false, non-zero is true
+        if num == 0 {
+            return "false ?"
+        }
+        return "true ?"
+    })
+
+    return expr
+}
+
+// convertCBooleanOps converts C-style boolean operations to Za-compatible form
+// In C: !0 is true, !<nonzero> is false, and integers can be used in boolean contexts
+// In Za: ! operator and logical operators require boolean operands
+// Examples: !0 → true, 0 && x → false && x, 1 || x → true || x
+func convertCBooleanOps(expr string) string {
+    // First, replace integers used in logical contexts (after &&, ||, or at start)
+    // Only match when the integer is followed by a logical operator or end of expression
+    // NOT when followed by comparison operators like >=, <=, >, <, ==, !=
+    // or arithmetic operators like +, -, *, /, %
+    //
+    // Modified regex to not match when ) is followed by comparison/arithmetic operators
+    // This prevents matching numbers like 30600 in expressions like ((30600)) > x
+    re0 := regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*(\d+|0[xX][0-9a-fA-F]+)\s*(\&\&|\|\||[?:]|$)`)
+    expr = re0.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract parts
+        submatch := re0.FindStringSubmatch(match)
+        if len(submatch) < 4 {
+            return match
+        }
+
+        prefix := submatch[1]
+        numStr := submatch[2]
+        suffix := submatch[3]
+
+        // Parse the number
+        var num int64
+        var err error
+        if strings.HasPrefix(numStr, "0x") || strings.HasPrefix(numStr, "0X") {
+            num, err = strconv.ParseInt(numStr[2:], 16, 64)
+        } else {
+            num, err = strconv.ParseInt(numStr, 10, 64)
+        }
+
+        if err != nil {
+            return match
+        }
+
+        // Convert to boolean
+        var boolStr string
+        if num == 0 {
+            boolStr = "false"
+        } else {
+            boolStr = "true"
+        }
+
+        // Build result with proper spacing
+        // Note: "^" and "$" are anchors, not literals
+        result := ""
+        if prefix != "" {
+            result += prefix + " "
+        }
+        result += boolStr
+        if suffix != "" {
+            result += " " + suffix
+        }
+        return result
+    })
+
+    // Replace !<integer> with true/false based on C truthiness (handle optional whitespace)
+    re := regexp.MustCompile(`!\s*(\d+|0[xX][0-9a-fA-F]+)`)
+    expr = re.ReplaceAllStringFunc(expr, func(match string) string {
+        // Extract the number (from the first capture group)
+        submatch := re.FindStringSubmatch(match)
+        if len(submatch) < 2 {
+            return match // Should not happen, but be safe
+        }
+        numStr := submatch[1]
+
+        // Parse as integer
+        var num int64
+        var err error
+        if strings.HasPrefix(numStr, "0x") || strings.HasPrefix(numStr, "0X") {
+            num, err = strconv.ParseInt(numStr[2:], 16, 64)
+        } else {
+            num, err = strconv.ParseInt(numStr, 10, 64)
+        }
+
+        if err != nil {
+            return match // Keep original if parse fails
+        }
+
+        // C semantics: !0 is true, !<nonzero> is false
+        if num == 0 {
+            return "true"
+        }
+        return "false"
+    })
+
+    // Replace variables in boolean contexts with itob() wrapper
+    // This converts C integer semantics to Za boolean semantics
+
+    // Handle !<variable> → !(itob(<variable>))
+    // Skip boolean literals (true, false)
+    reNot := regexp.MustCompile(`!\s*([A-Za-z_][A-Za-z0-9_]*)`)
+    expr = reNot.ReplaceAllStringFunc(expr, func(match string) string {
+        submatch := reNot.FindStringSubmatch(match)
+        if len(submatch) < 2 {
+            return match
+        }
+        varName := submatch[1]
+        // Don't wrap boolean literals
+        if varName == "true" || varName == "false" {
+            return match
+        }
+        return "!(itob(" + varName + "))"
+    })
+
+    // Handle <variable> && ... and ... && <variable>
+    // Only wrap if not followed by comparison operators (==, !=, <, >, <=, >=)
+    // Skip boolean literals (true, false)
+    reAnd := regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\&\&)`)
+    expr = reAnd.ReplaceAllStringFunc(expr, func(match string) string {
+        submatch := reAnd.FindStringSubmatch(match)
+        if len(submatch) < 4 {
+            return match
+        }
+        prefix := submatch[1]
+        varName := submatch[2]
+        suffix := submatch[3]
+        // Don't wrap boolean literals
+        if varName == "true" || varName == "false" {
+            return match
+        }
+        return prefix + " itob(" + varName + ") " + suffix
+    })
+
+    // Handle <variable> || ... and ... || <variable>
+    reOr := regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\|)`)
+    expr = reOr.ReplaceAllStringFunc(expr, func(match string) string {
+        submatch := reOr.FindStringSubmatch(match)
+        if len(submatch) < 4 {
+            return match
+        }
+        prefix := submatch[1]
+        varName := submatch[2]
+        suffix := submatch[3]
+        // Don't wrap boolean literals
+        if varName == "true" || varName == "false" {
+            return match
+        }
+        return prefix + " itob(" + varName + ") " + suffix
+    })
+
+    return expr
+}
+
+// evaluateSimpleValue attempts to evaluate a simple constant value from a string
+// Used for evaluating macro values from moduleMacros when building tempIdent
+// Returns (value, true) if successful, (nil, false) otherwise
+func evaluateSimpleValue(valueStr string) (any, bool) {
+    valueStr = strings.TrimSpace(valueStr)
+
+    // Try parsing as integer
+    if intVal, err := strconv.ParseInt(valueStr, 0, 64); err == nil {
+        return int(intVal), true
+    }
+
+    // Try parsing as float
+    if floatVal, err := strconv.ParseFloat(valueStr, 64); err == nil {
+        return floatVal, true
+    }
+
+    // Try parsing as string literal
+    if strings.HasPrefix(valueStr, "\"") && strings.HasSuffix(valueStr, "\"") {
+        return valueStr[1 : len(valueStr)-1], true
+    }
+
+    // Not a simple constant value
+    return nil, false
+}
+
+// evaluateMacroLazily evaluates a macro on-demand with cycle detection
+// Returns (value, true) if successful, (nil, false) if evaluation fails or cycle detected
+func evaluateMacroLazily(name string, alias string, fs uint32, debugAuto bool) (any, bool) {
+    // Check if already evaluated
+    moduleConstantsLock.RLock()
+    if constants, exists := moduleConstants[alias]; exists {
+        if val, found := constants[name]; found {
+            moduleConstantsLock.RUnlock()
+            return val, true
+        }
+    }
+    moduleConstantsLock.RUnlock()
+
+    // Check if macro was marked as skipped (filtered out during parsing)
+    // These macros should not be evaluated as they likely reference undefined identifiers
+    macroEvalStatusLock.RLock()
+    if status, exists := macroEvalStatus[alias]; exists {
+        if status[name] == "skipped" {
+            macroEvalStatusLock.RUnlock()
+            if debugAuto {
+                fmt.Printf("[AUTO]   → Skipping lazy evaluation of filtered macro: %s\n", name)
+            }
+            return nil, false
+        }
+    }
+    macroEvalStatusLock.RUnlock()
+
+    // Check for evaluation cycle
+    macroEvaluatingLock.Lock()
+    if macroEvaluating[alias] == nil {
+        macroEvaluating[alias] = make(map[string]bool)
+    }
+    if macroEvaluating[alias][name] {
+        // Cycle detected
+        macroEvaluatingLock.Unlock()
+        if debugAuto {
+            fmt.Printf("[AUTO]   → Cycle detected evaluating macro %s\n", name)
+        }
+        return nil, false
+    }
+    macroEvaluating[alias][name] = true
+    macroEvaluatingLock.Unlock()
+
+    // Cleanup cycle guard on exit
+    defer func() {
+        macroEvaluatingLock.Lock()
+        delete(macroEvaluating[alias], name)
+        macroEvaluatingLock.Unlock()
+    }()
+
+    // Get raw macro value
+    moduleMacrosLock.RLock()
+    macroValue, exists := moduleMacros[alias][name]
+    moduleMacrosLock.RUnlock()
+
+    if !exists {
+        return nil, false
+    }
+
+    if debugAuto {
+        fmt.Printf("[AUTO]   → Lazy evaluating macro %s = %q\n", name, macroValue)
+    }
+
+    // Evaluate the macro (this may recursively trigger more lazy evaluations)
+    val, ok := evaluateConstant(macroValue, nil, alias, fs, false)
+    if !ok {
+        return nil, false
+    }
+
+    // Store result in moduleConstants
+    moduleConstantsLock.Lock()
+    if moduleConstants[alias] == nil {
+        moduleConstants[alias] = make(map[string]any)
+    }
+    moduleConstants[alias][name] = val
+    moduleConstantsLock.Unlock()
+
+    // Store in cModuleIdents for future reference
+    cModuleIdentsLock.Lock()
+    cModuleIdents[fs] = append(cModuleIdents[fs], Variable{
+        IName:    name,
+        IValue:   val,
+        declared: true,
+    })
+    cModuleIdentsLock.Unlock()
+
+    if debugAuto {
+        fmt.Printf("[AUTO]   → Lazy evaluated %s = %v (type %T)\n", name, val, val)
+    }
+
+    return val, true
+}
+
 // evaluateConstant uses Za's expression evaluator to parse #define values
 // Handles integers, floats, strings, and constant expressions automatically
 // The ident parameter allows constants to reference previously-defined constants
 // The fs parameter is the function space from the calling context (passed from Call())
-func evaluateConstant(valueStr string, ident *[]Variable, fs uint32) (any, bool) {
+// The alias parameter is the module alias for typedef resolution in sizeof expressions
+// The isConditional parameter indicates if this is a #if expression (needs boolean conversions)
+func evaluateConstant(valueStr string, state *PreprocessorState, alias string, fs uint32, isConditional bool) (any, bool) {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
     // Transform C string concatenation to Za syntax
     valueStr = transformStringConcatenation(valueStr)
 
-    // Follow stdlib eval() pattern from lib-internal.go (lines 1023-1032)
-    // Use the caller's fs (from Call() context via parser.fs)
+    // Strip C integer suffixes (L, LL, U, UL, ULL)
+    valueStr = stripCIntegerSuffixes(valueStr)
+
+    // Convert character literals to numeric values (must be done before evaluation)
+    // Examples: '\0' → 0, 'A' → 65, L'\0' → 0
+    valueStr = convertCharacterLiterals(valueStr)
+
+    // Special case: Detect divide-by-zero expressions that create NaN
+    // Patterns: (0.0 / 0.0), (0.0f / 0.0f), etc.
+    // These create NaN in C but can't be evaluated as expressions
+    // Return math.NaN() directly
+    nanPattern := regexp.MustCompile(`\(\s*0\.0+\s*/\s*0\.0+\s*\)`)
+    if nanPattern.MatchString(valueStr) {
+        if debugAuto {
+            fmt.Printf("[AUTO]     → Detected NaN expression: %s, returning math.NaN()\n", valueStr)
+        }
+        return math.NaN(), true
+    }
+
+    // Handle sizeof(type) by replacing with actual size EARLY
+    // This must be done BEFORE type keyword checking to avoid skipping expressions like "sizeof(int)"
+    re := regexp.MustCompile(`sizeof\s*\(\s*([^)]+)\s*\)`)
+    valueStr = re.ReplaceAllStringFunc(valueStr, func(match string) string {
+        // Extract type name
+        submatch := re.FindStringSubmatch(match)
+        if len(submatch) < 2 {
+            return match // Keep original if parsing fails
+        }
+        typeName := strings.TrimSpace(submatch[1])
+
+        // First, try to resolve as a macro
+        if state != nil {
+            if macroValue, found := state.definedMacros[typeName]; found {
+                typeName = macroValue
+                if debugAuto {
+                    fmt.Printf("[AUTO]     → Resolved sizeof macro %s → %s\n", submatch[1], typeName)
+                }
+            }
+        }
+
+        // Get C type size
+        if size, ok := getCTypeSize(typeName, alias); ok {
+            if debugAuto {
+                fmt.Printf("[AUTO]     → Replaced sizeof(%s) with %d\n", typeName, size)
+            }
+            return strconv.Itoa(size)
+        }
+
+        // Unknown type - keep original (will fail later with helpful error)
+        if debugAuto {
+            fmt.Printf("[AUTO]     → Warning: sizeof(%s) has unknown type, keeping original\n", typeName)
+        }
+        return match
+    })
+
+    // Skip parameter lists like (_Marg_ __x) or (double __x, int __y)
+    // These come from macro definitions that represent function parameters, not expressions
+    paramListPattern := regexp.MustCompile(`^\([A-Za-z_][A-Za-z0-9_]*\s+[A-Za-z_][A-Za-z0-9_]*`)
+    if paramListPattern.MatchString(strings.TrimSpace(valueStr)) {
+        if debugAuto {
+            fmt.Printf("[AUTO]     → Skipping parameter list: %s\n", valueStr)
+        }
+        return nil, false
+    }
+
+    // Check if this is likely a reference to a function-like macro, type declaration, or undefined identifier
+    // Examples:
+    //   #define __REDIRECT_FORTIFY __REDIRECT  (function-like macro alias)
+    //   #define __U_CHAR unsigned char  (type declaration)
+    // Skip these as they're not evaluatable constants
+    trimmed := strings.TrimSpace(valueStr)
+    isSimpleIdentifier := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(trimmed)
+
+    // Skip type declarations (contains C type keywords)
+    // Note: This check happens AFTER sizeof replacement, so "sizeof(int)" will have been replaced with a number
+    typeKeywords := []string{"char", "short", "int", "long", "float", "double", "void", "unsigned", "signed", "struct", "union", "enum"}
+    for _, keyword := range typeKeywords {
+        // Match whole words only (with word boundaries)
+        pattern := regexp.MustCompile(`\b` + keyword + `\b`)
+        if pattern.MatchString(trimmed) {
+            if debugAuto {
+                fmt.Printf("[AUTO]     → Skipping type declaration: %s (contains keyword %s)\n", trimmed, keyword)
+            }
+            return nil, false
+        }
+    }
+
+    // For simple identifiers, check if they're known function-like macros
+    // by checking if they start with common prefixes (__) or are all uppercase
+    if isSimpleIdentifier && !isConditional {
+        // Skip identifiers that look like function-like macros
+        // (start with __ or are macro-style names)
+        if strings.HasPrefix(trimmed, "__") {
+            if debugAuto {
+                fmt.Printf("[AUTO]     → Skipping identifier %s (looks like macro)\n", trimmed)
+            }
+            return nil, false
+        }
+    }
+
+    // Only apply boolean conversions for conditional expressions (#if), not for constant values
+    if isConditional {
+        // Check if expression contains ternary operator - if so, treat as false for now
+        // TODO: Fix ternary operator support in Za's ev()
+        if strings.Contains(valueStr, "?") {
+            if debugAuto {
+                fmt.Printf("[AUTO]     → Skipping ternary expression: %q, treating as false\n", valueStr)
+            }
+            return false, true  // Treat as false instead of failing
+        }
+
+        // Convert ternary conditions from integers to booleans
+        valueStr = convertTernaryConditions(valueStr)
+
+        // Convert C boolean operations to Za-compatible form
+        valueStr = convertCBooleanOps(valueStr)
+
+        // Trim any extra whitespace that may have been added
+        valueStr = strings.TrimSpace(valueStr)
+    }
+
+    // Create parser for ev()
     parser := &leparser{}
-    parser.ident = ident
-    parser.fs = fs
+    parser.fs = 0  // Use fs=0 for evaluation to avoid bind_int() conflicts
     parser.namespace = "auto_parse"
     parser.ctx = context.Background()
     parser.prectable = default_prectable
 
-    // Pre-bind existing constants so they can be referenced
-    // Clear previous bindings for this fs to avoid stale index mappings
-    // (ident array order can change between evaluations due to map iteration)
-    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
-    bindlock.Lock()
-    // Clear previous bindings for macro names to avoid index mismatches
-    if bindings[fs] != nil {
-        for name := range bindings[fs] {
-            if strings.HasPrefix(name, "__c_") {
-                delete(bindings[fs], name)
+    // Build a temporary ident with previously defined C constants
+    // Use vset with fs=0 to ensure identifiers are at correct binding positions
+    // Add __c_ prefix to avoid conflicts with Za keywords
+    tempIdent := make([]Variable, identInitialSize)
+
+    // Copy existing C constants from cModuleIdents[fs] using vset for proper binding
+    // Add __c_ prefix to prevent keyword conflicts
+    cModuleIdentsLock.RLock()
+    constantNames := make([]string, 0)
+    if cIdent, exists := cModuleIdents[fs]; exists {
+        for _, v := range cIdent {
+            if v.declared {
+                vset(nil, 0, &tempIdent, "__c_"+v.IName, v.IValue)
+                constantNames = append(constantNames, v.IName)
             }
         }
     }
-    if bindings[fs] == nil {
-        bindings[fs] = make(map[string]uint64)
-    }
-    // Bind all ident variables for this evaluation
-    for i := range *ident {
-        if (*ident)[i].declared {
-            name := (*ident)[i].IName
-            bindings[fs][name] = uint64(i)
-            if debugAuto {
-                fmt.Printf("[AUTO]     → Bound %s = %v (index %d) in fs=%d\n", name, (*ident)[i].IValue, i, fs)
+    cModuleIdentsLock.RUnlock()
+
+    // Add preprocessor macros if available with __c_ prefix
+    if state != nil {
+        macros := state.getMacrosAsIdent()
+        for _, m := range macros {
+            if m.declared {
+                vset(nil, 0, &tempIdent, "__c_"+m.IName, m.IValue)
             }
         }
+    } else {
+        // When state is nil (e.g., in parseDefines), use moduleConstants directly
+        // Only include macros that have already been evaluated to avoid circular dependencies
+        moduleConstantsLock.RLock()
+        if constants, exists := moduleConstants[alias]; exists {
+            for name, value := range constants {
+                vset(nil, 0, &tempIdent, "__c_"+name, value)
+            }
+        }
+        moduleConstantsLock.RUnlock()
     }
-    bindlock.Unlock()
+
+    // Transform valueStr to use __c_ prefixed identifiers
+    if debugAuto {
+        fmt.Printf("[AUTO]     → Before prefix transform: %q\n", valueStr)
+
+        // Show which C constants appear in this expression
+        foundConstants := make([]string, 0)
+        for _, cname := range constantNames {
+            if strings.Contains(valueStr, cname) {
+                foundConstants = append(foundConstants, cname)
+            }
+        }
+        if len(foundConstants) > 0 {
+            fmt.Printf("[AUTO]     → Expression references C constants: %v\n", foundConstants)
+            // Show their values
+            cModuleIdentsLock.RLock()
+            if cIdent, exists := cModuleIdents[fs]; exists {
+                for _, v := range cIdent {
+                    for _, fname := range foundConstants {
+                        if v.IName == fname && v.declared {
+                            fmt.Printf("[AUTO]       %s = %v (type %T)\n", fname, v.IValue, v.IValue)
+                        }
+                    }
+                }
+            }
+            cModuleIdentsLock.RUnlock()
+        }
+    }
+
+    valueStr = addCPrefixToIdentifiers(valueStr)
+    if debugAuto {
+        fmt.Printf("[AUTO]     → After prefix transform: %q\n", valueStr)
+    }
+
+    // Add true/false for conditional evaluation
+    if isConditional {
+        vset(nil, 0, &tempIdent, "true", true)
+        vset(nil, 0, &tempIdent, "false", false)
+    }
 
     if debugAuto {
-        fmt.Printf("[AUTO]     → Calling ev() with expr=%q, fs=%d\n", valueStr, fs)
+        fmt.Printf("[AUTO]     → Using tempIdent with length %d (from cModuleIdents[%d])\n", len(tempIdent), fs)
+        // Show if the constants we need are in tempIdent
+        if strings.Contains(valueStr, "_SS_SIZE") || strings.Contains(valueStr, "SOCKADDR_COMMON") {
+            for _, v := range tempIdent {
+                if strings.Contains(v.IName, "_SS_SIZE") || strings.Contains(v.IName, "SOCKADDR_COMMON") {
+                    fmt.Printf("[AUTO]       tempIdent has: %s = %v (type %T)\n", v.IName, v.IValue, v.IValue)
+                }
+            }
+        }
+        fmt.Printf("[AUTO]     → About to call ev(parser, fs=0, valueStr=%q)\n", valueStr)
     }
 
-    // Use ev() to evaluate the constant expression
-    result, err := ev(parser, fs, valueStr)
+    // Check if expression contains __c_ prefixed identifiers that don't exist in tempIdent
+    // This prevents ev() from hanging when trying to evaluate undefined identifiers
+    identPattern := regexp.MustCompile(`__c_[A-Za-z_][A-Za-z0-9_]*`)
+    referencedIdents := identPattern.FindAllString(valueStr, -1)
+    if len(referencedIdents) > 0 {
+        for _, ident := range referencedIdents {
+            found := false
+            for _, v := range tempIdent {
+                if v.IName == ident && v.declared {
+                    found = true
+                    break
+                }
+            }
+            if !found {
+                if debugAuto {
+                    fmt.Printf("[AUTO]     → Expression references undefined identifier %s, skipping evaluation\n", ident)
+                }
+                return nil, false
+            }
+        }
+    }
+
+    parser.ident = &tempIdent
+
+    // Evaluate using fs=0 (global) to avoid polluting C module bindings
+    result, err := ev(parser, 0, valueStr)
 
     if debugAuto {
         fmt.Printf("[AUTO]     → ev() returned: result=%v, err=%v\n", result, err)
     }
+
     if err != nil {
-        // Evaluation failed - skip this constant
+        if debugAuto {
+            fmt.Printf("[AUTO]     → ev() error for expression %q: %v\n", valueStr, err)
+            // Report eval errors only in debug mode
+            fmt.Fprintf(os.Stderr, "Error evaluating '%s'\n", valueStr)
+        }
         return nil, false
     }
 
@@ -843,9 +2487,7 @@ func parseEnums(text string, alias string, fs uint32) error {
                 valueStr := strings.TrimSpace(parts[1])
 
                 // For enum values, we expect integers
-                // Create a temporary ident table (enums don't usually reference each other across members)
-                var enumIdent []Variable
-                if val, ok := evaluateConstant(valueStr, &enumIdent, fs); ok {
+                if val, ok := evaluateConstant(valueStr, nil, alias, fs, false); ok { // enum value
                     // Accept any numeric type (int, int64, float64) and convert to int
                     intVal := 0
                     switch v := val.(type) {
@@ -861,14 +2503,38 @@ func parseEnums(text string, alias string, fs uint32) error {
                     enum[fullName].members[memberName] = intVal
                     enum[fullName].ordered = append(enum[fullName].ordered, memberName)
                     currentValue = intVal + 1
+
+                    // Add to cModuleIdents so later enum values can reference it
+                    cModuleIdentsLock.Lock()
+                    cModuleIdents[fs] = append(cModuleIdents[fs], Variable{
+                        IName:    memberName,
+                        IValue:   intVal,
+                        declared: true,
+                    })
+                    cModuleIdentsLock.Unlock()
                 }
             } else {
                 // Auto-increment
                 memberName := line
                 enum[fullName].members[memberName] = currentValue
                 enum[fullName].ordered = append(enum[fullName].ordered, memberName)
+
+                // Add to cModuleIdents so later enum values can reference it
+                cModuleIdentsLock.Lock()
+                cModuleIdents[fs] = append(cModuleIdents[fs], Variable{
+                    IName:    memberName,
+                    IValue:   currentValue,
+                    declared: true,
+                })
+                cModuleIdentsLock.Unlock()
+
                 currentValue++
             }
+        }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return fmt.Errorf("AUTO import aborted during enum parsing")
         }
     }
 
@@ -923,12 +2589,18 @@ func normalizeFunctionDeclarations(text string) string {
             }
         } else {
             // We're in a declaration - keep buffering until we find the end
-            buffer += trimmed + " "
-            if strings.Contains(trimmed, ");") || strings.Contains(trimmed, ") ;") {
-                // Declaration complete
-                normalized = append(normalized, buffer)
-                buffer = ""
-                inDeclaration = false
+            if strings.Contains(trimmed, ")") {
+                buffer += trimmed + " "
+                // Check if this line also contains the final semicolon
+                if strings.Contains(trimmed, ";") {
+                    // Declaration complete
+                    normalized = append(normalized, buffer)
+                    buffer = ""
+                    inDeclaration = false
+                }
+                // Otherwise, continue buffering (attributes follow on next lines)
+            } else {
+                buffer += trimmed + " "
             }
         }
     }
@@ -1085,6 +2757,11 @@ func parseUnionTypedefs(text string, alias string) error {
             fmt.Printf("[AUTO] Registered union %s (size: %d bytes, %d fields)\n",
                 unionName, maxSize, len(fields))
         }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return fmt.Errorf("AUTO import aborted during union parsing")
+        }
     }
 
     return nil
@@ -1176,10 +2853,48 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
             // Parse type
             fType, fSize := parseCTypeString(typeStr, alias)
             if fType == CVoid {
-                if debug {
-                    fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                // Check if this is a struct/union type (same as parseStructFields logic)
+                var nestedStruct *CLibraryStruct
+                possibleNames := []string{typeStr, alias + "::" + typeStr}
+                for _, name := range possibleNames {
+                    ffiStructLock.RLock()
+                    if structDef, exists := ffiStructDefinitions[name]; exists {
+                        nestedStruct = structDef
+                        ffiStructLock.RUnlock()
+                        break
+                    }
+                    ffiStructLock.RUnlock()
                 }
-                continue
+
+                if nestedStruct != nil {
+                    // It's a nested struct/union
+                    fieldType = CStruct
+                    fieldSize = nestedStruct.Size
+                    // Store the struct definition for marshaling/unmarshaling
+                    field := StructField{
+                        Name:       fieldName,
+                        Type:       CStruct,
+                        Offset:     0,  // All union fields at offset 0
+                        StructName: typeStr,
+                        StructDef:  nestedStruct,
+                    }
+                    fields = append(fields, field)
+                    if nestedStruct.Size > maxSize {
+                        maxSize = nestedStruct.Size
+                    }
+
+                    if debug {
+                        fmt.Printf("[AUTO]   Field: CStruct %s (nested %s, size: %d bytes, offset: 0)\n",
+                            fieldName, typeStr, nestedStruct.Size)
+                    }
+                    continue  // Skip the normal field append below
+                } else {
+                    // Truly unsupported type
+                    if debug {
+                        fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                    }
+                    continue
+                }
             }
 
             fieldType = fType
@@ -1210,6 +2925,11 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
                 fmt.Printf("[AUTO]   Field: %s %s (size: %d bytes, offset: 0)\n",
                     fieldType, fieldName, fieldSize)
             }
+        }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return nil, 0, fmt.Errorf("AUTO import aborted during union field parsing")
         }
     }
 
@@ -1268,6 +2988,11 @@ func parseStructTypedefs(text string, alias string) error {
             fmt.Printf("[AUTO] Registered struct %s (size: %d bytes, %d fields)\n",
                 structName, totalSize, len(fields))
         }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return fmt.Errorf("AUTO import aborted during struct parsing")
+        }
     }
 
     return nil
@@ -1279,6 +3004,7 @@ func parseStructTypedefs(text string, alias string) error {
 func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructField, uintptr, error) {
     var fields []StructField
     var currentOffset uintptr = 0
+    var maxAlignment uintptr = 1  // Track maximum alignment requirement
 
     // Split by semicolons to get individual field declarations
     declarations := strings.Split(fieldBlock, ";")
@@ -1298,6 +3024,8 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
         var fieldSize uintptr
         var arraySize int = 0
         var elementType CType
+        var typeStr string
+        var nestedStruct *CLibraryStruct
 
         if strings.Contains(decl, "[") && strings.HasSuffix(decl, "]") {
             // Array field
@@ -1328,7 +3056,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
 
                 // Last part is field name, everything else is type
                 fieldName = parts[len(parts)-1]
-                typeStr := strings.Join(parts[:len(parts)-1], " ")
+                typeStr = strings.Join(parts[:len(parts)-1], " ")
 
                 // Parse element type
                 elemType, elemSize := parseCTypeString(typeStr, alias)
@@ -1345,6 +3073,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
             }
         } else {
             // Regular field (non-array)
+            // Handle multi-declaration like "int x, y;" or "int x_root, y_root;"
             parts := strings.Fields(decl)
             if len(parts) < 2 {
                 if debug {
@@ -1353,21 +3082,132 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                 continue
             }
 
-            // Last part is field name, everything else is type
-            fieldName = parts[len(parts)-1]
-            typeStr := strings.Join(parts[:len(parts)-1], " ")
+            // Check for comma-separated field names (multi-declaration)
+            // Example: "int x, y" becomes ["int", "x,", "y"]
+            var fieldNames []string
+            typeEndIndex := -1
 
-            // Parse type
-            fType, fSize := parseCTypeString(typeStr, alias)
-            if fType == CVoid {
+            for i, part := range parts {
+                if strings.Contains(part, ",") || (i > 0 && typeEndIndex >= 0) {
+                    // This is a field name (possibly with comma)
+                    if typeEndIndex < 0 {
+                        typeEndIndex = i - 1
+                    }
+                    fieldNames = append(fieldNames, strings.TrimSuffix(part, ","))
+                } else if i == len(parts)-1 {
+                    // Last part - could be single field name or last in multi-declaration
+                    if typeEndIndex < 0 {
+                        // Single field
+                        typeEndIndex = i - 1
+                    }
+                    fieldNames = append(fieldNames, part)
+                }
+            }
+
+            if typeEndIndex < 0 || len(fieldNames) == 0 {
                 if debug {
-                    fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                    fmt.Printf("[AUTO] Warning: could not parse field declaration: %s\n", decl)
                 }
                 continue
             }
 
-            fieldType = fType
-            fieldSize = fSize
+            // Type is everything before the field names
+            typeStr = strings.Join(parts[:typeEndIndex+1], " ")
+
+            // Parse type once for all fields in this declaration
+            fType, fSize := parseCTypeString(typeStr, alias)
+
+            // Process each field name
+            for _, fname := range fieldNames {
+                fieldName = fname
+
+                // Check if fieldName starts with * (pointer notation like "*name")
+                if strings.HasPrefix(fieldName, "*") {
+                    // Move the * from field name to type
+                    fieldName = strings.TrimPrefix(fieldName, "*")
+                    typeStr = strings.TrimSpace(typeStr) + " *"
+                    // Re-parse with pointer
+                    fType, fSize = parseCTypeString(typeStr, alias)
+                }
+
+                if fType == CVoid {
+                    // Check if this is a struct type
+                    possibleNames := []string{typeStr, alias + "::" + typeStr}
+                    var foundStruct *CLibraryStruct
+                    for _, name := range possibleNames {
+                        if structDef, exists := ffiStructDefinitions[name]; exists {
+                            foundStruct = structDef
+                            break
+                        }
+                    }
+
+                    if foundStruct != nil {
+                        fieldType = CStruct
+                        fieldSize = foundStruct.Size
+                        nestedStruct = foundStruct
+                    } else {
+                        if debug {
+                            fmt.Printf("[AUTO] Warning: unsupported field type: %s (in field: %s)\n", typeStr, decl)
+                        }
+                        continue
+                    }
+                } else {
+                    fieldType = fType
+                    fieldSize = fSize
+                    nestedStruct = nil
+                }
+
+                // Align field to its natural alignment (up to 8 bytes on x86-64)
+                fieldAlignment := fieldSize
+                if fieldAlignment > 8 {
+                    fieldAlignment = 8 // Cap at 8 bytes (x86-64 maximum)
+                }
+                if fieldAlignment > 1 && currentOffset%fieldAlignment != 0 {
+                    currentOffset = ((currentOffset + fieldAlignment - 1) / fieldAlignment) * fieldAlignment
+                }
+
+                // Create field for this name
+                field := StructField{
+                    Name:        fieldName,
+                    Type:        fieldType,
+                    Offset:      currentOffset,
+                    ArraySize:   arraySize,
+                    ElementType: elementType,
+                }
+
+                // If this is a nested struct field, populate StructName and StructDef
+                if fieldType == CStruct && nestedStruct != nil {
+                    field.StructName = typeStr
+                    field.StructDef = nestedStruct
+                }
+
+                fields = append(fields, field)
+
+                // Track maximum alignment requirement
+                if fieldAlignment > maxAlignment {
+                    maxAlignment = fieldAlignment
+                }
+
+                // Update offset for next field
+                currentOffset += fieldSize
+            }
+
+            // Skip the normal field append since we handled it in the loop
+            continue
+        }
+
+        // Align field to its natural alignment (up to 8 bytes on x86-64)
+        fieldAlignment := fieldSize
+        if arraySize > 0 {
+            // For arrays, alignment is the element size
+            elementSize := fieldSize / uintptr(arraySize)
+            fieldAlignment = elementSize
+        }
+        if fieldAlignment > 8 {
+            fieldAlignment = 8 // Cap at 8 bytes (x86-64 maximum)
+        }
+        if fieldAlignment > 1 && currentOffset%fieldAlignment != 0 {
+            currentOffset = ((currentOffset + fieldAlignment - 1) / fieldAlignment) * fieldAlignment
         }
 
         // Struct fields have sequential offsets (not overlapping like unions)
@@ -1379,7 +3219,18 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
             ElementType: elementType,
         }
 
+        // If this is a nested struct field, populate StructName and StructDef
+        if fieldType == CStruct && nestedStruct != nil {
+            field.StructName = typeStr
+            field.StructDef = nestedStruct
+        }
+
         fields = append(fields, field)
+
+        // Track maximum alignment requirement
+        if fieldAlignment > maxAlignment {
+            maxAlignment = fieldAlignment
+        }
 
         // Update offset for next field
         currentOffset += fieldSize
@@ -1393,9 +3244,26 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                     fieldType, fieldName, fieldSize, field.Offset)
             }
         }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return nil, 0, fmt.Errorf("AUTO import aborted during struct field parsing")
+        }
     }
 
-    return fields, currentOffset, nil
+    // Add padding to align struct size to maximum field alignment
+    // This matches C struct padding rules (struct size is multiple of max alignment)
+    paddedSize := currentOffset
+    if maxAlignment > 1 && currentOffset%maxAlignment != 0 {
+        paddedSize = ((currentOffset + maxAlignment - 1) / maxAlignment) * maxAlignment
+    }
+
+    if debug {
+        fmt.Printf("[AUTO]   Struct size before padding: %d, max alignment: %d, final size: %d\n",
+            currentOffset, maxAlignment, paddedSize)
+    }
+
+    return fields, paddedSize, nil
 }
 
 // capitalizeFieldName capitalizes the first letter of a field name for Go reflection
@@ -1483,6 +3351,24 @@ func registerStructInZa(alias string, structName string, structDef *CLibraryStru
 func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     // Normalize type string
     typeStr = strings.TrimSpace(typeStr)
+
+    // Check for pointer types first (before lowercasing)
+    // Handle both "Type*" and "Type *" formats
+    if strings.Contains(typeStr, "*") {
+        return CPointer, unsafe.Sizeof(uintptr(0))
+    }
+
+    // Check typedef registry BEFORE lowercasing (typedefs are case-sensitive)
+    moduleTypedefsLock.RLock()
+    if aliasMap, hasAlias := moduleTypedefs[alias]; hasAlias {
+        if baseType, ok := aliasMap[typeStr]; ok {
+            moduleTypedefsLock.RUnlock()
+            // Recursively parse the base type
+            return parseCTypeString(baseType, alias)
+        }
+    }
+    moduleTypedefsLock.RUnlock()
+
     typeStr = strings.ToLower(typeStr)
 
     // Remove qualifiers
@@ -1509,6 +3395,12 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
         return CInt16, 2
     case "unsigned short", "unsigned short int":
         return CUInt16, 2
+    case "long", "long int", "signed long":
+        // On x86-64, long is 8 bytes; on x86-32, it's 4 bytes
+        // We'll assume 64-bit for now (most modern systems)
+        return CInt64, 8
+    case "unsigned long", "unsigned long int":
+        return CUInt64, 8
     case "long long", "long long int", "signed long long":
         return CInt64, 8
     case "unsigned long long", "unsigned long long int":
@@ -1529,8 +3421,19 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
         return CInt64, 8
     case "uint64_t":
         return CUInt64, 8
+    case "wchar_t":
+        // Platform-dependent size detected at init
+        if wcharSize == 2 {
+            return CUInt16, 2
+        } else if wcharSize == 4 {
+            return CUInt, 4 // CUInt is 4 bytes, unsigned
+        }
+        // Fallback (shouldn't happen)
+        return CVoid, 0
     default:
-        // Unknown type
+        // Unknown type - return CVoid to signal caller to check if it's a struct type
+        // Note: typedef'd types were already checked before lowercasing
+        // #define'd types (like X11's Bool) won't be recognized
         return CVoid, 0
     }
 }
@@ -1543,13 +3446,14 @@ func parseFunctionSignatures(text string, alias string) error {
     // We'll parse the left part to extract return type and function name
 
     // Regex pattern explanation:
-    // ([a-zA-Z_][a-zA-Z0-9_\s\*]*) = return type + function name (capture group 1)
+    // ([a-zA-Z_][a-zA-Z0-9_ \t\*]*) = return type + function name (capture group 1)
     // \( = opening paren
     // ([^)]*) = parameters (capture group 2)
-    // \)\s*; = closing paren + semicolon
-    // Note: removed ^ anchor since preprocessor may collapse lines
+    // \)\s*(?:[^;\n]+)?\s*; = closing paren + optional GCC attributes + semicolon
+    // Note: Using [ \t] instead of \s in first group, and [^;\n] to prevent matching across newlines
+    // The (?:[^;\n]+)? group matches optional attributes like __wur, __attribute_malloc__, etc.
 
-    re := regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_\s\*]*)\(([^)]*)\)\s*;`)
+    re := regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_ \t\*]*)\(([^)]*)\)\s*(?:[^;\n]+)?\s*;`)
     matches := re.FindAllStringSubmatch(text, -1)
 
     if len(matches) == 0 {
