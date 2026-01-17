@@ -5,6 +5,7 @@ package main
 
 import (
     "fmt"
+    "unsafe"
 )
 
 // LoadCLibrary - FFI disabled in this build
@@ -106,3 +107,20 @@ func CGetInt64(p *CPointerValue, offset int) int64 {
 func CGetDataSymbol(libName, symbolName string) (any, error) {
     return nil, fmt.Errorf("FFI disabled in this build")
 }
+
+// ============================================================================
+// STRUCT/UNION MARSHALING STUBS
+// ============================================================================
+
+// unmarshalUnion - FFI disabled in this build
+func unmarshalUnion(ptr unsafe.Pointer, unionDef *CLibraryStruct) (map[string]any, error) {
+    return nil, fmt.Errorf("C FFI disabled in this build (struct/union unmarshaling not available)")
+}
+
+// UnmarshalStructFromC - FFI disabled in this build
+func UnmarshalStructFromC(cPtr unsafe.Pointer, structDef *CLibraryStruct, zaStructName string) (any, error) {
+    return nil, fmt.Errorf("C FFI disabled in this build (struct/union unmarshaling not available)")
+}
+
+// wcharSize - Platform-detected wchar_t size (unavailable in noffi builds)
+var wcharSize uintptr = 0

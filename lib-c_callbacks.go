@@ -1,3 +1,6 @@
+//go:build !windows && !noffi && cgo
+// +build !windows,!noffi,cgo
+
 package main
 
 /*
