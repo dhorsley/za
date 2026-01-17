@@ -1,4 +1,4 @@
-#!/home/daniel/go/src/za/za
+#!/usr/bin/env za
 
 # X11 Window Example - Opens a simple window using FFI
 # This demonstrates Za's FFI auto-import capabilities including full union support
