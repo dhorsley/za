@@ -1,0 +1,98 @@
+#!/usr/bin/env za
+
+# Test nested struct marshaling
+# Tests recursive marshaling/unmarshaling of structs containing other structs
+
+module "./test_nested_struct_lib.so" as rect_lib auto "./test_nested_struct_lib.h"
+
+use +rect_lib
+
+println "Test: Nested Struct Marshaling"
+println "==============================="
+println
+
+# Test 1: Create a rectangle using make_rect
+println "1. Testing make_rect(10, 20, 100, 80)..."
+r1 = make_rect(10, 20, 100, 80)
+
+println "   Returned rect:"
+println "     topLeft.x: " + as_string(r1.topLeft.x)
+println "     topLeft.y: " + as_string(r1.topLeft.y)
+println "     bottomRight.x: " + as_string(r1.bottomRight.x)
+println "     bottomRight.y: " + as_string(r1.bottomRight.y)
+
+# Test 2: Calculate area
+println
+println "2. Testing rect_area()..."
+area = rect_area(r1)
+println "   Area: " + as_string(area)
+println "   Expected: " + as_string((100-10) * (80-20))
+
+if area == (100-10) * (80-20)
+    println "   ✓ Area calculation PASSED"
+else
+    println "   ✗ Area calculation FAILED"
+endif
+
+# Test 3: Width and height
+println
+println "3. Testing rect_width() and rect_height()..."
+width = rect_width(r1)
+height = rect_height(r1)
+println "   Width: " + as_string(width)
+println "   Height: " + as_string(height)
+
+if width == 90 and height == 60
+    println "   ✓ Width/height calculation PASSED"
+else
+    println "   ✗ Width/height calculation FAILED"
+endif
+
+# Test 4: Translate rectangle with nested Point struct
+println
+println "4. Testing rect_translate() with nested Point..."
+
+# Create a Point using make_point
+delta = make_point(5, -10)
+
+println "   Translating by delta: (" + as_string(delta["x"]) + ", " + as_string(delta["y"]) + ")"
+r2 = rect_translate(r1, delta)
+
+println "   Translated rect:"
+println "     topLeft.x: " + as_string(r2.topLeft.x) + " (expected: 15)"
+println "     topLeft.y: " + as_string(r2.topLeft.y) + " (expected: 10)"
+println "     bottomRight.x: " + as_string(r2.bottomRight.x) + " (expected: 105)"
+println "     bottomRight.y: " + as_string(r2.bottomRight.y) + " (expected: 70)"
+
+if r2.topLeft.x == 15 and r2.topLeft.y == 10 and r2.bottomRight.x == 105 and r2.bottomRight.y == 70
+    println "   ✓ Translation PASSED"
+else
+    println "   ✗ Translation FAILED"
+endif
+
+# Test 5: Create a Rect manually in Za and pass to C
+println
+println "5. Testing manual Rect creation in Za..."
+manual_rect = map()
+manual_rect["topLeft"] = map()
+manual_rect["topLeft"]["x"] = 0
+manual_rect["topLeft"]["y"] = 0
+manual_rect["bottomRight"] = map()
+manual_rect["bottomRight"]["x"] = 50
+manual_rect["bottomRight"]["y"] = 40
+
+area2 = rect_area(manual_rect)
+println "   Area of manually created rect: " + as_string(area2)
+println "   Expected: 2000"
+
+if area2 == 2000
+    println "   Manual rect creation PASSED"
+else
+    println "   Manual rect creation FAILED"
+endif
+
+println
+println "Test completed!"
+println "If all tests show PASSED, nested struct marshaling is working correctly."
+
+

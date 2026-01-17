@@ -7,7 +7,7 @@ println "[#4]Testing AUTO Struct Import[#-]"
 println "=" * 60
 
 # Load C library with AUTO - should parse struct definitions from header
-module "/home/daniel/go/src/za/za_tests/libtest_struct_array.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_struct_array_lib.h"
+module "./libtest_struct_array.so" as test_c auto "./test_struct_array_lib.h"
 use +test_c
 
 println "\n[#6]Test 1: color_t should be available as typed struct[#-]"

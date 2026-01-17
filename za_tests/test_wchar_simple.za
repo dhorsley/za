@@ -1,0 +1,80 @@
+#!/usr/bin/env za
+
+# Test wchar_t support via AUTO clause
+
+module "./test_wchar_lib.so" as tw auto "./test_wchar_lib.h"
+use +tw
+
+println "Test: wchar_t Support"
+println "====================="
+println
+
+# Test 1: Verify wchar_t size detection
+println "1. Testing wchar_t size detection..."
+detected_size = get_wchar_size()
+println "   wchar_t size: " + as_string(detected_size) + " bytes"
+
+if detected_size == 2
+    println "   Platform: Windows (16-bit wchar_t)"
+    println "   ✓ Size detection PASSED"
+else
+    if detected_size == 4
+        println "   Platform: Unix/Linux (32-bit wchar_t)"
+        println "   ✓ Size detection PASSED"
+    else
+        println "   WARNING: Unexpected wchar_t size!"
+    endif
+endif
+
+# Test 2: wchar_t parameter and return
+println
+println "2. Testing wchar_t parameter and return..."
+# ASCII 'A' = 65
+result = wchar_echo(65)
+println "   wchar_echo(65) = " + as_string(result)
+
+if result == 65
+    println "   ✓ wchar_t echo PASSED"
+else
+    println "   ✗ wchar_t echo FAILED"
+endif
+
+# Test 3: wchar_t* array parameter and reading values
+println
+println "3. Testing wchar_t* array parameter..."
+# Allocate array for 5 wchar_t values
+arr_ptr = c_alloc(detected_size * 5)
+
+# Call function to fill array
+wchar_fill_array(arr_ptr, 5)
+println "   ✓ wchar_t* array parameter works"
+
+# Read back values and verify
+println "   Array contents:"
+all_correct = true
+for i = 0 to 4
+    if detected_size == 2
+        val = c_get_uint16(arr_ptr, i * 2)
+    else
+        val = c_get_uint32(arr_ptr, i * 4)
+    endif
+    expected = 65 + i
+    if val == expected
+        println "     [" + as_string(i) + "] = " + as_string(val) + " ('" + char(val) + "') ✓"
+    else
+        println "     [" + as_string(i) + "] = " + as_string(val) + " (expected " + as_string(expected) + ") ✗"
+        all_correct = false
+    endif
+endfor
+
+if all_correct
+    println "   ✓ All array values correct"
+else
+    println "   ✗ Some array values incorrect"
+endif
+
+c_free(arr_ptr)
+
+println
+println "Test completed!"
+println "If all tests show ✓ PASSED, wchar_t support is working correctly."

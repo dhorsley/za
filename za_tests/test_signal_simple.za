@@ -1,0 +1,57 @@
+#!/usr/bin/env za
+
+# Test simple signal handlers (int->void callbacks)
+# Tests the new c_register_signal_handler() functionality
+
+module "libc.so.6" as c
+
+lib c::signal(signum:int, handler:ptr) -> ptr
+lib c::raise(sig:int) -> int
+
+use +c
+
+# Simple test with minimal global state
+# We'll print from the handler and verify manually
+
+def my_signal_handler(signum)
+    println ">>> HANDLER INVOKED! Received signal: " + as_string(signum)
+enddef
+
+println "Test: Simple Signal Handler"
+println "============================="
+println ""
+
+# Register the signal handler
+println "1. Registering handler for SIGUSR1 (signal 10)..."
+trampoline = c_register_signal_handler(10, "my_signal_handler")
+println "   Trampoline: " + as_string(trampoline)
+
+# Install the handler using C's signal() function
+println "2. Installing handler with signal()..."
+old_handler = signal(10, trampoline)
+println "   Old handler: " + as_string(old_handler)
+
+# Trigger the signal
+println "3. Raising SIGUSR1..."
+result = raise(10)
+println "   raise() returned: " + as_string(result)
+
+# Give the signal handler time to execute
+println "4. Waiting for handler execution..."
+pause 200
+
+println ""
+println "5. Testing SIGINT (signal 2)..."
+c_unregister_signal_handler(10)
+
+trampoline = c_register_signal_handler(2, "my_signal_handler")
+old_handler = signal(2, trampoline)
+result = raise(2)
+pause 200
+
+println ""
+println "6. Cleaning up..."
+c_unregister_signal_handler(2)
+
+println ""
+println "Test completed! If you saw '>>> HANDLER INVOKED' messages above, the test PASSED."

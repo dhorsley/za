@@ -258,9 +258,41 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
             }
 
         case CStruct:
-            // Handle nested struct as pointer
-            cleanup()
-            return nil, nil, fmt.Errorf("nested struct fields not yet supported (field: %s)", field.Name)
+            // Handle nested struct by value (recursive marshaling)
+            if field.StructDef == nil {
+                // No struct definition available - treat as opaque bytes
+                // User can still pass raw byte data if needed
+                continue
+            }
+
+            // Check if Za field is a struct instance (map[string]any)
+            if zaField.Kind() != reflect.Map {
+                // Not a map - might be nil or some other value
+                // Just zero out the nested struct memory
+                C.memset(fieldPtr, 0, C.size_t(field.StructDef.Size))
+                continue
+            }
+
+            zaStruct, ok := zaField.Interface().(map[string]any)
+            if !ok {
+                // Not a string-keyed map - zero out
+                C.memset(fieldPtr, 0, C.size_t(field.StructDef.Size))
+                continue
+            }
+
+            // Recursively marshal the nested struct
+            nestedPtr, nestedCleanup, err := MarshalStructToC(zaStruct, field.StructDef)
+            if err != nil {
+                cleanup()
+                return nil, nil, fmt.Errorf("failed to marshal nested struct field %s: %w", field.Name, err)
+            }
+
+            // Copy the marshaled nested struct into the parent struct's memory
+            C.memcpy(fieldPtr, nestedPtr, C.size_t(field.StructDef.Size))
+
+            // Clean up the temporary nested struct
+            nestedCleanup()
+
 
         default:
             cleanup()
@@ -359,10 +391,25 @@ func UnmarshalStructFromC(cPtr unsafe.Pointer, structDef *CLibraryStruct, zaStru
             } else {
                 fieldVal = ""
             }
-        case CPointer, CStruct:
+        case CPointer:
             // Read pointer value
             ptr := *(*unsafe.Pointer)(fieldPtr)
             fieldVal = &CPointerValue{Ptr: ptr, TypeTag: field.Name}
+        case CStruct:
+            // Handle nested struct by value (recursive unmarshaling)
+            if field.StructDef != nil && field.StructName != "" {
+                // Recursively unmarshal the nested struct
+                nestedStruct, err := UnmarshalStructFromC(fieldPtr, field.StructDef, field.StructName)
+                if err != nil {
+                    // If recursive unmarshal fails, fall back to pointer
+                    fieldVal = &CPointerValue{Ptr: fieldPtr, TypeTag: field.Name}
+                } else {
+                    fieldVal = nestedStruct
+                }
+            } else {
+                // No struct definition - return as pointer
+                fieldVal = &CPointerValue{Ptr: fieldPtr, TypeTag: field.Name}
+            }
         default:
             fieldVal = nil
         }
@@ -488,6 +535,11 @@ func marshalElementToC(ptr unsafe.Pointer, val reflect.Value, ctype CType, field
             *(*unsafe.Pointer)(ptr) = nil
         }
 
+    case CStruct:
+        // CStruct marshaling is handled by the caller (marshalUnion/MarshalStructToC)
+        // since we need the StructDef which isn't available here
+        return fmt.Errorf("field %s: CStruct marshaling should be handled by caller, not marshalElementToC", fieldName)
+
     default:
         return fmt.Errorf("field %s: unsupported array element type %v", fieldName, ctype)
     }
@@ -552,6 +604,28 @@ func marshalUnion(zaMap map[string]any, unionDef *CLibraryStruct, ptr unsafe.Poi
         }
 
         // Marshal single value
+        // Handle CStruct types specially (nested struct marshaling)
+        if field.Type == CStruct && field.StructDef != nil {
+            // Value should be a map[string]any
+            zaStruct, ok := value.(map[string]any)
+            if !ok {
+                return fmt.Errorf("union field %s: expected map for struct, got %T", fieldName, value)
+            }
+
+            // Recursively marshal the nested struct
+            nestedPtr, nestedCleanup, err := MarshalStructToC(zaStruct, field.StructDef)
+            if err != nil {
+                return fmt.Errorf("failed to marshal nested struct in union field %s: %w", fieldName, err)
+            }
+
+            // Copy the marshaled nested struct into the union memory (at offset 0)
+            C.memcpy(fieldPtr, nestedPtr, C.size_t(field.StructDef.Size))
+
+            // Clean up the temporary nested struct
+            nestedCleanup()
+            return nil
+        }
+
         return marshalElementToC(fieldPtr, reflect.ValueOf(value), field.Type, fieldName, allocatedStrings)
     }
 
@@ -564,6 +638,7 @@ func unmarshalUnion(ptr unsafe.Pointer, unionDef *CLibraryStruct) (map[string]an
     if unionDef == nil || !unionDef.IsUnion {
         return nil, fmt.Errorf("invalid union definition")
     }
+
 
     result := make(map[string]any)
 
@@ -640,8 +715,21 @@ func unmarshalUnion(ptr unsafe.Pointer, unionDef *CLibraryStruct) (map[string]an
             } else {
                 fieldVal = ""
             }
-        case CPointer, CStruct:
+        case CPointer:
             fieldVal = *(*unsafe.Pointer)(fieldPtr)
+        case CStruct:
+            // Recursively unmarshal nested struct
+            if field.StructDef != nil {
+                var err error
+                fieldVal, err = UnmarshalStructFromC(fieldPtr, field.StructDef, field.StructName)
+                if err != nil {
+                    // Fall back to raw pointer on error
+                    fieldVal = fieldPtr
+                }
+            } else {
+                // No struct definition, return raw pointer
+                fieldVal = fieldPtr
+            }
         default:
             fieldVal = nil
         }

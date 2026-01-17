@@ -7,7 +7,7 @@ println "[#4]Testing AUTO with 2-Level #include[#-]"
 # Load with ZA_DEBUG_AUTO to see what's happening
 # Run with: ZA_DEBUG_AUTO=1 ./za this_test.za
 
-module "/lib64/libc.so.6" as test auto "/home/daniel/go/src/za/za_tests/test_include_level2.h"
+module "/lib64/libc.so.6" as test auto "./test_include_level2.h"
 use +test
 
 println "\n[#6]Test: 2-Level Include Constants[#-]"

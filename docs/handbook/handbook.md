@@ -23,6 +23,7 @@ Daniel Horsley
 # Contents
 
 ## Preface
+
 - About this book
 - Who this book is for
 - Conventions used
@@ -4249,6 +4250,7 @@ use +gl
 The AUTO clause parses C headers and extracts:
 
 1. **Integer constants** from `#define`:
+
    - Decimal: `#define MAX_SIZE 1024`
    - Hexadecimal: `#define COLOR_RED 0xFF0000`
    - Octal: `#define PERMS 0o644`
@@ -4257,15 +4259,27 @@ The AUTO clause parses C headers and extracts:
    - Expressions: `#define BUFFER_SIZE (1024 * 1024)`
 
 2. **Float constants** from `#define`:
+
    - Decimal: `#define PI 3.14159265358979323846`
    - Scientific notation: `#define AVOGADRO 6.02214076e23`
 
 3. **String constants** from `#define`:
+
    - Simple strings: `#define VERSION "1.0.0"`
    - With escape sequences: `#define NEWLINE "line1\nline2"`
    - String concatenation: `#define MSG "Hello " "World"` (transformed to Za syntax)
 
-4. **Enum definitions** (single-line or multiline):
+4. **Character literals** from `#define` (converted to numeric values):
+
+   - Simple characters: `#define TAB_CHAR '\t'` → 9
+   - Escape sequences: `#define NULL_CHAR '\0'` → 0, `#define NEWLINE '\n'` → 10
+   - ASCII characters: `#define LETTER_A 'A'` → 65
+   - Wide character literals: `#define WCHAR_NULL L'\0'` → 0
+   - Unicode prefixes: `u'x'`, `U'x'`, `u8"str"` (prefixes preserved during parsing)
+   - Used in conditionals: `#if L'\0' - 1 > 0` (tests signedness of wide char)
+
+5. **Enum definitions** (single-line or multiline):
+
    ```c
    enum Status {
        OK = 0,
@@ -4274,34 +4288,40 @@ The AUTO clause parses C headers and extracts:
    };
    ```
 
-5. **Function signatures** (auto-generates LIB declarations):
+6. **Function signatures** (auto-generates LIB declarations):
+
    ```c
    size_t strlen(const char *s);
    void *malloc(size_t size);
    int printf(const char *format, ...);
    ```
+
    - Supports simple and pointer return types
    - Supports multiline declarations
    - Supports variadic functions (...)
    - Supports extern and const qualifiers
    - Skips static inline, typedef, and private functions (_prefix)
 
-6. **Constants referencing earlier constants**:
+7. **Constants referencing earlier constants**:
+
    ```c
    #define BASE_SIZE 1024
    #define BUFFER_SIZE (BASE_SIZE * 2)      // Works! = 2048
    #define LARGE_BUFFER (BUFFER_SIZE * 4)   // Works! = 8192
    ```
+
    - Supports chained references (A → B → C)
    - Limitation: Forward references not supported (constants must be defined in order)
    - Limitation: Circular references fail gracefully (silently skipped)
 
-7. **Typedef declarations**:
+8. **Typedef declarations**:
+
    ```c
    typedef unsigned int uint32_t;
    typedef struct Point { int x, y; } Point;
    typedef Point* PointPtr;
    ```
+
    - Simple type aliases
    - Typedef chains (multi-level resolution)
    - Struct and pointer typedefs
@@ -4310,7 +4330,8 @@ The AUTO clause parses C headers and extracts:
    - Eliminates reliance on heuristics for type guessing
    - **Not parsed**: Function pointer typedefs, array typedefs (future enhancement)
 
-8. **Preprocessor conditionals** (platform-aware parsing):
+9. **Preprocessor conditionals** (platform-aware parsing):
+
    ```c
    #ifdef __linux__
      #define BUFFER_SIZE 2048
@@ -4334,6 +4355,7 @@ The AUTO clause parses C headers and extracts:
      - Numeric comparisons: `>`, `<`, `==`, `!=`, `>=`, `<=`
      - Boolean operators: `&&`, `||`
      - `defined()` operator: `defined(MACRO)` or `defined MACRO`
+     - Character literals: `#if L'\0' - 1 > 0` (converted to numeric values)
      - Undefined macros treated as 0 (C preprocessor semantics)
      - Only first true condition in if/elif/else chain activates
      - Example: `#if defined(LINUX) && VERSION > 2`
@@ -4350,9 +4372,11 @@ The AUTO clause parses C headers and extracts:
    - Enables parsing real system headers (stdio.h, stdlib.h, sys/types.h)
    - Debug output: Set `ZA_DEBUG_AUTO=1` to see condition evaluation
    - **Note**: Macro names prefixed internally to avoid Za keyword conflicts (e.g., VERSION)
+   - **Note**: C literal prefixes preserved during evaluation (`L'x'`, `u'x'`, `U'x'`, `u8"str"`)
 
-9. **Struct definitions** (automatically registered as Za types):
-   ```c
+10. **Struct definitions** (automatically registered as Za types):
+
+```c
    typedef struct {
        int x;
        int y;
@@ -4365,27 +4389,74 @@ The AUTO clause parses C headers and extracts:
    ```
    - C structs automatically registered in Za's `structmaps`
    - Supports VAR declarations: `var p Point`, `var c mylib::Color`
-   - Can be received from C functions (by value or pointer)
-   - Can be passed to C functions
-   - Array fields fully supported
-   - Backward compatible: Za map-based structs still work
+   - **VAR-declared AUTO structs are Go structs** - use **dot notation** to access fields
+   - **Struct instantiation** uses Za syntax: `color_t(.rgb [255, 128, 64], .alpha 200)`
+   - Can be received from C functions (by value or pointer) - returns as Za map
+   - Can be passed to C functions (marshaled automatically)
+   - Array fields fully supported in both instantiation and marshaling
+   - Field names work in both lowercase and capitalized forms
    - See test: `za_tests/test_auto_struct*.za`
 
-10. **Numeric type coercion** (comparison operators):
+11. **Numeric type coercion** (comparison operators):
+
     - `uint8`, `uint16`, `uint32`, `uint64` can be compared with `int`/`int64`
     - Automatic value range checking and safe promotion
     - Example: `color.r == 255` works (uint8 field compared to int literal)
     - Preserves bit precision for uint64 values
     - Applies to: `==`, `!=`, `>`, `<`, `>=`, `<=`
 
-**Not parsed** (limitations):
+12. **wchar_t support** (platform-aware implicit type alias):
 
-- Function-like macros: `#define MAX(a,b) ((a)>(b)?(a):(b))`
-- Forward references: `#define B (A * 2)` where A is defined later
-- Function pointer typedefs: `typedef int (*callback_t)(void*);`
-- Array typedefs: `typedef int IntArray[10];`
-- Character literals: `#define NEWLINE_CHAR '\n'`
-- Nested structs (struct fields that are themselves structs)
+    ```c
+    // C header
+    int get_wchar_size(void);
+    wchar_t wchar_echo(wchar_t c);
+    void wchar_fill_array(wchar_t *arr, int len);
+    ```
+
+    ```za
+    # Za code - wchar_t automatically mapped
+    module "./libtest.so" as tw auto "./test.h"
+    use +tw
+
+    size = get_wchar_size()    # Returns 4 on Linux, 2 on Windows
+    result = wchar_echo(65)    # wchar_t as value → uint16/uint32
+    wchar_fill_array(ptr, 5)   # wchar_t* as pointer → CPointer
+    ```
+
+    **How it works:**
+    - wchar_t size detected at Za startup via `unsafe.Sizeof(C.wchar_t(0))`
+    - **Linux/BSD/macOS**: wchar_t = 4 bytes → maps to `uint32`
+    - **Windows**: wchar_t = 2 bytes → maps to `uint16`
+    - **wchar_t** (value) → mapped to appropriate uint type
+    - **wchar_t*** (pointer) → mapped to `CPointer` for wide character strings
+    - No new CType needed - uses existing uint infrastructure
+    - Zero runtime overhead - detection happens once at startup
+    - Transparent to Za code - just pass/receive as integers
+
+    **Compatible with typedefs:**
+    ```c
+    typedef wchar_t WCHAR;
+    typedef WCHAR* LPWSTR;
+    ```
+    Already handled by existing typedef resolution (item 8 above).
+
+    **Use cases:**
+    - ncursesw (wide character terminal UI)
+    - readline (Unicode input)
+    - ICU (if using wchar_t API)
+    - POSIX wcs* functions (wcslen, wcscpy, etc.)
+    - Windows wide character APIs (if Za supported Windows)
+
+**Not parsed** (automatically skipped - not errors):
+
+- **Function-like macros**: `#define MAX(a,b) ((a)>(b)?(a):(b))`
+- **Function-like macro aliases**: `#define __REDIRECT_FORTIFY __REDIRECT` (identifiers starting with `__` in macro values)
+- **Type declarations**: `#define __U_CHAR unsigned char` (contains C type keywords)
+- **Forward references**: `#define B (A * 2)` where A is defined later
+- **Function pointer typedefs**: `typedef int (*callback_t)(void*);`
+- **Array typedefs**: `typedef int IntArray[10];`
+- **Nested structs**: struct fields that are themselves structs
 
 ### F.3.3 Accessing Constants
 
@@ -4802,6 +4873,77 @@ c_set_byte(buf, 1, 105)  # 'i'
 c_set_byte(buf, 2, 0)    # Null terminator
 ```
 
+### c_get_byte(ptr:pointer, offset:int) -> int
+
+Reads a byte at a specific offset in a buffer.
+
+```za
+buf = c_alloc(256)
+c_set_byte(buf, 0, 65)
+value = c_get_byte(buf, 0)  # Returns 65
+println value  # 65
+```
+
+### c_get_uint16(ptr:pointer, offset:int) -> int
+
+Reads a 16-bit unsigned integer at a specific byte offset.
+
+```za
+buf = c_alloc(256)
+# Read uint16 at offset 0
+value = c_get_uint16(buf, 0)
+```
+
+### c_get_uint32(ptr:pointer, offset:int) -> int
+
+Reads a 32-bit unsigned integer at a specific byte offset.
+
+```za
+buf = c_alloc(256)
+# Read uint32 at offset 0
+value = c_get_uint32(buf, 0)
+```
+
+### c_get_int16(ptr:pointer, offset:int) -> int
+
+Reads a 16-bit signed integer at a specific byte offset.
+
+```za
+buf = c_alloc(256)
+# Read int16 at offset 4
+value = c_get_int16(buf, 4)
+```
+
+### c_get_int32(ptr:pointer, offset:int) -> int
+
+Reads a 32-bit signed integer at a specific byte offset.
+
+```za
+buf = c_alloc(256)
+# Read int32 at offset 8
+value = c_get_int32(buf, 8)
+```
+
+**Example: Reading wchar_t array values**
+
+```za
+# On Linux, wchar_t is 4 bytes
+detected_size = get_wchar_size()  # Returns 4
+arr_ptr = c_alloc(detected_size * 5)
+wchar_fill_array(arr_ptr, 5)
+
+# Read back array elements
+for i = 0 to 4
+    if detected_size == 2
+        val = c_get_uint16(arr_ptr, i * 2)
+    else
+        val = c_get_uint32(arr_ptr, i * 4)
+    endif
+    println "Value {i}: {val}"
+endfor
+c_free(arr_ptr)
+```
+
 ### c_alloc_struct(struct_type_name:string) -> pointer
 
 Allocates C memory for a struct type defined in Za. Returns a pointer to the allocated memory.
@@ -4931,6 +5073,58 @@ help plugin find glib::g_malloc
 ```
 
 **Man page integration:** Za automatically looks up function signatures from system man pages (section 3) and suggests appropriate `LIB` declarations with C-to-Za type mappings.
+
+### View AUTO-discovered macros
+
+When using the AUTO clause to import C headers, `help plugin <library>` displays discovered macros with status indicators:
+
+```za
+module "libc.so.6" as pth auto "/usr/include/pthread.h"
+help plugin pth
+```
+
+**Output:**
+
+```
+C Library: pth
+Path: /usr/include/pthread.h
+Symbols found: 89
+
+Discovered Macros:
+  ✓ CLOCKS_PER_SEC = ((__clock_t) 1000000)
+  ○ PTHREAD_CANCEL_ASYNCHRONOUS = PTHREAD_CANCEL_ASYNCHRONOUS
+  ○ PTHREAD_MUTEX_INITIALIZER = { { __PTHREAD_MUTEX_INITIALIZER (PTHREAD_MUTEX_TIMED_NP) } }
+  ? pthread_cleanup_push = do {
+      __pthread_unwind_buf_t __cancel_buf;
+      void (*__cancel_routine) (void *) = (routine);
+      ...
+  ? pthread_cleanup_pop = do { } while (0);
+      } while (0);
+      __pthread_unregister_cancel (&__cancel_buf);
+      ...
+
+Functions:
+  pthread_create(thread:pointer, attr:pointer, start_routine:pointer, arg:pointer) -> int
+  pthread_join(thread:uint64, retval:pointer) -> int
+  ...
+```
+
+**Macro status indicators:**
+
+| Symbol | Color | Meaning |
+|--------|-------|---------|
+| `✓` | Green | Successfully evaluated - value available as constant |
+| `○` | Gray | Skipped - filtered out (references system macros, contains type keywords, etc.) |
+| `✗` | Red | Evaluation failed - attempted but encountered error |
+| `?` | Gray | Unknown - function-like macro (not evaluated, displayed for reference only) |
+
+**Notes:**
+
+- **Evaluated macros** (✓) are available as constants in your code
+- **Function-like macros** (?) with parameters are shown for reference but not evaluated
+- **Multi-line macros** preserve their original structure with backslash continuations converted to newlines
+- **Skipped macros** (○) are typically system internals or macros that reference undefined identifiers
+- Use `ZA_DEBUG_AUTO=1` environment variable to see detailed evaluation diagnostics
 
 ## F.8 Type Mapping Reference
 
@@ -5159,6 +5353,89 @@ nc::getch()
 nc::endwin()
 ```
 
+### F.9.7 X11 Window (Xlib) - Complete AUTO Example
+
+This example demonstrates Za's comprehensive FFI/AUTO capabilities including unions, structs, and auto-discovered constants:
+
+```za
+#!/usr/bin/za
+
+# Import X11 with auto header parsing
+module "/usr/lib/libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+use +x11
+
+WIDTH = 800
+HEIGHT = 600
+
+# Open connection to X server
+display = XOpenDisplay(c_null())
+if c_ptr_is_null(display)
+    println "Error: Cannot open X display"
+    exit 1
+endif
+
+screen = XDefaultScreen(display)
+root = XRootWindow(display, screen)
+black = XBlackPixel(display, screen)
+white = XWhitePixel(display, screen)
+
+# Create window
+window = XCreateSimpleWindow(display, root, 0, 0, WIDTH, HEIGHT, 1, black, white)
+XStoreName(display, window, "Za FFI X11 Window")
+
+# Select events (using auto-generated constants)
+event_mask = x11::ExposureMask | x11::KeyPressMask | x11::ButtonPressMask
+XSelectInput(display, window, event_mask)
+
+# Show window
+XMapWindow(display, window)
+XFlush(display)
+
+println "Window created! Press Ctrl+C in window to close"
+
+# Event loop with XEvent union
+event_ptr = c_alloc_struct("XEvent")
+running = true
+
+while running
+    XNextEvent(display, event_ptr)
+    event = c_unmarshal_struct(event_ptr, "XEvent")
+
+    event_type = event["type"]
+
+    if event_type == x11::KeyPress
+        key_event = event["xkey"]
+        state = key_event["state"]
+        keycode = key_event["keycode"]
+
+        println "Key pressed: keycode=" + as_string(keycode)
+
+        # Check for Ctrl+C (Control key + 'c' key)
+        if (state & x11::ControlMask) != 0 and keycode == 54
+            println "Ctrl+C detected - exiting"
+            running = false
+        endif
+    endif
+endwhile
+
+# Cleanup
+c_free(event_ptr)
+XDestroyWindow(display, window)
+XCloseDisplay(display)
+println "Done!"
+```
+
+**Key features demonstrated:**
+
+- **AUTO header parsing** from `/usr/include/X11/Xlib.h`
+- **Auto-generated constants** (`ExposureMask`, `KeyPressMask`, `ControlMask`)
+- **Union handling** (`XEvent` union with proper unmarshaling)
+- **Struct field access** (nested: `event["xkey"]["state"]`)
+- **No LIB declarations needed** - all functions discovered from header
+- **Complete integration** - ~50 lines for a working X11 window
+
+Full code: `eg/ffi-x11-window`
+
 ## F.10 Advanced Topics
 
 ### F.10.1 Opaque Structure Pointers
@@ -5351,6 +5628,54 @@ println "Sum: {sum}"  # Prints: Sum: 150
 - When using `AUTO` clause, struct definitions are parsed from headers automatically
 - For manual `LIB` declarations, ensure struct definitions match C layouts exactly
 - See `za_tests/test_ffi_struct_arrays.za` for comprehensive examples
+
+#### Union Support (v1.2.2+)
+
+Za supports C unions through the AUTO clause. Unions are instantiated using Za's `map()` constructor with a single active field:
+
+**Creating unions in Za:**
+
+```za
+# C union: typedef union { int int_value; float float_value; } Number;
+
+# Instantiate with one active field
+num1 = map(.int_value 42)
+num2 = map(.float_value 3.14)
+
+# Pass to C function
+result = process_number(num1)  # C receives union with int_value active
+```
+
+**Receiving unions from C:**
+
+```za
+# C function returns union by value
+color = make_color_union(255, 128, 64)
+
+# Access union fields as map keys
+println "R: {color["rgb"][0]}"
+println "Alpha: {color["alpha"]}"
+```
+
+**Union marshaling rules:**
+
+1. **Creating unions**: Use `map()` with exactly ONE field (the active union member)
+2. **Multi-field error**: `map(.field1 value1, .field2 value2)` fails - unions require exactly one active field
+3. **Empty map error**: `map()` with no fields fails - unions require exactly one field
+4. **Invalid field error**: Field name must match a union member defined in C header
+
+**Key features:**
+
+- Unions returned from C are unmarshaled as Za maps
+- All union fields are accessible via map keys (C memory is reinterpreted)
+- Only the active field (set in C) contains valid data
+- Nested structs within unions work correctly
+- Field validation ensures type safety
+
+See working examples in:
+- `za_tests/ffi/test_union.za` - Basic union support
+- `za_tests/ffi/test_union_marshal.za` - Comprehensive marshaling tests
+- `za_tests/test_union_struct_simple.za` - Unions with nested structs
 
 #### Best Practices
 

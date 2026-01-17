@@ -8,6 +8,12 @@ CHANGE LOG
 fixes
 -----
 
+  * fixed struct instantiation with array fields when using AUTO-imported structs
+      - array fields registered as "any" type now accept array literals in constructors
+      - example: color_t(.rgb [255, 128, 64], .alpha 200) now works correctly
+      - field names work in both lowercase (.rgb) and capitalized (.Rgb) forms
+      - affects structs with fixed-size arrays like uint8_t rgb[3]
+
 
 library changes
 ---------------
@@ -23,6 +29,11 @@ library changes
       - c_alloc(size) - allocates byte buffer
       - c_free(ptr) - frees allocated pointer
       - c_set_byte(ptr, offset, value) - sets byte in buffer
+      - c_get_byte(ptr, offset) - reads byte from buffer
+      - c_get_uint16(ptr, offset) - reads 16-bit unsigned integer from buffer
+      - c_get_uint32(ptr, offset) - reads 32-bit unsigned integer from buffer
+      - c_get_int16(ptr, offset) - reads 16-bit signed integer from buffer
+      - c_get_int32(ptr, offset) - reads 32-bit signed integer from buffer
       - c_get_symbol(lib, name) - reads data symbol from library
       - c_alloc_struct(struct_type_name) - allocates C memory for structs
       - c_free_struct(ptr) - frees struct memory allocated by c_alloc_struct
@@ -113,9 +124,13 @@ language changes
           * struct definition import from C headers:
               - C structs automatically registered as Za types in structmaps
               - supports VAR declarations: var c test_c::color_t
+              - VAR-declared AUTO structs are Go structs - use dot notation for field access
+              - structs returned from C functions are Za maps - use bracket notation
+              - struct instantiation uses Za syntax: color_t(.rgb [255, 128, 64], .alpha 200)
               - structs can be received from C functions (by value or pointer)
               - structs can be passed to C functions
               - array fields in structs fully supported
+              - field names work in both lowercase and capitalized forms
               - backward compatible: Za map-based structs still work
               - test scripts at za_tests/test_auto_struct*.za
           * numeric type coercion for comparisons:
@@ -124,6 +139,18 @@ language changes
               - example: uint8_field == 255 now works (was assert failure)
               - preserves bit precision for uint64 values
               - test scripts at za_tests/test_uint64_topbit.za
+          * wchar_t support (platform-aware implicit type alias):
+              - wchar_t size detected at Za startup via unsafe.Sizeof(C.wchar_t(0))
+              - Linux/BSD/macOS: wchar_t = 4 bytes → maps to uint32
+              - Windows: wchar_t = 2 bytes → maps to uint16
+              - wchar_t (value) → mapped to appropriate uint type
+              - wchar_t* (pointer) → mapped to CPointer for wide character strings
+              - no new CType needed - uses existing uint infrastructure
+              - zero runtime overhead - detection happens once at startup
+              - transparent to Za code - pass/receive as integers
+              - compatible with typedef chains (typedef wchar_t WCHAR)
+              - enables ncursesw, readline, ICU, POSIX wcs* functions
+              - test script at za_tests/test_wchar_simple.za
       - limitations: function-like macros, forward references, character literals, function pointer typedefs, nested structs
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
@@ -155,7 +182,13 @@ language changes
           - c_alloc_struct(), c_free_struct(), c_unmarshal_struct() for manual struct handling
           - supports basic types (int, float, double, bool), strings, pointers
           - fixed-size arrays in structs (uint8_t rgb[3], int values[10])
-          - union types with field selection
+          - union types with comprehensive marshaling:
+              * unions instantiated with map() constructor: map(.field_name value)
+              * exactly one active field required (validation enforces single-field maps)
+              * unions from C unmarshaled as Za maps with all fields accessible
+              * nested structs within unions fully supported
+              * bidirectional marshaling: Za → C → Za with proper field selection
+              * test scripts at za_tests/test_union*.za, za_tests/ffi/test_union*.za
           - out parameter support for C functions that fill structs
           - test scripts at za_tests/test_ffi_struct_*.za
       - struct-by-value FFI support (critical stability fix):

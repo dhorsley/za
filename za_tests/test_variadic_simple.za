@@ -1,0 +1,46 @@
+#!/usr/bin/env za
+
+# Simple variadic test to verify basic functionality
+
+module "libc.so.6" as c
+use +c
+
+println "Simple Variadic Test"
+println "===================="
+println
+
+# Declare printf
+lib c::printf(format:string, ...args) -> int
+
+# Test 1: Just format string (no variadic args)
+println "Test 1: Format string only"
+result = c::printf("Hello World\n")
+println "  Result: " + as_string(result) + " bytes written"
+
+# Test 2: Single integer
+println "Test 2: Single integer"
+result = c::printf("Number: %d\n", 42)
+println "  Result: " + as_string(result) + " bytes written"
+
+# Test 3: Two integers
+println "Test 3: Two integers"
+result = c::printf("Numbers: %d and %d\n", 10, 20)
+println "  Result: " + as_string(result) + " bytes written"
+
+# Test 4: Float
+println "Test 4: Float"
+result = c::printf("Pi: %f\n", 3.14159)
+println "  Result: " + as_string(result) + " bytes written"
+
+# Test 5: String
+println "Test 5: String"
+result = c::printf("Text: %s\n", "Hello")
+println "  Result: " + as_string(result) + " bytes written"
+
+# Test 6: Mixed types
+println "Test 6: Mixed types"
+result = c::printf("Mixed: %d %f %s\n", 42, 3.14, "test")
+println "  Result: " + as_string(result) + " bytes written"
+
+println
+println "All tests completed successfully!"

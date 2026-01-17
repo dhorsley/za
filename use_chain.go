@@ -128,9 +128,20 @@ func uc_match_enum(s string) string {
 
 func uc_match_constant(s string) (string, any, bool) {
     chainlock.RLock()
-    moduleConstantsLock.RLock()
-    defer moduleConstantsLock.RUnlock()
     defer chainlock.RUnlock()
+
+    /*
+    *  @note(DH):
+    *  we may need to re-enable this lock if we see
+    *  any unusual behaviour with C constants.
+    *  it is disabled for now as pprof was showing
+    *  a huge spike in time spent in uc_match_constant,
+    *  RUnlock, RLock and sync/Atomic.Add causing a
+    *  degradation in za performance of around 20-30%
+    *  (or I write better code, but that ain't happening.)
+    */
+    // moduleConstantsLock.RLock()
+    // defer moduleConstantsLock.RUnlock()
 
     for p := 0; p < len(uchain); p += 1 {
         if constMap, exists := moduleConstants[uchain[p]]; exists {

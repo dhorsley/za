@@ -7,14 +7,14 @@ println "[#4]Testing AUTO #include Recursion[#-]"
 println "=" * 70
 
 println "\n[#6]Test Setup[#-]"
-println "  Main header: /home/daniel/go/src/za/za_tests/test_include_main.h"
+println "  Main header: ./test_include_main.h"
 println "  This header includes:"
 println "    test_include_types.h"
 println "      └─ test_include_base.h"
 println
 
 # Load a dummy module with the test header
-module "/lib64/libc.so.6" as test auto "/home/daniel/go/src/za/za_tests/test_include_main.h"
+module "/lib64/libc.so.6" as test auto "./test_include_main.h"
 use +test
 
 # Test 1: Constants from base header (included transitively)

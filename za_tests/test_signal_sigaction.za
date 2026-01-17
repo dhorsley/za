@@ -1,0 +1,109 @@
+#!/usr/bin/env za
+
+# Test sigaction with siginfo support
+# Tests the za_callback_sigaction() functionality
+
+module "libc.so.6" as c
+
+lib c::sigaction(sig:int, act:ptr, oldact:ptr) -> int
+lib c::raise(sig:int) -> int
+lib c::getpid() -> int
+
+use +c
+
+# Handler that receives siginfo
+def my_sigaction_handler(signum, siginfo, context)
+    println ">>> SIGACTION HANDLER INVOKED!"
+    println "    Signal number: " + as_string(signum)
+
+    # Print siginfo fields
+    println "    si_signo: " + as_string(siginfo["si_signo"])
+    println "    si_errno: " + as_string(siginfo["si_errno"])
+    println "    si_code: " + as_string(siginfo["si_code"])
+    println "    si_pid: " + as_string(siginfo["si_pid"])
+    println "    si_uid: " + as_string(siginfo["si_uid"])
+
+    # Check si_value
+    si_value = siginfo["si_value"]
+    println "    si_value.sival_int: " + as_string(si_value["sival_int"])
+    println "    si_value.sival_ptr: " + as_string(si_value["sival_ptr"])
+
+    println "    Context pointer: " + as_string(context)
+enddef
+
+println "Test: sigaction with siginfo"
+println "============================="
+println ""
+
+# Register the signal handler for SIGUSR1 (signal 10)
+println "1. Registering sigaction handler for SIGUSR1 (signal 10)..."
+handler_ptr = c_register_signal_handler(10, "my_sigaction_handler", "sigaction")
+println "   Handler pointer: " + as_string(handler_ptr)
+
+# Create sigaction structure
+println "2. Setting up sigaction structure..."
+
+# Allocate sigaction structure (152 bytes is typical on x86-64)
+struct_size = 152
+sa = c_alloc(struct_size)
+
+# Convert handler pointer to integer for writing
+handler_addr = c_ptr_to_int(handler_ptr)
+println "   Handler address: " + as_string(handler_addr)
+
+# Write handler pointer to first 8 bytes (little-endian)
+c_set_byte(sa, 0, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 1, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 2, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 3, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 4, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 5, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 6, handler_addr % 256)
+handler_addr = handler_addr / 256
+c_set_byte(sa, 7, handler_addr % 256)
+
+# Set sa_flags = SA_SIGINFO (0x4) at offset 136
+# Write as 4-byte little-endian integer
+c_set_byte(sa, 136, 4)
+c_set_byte(sa, 137, 0)
+c_set_byte(sa, 138, 0)
+c_set_byte(sa, 139, 0)
+
+println "3. Installing handler with sigaction()..."
+old_sa = c_alloc(struct_size)
+result = sigaction(10, sa, old_sa)
+println "   sigaction() returned: " + as_string(result)
+
+if result != 0
+    println "   ERROR: sigaction() failed!"
+    c_free(sa)
+    c_free(old_sa)
+    exit 1
+endif
+
+# Trigger the signal
+println "4. Raising SIGUSR1..."
+my_pid = getpid()
+println "   PID: " + as_string(my_pid)
+result = raise(10)
+println "   raise() returned: " + as_string(result)
+
+# Give handler time to execute
+println "5. Waiting for handler execution..."
+pause 200
+
+println ""
+println "6. Cleaning up..."
+c_free(sa)
+c_free(old_sa)
+c_unregister_signal_handler(10)
+
+println ""
+println "Test completed!"
+println "If you saw '>>> SIGACTION HANDLER INVOKED' and siginfo fields above, the test PASSED."

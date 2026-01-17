@@ -1,0 +1,10 @@
+#!/usr/bin/env za
+
+# Test conditional expression parsing without full OpenSSL header
+# This reproduces the issue with OPENSSL_API_LEVEL comparisons
+
+module "libc.so.6" as test auto "./test_cond.h"
+use +test
+
+println "Conditional expressions parsed successfully!"
+println "Test passed - no 'true' substitution errors!"

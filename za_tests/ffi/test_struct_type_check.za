@@ -1,0 +1,26 @@
+#!/usr/bin/env za
+
+# Simple test to check if AUTO-imported structs are available as types
+
+println "Testing if AUTO structs are available as types"
+
+module "./libtest_struct_array.so" as test_c auto "./test_struct_array_lib.h"
+use +test_c
+
+println "\nTest 1: Can we declare a variable with AUTO-imported type?"
+var c test_c::color_t
+println "Declared variable c of type test_c::color_t"
+println "c =", c
+
+println "\nTest 2: Can we create struct via C function?"
+c2 = test_c::make_color(255, 128, 64, 200)
+println "Created c2 via C function"
+println "c2.rgb[0] =", c2["rgb"][0], "c2.alpha =", c2["alpha"]
+
+println "\nTest 3: Check returned struct format"
+c3 = test_c::make_color(100, 150, 200, 255)
+println "c3 from C function:", c3
+println "c3[\"rgb\"] =", c3["rgb"]
+println "c3[\"rgb\"][0] =", c3["rgb"][0]
+
+println "\nDone"

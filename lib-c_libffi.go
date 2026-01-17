@@ -8,6 +8,7 @@ package main
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <wchar.h>
 
 // No #include <ffi.h> - we load symbols dynamically!
 
@@ -662,6 +663,9 @@ func InitLibFFI() bool {
         C.init_platform_abi(archCStr, osCStr)
         C.free(unsafe.Pointer(archCStr))
         C.free(unsafe.Pointer(osCStr))
+
+        // Detect wchar_t size for platform
+        wcharSize = unsafe.Sizeof(C.wchar_t(0))
     }
 
     return libffiAvailable
@@ -681,6 +685,9 @@ var (
     structFFITypeCacheLock sync.RWMutex
 )
 
+// Platform-detected wchar_t size (set during init)
+var wcharSize uintptr
+
 // createFFITypeForStruct creates a custom ffi_type for a struct definition
 // Returns the ffi_type* pointer and any error
 func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
@@ -695,6 +702,83 @@ func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
         return cached, nil
     }
     structFFITypeCacheLock.RUnlock()
+
+    // Special handling for unions: represent as integer-classified struct
+    // Per x86-64 ABI, unions are classified using merged classification of all members.
+    // When a union contains both integer and float members, the result is INTEGER class.
+    // To ensure correct ABI, represent unions as generic integer types (uint64/uint32)
+    // rather than using the largest member's specific type.
+    if structDef.IsUnion {
+        if structDef.Size == 0 {
+            return nil, fmt.Errorf("union %s has zero size", structDef.Name)
+        }
+
+        // Represent union to match x86-64 ABI mixed classification
+        // GCC uses: first eightbyte (0-7) in RAX (INTEGER), second eightbyte (8-15) in XMM0 (SSE)
+        // To match this, use: uint64 (RAX) + float (XMM0) for 12-byte unions
+        var fieldTypes []*C.ffi_type
+        remainingSize := structDef.Size
+
+        // First eightbyte: use uint64 to get INTEGER classification (RAX)
+        if remainingSize >= 8 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt64)))
+            remainingSize -= 8
+        } else if remainingSize >= 4 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt)))
+            remainingSize -= 4
+        } else if remainingSize >= 2 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt16)))
+            remainingSize -= 2
+        } else if remainingSize >= 1 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt8)))
+            remainingSize -= 1
+        }
+
+        // Second eightbyte: use float to get SSE classification (XMM0)
+        if remainingSize >= 4 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CFloat)))
+            remainingSize -= 4
+        } else if remainingSize >= 2 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt16)))
+            remainingSize -= 2
+        } else if remainingSize >= 1 {
+            fieldTypes = append(fieldTypes, C.map_ctype_to_ffi_type(C.int(CUInt8)))
+            remainingSize -= 1
+        }
+
+        if len(fieldTypes) == 0 {
+            return nil, fmt.Errorf("union %s: could not create field types", structDef.Name)
+        }
+
+        // Create C array for field types
+        numFields := len(fieldTypes)
+        fieldTypesArray := (**C.ffi_type)(C.malloc(C.size_t(numFields) * C.size_t(unsafe.Sizeof(uintptr(0)))))
+        if fieldTypesArray == nil {
+            return nil, fmt.Errorf("failed to allocate field types array for union")
+        }
+
+        fieldTypesSlice := (*[1 << 30]*C.ffi_type)(unsafe.Pointer(fieldTypesArray))[:numFields:numFields]
+        for i, ft := range fieldTypes {
+            if ft == nil {
+                C.free(unsafe.Pointer(fieldTypesArray))
+                return nil, fmt.Errorf("union %s: nil field type at index %d", structDef.Name, i)
+            }
+            fieldTypesSlice[i] = ft
+        }
+
+        unionType := C.create_struct_ffi_type(fieldTypesArray, C.int(numFields))
+        if unionType == nil {
+            C.free(unsafe.Pointer(fieldTypesArray))
+            return nil, fmt.Errorf("failed to create union ffi_type")
+        }
+
+        // Cache the union's ffi_type
+        structFFITypeCacheLock.Lock()
+        structFFITypeCache[structDef.Name] = unsafe.Pointer(unionType)
+        structFFITypeCacheLock.Unlock()
+
+        return unsafe.Pointer(unionType), nil
+    }
 
     // Count total ffi_type elements (arrays expand to multiple elements)
     totalElements := 0
@@ -736,11 +820,26 @@ func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
             }
         } else {
             // Regular field
-            fieldType := C.map_ctype_to_ffi_type(C.int(field.Type))
-            if fieldType == nil {
-                C.free(unsafe.Pointer(fieldTypesArray))
-                return nil, fmt.Errorf("field %s: unsupported type %d", field.Name, field.Type)
+            var fieldType *C.ffi_type
+
+            // Handle nested structs
+            if field.Type == CStruct && field.StructDef != nil {
+                // Recursively create ffi_type for nested struct
+                nestedFFIType, err := createFFITypeForStruct(field.StructDef)
+                if err != nil {
+                    C.free(unsafe.Pointer(fieldTypesArray))
+                    return nil, fmt.Errorf("field %s: %w", field.Name, err)
+                }
+                fieldType = (*C.ffi_type)(nestedFFIType)
+            } else {
+                // Use standard type mapping
+                fieldType = C.map_ctype_to_ffi_type(C.int(field.Type))
+                if fieldType == nil {
+                    C.free(unsafe.Pointer(fieldTypesArray))
+                    return nil, fmt.Errorf("field %s: unsupported type %d", field.Name, field.Type)
+                }
             }
+
             fieldTypesSlice[idx] = fieldType
             idx++
         }
@@ -871,6 +970,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     argValuesSlice := (*[1 << 30]unsafe.Pointer)(unsafe.Pointer(argValues))[:len(convertedArgs):len(convertedArgs)]
 
     for i, arg := range convertedArgs {
+        // Get expected parameter type to handle float vs double correctly
+        var expectedParamType CType
+        if i < len(sig.ParamTypes) {
+            expectedParamType = sig.ParamTypes[i]
+        }
+
         switch v := arg.(type) {
         case int:
             argTypesSlice[i] = 1 // CInt
@@ -937,12 +1042,22 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             argValuesSlice[i] = uint8Ptr
 
         case float64:
-            argTypesSlice[i] = 3 // CDouble
-            // Allocate C memory for double value
-            dblPtr := C.malloc(C.size_t(unsafe.Sizeof(C.double(0))))
-            allocatedMem = append(allocatedMem, dblPtr)
-            *(*C.double)(dblPtr) = C.double(v)
-            argValuesSlice[i] = dblPtr
+            // Check if this should be float (32-bit) or double (64-bit)
+            if expectedParamType == CFloat {
+                argTypesSlice[i] = 2 // CFloat
+                // Allocate C memory for float value (convert float64 to float32)
+                fltPtr := C.malloc(C.size_t(unsafe.Sizeof(C.float(0))))
+                allocatedMem = append(allocatedMem, fltPtr)
+                *(*C.float)(fltPtr) = C.float(v)
+                argValuesSlice[i] = fltPtr
+            } else {
+                argTypesSlice[i] = 3 // CDouble
+                // Allocate C memory for double value
+                dblPtr := C.malloc(C.size_t(unsafe.Sizeof(C.double(0))))
+                allocatedMem = append(allocatedMem, dblPtr)
+                *(*C.double)(dblPtr) = C.double(v)
+                argValuesSlice[i] = dblPtr
+            }
 
         case string:
             argTypesSlice[i] = 5 // CString
@@ -1123,6 +1238,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
         defer C.free(structReturnBuf)
         C.memset(structReturnBuf, 0, C.size_t(structDef.Size))
+
         returnPtr = structReturnBuf
     } else {
         returnPtr = unsafe.Pointer(&returnValue)

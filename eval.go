@@ -8,6 +8,7 @@ import (
     "math"
     "math/big"
     "net/http"
+    "os"
     "path/filepath"
     "reflect"
     "regexp"
@@ -357,6 +358,18 @@ binloop1:
                 p.namespacing = false
                 left = p.prev2.tokText + "::" + token.tokText
                 // pf("  (eval) completed namespace -> %#v at pos %d\n",left,p.pos)
+
+                // Check if this is a module constant
+                moduleConstantsLock.RLock()
+                if constMap, exists := moduleConstants[p.prev2.tokText]; exists {
+                    if val, found := constMap[token.tokText]; found {
+                        moduleConstantsLock.RUnlock()
+                        left = val
+                        continue
+                    }
+                }
+                moduleConstantsLock.RUnlock()
+
                 continue
             }
         }
@@ -1274,7 +1287,6 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     if !isStruct {
         // filter for functions here
         var isFunc bool
-        // pf("<<isStruct>> <ns:%v>\n",p.namespace)
 
         // check if exists in user defined function space
         if _, isFunc = stdlib[name]; !isFunc {
@@ -1396,8 +1408,12 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
                         nameMatched := false
                         for j := 0; j < len(structvalues); j += 4 {
                             if structvalues[j].(string) == arg_names[i] {
-                                if Typemap[structvalues[j+1].(string)] != reflect.TypeOf(iargs[i]) {
-                                    panic(fmt.Errorf("type mismatch in named field '%s', should be %v", arg_names[i], structvalues[j+1]))
+                                fieldType := structvalues[j+1].(string)
+                                // Skip type check for "any" and "mixed" types - they accept any value
+                                if fieldType != "any" && fieldType != "mixed" {
+                                    if Typemap[fieldType] != reflect.TypeOf(iargs[i]) {
+                                        panic(fmt.Errorf("type mismatch in named field '%s', should be %v", arg_names[i], structvalues[j+1]))
+                                    }
                                 }
                                 nameMatched = true
                                 break // found a positive match, move on to next argument
@@ -2095,8 +2111,6 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
     // filter for functions here. this also sets the subtype for funcs defined late.
     if p.pos+1 != p.len && p.tokens[p.pos+1].tokType == LParen {
-        // fmt.Printf("[DEBUG] identifier: checking if '%s' is a function (next token is LParen: %v)\n", token.tokText, p.pos+1 < p.len && p.tokens[p.pos+1].tokType == LParen)
-        // pf("(identifier) inside pos length and lparen check.\n")
         if _, isFunc := stdlib[token.tokText]; !isFunc {
             // pf("(identifier) inside isFunc? check. not a standard library function '%s'\n", token.tokText)
             var useName string
@@ -2118,6 +2132,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
             }
 
             // pf("  -- checking for c function name %s::%s in:\n%#v\n", useName, token.tokText, fnlookup.lmshow())
+            //
             // Check C functions as fallback (highest overhead, lowest priority)
             namespaceName := FindCFunction(token.tokText)
             // fmt.Printf("[DEBUG] FindCFunction('%s') returned namespace: '%s'\n", token.tokText, namespaceName)
@@ -2133,6 +2148,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
                     return token.tokText, nil
                 }
             }
+
         } else {
             // pf("(identifier) inside isFunc? check else clause. is a standard library function '%s'\n", token.tokText)
             p.tokens[p.pos].subtype = subtypeStandard
@@ -2141,6 +2157,67 @@ func (p *leparser) identifier(token *Token) (any, error) {
         }
     }
     // pf("(identifier) reached past func checks.\n")
+
+    // Check for module constants FIRST (from AUTO clause)
+    // This must happen before local/global lookup for qualified names (namespace::constant)
+    if p.prev.tokType == SYM_DoubleColon {
+        // Qualified name: namespace provided explicitly
+        // The namespace is in p.tokens[p.pos-2].tokText
+        if p.pos >= 2 {
+            namespaceName := p.tokens[p.pos-2].tokText
+            debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+            if debugAuto {
+                fmt.Printf("[AUTO] Looking up %s::%s in moduleConstants\n", namespaceName, token.tokText)
+            }
+            moduleConstantsLock.RLock()
+            if constMap, exists := moduleConstants[namespaceName]; exists {
+                if debugAuto {
+                    fmt.Printf("[AUTO]   Module '%s' has %d constants\n", namespaceName, len(constMap))
+                }
+                if val, found := constMap[token.tokText]; found {
+                    if debugAuto {
+                        fmt.Printf("[AUTO]   Found %s = %v\n", token.tokText, val)
+                    }
+                    moduleConstantsLock.RUnlock()
+                    return val, nil
+                }
+                if debugAuto {
+                    fmt.Printf("[AUTO]   Constant '%s' not found in module '%s'\n", token.tokText, namespaceName)
+                }
+            } else {
+                if debugAuto {
+                    fmt.Printf("[AUTO]   Module '%s' not found in moduleConstants\n", namespaceName)
+                }
+            }
+            moduleConstantsLock.RUnlock()
+
+            // Also check C module idents if this is a C namespace
+            // Find the function space for this module by checking cModuleAliasMap
+            cModuleAliasMapLock.RLock()
+            if fsid, exists := cModuleAliasMap[namespaceName]; exists {
+                cModuleAliasMapLock.RUnlock()
+                cModuleIdentsLock.RLock()
+                if cIdent, cidExists := cModuleIdents[fsid]; cidExists {
+                    // Linear search through the ident array for the constant
+                    for i := range cIdent {
+                        if cIdent[i].declared && cIdent[i].IName == token.tokText {
+                            val := cIdent[i].IValue
+                            cModuleIdentsLock.RUnlock()
+                            return val, nil
+                        }
+                    }
+                }
+                cModuleIdentsLock.RUnlock()
+            } else {
+                cModuleAliasMapLock.RUnlock()
+            }
+        }
+    } else {
+        // Unqualified name: search USE chain
+        if _, val, found := uc_match_constant(token.tokText); found {
+            return val, nil
+        }
+    }
 
     // local variable lookup:
     bin := token.bindpos
@@ -2169,28 +2246,6 @@ func (p *leparser) identifier(token *Token) (any, error) {
     if modlist[token.tokText] == true {
         // pf("(eval) permitting mod name %s\n",token.tokText)
         return nil, nil
-    }
-
-    // Check for module constants (from HEADERS clause)
-    if p.prev.tokType == SYM_DoubleColon {
-        // Qualified name: namespace provided explicitly
-        // The namespace is in p.tokens[p.pos-2].tokText
-        if p.pos >= 2 {
-            namespaceName := p.tokens[p.pos-2].tokText
-            moduleConstantsLock.RLock()
-            if constMap, exists := moduleConstants[namespaceName]; exists {
-                if val, found := constMap[token.tokText]; found {
-                    moduleConstantsLock.RUnlock()
-                    return val, nil
-                }
-            }
-            moduleConstantsLock.RUnlock()
-        }
-    } else {
-        // Unqualified name: search USE chain
-        if _, val, found := uc_match_constant(token.tokText); found {
-            return val, nil
-        }
     }
 
     // permit namespace:: names
@@ -2246,10 +2301,12 @@ func (p *leparser) identifier(token *Token) (any, error) {
         }
     }
     structmapslock.RLock()
-    if _, found := structmaps[sname]; found || sname == "anon" {
+    _, found := structmaps[sname]
+    structmapslock.RUnlock()
+
+    if found || sname == "anon" {
         return sname, nil
     }
-    structmapslock.RUnlock()
 
     panic(fmt.Errorf("'%s' is uninitialised.", token.tokText))
 
@@ -2262,6 +2319,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
 // for locking vset/vcreate/vdelete during a variable write
 var glock = &sync.RWMutex{}
 var vlock = &sync.RWMutex{}
+
+// inAutoProcessing indicates we're evaluating constants during AUTO clause processing
+// When true, ev() won't call finish() on errors to avoid setting sig_int
+var inAutoProcessing bool
+var autoProcessingLock sync.RWMutex
 
 func vunset(fs uint32, ident *[]Variable, name string) {
     bin := bind_int(fs, name)
@@ -3087,8 +3149,16 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
 
     if result == nil { // could not eval
         if err != nil {
-            parser.report(-1, sf("Error evaluating '%s'", ws))
-            finish(false, ERR_EVAL)
+            // During AUTO processing, don't call report() or finish()
+            // Let the AUTO code handle error reporting
+            autoProcessingLock.RLock()
+            inAuto := inAutoProcessing
+            autoProcessingLock.RUnlock()
+
+            if !inAuto {
+                parser.report(-1, sf("Error evaluating '%s'", ws))
+                finish(false, ERR_EVAL)
+            }
         }
     }
 

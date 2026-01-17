@@ -5,7 +5,7 @@
 println "[#4]Testing AUTO with Simple Header[#-]"
 
 # Load a module with the simple test header
-module "/lib64/libc.so.6" as test auto "/home/daniel/go/src/za/za_tests/test_simple_include.h"
+module "/lib64/libc.so.6" as test auto "./test_simple_include.h"
 use +test
 
 println "[#6]Test: Simple Header Constants[#-]"

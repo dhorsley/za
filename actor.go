@@ -5558,12 +5558,58 @@ tco_reentry:
 
                 // Parse header files if AUTO clause was specified
                 if hasAuto {
-                    if err := parseModuleHeaders(libPath, currentModule, headerPaths, parser.fs); err != nil {
+                    // Check if we already have a function space for this C module alias
+                    // This allows multiple AUTO imports to merge into the same namespace
+                    // Use separate cModuleAliasMap, not basemodmap (which is for Za namespaces)
+                    var loc uint32
+                    foundExisting := false
+
+                    cModuleAliasMapLock.RLock()
+                    existingLoc, foundExisting := cModuleAliasMap[currentModule]
+                    cModuleAliasMapLock.RUnlock()
+
+                    if foundExisting {
+                        // Reuse the existing function space
+                        loc = existingLoc
+                    } else {
+                        // Allocate a new permanent function space for this C module's constants
+                        // This allows constants to be accessed via module::CONSTANT_NAME
+                        loc, _ = GetNextFnSpace(true, currentModule, call_s{prepared: false})
+
+                        calllock.Lock()
+                        fspacelock.Lock()
+                        functionspaces[loc] = []Phrase{}
+                        basecode[loc] = []BaseCode{}
+                        fspacelock.Unlock()
+
+                        farglock.Lock()
+                        functionArgs[loc].args = []string{}
+                        farglock.Unlock()
+
+                        // Setup call_s entry for this module
+                        modcs := call_s{}
+                        modcs.base = loc
+                        modcs.caller = ifs
+                        modcs.fs = currentModule
+                        calltable[loc] = modcs
+                        calllock.Unlock()
+
+                        // Store in C module alias map (NOT basemodmap)
+                        cModuleAliasMapLock.Lock()
+                        cModuleAliasMap[currentModule] = loc
+                        cModuleAliasMapLock.Unlock()
+                    }
+
+                    // Parse headers using the module's dedicated function space
+                    if err := parseModuleHeaders(libPath, currentModule, headerPaths, loc); err != nil {
                         parser.report(inbound.SourceLine, sf("AUTO clause failed: %v\n\nSolution: Specify explicit header path:\n  module \"%s\" as %s auto \"/path/to/header.h\"",
                             err, libPath, currentModule))
                         finish(false, ERR_MODULE)
                         break
                     }
+
+                    // Note: Unlike normal Za modules, we don't trigger GC or tear down this function space
+                    // The constants need to persist for access via module::CONSTANT_NAME
                 }
 
                 modlist[currentModule] = true

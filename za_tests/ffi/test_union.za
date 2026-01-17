@@ -3,7 +3,7 @@
 println "\n[#4]═══ Union Support Test Suite ═══[#-]\n"
 
 # Load test library - functions are auto-discovered from headers
-module "/home/daniel/go/src/za/za_tests/libtest_union.so" as test_c auto "/home/daniel/go/src/za/za_tests/test_union_lib.h"
+module "./libtest_union.so" as test_c auto "./test_union_lib.h"
 use +test_c
 
 test_count = 0
