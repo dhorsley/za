@@ -639,6 +639,7 @@ import (
     "fmt"
     "runtime"
     "runtime/cgo"
+    "strings"
     "sync"
     "unsafe"
 )
@@ -868,6 +869,26 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     expectedRetType := sig.ReturnType
 
+    // Detect and unwrap mutable arguments
+    var mutableArgs []*MutableArg
+    mutableArgIndices := make(map[int]*MutableArg)  // Index -> MutableArg mapping for marshaling
+    unwrappedArgs := make([]any, len(args))
+
+    for i, arg := range args {
+        if mutArg, ok := arg.(*MutableArg); ok {
+            // This is a mutable argument - track it
+            mutableArgs = append(mutableArgs, mutArg)
+            mutableArgIndices[i] = mutArg
+            // Use the wrapped value for marshaling
+            unwrappedArgs[i] = mutArg.Value
+        } else {
+            unwrappedArgs[i] = arg
+        }
+    }
+
+    // Use unwrappedArgs for the rest of the function
+    args = unwrappedArgs
+
     // For variadic functions, validate minimum argument count
     if sig.HasVarargs {
         if len(args) < sig.FixedArgCount {
@@ -949,6 +970,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     // Temporary storage for converted arguments (must stay alive during call)
     var cstrings []unsafe.Pointer
     var allocatedMem []unsafe.Pointer
+    var cleanupFuncs []func()
 
     // Array to hold custom ffi_type* for struct/union parameters
     var customArgTypes []unsafe.Pointer
@@ -962,6 +984,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
         for _, mem := range allocatedMem {
             C.free(mem)
+        }
+        // Execute cleanup functions (in reverse order for safety)
+        for i := len(cleanupFuncs) - 1; i >= 0; i-- {
+            cleanupFuncs[i]()
         }
     }()
 
@@ -984,6 +1010,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, intPtr)
             *(*C.int)(intPtr) = C.int(v)
             argValuesSlice[i] = intPtr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = intPtr
+            }
 
         case uint:
             argTypesSlice[i] = 9 // CUInt
@@ -992,6 +1022,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, uintPtr)
             *(*C.uint)(uintPtr) = C.uint(v)
             argValuesSlice[i] = uintPtr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = uintPtr
+            }
 
         case int16:
             argTypesSlice[i] = 10 // CInt16
@@ -1016,6 +1050,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, int64Ptr)
             *(*C.longlong)(int64Ptr) = C.longlong(v)
             argValuesSlice[i] = int64Ptr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = int64Ptr
+            }
 
         case uint64:
             argTypesSlice[i] = 13 // CUInt64
@@ -1024,6 +1062,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, uint64Ptr)
             *(*C.ulonglong)(uint64Ptr) = C.ulonglong(v)
             argValuesSlice[i] = uint64Ptr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = uint64Ptr
+            }
 
         case int8:
             argTypesSlice[i] = 15 // CInt8
@@ -1050,6 +1092,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, fltPtr)
                 *(*C.float)(fltPtr) = C.float(v)
                 argValuesSlice[i] = fltPtr
+                // Capture C pointer for mutable arguments
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = fltPtr
+                }
             } else {
                 argTypesSlice[i] = 3 // CDouble
                 // Allocate C memory for double value
@@ -1057,6 +1103,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, dblPtr)
                 *(*C.double)(dblPtr) = C.double(v)
                 argValuesSlice[i] = dblPtr
+                // Capture C pointer for mutable arguments
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = dblPtr
+                }
             }
 
         case string:
@@ -1068,6 +1118,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, ptrPtr)
             *(*unsafe.Pointer)(ptrPtr) = unsafe.Pointer(cstr)
             argValuesSlice[i] = ptrPtr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = unsafe.Pointer(cstr)
+            }
 
         case bool:
             argTypesSlice[i] = 6 // CBool
@@ -1080,6 +1134,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 *(*C.uchar)(boolPtr) = 0
             }
             argValuesSlice[i] = boolPtr
+            // Capture C pointer for mutable arguments
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = boolPtr
+            }
 
         case *CPointerValue:
             argTypesSlice[i] = 7 // CPointer
@@ -1101,101 +1159,208 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             }
 
             if structTypeName != "" {
-                // Look up the struct/union definition
+                // Check if pointer-to-struct (has trailing *)
+                isPointer := strings.HasSuffix(structTypeName, "*")
+                baseStructName := strings.TrimSuffix(structTypeName, "*")
+
+                // Look up the struct/union definition using base name
                 // First try as union (from AUTO parsing), then as Za struct
                 var structDef *CLibraryStruct
                 var err error
 
                 // Check if it's a union from C headers
                 ffiStructLock.RLock()
-                if def, ok := ffiStructDefinitions[structTypeName]; ok {
+                if def, ok := ffiStructDefinitions[baseStructName]; ok {
                     structDef = def
                 }
                 ffiStructLock.RUnlock()
 
                 // If not found in FFI registry, try Za struct definition
                 if structDef == nil {
-                    structDef, err = getStructLayoutFromZa(structTypeName)
+                    structDef, err = getStructLayoutFromZa(baseStructName)
                     if err != nil {
-                        return nil, fmt.Errorf("argument %d: failed to get struct/union layout for %s: %v", i, structTypeName, err)
+                        return nil, fmt.Errorf("argument %d: failed to get struct/union layout for %s: %v", i, baseStructName, err)
                     }
                 }
 
                 // CRITICAL: Validate struct definition before marshaling
                 if structDef == nil {
-                    return nil, fmt.Errorf("argument %d: struct/union %s is not defined", i, structTypeName)
+                    return nil, fmt.Errorf("argument %d: struct/union %s is not defined", i, baseStructName)
                 }
                 if structDef.Size == 0 {
-                    return nil, fmt.Errorf("argument %d: struct/union %s has zero size - invalid definition", i, structTypeName)
+                    return nil, fmt.Errorf("argument %d: struct/union %s has zero size - invalid definition", i, baseStructName)
                 }
-
-                // Create custom ffi_type for this struct/union
-                customFFIType, err := createFFITypeForStruct(structDef)
-                if err != nil {
-                    return nil, fmt.Errorf("argument %d: failed to create ffi_type for %s: %v", i, structTypeName, err)
-                }
-                customArgTypes[i] = customFFIType
 
                 // Check if this is a union type
                 if structDef.IsUnion {
                     // Union parameter - expect a map literal
-                    argTypesSlice[i] = 8 // CStruct (unions passed by value)
+                    if isPointer {
+                        // Pass union by pointer
+                        argTypesSlice[i] = 7 // CPointer
 
-                    // Arg should be a map
-                    argMap, ok := arg.(map[string]any)
-                    if !ok {
-                        return nil, fmt.Errorf("argument %d: union parameter expects map literal, got %T", i, arg)
-                    }
-
-                    // Allocate C memory for union
-                    cPtr := C.malloc(C.size_t(structDef.Size))
-                    if cPtr == nil {
-                        return nil, fmt.Errorf("argument %d: failed to allocate C memory for union (size: %d)", i, structDef.Size)
-                    }
-
-                    // Zero-initialize
-                    C.memset(cPtr, 0, C.size_t(structDef.Size))
-
-                    // Track allocated strings
-                    var allocatedStrings []unsafe.Pointer
-
-                    // Marshal union
-                    err = marshalUnion(argMap, structDef, cPtr, &allocatedStrings)
-                    if err != nil {
-                        C.free(cPtr)
-                        for _, strPtr := range allocatedStrings {
-                            C.free(strPtr)
+                        // Arg should be a map
+                        argMap, ok := arg.(map[string]any)
+                        if !ok {
+                            return nil, fmt.Errorf("argument %d: union pointer parameter expects map literal, got %T", i, arg)
                         }
-                        return nil, fmt.Errorf("argument %d: failed to marshal union: %v", i, err)
-                    }
 
-                    // Cleanup function for union
-                    cleanup := func() {
-                        for _, strPtr := range allocatedStrings {
-                            C.free(strPtr)
+                        // Allocate C memory for union
+                        cPtr := C.malloc(C.size_t(structDef.Size))
+                        if cPtr == nil {
+                            return nil, fmt.Errorf("argument %d: failed to allocate C memory for union (size: %d)", i, structDef.Size)
                         }
-                        C.free(cPtr)
-                    }
-                    defer cleanup()
 
-                    // For by-value unions, argValuesSlice should point directly to the union data
-                    // (not pointer-to-pointer, since we're passing the union by value)
-                    argValuesSlice[i] = cPtr
+                        // Zero-initialize
+                        C.memset(cPtr, 0, C.size_t(structDef.Size))
+
+                        // Track allocated strings
+                        var allocatedStrings []unsafe.Pointer
+
+                        // Marshal union
+                        err = marshalUnion(argMap, structDef, cPtr, &allocatedStrings)
+                        if err != nil {
+                            C.free(cPtr)
+                            for _, strPtr := range allocatedStrings {
+                                C.free(strPtr)
+                            }
+                            return nil, fmt.Errorf("argument %d: failed to marshal union: %v", i, err)
+                        }
+
+                        // Add cleanup function for union pointer (will be called after libffi call)
+                        allocatedStringsCopy := make([]unsafe.Pointer, len(allocatedStrings))
+                        copy(allocatedStringsCopy, allocatedStrings)
+                        cPtrCopy := cPtr
+                        cleanupFuncs = append(cleanupFuncs, func() {
+                            for _, strPtr := range allocatedStringsCopy {
+                                C.free(strPtr)
+                            }
+                            C.free(cPtrCopy)
+                        })
+
+                        // For pointer unions, allocate a pointer slot and store cPtr address
+                        ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                        if ptrPtr == nil {
+                            return nil, fmt.Errorf("argument %d: failed to allocate pointer slot for union", i)
+                        }
+                        allocatedMem = append(allocatedMem, ptrPtr)
+                        *(*unsafe.Pointer)(ptrPtr) = cPtr
+                        argValuesSlice[i] = ptrPtr
+                    } else {
+                        // Union parameter passed by value
+                        argTypesSlice[i] = 8 // CStruct
+
+                        // Arg should be a map
+                        argMap, ok := arg.(map[string]any)
+                        if !ok {
+                            return nil, fmt.Errorf("argument %d: union parameter expects map literal, got %T", i, arg)
+                        }
+
+                        // Allocate C memory for union
+                        cPtr := C.malloc(C.size_t(structDef.Size))
+                        if cPtr == nil {
+                            return nil, fmt.Errorf("argument %d: failed to allocate C memory for union (size: %d)", i, structDef.Size)
+                        }
+
+                        // Zero-initialize
+                        C.memset(cPtr, 0, C.size_t(structDef.Size))
+
+                        // Track allocated strings
+                        var allocatedStrings []unsafe.Pointer
+
+                        // Marshal union
+                        err = marshalUnion(argMap, structDef, cPtr, &allocatedStrings)
+                        if err != nil {
+                            C.free(cPtr)
+                            for _, strPtr := range allocatedStrings {
+                                C.free(strPtr)
+                            }
+                            return nil, fmt.Errorf("argument %d: failed to marshal union: %v", i, err)
+                        }
+
+                        // Add cleanup function for union (will be called after libffi call)
+                        allocatedStringsCopy := make([]unsafe.Pointer, len(allocatedStrings))
+                        copy(allocatedStringsCopy, allocatedStrings)
+                        cPtrCopy := cPtr
+                        cleanupFuncs = append(cleanupFuncs, func() {
+                            for _, strPtr := range allocatedStringsCopy {
+                                C.free(strPtr)
+                            }
+                            C.free(cPtrCopy)
+                        })
+
+                        // Create custom ffi_type for the union (needed for libffi by-value passing)
+                        customFFIType, err := createFFITypeForStruct(structDef)
+                        if err != nil {
+                            // Clean up before returning error
+                            C.free(cPtr)
+                            for _, strPtr := range allocatedStrings {
+                                C.free(strPtr)
+                            }
+                            return nil, fmt.Errorf("argument %d: failed to create ffi_type for union %s: %v",
+                                i, baseStructName, err)
+                        }
+                        customArgTypes[i] = customFFIType
+
+                        // For by-value unions, argValuesSlice should point directly to the union data
+                        // (not pointer-to-pointer, since we're passing the union by value)
+                        argValuesSlice[i] = cPtr
+                    }
                 } else {
-                    // Regular struct - marshal to C memory and pass by value
-                    argTypesSlice[i] = 8 // CStruct
+                    // Regular struct
+                    if isPointer {
+                        // Pass struct by pointer
+                        argTypesSlice[i] = 7 // CPointer
 
-                    cPtr, cleanup, err := MarshalStructToC(arg, structDef)
-                    if err != nil {
-                        return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                        cPtr, cleanup, err := MarshalStructToC(arg, structDef)
+                        if err != nil {
+                            return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                        }
+
+                        // Capture C pointer for mutable arguments
+                        if mutArg, ok := mutableArgIndices[i]; ok {
+                            mutArg.CPtr = cPtr
+                            mutArg.StructDef = structDef
+                        }
+
+                        // Add cleanup function (will be called after libffi call)
+                        cleanupFuncs = append(cleanupFuncs, cleanup)
+
+                        // For pointer structs, allocate a pointer slot and store cPtr address
+                        ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                        if ptrPtr == nil {
+                            return nil, fmt.Errorf("argument %d: failed to allocate pointer slot for struct", i)
+                        }
+                        allocatedMem = append(allocatedMem, ptrPtr)
+                        *(*unsafe.Pointer)(ptrPtr) = cPtr
+                        argValuesSlice[i] = ptrPtr
+                    } else {
+                        // Pass struct by value - use custom ffi_type for struct
+                        argTypesSlice[i] = 8 // CStruct
+
+                        customFFIType, err := createFFITypeForStruct(structDef)
+                        if err != nil {
+                            return nil, fmt.Errorf("argument %d: failed to create ffi_type for %s: %v", i, baseStructName, err)
+                        }
+                        customArgTypes[i] = customFFIType
+
+                        cPtr, cleanup, err := MarshalStructToC(arg, structDef)
+                        if err != nil {
+                            return nil, fmt.Errorf("argument %d: failed to marshal struct: %v", i, err)
+                        }
+
+                        // Capture C pointer for mutable arguments
+                        if mutArg, ok := mutableArgIndices[i]; ok {
+                            mutArg.CPtr = cPtr
+                            mutArg.StructDef = structDef
+                        }
+
+                        // Add cleanup function (will be called after libffi call)
+                        cleanupFuncs = append(cleanupFuncs, cleanup)
+
+                        // For by-value structs, argValuesSlice should point directly to the struct data
+                        // (not pointer-to-pointer, since we're passing the struct by value)
+                        argValuesSlice[i] = cPtr
                     }
-
-                    // Clean up allocated C memory after the FFI call completes
-                    defer cleanup()
-
-                    // For by-value structs, argValuesSlice should point directly to the struct data
-                    // (not pointer-to-pointer, since we're passing the struct by value)
-                    argValuesSlice[i] = cPtr
                 }
             } else {
                 return nil, fmt.Errorf("unsupported argument type: %T", arg)
@@ -1295,6 +1460,55 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         return nil, fmt.Errorf("libffi call failed with code %d", result)
     }
 
+    // CRITICAL: Unmarshal mutable arguments BEFORE cleanup runs (defer cleanup below)
+    for _, mutArg := range mutableArgs {
+        if mutArg.CPtr == nil {
+            continue  // No C memory to read
+        }
+
+        var newValue any
+        var err error
+
+        // Handle different types
+        if mutArg.StructDef != nil {
+            // Struct type - use UnmarshalStructFromC
+            newValue, err = UnmarshalStructFromC(mutArg.CPtr, mutArg.StructDef, "")
+        } else {
+            // Primitive type - read directly from C memory
+            // Determine type from the C pointer value type
+            switch mutArg.Value.(type) {
+            case int:
+                newValue = int(*(*C.int)(mutArg.CPtr))
+            case uint:
+                newValue = uint(*(*C.uint)(mutArg.CPtr))
+            case int64:
+                newValue = int64(*(*C.longlong)(mutArg.CPtr))
+            case uint64:
+                newValue = uint64(*(*C.ulonglong)(mutArg.CPtr))
+            case float64:
+                newValue = float64(*(*C.double)(mutArg.CPtr))
+            case bool:
+                newValue = *(*C.int)(mutArg.CPtr) != 0  // 0 → false, non-zero → true
+            case string:
+                // For strings, assume it's a char buffer we filled
+                newValue = C.GoString((*C.char)(mutArg.CPtr))
+            default:
+                // Unknown type, skip
+                continue
+            }
+        }
+
+        if err != nil {
+            continue  // Log warning but don't fail
+        }
+
+        // Update the original Za variable
+        bin := mutArg.Binding
+        if bin < uint64(len(*mutArg.IdentPtr)) {
+            (*mutArg.IdentPtr)[bin].IValue = newValue
+        }
+    }
+
     // For struct returns, use the allocated buffer; otherwise use returnValue
     if structReturnBuf != nil {
         return convertReturnValue(structReturnBuf, sig)
@@ -1364,44 +1578,93 @@ func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (
 
     case CPointer:
         ptr := *(*unsafe.Pointer)(unsafe.Pointer(&returnValue))
+
+        // Check if this is a pointer-to-struct and try to unmarshal it
+        if sig.ReturnStructName != "" && strings.HasSuffix(sig.ReturnStructName, "*") && ptr != nil {
+            baseStructName := strings.TrimSuffix(sig.ReturnStructName, "*")
+            baseStructName = strings.TrimSpace(baseStructName)
+
+            // Look up the struct definition
+            var structDef *CLibraryStruct
+            ffiStructLock.RLock()
+            if def, ok := ffiStructDefinitions[baseStructName]; ok {
+                structDef = def
+            }
+            ffiStructLock.RUnlock()
+
+            // If struct definition exists, auto-unmarshal the pointed-to struct
+            if structDef != nil {
+                if structDef.IsUnion {
+                    return unmarshalUnion(ptr, structDef)
+                } else {
+                    return UnmarshalStructFromC(ptr, structDef, baseStructName)
+                }
+            }
+        }
+
         return &CPointerValue{Ptr: ptr}, nil
 
     case CStruct:
         if sig.ReturnStructName != "" {
+            // Check if pointer-to-struct return (has trailing *)
+            isPointerReturn := strings.HasSuffix(sig.ReturnStructName, "*")
+            baseStructName := strings.TrimSuffix(sig.ReturnStructName, "*")
+
             // Look up the struct/union definition to determine if it's a value or pointer return
             var structDef *CLibraryStruct
             var err error
 
             // Check if it's a union from C headers
             ffiStructLock.RLock()
-            if def, ok := ffiStructDefinitions[sig.ReturnStructName]; ok {
+            if def, ok := ffiStructDefinitions[baseStructName]; ok {
                 structDef = def
             }
             ffiStructLock.RUnlock()
 
             // If not found in FFI registry, try Za struct definition
             if structDef == nil {
-                structDef, err = getStructLayoutFromZa(sig.ReturnStructName)
+                structDef, err = getStructLayoutFromZa(baseStructName)
                 if err != nil {
-                    return nil, fmt.Errorf("failed to get struct/union layout for %s: %v", sig.ReturnStructName, err)
+                    return nil, fmt.Errorf("failed to get struct/union layout for %s: %v", baseStructName, err)
                 }
             }
 
             // Validate struct definition before unmarshaling
-            if structDef == nil {
-                return nil, fmt.Errorf("struct/union %s is not defined - cannot unmarshal return value", sig.ReturnStructName)
+            // For value returns, require struct definition; for pointer returns, allow fallback to raw pointer
+            if structDef == nil && !isPointerReturn {
+                return nil, fmt.Errorf("struct/union %s is not defined - cannot unmarshal return value", baseStructName)
             }
-            if structDef.Size == 0 {
-                return nil, fmt.Errorf("struct/union %s has zero size - cannot unmarshal", sig.ReturnStructName)
+            if structDef != nil && structDef.Size == 0 {
+                return nil, fmt.Errorf("struct/union %s has zero size - cannot unmarshal", baseStructName)
             }
 
-            // Check if this is a union type (unions are typically returned by value)
-            if structDef.IsUnion {
-                // Union returned by value - data is in return buffer
-                return unmarshalUnion(returnValuePtr, structDef)
+            if isPointerReturn {
+                // Struct returned as pointer - returnValuePtr contains a pointer to the struct
+                ptr := *(*unsafe.Pointer)(returnValuePtr)
+                if ptr == nil {
+                    return &CPointerValue{Ptr: nil}, nil
+                }
+
+                // If struct definition exists, auto-unmarshal the pointed-to struct
+                if structDef != nil {
+                    if structDef.IsUnion {
+                        return unmarshalUnion(ptr, structDef)
+                    } else {
+                        return UnmarshalStructFromC(ptr, structDef, baseStructName)
+                    }
+                }
+
+                // Fallback: return raw pointer if no struct definition available
+                return &CPointerValue{Ptr: ptr}, nil
             } else {
-                // Regular struct - also returned by value (data is in return buffer)
-                return UnmarshalStructFromC(returnValuePtr, structDef, sig.ReturnStructName)
+                // Check if this is a union type (unions are typically returned by value)
+                if structDef.IsUnion {
+                    // Union returned by value - data is in return buffer
+                    return unmarshalUnion(returnValuePtr, structDef)
+                } else {
+                    // Regular struct - also returned by value (data is in return buffer)
+                    return UnmarshalStructFromC(returnValuePtr, structDef, baseStructName)
+                }
             }
         } else {
             // Generic struct - return as opaque pointer

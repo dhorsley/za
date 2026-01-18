@@ -300,6 +300,10 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
                 return nil, fmt.Errorf("cannot convert negative int %d to C uint", v)
             }
             return uint(v), nil
+        case uint:
+            return v, nil
+        case uint64:
+            return uint(v), nil
         case float64:
             if v < 0 {
                 return nil, fmt.Errorf("cannot convert negative float %f to C uint", v)
@@ -960,7 +964,8 @@ func buildFfiLib() {
         if p, ok := args[0].(*CPointerValue); ok {
             return CPtrIsNull(p), nil
         }
-        return true, nil
+        // Non-pointer values (like unmarshalled structs/maps) are not null
+        return false, nil
     }
 
     slhelp["c_alloc"] = LibHelp{in: "size", out: "cpointer", action: "Allocates a zero-initialized byte buffer of the given size."}
@@ -1321,16 +1326,34 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         cleanType = strings.TrimPrefix(cleanType, "union ")
         cleanType = strings.TrimSpace(cleanType)
 
+        // Check if this is a pointer-to-struct type (ends with *)
+        // For pointer-to-struct, strip the * for lookup but keep track that it's a pointer
+        isPointerType := strings.HasSuffix(cleanType, "*")
+        lookupName := cleanType
+        if isPointerType {
+            // Strip all trailing * for struct lookup
+            lookupName = strings.TrimRight(cleanType, "*")
+            lookupName = strings.TrimSpace(lookupName)
+        }
+
         // Check if it's a known struct/union from AUTO parsing
         ffiStructLock.RLock()
-        if def, exists := ffiStructDefinitions[cleanType]; exists {
+        if def, exists := ffiStructDefinitions[lookupName]; exists {
             ffiStructLock.RUnlock()
-            // Return CStruct with the original typedef name
             if os.Getenv("ZA_DEBUG_AUTO") != "" {
                 fmt.Fprintf(os.Stderr, "[AUTO] Type %s is known %s, using as struct reference\n",
-                    cleanType, map[bool]string{true: "union", false: "struct"}[def.IsUnion])
+                    lookupName, map[bool]string{true: "union", false: "struct"}[def.IsUnion])
             }
-            return CStruct, cleanType, nil
+
+            // For pointer-to-struct types, return as CPointer with the struct name preserved
+            // This allows auto-unmarshalling in convertReturnValue
+            // For value struct types, return as CStruct
+            if isPointerType {
+                // Return CPointer but preserve the struct name (with * suffix) for later unmarshalling
+                return CPointer, cleanType, nil
+            } else {
+                return CStruct, lookupName, nil
+            }
         }
         ffiStructLock.RUnlock()
     }

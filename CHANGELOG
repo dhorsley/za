@@ -40,7 +40,6 @@ library changes
       - c_unmarshal_struct(ptr, struct_type_name) - reads C struct data into Za structs
       - c_register_callback(func_name, signature) - registers Za function as C callback
       - c_unregister_callback(callback) - unregisters and cleans up callback
-      - c_get_trampoline(signature) - gets C-callable trampoline for signature
 
 
 language changes

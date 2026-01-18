@@ -1,7 +1,7 @@
 ---
 title: "Za - The Za Programming Language Handbook"
 author: "Daniel Horsley"
-version: "1.2.1"
+version: "1.2.2"
 css: za.css
 ---
 <div style="text-align:center; page-break-after: always;">
@@ -4456,7 +4456,6 @@ The AUTO clause parses C headers and extracts:
 - **Forward references**: `#define B (A * 2)` where A is defined later
 - **Function pointer typedefs**: `typedef int (*callback_t)(void*);`
 - **Array typedefs**: `typedef int IntArray[10];`
-- **Nested structs**: struct fields that are themselves structs
 
 ### F.3.3 Accessing Constants
 
@@ -4749,9 +4748,150 @@ lib c::printf(fmt:string, ...args) -> int
 
 **Optional return types:** Functions that perform side effects without returning meaningful values use `-> void`.
 
+## F.4.5 Passing Structs by Reference with `mut`
+
+The `mut` keyword allows passing VAR-declared structs by reference to C functions, enabling C code to modify struct fields in place. This is the preferred method for "out parameters" with AUTO-registered structs (available in v1.2.8+).
+
+#### Basic Usage
+
+```za
+module "libexample.so" as ex auto "example.h"
+use +ex
+
+# Declare struct variable (type from AUTO)
+var result ex::ResultStruct
+
+# Initialize fields
+result.status = 0
+result.value = 0
+
+# Pass by reference - C function modifies fields
+ex::compute(10, 20, mut result)
+
+# Access modified fields directly
+println "Status:", result.status
+println "Value:", result.value
+```
+
+#### How It Works
+
+1. **Declaration**: `var name namespace::Type` creates a struct variable from AUTO-parsed C header
+2. **Field Access**: Use dot notation (e.g., `result.status`, `result.value`)
+3. **Pass by Reference**: Use `mut` prefix when calling C functions that take pointer parameters
+4. **Automatic Updates**: C modifications are immediately visible in Za without unmarshaling
+
+#### Comparison with Manual Marshaling
+
+**With `mut` (recommended for AUTO structs):**
+
+```za
+var color x11::XColor
+color.red = 255 * 256
+color.green = 128 * 256
+color.blue = 0
+XAllocColor(display, colormap, mut color)
+# color.pixel is now set by C
+```
+
+**Manual marshaling (for non-AUTO structs):**
+
+```za
+color_ptr = c_alloc_struct("XColor")
+# ... set fields via marshaling ...
+XAllocColor(display, colormap, color_ptr)
+color = c_unmarshal_struct(color_ptr, "XColor")
+c_free_struct(color_ptr)
+```
+
+#### When to Use `mut`
+
+✅ **Use `mut` when:**
+- Struct type is AUTO-registered from C headers
+- C function needs to modify struct fields (out parameter)
+- You want clean, readable code with dot notation
+
+❌ **Use manual marshaling when:**
+- Struct is not AUTO-registered (manually defined in Za)
+- Need explicit control over memory allocation
+- Working with complex nested structures
+
+#### X11 Color Allocation Example
+
+```za
+module "/usr/lib/libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+use +x11
+
+def alloc_colour(r, g, b)
+    # Declare XColor struct from AUTO header
+    var color x11::XColor
+
+    # Set RGB values (X11 uses 16-bit: 0-65535)
+    color.pixel = 0
+    color.red = r * 256
+    color.green = g * 256
+    color.blue = b * 256
+    color.flags = 0
+    color.pad = 0
+
+    # XAllocColor modifies color.pixel
+    status = XAllocColor(display, colormap, mut color)
+
+    if status == 0
+        return 0  # Allocation failed
+    endif
+
+    # Return the allocated pixel value
+    return color.pixel
+end
+
+# Usage
+red = alloc_colour(255, 0, 0)
+green = alloc_colour(0, 255, 0)
+blue = alloc_colour(0, 0, 255)
+```
+
+#### Requirements
+
+- Struct type must be registered via `AUTO` header parsing
+- Struct fields accessed with dot notation (Go struct semantics)
+- C function signature must accept pointer (not by-value)
+
+#### Technical Details
+
+When you use `mut structname`:
+1. Za passes a pointer to the Go struct's memory
+2. C function writes directly to that memory
+3. No marshaling/unmarshaling overhead
+4. Changes are immediately visible in Za
+
+This is more efficient than manual marshaling which requires:
+- Memory allocation in C heap
+- Copy from C memory to Za memory (unmarshal)
+- Explicit memory deallocation
+
+#### Related Sections
+
+- **F.3.10**: AUTO struct registration from headers
+- **F.10.2**: Struct marshaling reference (alternative approach)
+
 ## F.5 Calling C Functions
 
-Once declared with `LIB`, C functions are called using the (optional) `namespace::function(args)` syntax. If no namespace is specified, then lookup is performed against the USE chain:
+Once declared with `LIB`, C functions are called using `namespace::function(args)` syntax. The namespace qualifier is optional but **strongly recommended** to avoid conflicts with Za's built-in functions.
+
+**Without namespace qualifier:** Za performs lookup in this order:
+1. USE chain (if `USE +alias` was called)
+2. Current namespace
+3. main:: (global namespace)
+
+**With namespace qualifier:** Za calls the explicitly specified version:
+```za
+c::strlen(str)     # Always calls libc version
+strlen(str)        # May call Za built-in or libc, depending on USE chain
+```
+
+**Best practice:** Always use explicit namespace qualifiers for C library functions (see F.11.10 for common conflicts).
+
+#### Examples
 
 ```za
 use +c
@@ -4770,6 +4910,11 @@ memset(buffer, 0, 1024)       # Zero the buffer
 free(buffer)                  # Free when done
 
 # File operations (with namespace qualifiers to avoid clash with za's fopen/fclose)
+# Important: Many C standard library functions share names with Za's built-in functions.
+# For example, Za has its own `fopen()` and `fclose()` functions for file handling that return
+# different types than the C versions. Always use explicit namespace qualifiers (`c::`) when
+# calling C library functions to avoid accidentally calling Za's built-in version.
+# See section F.11.10 for details on namespace conflicts.
 fp = c::fopen("/tmp/test.txt", "w")
 if !c_ptr_is_null(fp)
     # Write to file
@@ -5466,10 +5611,13 @@ glib::g_list_free(list)
 
 Za supports bidirectional struct marshaling for passing data between Za and C libraries.
 
-#### Two Modes of Struct Usage
+#### Three Ways to Use Structs with C
+
+**Note:** For AUTO-registered structs, consider using the `mut` keyword pattern (see F.4.5) for cleaner syntax with out parameters.
 
 1. **Opaque pointers** (`pointer`): When C library manages the struct internally
-2. **Marshaled structs** (`struct<Name>`): When you define the struct in Za and pass data to/from C
+2. **Marshaled structs with `mut`** (v1.2.8+): VAR-declared AUTO structs passed by reference (recommended for out parameters)
+3. **Manual marshaling** (`struct<Name>`): When you define the struct in Za and pass data to/from C
 
 #### Defining Structs
 
@@ -5566,9 +5714,7 @@ endif
 | `pointer` | `void*` | Raw pointer value |
 | `[int]` | `int[N]` | Fixed-size arrays (v1.2.2+) |
 
-**Supported (v1.2.2+)**: Fixed-size arrays in structs, union types, struct-by-value parameters/returns
-
-**Not yet supported**: Nested structs
+**Supported (v1.2.2+)**: Fixed-size arrays in structs, union types, struct-by-value parameters/returns, nested structs
 
 #### Struct-by-Value Support (v1.2.2+)
 
@@ -5656,6 +5802,8 @@ color = make_color_union(255, 128, 64)
 println "R: {color["rgb"][0]}"
 println "Alpha: {color["alpha"]}"
 ```
+
+**Why one field?** In C, a union is a special data structure where all fields share the same memory location. Only one field can hold valid data at a time - setting one field overwrites all others. Za enforces this by requiring map literals with exactly one field when creating unions.
 
 **Union marshaling rules:**
 
@@ -6089,7 +6237,9 @@ c_unregister_callback(cb)
 5. **Error handling:** Callback errors cannot propagate to C. Errors return safe default values (0, nil) to C.
 
 6. **Limitations:** While any signature can be registered, callbacks currently do not support:
-   - Struct-by-value parameters or returns (use pointers instead)
+   - Struct-by-value or union-by-value parameters or returns (use pointers instead)
+     - *Note:* Regular FFI calls DO support struct/union-by-value (see F.9.3, F.9.4)
+     - This limitation applies only to callbacks due to libffi closure restrictions
    - Variadic callbacks (callbacks with `...` parameters)
    - These will be rejected with a clear error message
 
@@ -6117,6 +6267,99 @@ c_unregister_callback(cb)
 
 5. **Test thread safety:** If C library uses threads, test that callbacks work correctly with concurrent invocations.
 
+### F.11.10 Choosing File Operation Functions
+
+Za provides **three different ways** to open and close files. Understanding when to use each is important for correct behavior.
+
+#### The Three Variants
+
+| Variant | Type | Returns | Use Case |
+|---------|------|---------|----------|
+| `fopen()` / `fclose()` | Za built-in | `pfile` (Za file handle) | Za file operations (read_file, write_file, etc.) |
+| `c_fopen()` / `c_fclose()` | Za helper | `CPointer` (FILE*) | Convenient wrapper for C file operations |
+| `c::fopen()` / `c::fclose()` | FFI direct | `pointer` / `int` | Direct C library calls via FFI |
+
+#### When to Use Each
+
+**1. Za Built-in: `fopen()` / `fclose()`**
+
+Use for Za's file operations. Returns a `pfile` type.
+
+```za
+# Za file operations
+fp = fopen("/tmp/data.txt", "w")
+fwrite(fp, "Hello, World!")
+fclose(fp)
+```
+
+**2. Za Helper: `c_fopen()` / `c_fclose()`**
+
+Convenient wrapper for C FILE* operations. Returns `CPointer` type with proper type tag.
+
+```za
+# Using C library functions with Za helper
+fp = c_fopen("/tmp/output.jpg", "wb")
+if !c_ptr_is_null(fp)
+    gdImageJpeg(image, fp, 90)  # Pass to C library function
+    c_fclose(fp)
+endif
+```
+
+**3. FFI Direct: `c::fopen()` / `c::fclose()`**
+
+Direct FFI call to libc. Returns raw pointer / int error code.
+
+```za
+module "libc.so.6" as c
+use +c
+
+LIB c::fopen(filename:string, mode:string) -> pointer
+LIB c::fclose(stream:pointer) -> int
+
+fp = c::fopen("/tmp/test.txt", "w")
+result = c::fclose(fp)
+assert result == 0, "fclose failed"
+```
+
+#### Common Pitfall: Wrong Function Called
+
+**Problem - Namespace collision:**
+```za
+module "libc.so.6" as c
+use +c
+
+LIB c::fopen(filename:string, mode:string) -> pointer
+LIB c::fclose(stream:pointer) -> int
+
+# WITHOUT namespace qualifier - calls Za's built-in fopen!
+fp = fopen("/tmp/file", "w")      # ❌ Returns pfile, not FILE*
+result = fclose(fp)                # ❌ Returns void, not int
+```
+
+**Solution - Use explicit namespace:**
+```za
+# WITH namespace qualifier - calls C library version
+fp = c::fopen("/tmp/file", "w")   # ✓ Returns FILE* pointer
+result = c::fclose(fp)             # ✓ Returns int error code
+assert result == 0, "fclose failed"
+```
+
+#### Best Practices
+
+1. **Use explicit namespace qualifiers** for FFI calls: `c::fopen()`, not `fopen()`
+2. **Prefer Za helpers** (`c_fopen`) over direct FFI for most C library usage
+3. **Check return types** - if function returns unexpected type, you're calling wrong version
+4. **Consult help** - use `help find fopen` to see all available versions
+
+#### Other Functions with Multiple Variants
+
+| Function | Za Built-in | C Library | Behavior Difference |
+|----------|-------------|-----------|---------------------|
+| `getenv` | Za environment vars | C getenv | Different variable sources |
+| `system` | Za system calls | C system() | Different error handling |
+
+See section 24 ("Modules and namespaces") for namespace resolution rules.
+
 ## F.12 Limitations and Best Practices
 
 **Limitations:**
@@ -6142,7 +6385,7 @@ c_unregister_callback(cb)
    - Define structs in Za and automatically pass to C using `struct<typename>` syntax
    - Read C struct data into Za using `c_unmarshal_struct()`
    - Direct field access works within Za structs (e.g., `point.x`)
-   - Nested structs and fixed-size arrays in structs not yet supported
+   - Nested structs and fixed-size arrays in structs are fully supported (v1.2.2+)
 
 5. **Size_t special handling:** Functions returning `size_t` require `c_ptr_to_int()` conversion.
 
@@ -6175,9 +6418,11 @@ c_unregister_callback(cb)
 
 5. **Test edge cases:** C libraries often have undefined behavior on invalid inputs. Test boundary conditions.
 
-6. **Use help plugin for discovery:** Leverage `help plugin find` to get correct signatures from man pages.
+6. **Prefer `mut` for AUTO structs:** When using AUTO-registered struct types, use `var` + `mut` pattern instead of manual marshaling for cleaner code and better performance. See section F.4.5 for details.
 
-7. **Wrap C operations in Za functions:** Create higher-level abstractions:
+7. **Use help plugin for discovery:** Leverage `help plugin find` to get correct signatures from man pages.
+
+8. **Wrap C operations in Za functions:** Create higher-level abstractions:
    ```za
 
    def json_create_person(name, age)
@@ -6190,9 +6435,9 @@ c_unregister_callback(cb)
    end
    ```
 
-8. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
+9. **When in doubt, use shell commands:** If FFI becomes complex, consider using Za's shell integration instead.
 
-9. **Keep local copies for distribution:** When distributing FFI-capable scripts, include local copies of both `.so` and `.h` files in the same directory as your script:
+10. **Keep local copies for distribution:** When distributing FFI-capable scripts, include local copies of both `.so` and `.h` files in the same directory as your script:
    ```za
    # Use relative paths for portability
    module "./mylib.so" as mylib auto "./mylib.h"

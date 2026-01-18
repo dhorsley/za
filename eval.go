@@ -328,6 +328,8 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
         }
     case O_Ref:
         left = p.reference(false)
+    case O_Mut:
+        left = p.reference(true)
     case SYM_BOR:
         left = p.command()
     case Block: // ${
@@ -1489,16 +1491,41 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
 
 }
 
-// mut is currently unused and may remain so.
-func (p *leparser) reference(mut bool) string {
+// reference returns identifier name for ref, or MutableArg wrapper for mut
+func (p *leparser) reference(mut bool) any {
     vartok := p.next()
-    /*
-       bin:=vartok.bindpos
-       if ! (*p.ident)[bin].declared {
-           vset(&vartok,p.fs,p.ident,vartok.tokText,nil)
-       }
-    */
-    return vartok.tokText
+
+    // Check if next token is :: (namespace operator)
+    fullName := vartok.tokText
+    if p.peek().tokType == SYM_DoubleColon {
+        p.next() // consume ::
+        identTok := p.next() // consume the identifier after ::
+        fullName = vartok.tokText + "::" + identTok.tokText
+    }
+
+    // Get the correct binding index for the full name
+    bin := bind_int(p.fs, fullName)
+
+    if mut {
+        // Ensure variable exists
+        if bin >= uint64(len(*p.ident)) || !(*p.ident)[bin].declared {
+            // Variable not declared - will error later in identifier()
+            return nil
+        }
+
+        // Get variable value and wrap it
+        varValue := (*p.ident)[bin].IValue
+
+        return &MutableArg{
+            Value:    varValue,
+            Binding:  bin,
+            IdentPtr: p.ident,
+            // CPtr and StructDef will be set by FFI layer during marshaling
+        }
+    }
+
+    // Original ref behavior - just return identifier name
+    return fullName
 }
 
 func (p *leparser) unaryPathOp(right any, op int64) string {

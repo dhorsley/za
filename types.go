@@ -348,3 +348,13 @@ var (
     errorStyleMode int          = ERROR_STYLE_PANIC // Default to standard panic/recover
     errorStyleLock sync.RWMutex                     // Race protection for error style changes
 )
+
+// MutableArg wraps an argument that needs post-call unmarshaling
+// When the FFI layer sees this type, it knows to unmarshal the result back
+type MutableArg struct {
+    Value     any          // The actual argument value (e.g., map[string]any for structs)
+    Binding   uint64       // Variable binding position in ident array
+    IdentPtr  *[]Variable  // Pointer to identifier array for updating
+    CPtr      unsafe.Pointer   // C memory pointer (set during marshaling)
+    StructDef *CLibraryStruct  // Struct definition (set during marshaling)
+}
