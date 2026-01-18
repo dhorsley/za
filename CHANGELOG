@@ -14,6 +14,11 @@ fixes
       - field names work in both lowercase (.rgb) and capitalized (.Rgb) forms
       - affects structs with fixed-size arrays like uint8_t rgb[3]
 
+  * build system improvements:
+      - fixed noffi variant build with proper build tag exclusions
+      - added missing stub functions for struct/union operations in noffi builds
+      - improved Alpine Linux compatibility
+
 
 library changes
 ---------------
@@ -67,6 +72,14 @@ language changes
       - this does not allocate memory, you must still do this either
          with c_alloc()+c_free() or assign a *value returned by a C call to it.
       - declaration allows the variable to be auto-converted during FFI operations.
+
+  * enhanced MODULE statement library path detection:
+      - environment variable support: LD_LIBRARY_PATH (Linux/BSD), DYLD_LIBRARY_PATH (macOS)
+      - ldconfig integration for accurate system library lookups
+      - multi-arch triplet support for cross-platform compatibility
+      - comprehensive fallback search: env vars → ldconfig → standard paths → dlopen default
+      - improved library discovery on ARM, x86, PowerPC, RISC-V, and MIPS architectures
+      - test coverage across Debian/Ubuntu multiarch, Alpine musl, and BSD systems
 
   * added AUTO clause for MODULE statements - automatic C header parsing
       - syntax: module "libfoo.so" as foo auto
@@ -179,6 +192,9 @@ language changes
               - help plugin convert "size_t strlen(const char *s)"
               - no man page lookup required, pure string parsing
               - supports all C function signatures including variadic and function pointers
+          - library symbol filtering improvements:
+              - filters imported symbols from library listings (shows only defined symbols)
+              - improved output formatting for library information display
       - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
       - test scripts at za_tests/test_ffi_*
       - struct marshaling support:

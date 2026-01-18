@@ -4076,8 +4076,6 @@ where A is defined later</li>
 <code>typedef int (*callback_t)(void*);</code></li>
 <li><strong>Array typedefs</strong>:
 <code>typedef int IntArray[10];</code></li>
-<li><strong>Nested structs</strong>: struct fields that are themselves
-structs</li>
 </ul>
 <h3 id="f.3.3-accessing-constants">F.3.3 Accessing Constants</h3>
 <p>Constants are accessible via the USE chain or namespace
@@ -4344,11 +4342,140 @@ lib c::printf(fmt:string, ...args) -&gt; int</code></pre>
 <p><strong>Optional return types:</strong> Functions that perform side
 effects without returning meaningful values use
 <code>-&gt; void</code>.</p>
+<h2 id="f.4.5-passing-structs-by-reference-with-mut">F.4.5 Passing
+Structs by Reference with <code>mut</code></h2>
+<p>The <code>mut</code> keyword allows passing VAR-declared structs by
+reference to C functions, enabling C code to modify struct fields in
+place. This is the preferred method for “out parameters” with
+AUTO-registered structs (available in v1.2.2+).</p>
+<h4 id="basic-usage-1">Basic Usage</h4>
+<pre class="za"><code>module &quot;libexample.so&quot; as ex auto &quot;example.h&quot;
+use +ex
+
+# Declare struct variable (type from AUTO)
+var result ex::ResultStruct
+
+# Initialize fields
+result.status = 0
+result.value = 0
+
+# Pass by reference - C function modifies fields
+ex::compute(10, 20, mut result)
+
+# Access modified fields directly
+println &quot;Status:&quot;, result.status
+println &quot;Value:&quot;, result.value</code></pre>
+<h4 id="how-it-works">How It Works</h4>
+<ol type="1">
+<li><strong>Declaration</strong>: <code>var name namespace::Type</code>
+creates a struct variable from AUTO-parsed C header</li>
+<li><strong>Field Access</strong>: Use dot notation (e.g.,
+<code>result.status</code>, <code>result.value</code>)</li>
+<li><strong>Pass by Reference</strong>: Use <code>mut</code> prefix when
+calling C functions that take pointer parameters</li>
+<li><strong>Automatic Updates</strong>: C modifications are immediately
+visible in Za without unmarshaling</li>
+</ol>
+<h4 id="comparison-with-manual-marshaling">Comparison with Manual
+Marshaling</h4>
+<p><strong>With <code>mut</code> (recommended for AUTO
+structs):</strong></p>
+<pre class="za"><code>var color x11::XColor
+color.red = 255 * 256
+color.green = 128 * 256
+color.blue = 0
+XAllocColor(display, colormap, mut color)
+# color.pixel is now set by C</code></pre>
+<p><strong>Manual marshaling (for non-AUTO structs):</strong></p>
+<pre class="za"><code>color_ptr = c_alloc_struct(&quot;XColor&quot;)
+# ... set fields via marshaling ...
+XAllocColor(display, colormap, color_ptr)
+color = c_unmarshal_struct(color_ptr, &quot;XColor&quot;)
+c_free_struct(color_ptr)</code></pre>
+<h4 id="when-to-use-mut">When to Use <code>mut</code></h4>
+<p><strong>Use <code>mut</code> when:</strong></p>
+<ul>
+<li>Struct type is AUTO-registered from C headers</li>
+<li>C function needs to modify struct fields (out parameter)</li>
+<li>You want clean, readable code with dot notation</li>
+</ul>
+<p><strong>Use manual marshaling when:</strong></p>
+<ul>
+<li>Struct is not AUTO-registered (manually defined in Za)</li>
+<li>Need explicit control over memory allocation</li>
+<li>Working with complex nested structures</li>
+</ul>
+<h4 id="x11-color-allocation-example">X11 Color Allocation Example</h4>
+<pre class="za"><code>module &quot;/usr/lib/libX11.so.6&quot; as x11 auto &quot;/usr/include/X11/Xlib.h&quot;
+use +x11
+
+def alloc_colour(r, g, b)
+    # Declare XColor struct from AUTO header
+    var color x11::XColor
+
+    # Set RGB values (X11 uses 16-bit: 0-65535)
+    color.pixel = 0
+    color.red = r * 256
+    color.green = g * 256
+    color.blue = b * 256
+    color.flags = 0
+    color.pad = 0
+
+    # XAllocColor modifies color.pixel
+    status = XAllocColor(display, colormap, mut color)
+
+    if status == 0
+        return 0  # Allocation failed
+    endif
+
+    # Return the allocated pixel value
+    return color.pixel
+end
+
+# Usage
+red = alloc_colour(255, 0, 0)
+green = alloc_colour(0, 255, 0)
+blue = alloc_colour(0, 0, 255)</code></pre>
+<h4 id="requirements">Requirements</h4>
+<ul>
+<li>Struct type must be registered via <code>AUTO</code> header
+parsing</li>
+<li>Struct fields accessed with dot notation (Go struct semantics)</li>
+<li>C function signature must accept pointer (not by-value)</li>
+</ul>
+<h4 id="technical-details">Technical Details</h4>
+<p>When you use <code>mut structname</code>: 1. Za passes a pointer to
+the Go struct’s memory 2. C function writes directly to that memory 3.
+No marshaling/unmarshaling overhead 4. Changes are immediately visible
+in Za</p>
+<p>This is more efficient than manual marshaling which requires:</p>
+<ul>
+<li>Memory allocation in C heap</li>
+<li>Copy from C memory to Za memory (unmarshal)</li>
+<li>Explicit memory deallocation</li>
+</ul>
+<h4 id="related-sections">Related Sections</h4>
+<ul>
+<li><strong>F.3.10</strong>: AUTO struct registration from headers</li>
+<li><strong>F.10.2</strong>: Struct marshaling reference (alternative
+approach)</li>
+</ul>
 <h2 id="f.5-calling-c-functions">F.5 Calling C Functions</h2>
-<p>Once declared with <code>LIB</code>, C functions are called using the
-(optional) <code>namespace::function(args)</code> syntax. If no
-namespace is specified, then lookup is performed against the USE
-chain:</p>
+<p>Once declared with <code>LIB</code>, C functions are called using
+<code>namespace::function(args)</code> syntax. The namespace qualifier
+is optional but <strong>strongly recommended</strong> to avoid conflicts
+with Za’s built-in functions.</p>
+<p><strong>Without namespace qualifier:</strong> Za performs lookup in
+this order: 1. USE chain (if <code>USE +alias</code> was called) 2.
+Current namespace 3. main:: (global namespace)</p>
+<p><strong>With namespace qualifier:</strong> Za calls the explicitly
+specified version:</p>
+<pre class="za"><code>c::strlen(str)     # Always calls libc version
+strlen(str)        # May call Za built-in or libc, depending on USE chain</code></pre>
+<p><strong>Best practice:</strong> Always use explicit namespace
+qualifiers for C library functions (see F.11.10 for common
+conflicts).</p>
+<h4 id="examples">Examples</h4>
 <pre class="za"><code>use +c
 # Simple calls with return values
 result = m::sqrt(16.0)           # result = 4.0
@@ -4365,6 +4492,11 @@ memset(buffer, 0, 1024)       # Zero the buffer
 free(buffer)                  # Free when done
 
 # File operations (with namespace qualifiers to avoid clash with za&#39;s fopen/fclose)
+# Important: Many C standard library functions share names with Za&#39;s built-in functions.
+# For example, Za has its own `fopen()` and `fclose()` functions for file handling that return
+# different types than the C versions. Always use explicit namespace qualifiers (`c::`) when
+# calling C library functions to avoid accidentally calling Za&#39;s built-in version.
+# See section F.11.10 for details on namespace conflicts.
 fp = c::fopen(&quot;/tmp/test.txt&quot;, &quot;w&quot;)
 if !c_ptr_is_null(fp)
     # Write to file
@@ -5116,11 +5248,17 @@ glib::g_list_free(list)</code></pre>
 Marshaling Between Za and C</h3>
 <p>Za supports bidirectional struct marshaling for passing data between
 Za and C libraries.</p>
-<h4 id="two-modes-of-struct-usage">Two Modes of Struct Usage</h4>
+<h4 id="three-ways-to-use-structs-with-c">Three Ways to Use Structs with
+C</h4>
+<p><strong>Note:</strong> For AUTO-registered structs, consider using
+the <code>mut</code> keyword pattern (see F.4.5) for cleaner syntax with
+out parameters.</p>
 <ol type="1">
 <li><strong>Opaque pointers</strong> (<code>pointer</code>): When C
 library manages the struct internally</li>
-<li><strong>Marshaled structs</strong>
+<li><strong>Marshaled structs</strong>: VAR-declared AUTO structs passed
+by reference (recommended for out parameters)</li>
+<li><strong>Manual marshaling</strong>
 (<code>struct&lt;Name&gt;</code>): When you define the struct in Za and
 pass data to/from C</li>
 </ol>
@@ -5243,8 +5381,7 @@ endif</code></pre>
 </tbody>
 </table>
 <p><strong>Supported (v1.2.2+)</strong>: Fixed-size arrays in structs,
-union types, struct-by-value parameters/returns</p>
-<p><strong>Not yet supported</strong>: Nested structs</p>
+union types, struct-by-value parameters/returns, nested structs</p>
 <h4 id="struct-by-value-support-v1.2.2">Struct-by-Value Support
 (v1.2.2+)</h4>
 <p>Za fully supports C functions that pass or return structs by value
@@ -5323,6 +5460,11 @@ color = make_color_union(255, 128, 64)
 # Access union fields as map keys
 println &quot;R: {color[&quot;rgb&quot;][0]}&quot;
 println &quot;Alpha: {color[&quot;alpha&quot;]}&quot;</code></pre>
+<p><strong>Why one field?</strong> In C, a union is a special data
+structure where all fields share the same memory location. Only one
+field can hold valid data at a time - setting one field overwrites all
+others. Za enforces this by requiring map literals with exactly one
+field when creating unions.</p>
 <p><strong>Union marshaling rules:</strong></p>
 <ol type="1">
 <li><strong>Creating unions</strong>: Use <code>map()</code> with
@@ -5344,11 +5486,14 @@ reinterpreted)</li>
 <li>Nested structs within unions work correctly</li>
 <li>Field validation ensures type safety</li>
 </ul>
-<p>See working examples in: - <code>za_tests/ffi/test_union.za</code> -
-Basic union support - <code>za_tests/ffi/test_union_marshal.za</code> -
-Comprehensive marshaling tests -
-<code>za_tests/test_union_struct_simple.za</code> - Unions with nested
-structs</p>
+<p>See working examples in:</p>
+<ul>
+<li><code>za_tests/ffi/test_union.za</code> - Basic union support</li>
+<li><code>za_tests/ffi/test_union_marshal.za</code> - Comprehensive
+marshaling tests</li>
+<li><code>za_tests/test_union_struct_simple.za</code> - Unions with
+nested structs</li>
+</ul>
 <h4 id="best-practices">Best Practices</h4>
 <ol type="1">
 <li><strong>Match C layouts</strong>: Ensure Za struct field order and
@@ -5648,8 +5793,6 @@ c_register_callback(&quot;my_func&quot;, &quot;int64,float,double-&gt;uint32&quo
 <code>uint64</code>, <code>float</code>, <code>double</code>,
 <code>ptr</code>/<code>pointer</code>, <code>string</code>,
 <code>bool</code>, <code>void</code></p>
-<p><strong>Not Yet Supported:</strong> struct-by-value, variadic
-signatures</p>
 <p><strong>Note:</strong> Most callbacks require C APIs that support a
 <strong>context parameter</strong> (also called <code>user_data</code>,
 <code>thunk</code>, or <code>arg</code>). This is where the
@@ -5894,7 +6037,14 @@ to C. Errors return safe default values (0, nil) to C.</p></li>
 <li><p><strong>Limitations:</strong> While any signature can be
 registered, callbacks currently do not support:</p>
 <ul>
-<li>Struct-by-value parameters or returns (use pointers instead)</li>
+<li>Struct-by-value or union-by-value parameters or returns (use
+pointers instead)
+<ul>
+<li><em>Note:</em> Regular FFI calls DO support struct/union-by-value
+(see F.9.3, F.9.4)</li>
+<li>This limitation applies only to callbacks due to libffi closure
+restrictions</li>
+</ul></li>
 <li>Variadic callbacks (callbacks with <code>...</code> parameters)</li>
 <li>These will be rejected with a clear error message</li>
 </ul></li>
@@ -5924,6 +6074,140 @@ with C APIs, document which parameter is the context.</p></li>
 <li><p><strong>Test thread safety:</strong> If C library uses threads,
 test that callbacks work correctly with concurrent invocations.</p></li>
 </ol>
+<h3 id="f.11.10-choosing-file-operation-functions">F.11.10 Choosing File
+Operation Functions</h3>
+<p>Za provides <strong>three different ways</strong> to open and close
+files. Understanding when to use each is important for correct
+behavior.</p>
+<h4 id="the-three-variants">The Three Variants</h4>
+<table>
+<colgroup>
+<col style="width: 26%" />
+<col style="width: 17%" />
+<col style="width: 26%" />
+<col style="width: 29%" />
+</colgroup>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Type</th>
+<th>Returns</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fopen()</code> / <code>fclose()</code></td>
+<td>Za built-in</td>
+<td><code>pfile</code> (Za file handle)</td>
+<td>Za file operations (read_file, write_file, etc.)</td>
+</tr>
+<tr>
+<td><code>c_fopen()</code> / <code>c_fclose()</code></td>
+<td>Za helper</td>
+<td><code>CPointer</code> (FILE*)</td>
+<td>Convenient wrapper for C file operations</td>
+</tr>
+<tr>
+<td><code>c::fopen()</code> / <code>c::fclose()</code></td>
+<td>FFI direct</td>
+<td><code>pointer</code> / <code>int</code></td>
+<td>Direct C library calls via FFI</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-use-each">When to Use Each</h4>
+<p><strong>1. Za Built-in: <code>fopen()</code> /
+<code>fclose()</code></strong></p>
+<p>Use for Za’s file operations. Returns a <code>pfile</code> type.</p>
+<pre class="za"><code># Za file operations
+fp = fopen(&quot;/tmp/data.txt&quot;, &quot;w&quot;)
+fwrite(fp, &quot;Hello, World!&quot;)
+fclose(fp)</code></pre>
+<p><strong>2. Za Helper: <code>c_fopen()</code> /
+<code>c_fclose()</code></strong></p>
+<p>Convenient wrapper for C FILE* operations. Returns
+<code>CPointer</code> type with proper type tag.</p>
+<pre class="za"><code># Using C library functions with Za helper
+fp = c_fopen(&quot;/tmp/output.jpg&quot;, &quot;wb&quot;)
+if !c_ptr_is_null(fp)
+    gdImageJpeg(image, fp, 90)  # Pass to C library function
+    c_fclose(fp)
+endif</code></pre>
+<p><strong>3. FFI Direct: <code>c::fopen()</code> /
+<code>c::fclose()</code></strong></p>
+<p>Direct FFI call to libc. Returns raw pointer / int error code.</p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c
+use +c
+
+LIB c::fopen(filename:string, mode:string) -&gt; pointer
+LIB c::fclose(stream:pointer) -&gt; int
+
+fp = c::fopen(&quot;/tmp/test.txt&quot;, &quot;w&quot;)
+result = c::fclose(fp)
+assert result == 0, &quot;fclose failed&quot;</code></pre>
+<h4 id="common-pitfall-wrong-function-called">Common Pitfall: Wrong
+Function Called</h4>
+<p><strong>Problem - Namespace collision:</strong></p>
+<pre class="za"><code>module &quot;libc.so.6&quot; as c
+use +c
+
+LIB c::fopen(filename:string, mode:string) -&gt; pointer
+LIB c::fclose(stream:pointer) -&gt; int
+
+# WITHOUT namespace qualifier - calls Za&#39;s built-in fopen!
+fp = fopen(&quot;/tmp/file&quot;, &quot;w&quot;)      # ❌ Returns pfile, not FILE*
+result = fclose(fp)                # ❌ Returns void, not int</code></pre>
+<p><strong>Solution - Use explicit namespace:</strong></p>
+<pre class="za"><code># WITH namespace qualifier - calls C library version
+fp = c::fopen(&quot;/tmp/file&quot;, &quot;w&quot;)   # ✓ Returns FILE* pointer
+result = c::fclose(fp)             # ✓ Returns int error code
+assert result == 0, &quot;fclose failed&quot;</code></pre>
+<h4 id="best-practices-1">Best Practices</h4>
+<ol type="1">
+<li><strong>Use explicit namespace qualifiers</strong> for FFI calls:
+<code>c::fopen()</code>, not <code>fopen()</code></li>
+<li><strong>Prefer Za helpers</strong> (<code>c_fopen</code>) over
+direct FFI for most C library usage</li>
+<li><strong>Check return types</strong> - if function returns unexpected
+type, you’re calling wrong version</li>
+<li><strong>Consult help</strong> - use <code>help find fopen</code> to
+see all available versions</li>
+</ol>
+<h4 id="other-functions-with-multiple-variants">Other Functions with
+Multiple Variants</h4>
+<table>
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 23%" />
+<col style="width: 20%" />
+<col style="width: 38%" />
+</colgroup>
+<thead>
+<tr>
+<th>Function</th>
+<th>Za Built-in</th>
+<th>C Library</th>
+<th>Behavior Difference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getenv</code></td>
+<td>Za environment vars</td>
+<td>C getenv</td>
+<td>Different variable sources</td>
+</tr>
+<tr>
+<td><code>system</code></td>
+<td>Za system calls</td>
+<td>C system()</td>
+<td>Different error handling</td>
+</tr>
+</tbody>
+</table>
+<p>See section 24 (“Modules and namespaces”) for namespace resolution
+rules.</p>
 <h2 id="f.12-limitations-and-best-practices">F.12 Limitations and Best
 Practices</h2>
 <p><strong>Limitations:</strong></p>
@@ -5954,8 +6238,8 @@ marshaling for passing data between Za and C:</p>
 <code>c_unmarshal_struct()</code></li>
 <li>Direct field access works within Za structs (e.g.,
 <code>point.x</code>)</li>
-<li>Nested structs and fixed-size arrays in structs not yet
-supported</li>
+<li>Nested structs and fixed-size arrays in structs are fully supported
+(v1.2.2+)</li>
 </ul></li>
 <li><p><strong>Size_t special handling:</strong> Functions returning
 <code>size_t</code> require <code>c_ptr_to_int()</code>
@@ -5986,6 +6270,10 @@ c::free(buf)</code></pre></li>
 versions may have incompatible ABIs.</p></li>
 <li><p><strong>Test edge cases:</strong> C libraries often have
 undefined behavior on invalid inputs. Test boundary conditions.</p></li>
+<li><p><strong>Prefer <code>mut</code> for AUTO structs:</strong> When
+using AUTO-registered struct types, use <code>var</code> +
+<code>mut</code> pattern instead of manual marshaling for cleaner code
+and better performance. See section F.4.5 for details.</p></li>
 <li><p><strong>Use help plugin for discovery:</strong> Leverage
 <code>help plugin find</code> to get correct signatures from man
 pages.</p></li>
@@ -6005,7 +6293,8 @@ becomes complex, consider using Za’s shell integration instead.</p></li>
 <li><p><strong>Keep local copies for distribution:</strong> When
 distributing FFI-capable scripts, include local copies of both
 <code>.so</code> and <code>.h</code> files in the same directory as your
-script:</p>
+script:</p></li>
+</ol>
 <pre class="za"><code># Use relative paths for portability
 module &quot;./mylib.so&quot; as mylib auto &quot;./mylib.h&quot;
 use +mylib</code></pre>
@@ -6016,8 +6305,7 @@ use +mylib</code></pre>
 <li>Makes script self-contained and portable</li>
 <li>Avoids dependency on system-installed libraries</li>
 <li>Users don’t need to install development packages for headers</li>
-</ul></li>
-</ol>
+</ul>
 <h2 id="f.13-platform-support-and-build-requirements">F.13 Platform
 Support and Build Requirements</h2>
 <p><strong>Unix/Linux:</strong></p>
@@ -6037,8 +6325,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb257"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb257-1"><a href="#cb257-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb267"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb267-1"><a href="#cb267-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
