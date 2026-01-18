@@ -4750,7 +4750,7 @@ lib c::printf(fmt:string, ...args) -> int
 
 ## F.4.5 Passing Structs by Reference with `mut`
 
-The `mut` keyword allows passing VAR-declared structs by reference to C functions, enabling C code to modify struct fields in place. This is the preferred method for "out parameters" with AUTO-registered structs (available in v1.2.8+).
+The `mut` keyword allows passing VAR-declared structs by reference to C functions, enabling C code to modify struct fields in place. This is the preferred method for "out parameters" with AUTO-registered structs (available in v1.2.2+).
 
 #### Basic Usage
 
@@ -4805,12 +4805,14 @@ c_free_struct(color_ptr)
 
 #### When to Use `mut`
 
-✅ **Use `mut` when:**
+**Use `mut` when:**
+
 - Struct type is AUTO-registered from C headers
 - C function needs to modify struct fields (out parameter)
 - You want clean, readable code with dot notation
 
-❌ **Use manual marshaling when:**
+**Use manual marshaling when:**
+
 - Struct is not AUTO-registered (manually defined in Za)
 - Need explicit control over memory allocation
 - Working with complex nested structures
@@ -4865,6 +4867,7 @@ When you use `mut structname`:
 4. Changes are immediately visible in Za
 
 This is more efficient than manual marshaling which requires:
+
 - Memory allocation in C heap
 - Copy from C memory to Za memory (unmarshal)
 - Explicit memory deallocation
@@ -5616,7 +5619,7 @@ Za supports bidirectional struct marshaling for passing data between Za and C li
 **Note:** For AUTO-registered structs, consider using the `mut` keyword pattern (see F.4.5) for cleaner syntax with out parameters.
 
 1. **Opaque pointers** (`pointer`): When C library manages the struct internally
-2. **Marshaled structs with `mut`** (v1.2.8+): VAR-declared AUTO structs passed by reference (recommended for out parameters)
+2. **Marshaled structs**: VAR-declared AUTO structs passed by reference (recommended for out parameters)
 3. **Manual marshaling** (`struct<Name>`): When you define the struct in Za and pass data to/from C
 
 #### Defining Structs
@@ -5821,6 +5824,7 @@ println "Alpha: {color["alpha"]}"
 - Field validation ensures type safety
 
 See working examples in:
+
 - `za_tests/ffi/test_union.za` - Basic union support
 - `za_tests/ffi/test_union_marshal.za` - Comprehensive marshaling tests
 - `za_tests/test_union_struct_simple.za` - Unions with nested structs
@@ -6041,8 +6045,6 @@ c_register_callback("my_func", "int64,float,double->uint32")
 
 **Supported Types:** `int8`, `uint8`, `int16`, `uint16`, `int32`/`int`, `uint32`/`uint`, `int64`, `uint64`, `float`, `double`, `ptr`/`pointer`, `string`, `bool`, `void`
 
-**Not Yet Supported:** struct-by-value, variadic signatures
-
 **Note:** Most callbacks require C APIs that support a **context parameter** (also called `user_data`, `thunk`, or `arg`). This is where the `.handle` is passed.
 
 ### F.11.3 Example: qsort_r with Custom Comparator
@@ -6237,6 +6239,7 @@ c_unregister_callback(cb)
 5. **Error handling:** Callback errors cannot propagate to C. Errors return safe default values (0, nil) to C.
 
 6. **Limitations:** While any signature can be registered, callbacks currently do not support:
+
    - Struct-by-value or union-by-value parameters or returns (use pointers instead)
      - *Note:* Regular FFI calls DO support struct/union-by-value (see F.9.3, F.9.4)
      - This limitation applies only to callbacks due to libffi closure restrictions
