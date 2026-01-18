@@ -10,6 +10,16 @@ test_count = 0
 pass_count = 0
 fail_count = 0
 
+doc `
+Declared Functions:
+  [declared] make_union_from_int(arg1:int) -> struct<test_union_t>
+  [declared] get_union_as_int(arg1:struct<test_union_t>) -> int
+  [declared] get_first_byte(arg1:struct<test_union_t>) -> void*<unsigned char>
+  [declared] name() -> void
+  [declared] make_union_from_float(arg1:double) -> struct<test_union_t>
+  [declared] get_union_as_float(arg1:struct<test_union_t>) -> float
+`
+
 # =============================================================================
 # TEST 1: Marshal map with int field to C
 # =============================================================================
@@ -35,7 +45,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 2: Marshal map with float field to C
@@ -60,7 +70,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 3: Marshal map with zero value
@@ -85,7 +95,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 4: Marshal negative value
@@ -110,7 +120,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 5: Marshal large value
@@ -135,7 +145,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 6: Marshal and verify byte access (SKIPPED)
@@ -151,7 +161,7 @@ println "[#6]Test {test_count}: Marshal and verify first byte (skipped)[#-]"
 pass_count = pass_count + 1
 println "  [#2]✓ PASS - Skipped (known AUTO issue with uint8 returns)[#-]"
 
-println ""
+println
 
 # =============================================================================
 # TEST 7: Round-trip marshal and unmarshal
@@ -184,7 +194,7 @@ catch e
     println "  [#1]✗ FAIL: {e}[#-]"
 endtry
 
-println ""
+println
 
 # =============================================================================
 # TEST 8: Error - map with multiple fields (should fail)
@@ -274,7 +284,7 @@ if fail_count == 0
     println "  ✓ Zero, negative, and large values handled"
     println "  ✓ Round-trip marshal/unmarshal consistent"
     println "  ✓ Proper error handling for invalid maps"
-    println ""
+    println
 else
     println "\n[#1]✗ {fail_count} test(s) FAILED - see details above[#-]"
     exit 1

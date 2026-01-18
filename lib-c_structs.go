@@ -179,6 +179,14 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
             switch zaField.Kind() {
             case reflect.Uint, reflect.Uint16:
                 uintVal = zaField.Uint()
+            case reflect.Int, reflect.Int64:
+                // Allow int to uint16 conversion with range checking
+                intVal := zaField.Int()
+                if intVal < 0 || intVal > 65535 {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("field %s: value %d out of range for uint16 (0-65535)", field.Name, intVal)
+                }
+                uintVal = uint64(intVal)
             default:
                 cleanup()
                 return nil, nil, fmt.Errorf("field %s: expected uint16, got %v", field.Name, zaField.Kind())
@@ -201,6 +209,14 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
             switch zaField.Kind() {
             case reflect.Uint, reflect.Uint64:
                 uintVal = zaField.Uint()
+            case reflect.Int, reflect.Int64:
+                // Allow int to uint64 conversion with range checking
+                intVal := zaField.Int()
+                if intVal < 0 {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("field %s: value %d cannot be negative for uint64", field.Name, intVal)
+                }
+                uintVal = uint64(intVal)
             default:
                 cleanup()
                 return nil, nil, fmt.Errorf("field %s: expected uint64, got %v", field.Name, zaField.Kind())
@@ -478,10 +494,21 @@ func marshalElementToC(ptr unsafe.Pointer, val reflect.Value, ctype CType, field
         *(*C.int16_t)(ptr) = C.int16_t(val.Int())
 
     case CUInt16:
-        if val.Kind() != reflect.Uint && val.Kind() != reflect.Uint16 {
+        var uintVal uint64
+        switch val.Kind() {
+        case reflect.Uint, reflect.Uint16:
+            uintVal = val.Uint()
+        case reflect.Int, reflect.Int64:
+            // Allow int to uint16 conversion with range checking
+            intVal := val.Int()
+            if intVal < 0 || intVal > 65535 {
+                return fmt.Errorf("field %s: value %d out of range for uint16 (0-65535)", fieldName, intVal)
+            }
+            uintVal = uint64(intVal)
+        default:
             return fmt.Errorf("field %s: expected uint16, got %v", fieldName, val.Kind())
         }
-        *(*C.uint16_t)(ptr) = C.uint16_t(val.Uint())
+        *(*C.uint16_t)(ptr) = C.uint16_t(uintVal)
 
     case CInt64:
         if val.Kind() != reflect.Int64 && val.Kind() != reflect.Int {
@@ -490,10 +517,21 @@ func marshalElementToC(ptr unsafe.Pointer, val reflect.Value, ctype CType, field
         *(*C.int64_t)(ptr) = C.int64_t(val.Int())
 
     case CUInt64:
-        if val.Kind() != reflect.Uint64 && val.Kind() != reflect.Uint {
+        var uintVal uint64
+        switch val.Kind() {
+        case reflect.Uint, reflect.Uint64:
+            uintVal = val.Uint()
+        case reflect.Int, reflect.Int64:
+            // Allow int to uint64 conversion with range checking
+            intVal := val.Int()
+            if intVal < 0 {
+                return fmt.Errorf("field %s: value %d cannot be negative for uint64", fieldName, intVal)
+            }
+            uintVal = uint64(intVal)
+        default:
             return fmt.Errorf("field %s: expected uint64, got %v", fieldName, val.Kind())
         }
-        *(*C.uint64_t)(ptr) = C.uint64_t(val.Uint())
+        *(*C.uint64_t)(ptr) = C.uint64_t(uintVal)
 
     case CFloat:
         if val.Kind() != reflect.Float32 && val.Kind() != reflect.Float64 {

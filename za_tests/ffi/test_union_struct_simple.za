@@ -2,7 +2,7 @@
 
 # Test union with struct members (nested struct support)
 
-module "/tmp/test_union_struct.so" as tu auto "./test_union_struct_lib.h"
+module "./test_union_struct.so" as tu auto "./test_union_struct_lib.h"
 use +tu
 
 println "Testing union with struct members..."

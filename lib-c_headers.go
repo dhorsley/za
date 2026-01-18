@@ -1713,54 +1713,90 @@ func convertCharacterLiterals(expr string) string {
 // addCPrefixToIdentifiers adds __c_ prefix to identifiers in expressions
 // to prevent conflicts with Za keywords during evaluation
 func addCPrefixToIdentifiers(expr string) string {
-    // Match identifiers (word characters starting with letter or underscore)
-    // Use word boundaries to match complete identifiers only
-    re := regexp.MustCompile(`\b([a-zA-Z_][a-zA-Z0-9_]*)\b`)
+    var result strings.Builder
+    inString := false
+    escaped := false
+    i := 0
 
-    // Process matches in reverse order to maintain indices
-    matches := re.FindAllStringIndex(expr, -1)
-    if matches == nil {
-        return expr
-    }
+    for i < len(expr) {
+        ch := expr[i]
 
-    result := expr
-    for i := len(matches) - 1; i >= 0; i-- {
-        start := matches[i][0]
-        end := matches[i][1]
-        match := expr[start:end]
+        // Handle string literal tracking
+        if ch == '"' && !escaped {
+            inString = !inString
+            result.WriteByte(ch)
+            escaped = false
+            i++
+            continue
+        }
 
-        // Check if this is a character/string literal prefix
-        // L'x', L"str", u'x', U'x', u8"str"
-        isLiteralPrefix := false
-        if end < len(expr) {
-            nextChar := expr[end]
-            if nextChar == '\'' || nextChar == '"' {
-                // Check if it's a known literal prefix
-                if match == "L" || match == "u" || match == "U" {
-                    isLiteralPrefix = true
-                } else if match == "u8" {
-                    isLiteralPrefix = true
+        // Track escape sequences
+        if ch == '\\' && inString && !escaped {
+            escaped = true
+            result.WriteByte(ch)
+            i++
+            continue
+        } else {
+            escaped = false
+        }
+
+        // If we're in a string, don't transform identifiers
+        if inString {
+            result.WriteByte(ch)
+            i++
+            continue
+        }
+
+        // Check if we have the start of an identifier
+        if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' {
+            // Extract the full identifier
+            start := i
+            for i < len(expr) && ((expr[i] >= 'a' && expr[i] <= 'z') ||
+                (expr[i] >= 'A' && expr[i] <= 'Z') ||
+                (expr[i] >= '0' && expr[i] <= '9') ||
+                expr[i] == '_') {
+                i++
+            }
+            match := expr[start:i]
+
+            // Check if this is a character/string literal prefix
+            // L'x', L"str", u'x', U'x', u8"str"
+            isLiteralPrefix := false
+            if i < len(expr) {
+                nextChar := expr[i]
+                if nextChar == '\'' || nextChar == '"' {
+                    // Check if it's a known literal prefix
+                    if match == "L" || match == "u" || match == "U" {
+                        isLiteralPrefix = true
+                    } else if match == "u8" {
+                        isLiteralPrefix = true
+                    }
                 }
             }
-        }
 
-        // Don't prefix literal prefixes or Za keywords
-        if isLiteralPrefix {
-            continue
-        }
+            // Don't prefix literal prefixes or Za keywords
+            if isLiteralPrefix {
+                result.WriteString(match)
+                continue
+            }
 
-        // Skip Za keywords and C keywords (except sizeof, which is handled separately)
-        if match == "true" || match == "false" ||
-            match == "typeof" || match == "alignof" ||
-            match == "_Alignof" || match == "__alignof__" || match == "__typeof__" {
-            continue
-        }
+            // Skip Za keywords and C keywords (except sizeof, which is handled separately)
+            if match == "true" || match == "false" ||
+                match == "typeof" || match == "alignof" ||
+                match == "_Alignof" || match == "__alignof__" || match == "__typeof__" {
+                result.WriteString(match)
+                continue
+            }
 
-        // Add __c_ prefix
-        result = result[:start] + "__c_" + match + result[end:]
+            // Add __c_ prefix
+            result.WriteString("__c_" + match)
+        } else {
+            result.WriteByte(ch)
+            i++
+        }
     }
 
-    return result
+    return result.String()
 }
 
 // getCTypeSize returns the size in bytes of a C type

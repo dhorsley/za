@@ -1,0 +1,497 @@
+#!/usr/bin/env za
+
+# Enhanced Breakout/Brick Breaker Arcade Game using X11 FFI
+# Features:
+# - Multiple lives system
+# - Progressive levels with increasing difficulty
+# - Score display on window
+# - Smart ball physics (angle varies by paddle hit position)
+# - Power-ups system
+# - Full colour support
+
+# Import X11 library with auto header parsing
+module "/usr/lib/libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+use +x11
+
+# Game area dimensions
+GAME_WIDTH = 800
+GAME_HEIGHT = 600
+
+# Window dimensions (larger to center game and add border)
+WINDOW_WIDTH = 900
+WINDOW_HEIGHT = 700
+
+# Calculate offset to center game area
+OFFSET_X = (WINDOW_WIDTH - GAME_WIDTH) / 2
+OFFSET_Y = (WINDOW_HEIGHT - GAME_HEIGHT) / 2
+
+FPS = 60
+
+# Frame timing
+TARGET_FPS = 60
+TARGET_FRAME_TIME_MS = 1000.0 / TARGET_FPS  # 16.666... ms
+current_fps = 0.0  # Track actual FPS for display
+FPS_PRINT_INTERVAL = 600  # Print FPS to CLI every N frames
+
+# Game state
+score = 0
+level = 1
+lives = 3
+game_over = false
+won = false
+
+# Paddle properties
+paddle_width = 80
+paddle_height = 15
+paddle_x = GAME_WIDTH / 2 - paddle_width / 2
+paddle_y = GAME_HEIGHT - 30
+
+# Ball properties
+ball_x = GAME_WIDTH / 2
+ball_y = GAME_HEIGHT / 2
+ball_radius = 8
+ball_vx = 4
+ball_vy = -4
+
+# Keyboard state
+keys_pressed = map(.left false, .right false)
+
+# Brick properties
+brick_width = 70
+brick_height = 15
+brick_rows = 3
+brick_cols = 10
+bricks = []
+
+# Power-ups array
+powerups = []
+
+# Power-up types: "big_paddle", "slow_ball"
+POWER_UP_TYPES = ["big_paddle", "slow_ball"]
+POWER_UP_SPEED = 2
+
+# Function to allocate a colour from hex value
+def alloc_colour(hex_str)
+    # Parse hex string to RGB components (8 bits each)
+    r = (hex_str / 65536) % 256
+    g = (hex_str / 256) % 256
+    b = hex_str % 256
+
+    # Declare proper struct variable (X11 uses 16-bit color values: 0-65535)
+    var color x11::XColor
+
+    # Set fields using dot notation
+    color.pixel = 0
+    color.red = r * 256
+    color.green = g * 256
+    color.blue = b * 256
+    color.flags = 0
+    color.pad = 0
+
+    # Call XAllocColor with mut - automatically updates color.pixel from C
+    status = XAllocColor(display, colormap, mut color)
+
+    if status == 0
+        return white  # Fallback to white pixel if allocation fails
+    endif
+
+    # color.pixel is now populated by XAllocColor via mut
+    return color.pixel
+end
+
+# Function to initialize bricks for current level
+def create_bricks()
+    new_bricks = []
+    rows = brick_rows + (level - 1)
+    if rows > 5
+        rows = 5
+    endif
+    for row = 0 to rows - 1
+        for col = 0 to brick_cols - 1
+            x = col * brick_width + 10
+            y = row * brick_height + 50
+            brick = map(
+                .x x,
+                .y y,
+                .width brick_width,
+                .height brick_height,
+                .active true
+            )
+            new_bricks = append(new_bricks, brick)
+        endfor
+    endfor
+    return new_bricks
+end
+
+println "Opening X11 connection..."
+
+# Open connection to X server
+display = XOpenDisplay(c_null())
+if c_ptr_is_null(display)
+    println "Error: Cannot open X display"
+    exit(1)
+endif
+
+println "Display opened successfully"
+
+# Get default screen
+screen = XDefaultScreen(display)
+
+# Get root window
+root = XRootWindow(display, screen)
+
+# Get pixel values
+black = XBlackPixel(display, screen)
+white = XWhitePixel(display, screen)
+
+# Allocate colours using XAllocColor
+colormap = XDefaultColormap(display, screen)
+
+# Pre-allocated colours
+colour_red = alloc_colour(0xFF0000)
+colour_green = alloc_colour(0x00FF00)
+colour_blue = alloc_colour(0x0000FF)
+colour_yellow = alloc_colour(0xFFFF00)
+colour_cyan = alloc_colour(0x00FFFF)
+colour_magenta = alloc_colour(0xFF00FF)
+colour_orange = alloc_colour(0xFF8800)
+
+# Colour array for bricks (cycles through colours)
+brick_colours = [colour_red, colour_orange, colour_yellow, colour_green, colour_cyan, colour_blue, colour_magenta]
+
+# Initialize bricks for level 1
+bricks = create_bricks()
+
+println "Creating game window..."
+
+# Create game window
+window = XCreateSimpleWindow(
+    display,
+    root,
+    100,
+    100,
+    WINDOW_WIDTH,
+    WINDOW_HEIGHT,
+    2,
+    white,
+    black
+)
+
+# Set window title
+XStoreName(display, window, "Za Breakout Game - Level " + as_string(level))
+
+# Select input events
+event_mask = ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask
+XSelectInput(display, window, event_mask)
+
+# Create graphics context
+gc = XDefaultGC(display, screen)
+on c_ptr_is_null(gc) do exit 1, "Error: could not allocate graphics context."
+println format("gc [type: %T] value : %+v\n",gc,gc)
+
+# Load a font for text rendering
+font = XLoadQueryFont(display, "10x20")  # Larger font (10px wide, 20px tall)
+if c_ptr_is_null(font)
+    font = XLoadQueryFont(display, "-*-fixed-*-*-*-*-20-*-*-*-*-*-*-*")  # Fallback to XLFD pattern
+endif
+if c_ptr_is_null(font)
+    font = XLoadQueryFont(display, "fixed")  # Ultimate fallback
+endif
+
+# Map window
+XMapWindow(display, window)
+XFlush(display)
+
+println "Game window created!"
+println "Controls: LEFT/RIGHT arrow keys to move paddle"
+println "Level: ", level, " - Lives: ", lives
+println
+
+# Allocate event structure
+event_ptr = c_alloc_struct("XEvent")
+
+# Initialize frame timing
+frame_start_time = epoch_nano_time()
+
+# Game loop
+running = true
+frame_count = 0
+
+while running
+    # Handle events
+    while XPending(display) > 0
+        XNextEvent(display, event_ptr)
+        event = c_unmarshal_struct(event_ptr, "XEvent")
+        event_type = event["type"]
+
+        if event_type == KeyPress
+            key_event = event["xkey"]
+            keycode = key_event["keycode"]
+
+            if keycode == 113          # Left arrow
+                keys_pressed["left"] = true
+            endif
+            if keycode == 114          # Right arrow
+                keys_pressed["right"] = true
+            endif
+        endif
+
+        if event_type == KeyRelease
+            key_event = event["xkey"]
+            keycode = key_event["keycode"]
+
+            if keycode == 113          # Left arrow
+                keys_pressed["left"] = false
+            endif
+            if keycode == 114          # Right arrow
+                keys_pressed["right"] = false
+            endif
+        endif
+    endwhile
+
+    # Update paddle position
+    if keys_pressed.left && paddle_x > 0
+        paddle_x = paddle_x - 6
+    endif
+    if keys_pressed.right && paddle_x + paddle_width < GAME_WIDTH
+        paddle_x = paddle_x + 6
+    endif
+
+    # Update ball position
+    ball_x = ball_x + ball_vx
+    ball_y = ball_y + ball_vy
+
+    # Ball collision with walls
+    if (ball_x - ball_radius < 0) || (ball_x + ball_radius > GAME_WIDTH)
+        ball_vx = 0 - ball_vx
+    endif
+
+    if ball_y - ball_radius < 0
+        ball_vy = 0 - ball_vy
+    endif
+
+    # Ball collision with paddle - smart angle calculation
+    if ( (ball_y + ball_radius >= paddle_y) && (ball_y - ball_radius <= paddle_y + paddle_height) && (ball_x >= paddle_x) && (ball_x <= paddle_x + paddle_width))
+
+        # Calculate hit position (0.0 = left edge, 1.0 = right edge)
+        hit_pos = (ball_x - paddle_x) / paddle_width
+
+        # Clamp to [0, 1]
+        if hit_pos < 0
+            hit_pos = 0
+        endif
+        if hit_pos > 1
+            hit_pos = 1
+        endif
+
+        # Convert to angle: -60 degrees (left) to +60 degrees (right)
+        # 0.5 = straight up, 0.0 = 60 degrees left, 1.0 = 60 degrees right
+        angle = (hit_pos - 0.5) * 120
+
+        # Calculate velocity components based on angle
+        # Normalize: speed stays constant
+        current_speed = 5 + level
+        angle_rad = angle * 3.14159 / 180
+
+        ball_vx = current_speed * angle_rad / 1.57   # Approximate sine
+        ball_vy = 0 - 5
+
+        ball_y = paddle_y - ball_radius
+    endif
+
+    # Ball collision with bricks
+    for i = 0 to len(bricks) - 1
+        brick = bricks[i]
+        if brick.active
+            bx = brick.x
+            by = brick.y
+            bw = brick.width
+            bh = brick.height
+
+            # Simple AABB collision
+            if ((ball_x >= bx) && (ball_x <= bx + bw) && (ball_y >= by) && (ball_y <= by + bh))
+                ball_vy = 0 - ball_vy
+                bricks[i] = map( .x brick.x, .y brick.y, .width brick.width, .height brick.height, .active false)
+                score = score + (10 * level)
+
+                # Spawn power-ups randomly
+                rand_val = (i * 13) % 3
+                if rand_val == 0
+                    powerup_type = POWER_UP_TYPES[rand_val % len(POWER_UP_TYPES)]
+                    powerup = map( .x brick.x + brick.width / 2, .y brick.y, .vx 0, .vy POWER_UP_SPEED, .type powerup_type, .active true)
+                    powerups = append(powerups, powerup)
+                endif
+            endif
+        endif
+    endfor
+
+    # Update and check power-ups
+    new_powerups = []
+    for i = 0 to len(powerups) - 1
+        pu = powerups[i]
+        if pu.active
+            # Update position
+            pu_y = pu.y + pu.vy
+
+            # Check if paddle catches it
+            if ((pu_y >= paddle_y) && (pu.x >= paddle_x) && (pu.x <= paddle_x + paddle_width))
+                # Apply power-up effect
+                if pu.type == "big_paddle"
+                    paddle_width = 120
+                endif
+                if pu.type == "slow_ball"
+                    ball_vx = ball_vx / 2
+                    ball_vy = ball_vy / 2
+                endif
+            endif
+
+            # Check if off-screen
+            if pu_y < GAME_HEIGHT
+                new_powerups = append(new_powerups, map( .x pu.x, .y pu_y, .vx pu.vx, .vy pu.vy, .type pu.type, .active true))
+            endif
+        endif
+    endfor
+    powerups = new_powerups
+
+    # Check win condition
+    active_bricks = bricks ?> "#.active"
+    if len(active_bricks) == 0
+        level = level + 1
+        lives = lives + 1
+        score = score + (500 * level)
+
+        # Reset for next level
+        ball_x = GAME_WIDTH / 2
+        ball_y = GAME_HEIGHT / 2
+        ball_vx = 4 + level
+        ball_vy = -(4 + level)
+        paddle_x = GAME_WIDTH / 2 - paddle_width / 2
+        paddle_width = 80
+        powerups = []
+
+        bricks = create_bricks()
+
+        XStoreName(display, window, "Za Breakout Game - Level " + as_string(level))
+    endif
+
+    # Check loss condition
+    if ball_y > GAME_HEIGHT
+        lives = lives - 1
+        if lives > 0
+            # Reset ball
+            ball_x = GAME_WIDTH / 2
+            ball_y = GAME_HEIGHT / 2
+            ball_vx = 4 + (level - 1)
+            ball_vy = -(4 + (level - 1))
+            paddle_x = GAME_WIDTH / 2 - paddle_width / 2
+            paddle_width = 80
+            powerups = []
+        else
+            game_over = true
+            running = false
+        endif
+    endif
+
+    # Render game
+    XClearWindow(display, window)
+
+    # Draw border box around game area
+    XSetForeground(display, gc, white)
+    XDrawRectangle(display, window, gc, OFFSET_X, OFFSET_Y, GAME_WIDTH, GAME_HEIGHT)
+
+    # Draw paddle
+    XSetForeground(display, gc, colour_cyan)
+    XFillRectangle(display, window, gc, paddle_x + OFFSET_X, paddle_y + OFFSET_Y, paddle_width, paddle_height)
+
+    # Draw ball
+    XSetForeground(display, gc, colour_yellow)
+    XFillArc(display, window, gc, ball_x - ball_radius + OFFSET_X, ball_y - ball_radius + OFFSET_Y, ball_radius * 2, ball_radius * 2, 0, 23040)
+
+    # Draw bricks with colours
+    for i = 0 to len(bricks) - 1
+        brick = bricks[i]
+        if brick.active
+            # Use different colour based on row
+            colour_idx = i % len(brick_colours)
+            XSetForeground(display, gc, brick_colours[colour_idx])
+            XFillRectangle(display, window, gc, brick.x + OFFSET_X, brick.y + OFFSET_Y, brick.width, brick.height)
+        endif
+    endfor
+
+    # Draw power-ups
+    for i = 0 to len(powerups) - 1
+        pu = powerups[i]
+        if pu.type == "big_paddle"
+            XSetForeground(display, gc, colour_magenta)
+        else
+            XSetForeground(display, gc, colour_green)
+        endif
+        XFillArc(display, window, gc, pu.x + OFFSET_X, pu.y + OFFSET_Y, 6, 6, 0, 23040)
+    endfor
+
+    # Draw score and lives text
+    XSetForeground(display, gc, white)
+    if !c_ptr_is_null(font)
+        XSetFont(display, gc, font.fid)
+        score_str = "Score: " + as_string(score)
+        XDrawString(display, window, gc, 10, 20, score_str, len(score_str))
+
+        lives_str = "Lives: " + as_string(lives)
+        XDrawString(display, window, gc, 10, 40, lives_str, len(lives_str))
+
+        level_str = "Level: " + as_string(level)
+        XDrawString(display, window, gc, WINDOW_WIDTH - 100, 20, level_str, len(level_str))
+
+        fps_str = "FPS: " + as_string(as_int(current_fps))
+        XDrawString(display, window, gc, WINDOW_WIDTH - 100, 40, fps_str, len(fps_str))
+    endif
+
+    # Flush drawing commands to X server
+    XFlush(display)
+
+    # Frame limiting - only pause for remaining time
+    frame_end_time = epoch_nano_time()
+    frame_duration_ms = as_float(frame_end_time - frame_start_time) / 1_000_000
+
+    sleep_time = TARGET_FRAME_TIME_MS - frame_duration_ms
+    if sleep_time > 0
+        pause as_int(sleep_time)
+    endif
+
+    # Measure total frame time including pause
+    frame_end_time_total = epoch_nano_time()
+    total_frame_duration_ms = as_float(frame_end_time_total - frame_start_time) / 1_000_000
+    if total_frame_duration_ms > 0
+        current_fps = 1000.0 / total_frame_duration_ms
+    endif
+
+    # Start timing next frame
+    frame_start_time = epoch_nano_time()
+
+    frame_count = frame_count + 1
+
+    # Periodic FPS output to CLI
+    if frame_count % FPS_PRINT_INTERVAL == 0
+        work_fps = 1000.0 / frame_duration_ms
+        println format("Frame %d: FPS = %.1f (work only: %.1f)", frame_count, current_fps, work_fps)
+    endif
+endwhile
+
+# Cleanup
+c_free(event_ptr)
+XDestroyWindow(display, window)
+XCloseDisplay(display)
+
+# Display end game message
+println
+println "=========================================="
+if level >= 3
+    println "YOU'RE A MASTER! You reached level ", level, "!"
+else
+    println "GAME OVER!"
+endif
+println "Final Score: ", score
+println "Final Level: ", level
+println "=========================================="
+
+

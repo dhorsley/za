@@ -1032,20 +1032,6 @@ func init() {
         return nil, nil
     }
 
-    stdlib["c_get_trampoline"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
-        if len(args) < 1 {
-            return nil, fmt.Errorf("c_get_trampoline requires signature string")
-        }
-
-        signature := GetAsString(args[0])
-
-        trampolinePtr, err := getTrampolineForSignature(signature)
-        if err != nil {
-            return nil, err
-        }
-
-        return NewCPointer(trampolinePtr, "callback_trampoline"), nil
-    }
 }
 
 // getTrampolineForSignature returns the appropriate trampoline function pointer for a signature

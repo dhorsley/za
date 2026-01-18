@@ -91,20 +91,20 @@ println "  ✓ free works"
 println "\n[#6]File Operations[#-]"
 
 # fopen for writing
-fp = fopen("/tmp/za_libc_test.txt", "w")
+fp = c::fopen("/tmp/za_libc_test.txt", "w")
 assert !c_ptr_is_null(fp), "fopen for writing failed"
 println "  ✓ fopen('/tmp/za_libc_test.txt', 'w') succeeds"
 
 # fclose
-result = fclose(fp)
+result = c::fclose(fp)
 assert result == 0, "fclose failed"
 println "  ✓ fclose returns 0"
 
 # fopen for reading
-fp = fopen("/etc/hostname", "r")
+fp = c::fopen("/etc/hostname", "r")
 assert !c_ptr_is_null(fp), "fopen for reading failed"
 println "  ✓ fopen('/etc/hostname', 'r') succeeds"
-fclose(fp)
+c::fclose(fp)
 
 # ========================================
 # Environment Functions
