@@ -899,7 +899,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     // Handle zero-arg functions
     if len(args) == 0 {
-        var returnValue C.longlong
+        // Allocate return value buffer with malloc for proper alignment
+        returnBuf := C.malloc(C.size_t(unsafe.Sizeof(C.longlong(0))))
+        defer C.free(returnBuf)
+
         isVariadic := 0
         if sig.HasVarargs {
             isVariadic = 1
@@ -910,7 +913,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             nil,
             nil,
             C.int(expectedRetType),
-            unsafe.Pointer(&returnValue),
+            returnBuf,
             C.int(isVariadic),
             C.int(0), // n_fixed_args (0 for zero-arg functions)
             nil,      // custom_arg_types
@@ -921,7 +924,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             return nil, fmt.Errorf("libffi call failed with code %d", result)
         }
 
-        return convertReturnValue(unsafe.Pointer(&returnValue), sig)
+        return convertReturnValue(returnBuf, sig)
     }
 
     // Convert Za arguments to C values with type checking and range validation
@@ -1369,8 +1372,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     }
 
     // Prepare return value storage
-    // For struct return values, we need to allocate enough space
-    var returnValue C.longlong
+    // Allocate return value buffer with malloc for proper alignment on all platforms
+    returnBuf := C.malloc(C.size_t(unsafe.Sizeof(C.longlong(0))))
+    defer C.free(returnBuf)
+
     var returnPtr unsafe.Pointer
     var structReturnBuf unsafe.Pointer
 
@@ -1406,7 +1411,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
         returnPtr = structReturnBuf
     } else {
-        returnPtr = unsafe.Pointer(&returnValue)
+        returnPtr = returnBuf
     }
 
     // Determine if variadic and fixed args count
@@ -1509,11 +1514,11 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
     }
 
-    // For struct returns, use the allocated buffer; otherwise use returnValue
+    // For struct returns, use the allocated buffer; otherwise use returnBuf
     if structReturnBuf != nil {
         return convertReturnValue(structReturnBuf, sig)
     }
-    return convertReturnValue(unsafe.Pointer(&returnValue), sig)
+    return convertReturnValue(returnBuf, sig)
 }
 
 // convertReturnValue converts C return value to Za type
