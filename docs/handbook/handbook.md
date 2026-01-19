@@ -3160,6 +3160,7 @@ endtest
 ```
 
 The optional assertion mode controls test behaviour:
+
 - **ASSERT FAIL** (default): Test execution stops on first assertion failure
 - **ASSERT CONTINUE**: Test continues past assertion failures, reporting all failures
 
@@ -3311,6 +3312,7 @@ test "complex_business_logic" GROUP "business_rules"
 
     # Document the test purpose
     doc "Verifies that order processing correctly applies business rules:
+
          1. Customer discount applied correctly
          2. Tax calculations accurate
          3. Inventory updated appropriately"
@@ -4350,6 +4352,7 @@ The AUTO clause parses C headers and extracts:
      typedef unsigned short size_t;  // 16-bit
    #endif
    ```
+
    - Supported directives: `#ifdef`, `#ifndef`, `#if`, `#elif`, `#else`, `#endif`, `#define`, `#include`
    - **`#if` and `#elif`** with full expression evaluation:
      - Numeric comparisons: `>`, `<`, `==`, `!=`, `>=`, `<=`
@@ -4387,6 +4390,7 @@ The AUTO clause parses C headers and extracts:
        char name[32];
    } Color;
    ```
+
    - C structs automatically registered in Za's `structmaps`
    - Supports VAR declarations: `var p Point`, `var c mylib::Color`
    - **VAR-declared AUTO structs are Go structs** - use **dot notation** to access fields
@@ -4425,6 +4429,7 @@ The AUTO clause parses C headers and extracts:
     ```
 
     **How it works:**
+
     - wchar_t size detected at Za startup via `unsafe.Sizeof(C.wchar_t(0))`
     - **Linux/BSD/macOS**: wchar_t = 4 bytes → maps to `uint32`
     - **Windows**: wchar_t = 2 bytes → maps to `uint16`
@@ -4442,6 +4447,7 @@ The AUTO clause parses C headers and extracts:
     Already handled by existing typedef resolution (item 8 above).
 
     **Use cases:**
+
     - ncursesw (wide character terminal UI)
     - readline (Unicode input)
     - ICU (if using wchar_t API)
@@ -4861,6 +4867,7 @@ blue = alloc_colour(0, 0, 255)
 #### Technical Details
 
 When you use `mut structname`:
+
 1. Za passes a pointer to the Go struct's memory
 2. C function writes directly to that memory
 3. No marshaling/unmarshaling overhead
@@ -4882,6 +4889,7 @@ This is more efficient than manual marshaling which requires:
 Once declared with `LIB`, C functions are called using `namespace::function(args)` syntax. The namespace qualifier is optional but **strongly recommended** to avoid conflicts with Za's built-in functions.
 
 **Without namespace qualifier:** Za performs lookup in this order:
+
 1. USE chain (if `USE +alias` was called)
 2. Current namespace
 3. main:: (global namespace)
