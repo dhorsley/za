@@ -5,7 +5,7 @@ println "[#4]Testing libjson-c FFI - All Return Types[#-]"
 println "=" * 50
 
 # Load libjson-c
-module "libjson-c.so.5" as json
+module "libjson-c.so" as json
 use +json
 
 # Declare function signatures for different return types
