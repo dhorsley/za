@@ -5,7 +5,7 @@ println "[#4]Testing libjson-c FFI - Object & Array Structures[#-]"
 println "=" * 50
 
 # Load libjson-c
-module "/usr/lib/libjson-c.so.5" as json
+module "libjson-c.so.5" as json
 use +json
 
 # Declare function signatures
@@ -181,7 +181,7 @@ println "{company_json}"
 # Extract company name
 company_name_obj = json_object_object_get(company, "name")
 company_name = json_object_get_string(company_name_obj)
-println "\  Company name: '{company_name}'"
+println "  Company name: '{company_name}'"
 assert company_name == "TechCorp", "Company name extraction failed"
 println "  ✓ Extracted string from nested object"
 

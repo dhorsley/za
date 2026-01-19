@@ -122,5 +122,15 @@ func UnmarshalStructFromC(cPtr unsafe.Pointer, structDef *CLibraryStruct, zaStru
     return nil, fmt.Errorf("C FFI disabled in this build (struct/union unmarshaling not available)")
 }
 
+// CSetString - FFI disabled in this build
+func CSetString(ptr *CPointerValue, s string) error {
+    return fmt.Errorf("C FFI disabled in this build (c_set_string not available)")
+}
+
+// CNewString - FFI disabled in this build
+func CNewString(s string) *CPointerValue {
+    return NullPointer()
+}
+
 // wcharSize - Platform-detected wchar_t size (unavailable in noffi builds)
 var wcharSize uintptr = 0
