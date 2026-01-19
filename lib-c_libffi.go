@@ -967,8 +967,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     defer C.free(unsafe.Pointer(argTypes))
 
     // Allocate C memory for argument value pointer array
-    argValues := (*unsafe.Pointer)(C.malloc(C.size_t(len(convertedArgs)) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil)))))
-    defer C.free(unsafe.Pointer(argValues))
+    // Keep as unsafe.Pointer, don't cast to (*unsafe.Pointer) yet
+    argValuesPtr := C.malloc(C.size_t(len(convertedArgs)) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+    defer C.free(argValuesPtr)
 
     // Temporary storage for converted arguments (must stay alive during call)
     var cstrings []unsafe.Pointer
@@ -996,7 +997,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     // Convert to slices for easier indexing
     argTypesSlice := (*[1 << 30]C.int)(unsafe.Pointer(argTypes))[:len(convertedArgs):len(convertedArgs)]
-    argValuesSlice := (*[1 << 30]unsafe.Pointer)(unsafe.Pointer(argValues))[:len(convertedArgs):len(convertedArgs)]
+    argValuesSlice := (*[1 << 30]unsafe.Pointer)(argValuesPtr)[:len(convertedArgs):len(convertedArgs)]
+
+    // Zero-initialize the argument values array
+    if len(convertedArgs) > 0 {
+        C.memset(argValuesPtr, 0, C.size_t(len(convertedArgs))*C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+    }
 
     for i, arg := range convertedArgs {
         // Get expected parameter type to handle float vs double correctly
@@ -1452,7 +1458,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         funcPtr,
         C.int(len(args)),
         argTypes,
-        (*unsafe.Pointer)(unsafe.Pointer(argValues)),
+        (*unsafe.Pointer)(argValuesPtr),  // Cast the malloc'd array pointer to (*unsafe.Pointer) for libffi
         C.int(expectedRetType),
         returnPtr,
         C.int(isVariadic),

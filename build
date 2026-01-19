@@ -54,6 +54,18 @@ stripFlags  = strip_enable ? "-s -w"     : ""
 
 upxfound= ${which upx | wc -l} . trim(0) . as_bool
 
+# Display build configuration
+println "\n[#3]═══════════════════════════════════════════════════════════[#-]"
+println "[#4]Za Build Configuration[#-]"
+println "[#3]═══════════════════════════════════════════════════════════[#-]"
+println "Target: {tgt}"
+println "Version: {bvers}"
+println "Build Date: {bdate}"
+println "Strip: {strip_enable}"
+println "UPX Compress: {upx_enable}"
+println "Linking Strategy: Selective static (PCRE static, libffi dynamic for portability)"
+println "[#3]───────────────────────────────────────────────────────────[#-]\n"
+
 if ! os() ~ "^freebsd"
     case tgt
     is "default"

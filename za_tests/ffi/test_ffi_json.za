@@ -23,7 +23,7 @@ LIB json::json_object_get_type(obj:pointer) -> int
 LIB json::json_object_object_add(obj:pointer, key:string, val:pointer) -> pointer
 LIB json::json_object_array_add(obj:pointer, val:pointer) -> int
 LIB json::json_object_array_length(obj:pointer) -> int
-LIB json::json_object_to_json_string(obj:pointer) -> pointer
+LIB json::json_object_to_json_string(obj:pointer) -> string
 LIB json::json_object_put(obj:pointer) -> int
 
 # JSON type constants
