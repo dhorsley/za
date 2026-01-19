@@ -997,7 +997,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     // Convert to slices for easier indexing
     argTypesSlice := (*[1 << 30]C.int)(unsafe.Pointer(argTypes))[:len(convertedArgs):len(convertedArgs)]
-    argValuesSlice := (*[1 << 30]unsafe.Pointer)(argValuesPtr)[:len(convertedArgs):len(convertedArgs)]
+    argValuesSlice := (*[1 << 30]unsafe.Pointer)(unsafe.Pointer(argValuesPtr))[:len(convertedArgs):len(convertedArgs)]
 
     // Zero-initialize the argument values array
     if len(convertedArgs) > 0 {
