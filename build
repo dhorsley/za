@@ -113,13 +113,28 @@ if is_file("za")
 endif
 
 
+# Determine if sudo is needed and available
+# Check if running as root (id -u returns 0)
+id_result =< id -u
+id_result = id_result . trim(0)
+is_root = id_result == "0"
+
+# Check if sudo is available (only check if not root, optimization)
+sudo_check = ${which sudo 2>/dev/null | wc -l}
+sudo_check = sudo_check . trim(0) . as_bool
+sudo_found = is_root ? false : sudo_check
+
+# Only use sudo if NOT root AND sudo is available
+use_sudo = (not is_root) and sudo_found
+sudo_prefix = use_sudo ? "sudo " : ""
+
 case tgt
 contains "^(default|alpine|arch|libc|noffi)$"
     "Installing {tgt} build to {ipath}".progress
-    | sudo cp -f za {ipath}
-    on last()!=0 do "sudo copy failed.".warning
-    | sudo chmod 755 {ipath}/za
-    on last()!=0 do "sudo chmod failed.".warning
+    | {=sudo_prefix}cp -f za {ipath}
+    on last()!=0 do "copy failed (check permissions).".warning
+    | {=sudo_prefix}chmod 755 {ipath}/za
+    on last()!=0 do "chmod failed (check permissions).".warning
 endcase
 
 
