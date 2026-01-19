@@ -5,7 +5,7 @@ println "[#4]Testing libjson-c FFI - All Return Types[#-]"
 println "=" * 50
 
 # Load libjson-c
-module "/usr/lib/libjson-c.so.5" as json
+module "libjson-c.so.5" as json
 use +json
 
 # Declare function signatures for different return types
@@ -168,13 +168,21 @@ println "\n[#6]Testing VOID Return Type[#-]"
 
 # Build a complex object
 complex_obj = json_object_new_object()
-json_object_object_add(complex_obj, "name", json_object_new_string("Za Language"))
+
+# Use c_new_string() to allocate persistent strings for C library
+key_name = c_new_string("name")
+json_object_object_add(complex_obj, key_name, json_object_new_string("Za Language"))
 println "  json_object_object_add completed (void return)"
 println "  ✓ json_object_object_add (void return) works"
 
-json_object_object_add(complex_obj, "version", json_object_new_double(1.0))
-json_object_object_add(complex_obj, "stable", json_object_new_boolean(1))
-json_object_object_add(complex_obj, "features", obj_array)
+key_version = c_new_string("version")
+json_object_object_add(complex_obj, key_version, json_object_new_double(1.0))
+
+key_stable = c_new_string("stable")
+json_object_object_add(complex_obj, key_stable, json_object_new_boolean(1))
+
+key_features = c_new_string("features")
+json_object_object_add(complex_obj, key_features, obj_array)
 
 # Get final JSON string
 final_json = json_object_to_json_string(complex_obj)
@@ -199,6 +207,14 @@ json_object_put(obj_object)
 json_object_put(complex_obj)
 
 println "  ✓ All objects freed"
+
+# Clean up allocated strings
+c_free(key_name)
+c_free(key_version)
+c_free(key_stable)
+c_free(key_features)
+
+println "  ✓ All allocated strings freed"
 
 # ========================================
 # Summary

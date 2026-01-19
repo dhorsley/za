@@ -616,3 +616,23 @@ func CGetDataSymbol(libName, symbolName string) (any, error) {
     intVal := C.read_int_symbol(addr)
     return int(intVal), nil
 }
+
+// CSetString copies a Za string to a C buffer at the given pointer
+func CSetString(ptr *CPointerValue, s string) error {
+    if ptr == nil || ptr.Ptr == nil {
+        return fmt.Errorf("c_set_string: pointer is null")
+    }
+    cstr := C.CString(s)
+    defer C.free(unsafe.Pointer(cstr))
+    C.memcpy(ptr.Ptr, unsafe.Pointer(cstr), C.size_t(len(s)+1))
+    return nil
+}
+
+// CNewString allocates a new C string from a Za string
+func CNewString(s string) *CPointerValue {
+    cstr := C.CString(s)
+    if cstr == nil {
+        return NullPointer()
+    }
+    return NewCPointer(unsafe.Pointer(cstr), "char*")
+}

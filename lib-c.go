@@ -930,7 +930,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1151,6 +1151,29 @@ func buildFfiLib() {
             return unmarshalUnion(ptr.Ptr, structDef)
         }
         return UnmarshalStructFromC(ptr.Ptr, structDef, structName)
+    }
+
+    slhelp["c_set_string"] = LibHelp{in: "ptr,str", out: "", action: "Copies a Za string to a C buffer at the given pointer. The buffer must be large enough."}
+    stdlib["c_set_string"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_string", args, 1, "2", "any", "string"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            err := CSetString(p, args[1].(string))
+            if err != nil {
+                return nil, err
+            }
+            return nil, nil
+        }
+        return nil, fmt.Errorf("c_set_string: first argument must be a C pointer")
+    }
+
+    slhelp["c_new_string"] = LibHelp{in: "str", out: "cpointer", action: "Allocates a C string (char*) from a Za string. The caller is responsible for freeing it with c_free()."}
+    stdlib["c_new_string"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_new_string", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        return CNewString(args[0].(string)), nil
     }
 }
 // FunctionSignature represents a parsed C function signature from man pages
