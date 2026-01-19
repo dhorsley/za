@@ -6,7 +6,12 @@ println "===================="
 
 # Test 1: Load libm (math library)
 println "\n[#6]Test 1: Loading libm.so.6[#-]"
-module "/usr/lib/x86_64-linux-gnu/libm.so.6" as m
+if release_id()=="ubuntu"
+    module "/usr/lib/x86_64-linux-gnu/libm.so.6" as m
+else
+    module "/usr/lib/libm.so.6" as m
+endif
+
 use +m
 
 # Declare function signatures
