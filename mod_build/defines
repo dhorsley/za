@@ -25,16 +25,16 @@ define buildArch(build_version,build_date)
     on r>0 do print last_err()
     on r==0 do { cp za za.arch }
     return r
-enddef
+end
 
 define buildMusl(build_version,build_date)
     print "[#4]musl build (alpine/aws)[#-]\n"
-    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}"' -tags 'osusergo netgo' -installsuffix netgo
+    | CGO_ENABLED=0 GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-O2" -X "main.BuildVersion={build_version}" -X "main.BuildComment=alpine{=strStrip}"' -tags 'osusergo netgo noffi' -installsuffix netgo
     r=last()
     on r>0 do print last_err()
     on r==0 do { cp za za.alpine }
     return r
-enddef
+end
 
 define buildLibc(build_version,build_date)
     print "[#4]Libc build[#-]\n"
@@ -43,7 +43,7 @@ define buildLibc(build_version,build_date)
     on r>0 do println last_err()
     on r==0 do { cp za za.dynamic }
     return r
-enddef
+end
 
 define buildFreeBSD(build_version,build_date)
     print "[#4]BSD build[#-]\n"
@@ -52,7 +52,7 @@ define buildFreeBSD(build_version,build_date)
     on r>0 do println last_err()
     on r==0 do { cp za za.dynamic }
     return r
-enddef
+end
 
 define buildWin(build_version,build_date)
     print "[#4]Windows build[#-] ~ [#i1]experimental![#i0]\n"
@@ -61,7 +61,7 @@ define buildWin(build_version,build_date)
     on r>0 do println last_err()
     on r==0 do { cp za.exe za.win64 }
     return r
-enddef
+end
 
 define buildNoFFI(build_version,build_date)
     print "[#4]No-FFI build (minimal, no C library or PCRE support)[#-]\n"
@@ -70,6 +70,6 @@ define buildNoFFI(build_version,build_date)
     on r>0 do println last_err()
     on r==0 do { cp za za.noffi }
     return r
-enddef
+end
 
 
