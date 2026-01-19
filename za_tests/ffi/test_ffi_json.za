@@ -178,6 +178,16 @@ json_object_object_add(complex_obj, key_name, json_object_new_string("Za Languag
 println "  json_object_object_add completed (void return)"
 println "  ✓ json_object_object_add (void return) works"
 
+# skip on later than ubuntu 24.04 : known issues
+dfree=true
+if release_id()=="ubuntu" and "24.04" . vcmp(release_version())>0
+    println "Skipping new_double check on ubuntu >24.04"
+    dfree=false
+else
+    key_version = c_new_string("version")
+    json_object_object_add(complex_obj, key_version, json_object_new_double(1.0))
+endif
+
 key_stable = c_new_string("stable")
 json_object_object_add(complex_obj, key_stable, json_object_new_boolean(1))
 
@@ -208,6 +218,7 @@ println "  ✓ All objects freed"
 
 # Clean up allocated strings
 c_free(key_name)
+on dfree do c_free(key_version)
 c_free(key_stable)
 c_free(key_features)
 
