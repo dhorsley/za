@@ -52,17 +52,9 @@ language changes
 
   * FFI callback system enhancements
       - Dynamic closure support via libffi - callbacks now support unlimited signatures
-      - automatic fallback from hardcoded trampolines to dynamic closures
-      - expanded hardcoded trampolines from 5 to 19 signatures for optimal performance:
-          * Core: ptr,ptr->int, int,int->int, ptr->ptr, int,ptr,ptr->void, int->void
-          * Math: double->double, float->float, double,double->double
-          * Pointers: ptr,ptr,ptr->int, void->void, ptr->void, ptr,ptr->void, ptr,int->void, ptr,int->int, ptr,ptr->bool
-          * Primitives: int->int, string->void, string->int, int,int->void
       - universal closure handler dynamically marshals arbitrary callback signatures
       - full type support: int8-64, uint8-64, float, double, ptr, string, bool
       - proper memory management with automatic cleanup
-      - signature validation rejects unsupported patterns (struct-by-value, variadic)
-      - zero overhead for hardcoded trampolines (fast path preserved)
       - test coverage in za_tests/test_callback_dynamic.za
       - BSD compatibility improvements: FreeBSD, OpenBSD, NetBSD paths and symbol versioning
       - runtime ABI detection for x86-64, ARM64, x86-32, ARM-32, RISC-V 64, PPC64
@@ -73,13 +65,7 @@ language changes
          with c_alloc()+c_free() or assign a *value returned by a C call to it.
       - declaration allows the variable to be auto-converted during FFI operations.
 
-  * enhanced MODULE statement library path detection:
-      - environment variable support: LD_LIBRARY_PATH (Linux/BSD), DYLD_LIBRARY_PATH (macOS)
-      - ldconfig integration for accurate system library lookups
-      - multi-arch triplet support for cross-platform compatibility
-      - comprehensive fallback search: env vars → ldconfig → standard paths → dlopen default
-      - improved library discovery on ARM, x86, PowerPC, RISC-V, and MIPS architectures
-      - test coverage across Debian/Ubuntu multiarch, Alpine musl, and BSD systems
+  * MODULE statement library path detection
 
   * added AUTO clause for MODULE statements - automatic C header parsing
       - syntax: module "libfoo.so" as foo auto
@@ -134,10 +120,6 @@ language changes
           * nested conditionals supported (unlimited? depth via stack-based tracking)
           * skips inactive platform-specific blocks automatically
                 - graceful degradation with warnings if headers not found
-                - test files: za_tests/test_headers_simple.za, za_tests/test_auto_functions.za,
-        za_tests/test_auto_string_float_constants.za (includes cross-reference tests),
-        za_tests/test_auto_typedef.za, za_tests/test_auto_preprocessor.za,
-        za_tests/test_auto_if_elif.za
           * struct definition import from C headers:
               - C structs automatically registered as Za types in structmaps
               - supports VAR declarations: var c test_c::color_t
@@ -147,39 +129,33 @@ language changes
               - structs can be received from C functions (by value or pointer)
               - structs can be passed to C functions
               - array fields in structs fully supported
-              - field names work in both lowercase and capitalized forms
-              - backward compatible: Za map-based structs still work
-              - test scripts at za_tests/test_auto_struct*.za
           * numeric type coercion for comparisons:
               - uint8, uint16, uint32, uint64 can be compared with int/int64
               - automatic value range checking and promotion
-              - example: uint8_field == 255 now works (was assert failure)
-              - preserves bit precision for uint64 values
-              - test scripts at za_tests/test_uint64_topbit.za
           * wchar_t support (platform-aware implicit type alias):
               - wchar_t size detected at Za startup via unsafe.Sizeof(C.wchar_t(0))
-              - Linux/BSD/macOS: wchar_t = 4 bytes → maps to uint32
+              - Linux/BSD: wchar_t = 4 bytes → maps to uint32
               - Windows: wchar_t = 2 bytes → maps to uint16
               - wchar_t (value) → mapped to appropriate uint type
               - wchar_t* (pointer) → mapped to CPointer for wide character strings
-              - no new CType needed - uses existing uint infrastructure
-              - zero runtime overhead - detection happens once at startup
+              - small runtime overhead - detection happens once at startup
               - transparent to Za code - pass/receive as integers
               - compatible with typedef chains (typedef wchar_t WCHAR)
               - enables ncursesw, readline, ICU, POSIX wcs* functions
-              - test script at za_tests/test_wchar_simple.za
-      - limitations: function-like macros, forward references, character literals, function pointer typedefs, nested structs
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
+  *
       - MODULE extension: module "libfoo.so" as foo
       - automatic function discovery via ELF symbol table parsing
       - GNU IFUNC and symbol versioning (@@GLIBC) support
       - basic type conversion between Za and C types
       - opaque pointer handling via CPointerValue
+
       - LIB keyword for explicit function signature declarations
           - supports typed parameters: LIB c::strlen(s:string) -> int
           - variadic function support: LIB c::printf(fmt:string, ...args) -> int
           - optional return types: LIB c::exit(code:int) -> void
+
       - help plugin enhancements
           - find command: automatic signature discovery from man pages
               - automatic signature discovery from local man pages (section 3)
@@ -195,8 +171,9 @@ language changes
           - library symbol filtering improvements:
               - filters imported symbols from library listings (shows only defined symbols)
               - improved output formatting for library information display
+
       - Unix implementation (lib-c_unix.go), Windows/noffi stubs provided
-      - test scripts at za_tests/test_ffi_*
+
       - struct marshaling support:
           - automatic marshaling when passing struct<typename> parameters to C functions
           - c_alloc_struct(), c_free_struct(), c_unmarshal_struct() for manual struct handling
@@ -210,32 +187,25 @@ language changes
               * bidirectional marshaling: Za → C → Za with proper field selection
               * test scripts at za_tests/test_union*.za, za_tests/ffi/test_union*.za
           - out parameter support for C functions that fill structs
-          - test scripts at za_tests/test_ffi_struct_*.za
-      - struct-by-value FFI support (critical stability fix):
-          - FIXED: crash bug when calling C functions that return structs by value
-          - FIXED: memory corruption when functions accept structs by value as parameters
+
+      - struct-by-value FFI support
           - full support for passing/returning structs by value via libffi
           - automatic ffi_type descriptor creation for struct layouts
           - array fields properly expanded (rgb[3] → 3 sequential uint8 elements)
-          - struct type caching for performance (created once, reused)
           - works transparently with AUTO clause parsed functions
-          - round-trip fidelity: C → Za → C with correct data preservation
           - example: Point make_point(int x, int y); int distance(Point p);
-          - enables graphics APIs, game engines, scientific libraries
           - backward compatible: pointer-based struct passing still works
-          - test scripts at za_tests/test_ffi_struct_arrays.za
+
       - callback support (C calling Za functions):
           - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
           - Za functions can be passed as callbacks to C APIs
-          - unlimited callback signatures via libffi closures (automatic fallback)
-          - 19 hardcoded trampolines for optimal performance on common signatures
+          - unlimited callback signatures via libffi closures
           - dynamic closure generation for custom signatures at runtime
           - supported types: int8-64, uint8-64, float, double, ptr, string, bool
           - examples: qsort_r comparators, pthread_create, custom C API callbacks
           - thread-safe invocation (serialized with mutex)
-          - test scripts at za_tests/test_callback*.za
 
-  * (experimental) added optional type specifications to function definitions
+  * added optional type specifications to function definitions
       - typed parameters: def func(a:int, b:string)
       - mixed typing: def func(a:int, b, c:string) - untyped params remain 'any'
       - typed with defaults: def func(a:int=42, b:string="hello")
@@ -244,9 +214,7 @@ language changes
       - array types: def func(items:[]int) -> []int
       - full backward compatibility with existing untyped functions
       - test script at za_tests/test_typed_functions.za
-      - current limitations:
-          - type checking occurs at call-time, not parse-time
-          - varargs (...args) always remain untyped
+      - varargs (...args) always remain untyped
 
   * added exhaustive enum matching to CASE statements
       - 'full' modifier: case value full ... endcase
@@ -254,10 +222,7 @@ language changes
         - errors on: full+OR, mixed enums, missing members
       - integrates with WITH ENUM blocks for cleaner syntax
       - test script at za_tests/test_case_enum.za
-      - current limitations:
-          - requires WITH ENUM block or explicit EnumName.member syntax
-          - exhaustiveness only applies to IS clauses (not HAS/CONTAINS)
-          - enum values carry no source-enum metadata once assigned to variables
+      - exhaustiveness only applies to IS clauses (not HAS/CONTAINS)
 
 
 1.2.1
