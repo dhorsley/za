@@ -10,7 +10,7 @@
 # - Full colour support
 
 # Import X11 library with auto header parsing
-module "/usr/lib/libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+module "libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
 use +x11
 
 # Game area dimensions
@@ -47,11 +47,11 @@ paddle_x = GAME_WIDTH / 2 - paddle_width / 2
 paddle_y = GAME_HEIGHT - 30
 
 # Ball properties
-ball_x = GAME_WIDTH / 2
-ball_y = GAME_HEIGHT / 2
+ball_x = GAME_WIDTH / 2f
+ball_y = GAME_HEIGHT / 2f
 ball_radius = 8
-ball_vx = 4
-ball_vy = -4
+var ball_vx float = 4f
+var ball_vy float = -4f
 
 # Keyboard state
 keys_pressed = map(.left false, .right false)
@@ -66,9 +66,10 @@ bricks = []
 # Power-ups array
 powerups = []
 
-# Power-up types: "big_paddle", "slow_ball"
+# Power-up types:
 POWER_UP_TYPES = ["big_paddle", "slow_ball"]
-POWER_UP_SPEED = 2
+POWER_UP_SPEED = 2f
+lpt=len(POWER_UP_TYPES)
 
 # Function to allocate a colour from hex value
 def alloc_colour(hex_str)
@@ -103,9 +104,7 @@ end
 def create_bricks()
     new_bricks = []
     rows = brick_rows + (level - 1)
-    if rows > 5
-        rows = 5
-    endif
+    rows = rows[:5]
     for row = 0 to rows - 1
         for col = 0 to brick_cols - 1
             x = col * brick_width + 10
@@ -187,16 +186,11 @@ XSelectInput(display, window, event_mask)
 # Create graphics context
 gc = XDefaultGC(display, screen)
 on c_ptr_is_null(gc) do exit 1, "Error: could not allocate graphics context."
-println format("gc [type: %T] value : %+v\n",gc,gc)
 
 # Load a font for text rendering
 font = XLoadQueryFont(display, "10x20")  # Larger font (10px wide, 20px tall)
-if c_ptr_is_null(font)
-    font = XLoadQueryFont(display, "-*-fixed-*-*-*-*-20-*-*-*-*-*-*-*")  # Fallback to XLFD pattern
-endif
-if c_ptr_is_null(font)
-    font = XLoadQueryFont(display, "fixed")  # Ultimate fallback
-endif
+on c_ptr_is_null(font) do font = XLoadQueryFont(display, "-*-fixed-*-*-*-*-20-*-*-*-*-*-*-*")  # Fallback to XLFD pattern
+on c_ptr_is_null(font) do font = XLoadQueryFont(display, "fixed")  # Ultimate fallback
 
 # Map window
 XMapWindow(display, window)
@@ -204,8 +198,7 @@ XFlush(display)
 
 println "Game window created!"
 println "Controls: LEFT/RIGHT arrow keys to move paddle"
-println "Level: ", level, " - Lives: ", lives
-println
+println "Level: {level} - Lives: {lives}\n"
 
 # Allocate event structure
 event_ptr = c_alloc_struct("XEvent")
@@ -227,62 +220,40 @@ while running
         if event_type == KeyPress
             key_event = event["xkey"]
             keycode = key_event["keycode"]
-
-            if keycode == 113          # Left arrow
-                keys_pressed["left"] = true
-            endif
-            if keycode == 114          # Right arrow
-                keys_pressed["right"] = true
-            endif
+            on keycode == 113 do keys_pressed["left"] = true
+            on keycode == 114 do keys_pressed["right"] = true
         endif
 
         if event_type == KeyRelease
             key_event = event["xkey"]
             keycode = key_event["keycode"]
-
-            if keycode == 113          # Left arrow
-                keys_pressed["left"] = false
-            endif
-            if keycode == 114          # Right arrow
-                keys_pressed["right"] = false
-            endif
+            on keycode == 113 do keys_pressed["left"] = false
+            on keycode == 114 do keys_pressed["right"] = false
         endif
     endwhile
 
     # Update paddle position
-    if keys_pressed.left && paddle_x > 0
-        paddle_x = paddle_x - 6
-    endif
-    if keys_pressed.right && paddle_x + paddle_width < GAME_WIDTH
-        paddle_x = paddle_x + 6
-    endif
+    on keys_pressed.left && paddle_x > 0 do paddle_x = paddle_x - 6
+    on keys_pressed.right && paddle_x + paddle_width < GAME_WIDTH do paddle_x = paddle_x + 6
 
     # Update ball position
-    ball_x = ball_x + ball_vx
-    ball_y = ball_y + ball_vy
+    ball_x,ball_y = [ball_x + ball_vx, ball_y + ball_vy]
 
     # Ball collision with walls
-    if (ball_x - ball_radius < 0) || (ball_x + ball_radius > GAME_WIDTH)
-        ball_vx = 0 - ball_vx
-    endif
-
-    if ball_y - ball_radius < 0
-        ball_vy = 0 - ball_vy
-    endif
+    on (ball_x - ball_radius < 0) || (ball_x + ball_radius > GAME_WIDTH) do ball_vx = -ball_vx
+    on ball_y - ball_radius < 0 do ball_vy = -ball_vy
 
     # Ball collision with paddle - smart angle calculation
-    if ( (ball_y + ball_radius >= paddle_y) && (ball_y - ball_radius <= paddle_y + paddle_height) && (ball_x >= paddle_x) && (ball_x <= paddle_x + paddle_width))
+    if ( (ball_y + ball_radius >= paddle_y) && (ball_y - ball_radius <= paddle_y + paddle_height) && 
+         (ball_x >= paddle_x) && (ball_x <= paddle_x + paddle_width) )
 
         # Calculate hit position (0.0 = left edge, 1.0 = right edge)
         hit_pos = (ball_x - paddle_x) / paddle_width
 
         # Clamp to [0, 1]
-        if hit_pos < 0
-            hit_pos = 0
-        endif
-        if hit_pos > 1
-            hit_pos = 1
-        endif
+        hit_pos=hit_pos[0f:1f]
+        #on hit_pos < 0 do hit_pos = 0
+        #on hit_pos > 1 do hit_pos = 1
 
         # Convert to angle: -60 degrees (left) to +60 degrees (right)
         # 0.5 = straight up, 0.0 = 60 degrees left, 1.0 = 60 degrees right
@@ -294,7 +265,7 @@ while running
         angle_rad = angle * 3.14159 / 180
 
         ball_vx = current_speed * angle_rad / 1.57   # Approximate sine
-        ball_vy = 0 - 5
+        ball_vy = -5f
 
         ball_y = paddle_y - ball_radius
     endif
@@ -310,15 +281,15 @@ while running
 
             # Simple AABB collision
             if ((ball_x >= bx) && (ball_x <= bx + bw) && (ball_y >= by) && (ball_y <= by + bh))
-                ball_vy = 0 - ball_vy
+                ball_vy = -ball_vy
                 bricks[i] = map( .x brick.x, .y brick.y, .width brick.width, .height brick.height, .active false)
-                score = score + (10 * level)
+                score += 10 * level
 
                 # Spawn power-ups randomly
                 rand_val = (i * 13) % 3
                 if rand_val == 0
-                    powerup_type = POWER_UP_TYPES[rand_val % len(POWER_UP_TYPES)]
-                    powerup = map( .x brick.x + brick.width / 2, .y brick.y, .vx 0, .vy POWER_UP_SPEED, .type powerup_type, .active true)
+                    powerup_type = POWER_UP_TYPES[rand(lpt)-1]
+                    powerup = map(.x brick.x + brick.width / 2, .y brick.y, .vx 0f, .vy POWER_UP_SPEED, .type powerup_type, .active true)
                     powerups = append(powerups, powerup)
                 endif
             endif
@@ -327,7 +298,7 @@ while running
 
     # Update and check power-ups
     new_powerups = []
-    for i = 0 to len(powerups) - 1
+    for i = 0 to powerups.len-1
         pu = powerups[i]
         if pu.active
             # Update position
@@ -336,19 +307,21 @@ while running
             # Check if paddle catches it
             if ((pu_y >= paddle_y) && (pu.x >= paddle_x) && (pu.x <= paddle_x + paddle_width))
                 # Apply power-up effect
-                if pu.type == "big_paddle"
-                    paddle_width = 120
-                endif
+                on pu.type == "big_paddle" do paddle_width = 120
                 if pu.type == "slow_ball"
-                    ball_vx = ball_vx / 2
-                    ball_vy = ball_vy / 2
+                  ball_vx = (ball_vx / 2)
+                  ball_vy = (ball_vy / 2)
+
+                  # ensure neg or pos but not 0
+                  on ball_vx<0 do ball_vx=ball_vx[:-0.1f]
+                  on ball_vx>=0 do ball_vx=ball_vx[0.1f:]
+                  on ball_vy<0 do ball_vy=ball_vy[:-1f]
+                  on ball_vy>=0 do ball_vy=ball_vy[1f:]
                 endif
             endif
 
             # Check if off-screen
-            if pu_y < GAME_HEIGHT
-                new_powerups = append(new_powerups, map( .x pu.x, .y pu_y, .vx pu.vx, .vy pu.vy, .type pu.type, .active true))
-            endif
+            on pu_y < GAME_HEIGHT do new_powerups = append(new_powerups, map( .x pu.x, .y pu_y, .vx pu.vx, .vy pu.vy, .type pu.type, .active true))
         endif
     endfor
     powerups = new_powerups
@@ -356,33 +329,32 @@ while running
     # Check win condition
     active_bricks = bricks ?> "#.active"
     if len(active_bricks) == 0
-        level = level + 1
-        lives = lives + 1
-        score = score + (500 * level)
+        level++
+        lives++
+        score += 500 * level
 
         # Reset for next level
         ball_x = GAME_WIDTH / 2
         ball_y = GAME_HEIGHT / 2
-        ball_vx = 4 + level
-        ball_vy = -(4 + level)
+        ball_vx = 4f + level
+        ball_vy = -(4f + level)
         paddle_x = GAME_WIDTH / 2 - paddle_width / 2
         paddle_width = 80
         powerups = []
 
         bricks = create_bricks()
 
-        XStoreName(display, window, "Za Breakout Game - Level " + as_string(level))
+        XStoreName(display, window, "Breakout - Level " + as_string(level))
     endif
 
     # Check loss condition
     if ball_y > GAME_HEIGHT
-        lives = lives - 1
-        if lives > 0
+        if --lives > 0
             # Reset ball
             ball_x = GAME_WIDTH / 2
             ball_y = GAME_HEIGHT / 2
-            ball_vx = 4 + (level - 1)
-            ball_vy = -(4 + (level - 1))
+            ball_vx = 4f + (level - 1)
+            ball_vy = -(4f + (level - 1))
             paddle_x = GAME_WIDTH / 2 - paddle_width / 2
             paddle_width = 80
             powerups = []
@@ -419,7 +391,7 @@ while running
     endfor
 
     # Draw power-ups
-    for i = 0 to len(powerups) - 1
+    for i = 0 to powerups.len-1
         pu = powerups[i]
         if pu.type == "big_paddle"
             XSetForeground(display, gc, colour_magenta)
@@ -454,21 +426,16 @@ while running
     frame_duration_ms = as_float(frame_end_time - frame_start_time) / 1_000_000
 
     sleep_time = TARGET_FRAME_TIME_MS - frame_duration_ms
-    if sleep_time > 0
-        pause as_int(sleep_time)
-    endif
+    on sleep_time > 0 do pause as_int(sleep_time)
 
     # Measure total frame time including pause
     frame_end_time_total = epoch_nano_time()
     total_frame_duration_ms = as_float(frame_end_time_total - frame_start_time) / 1_000_000
-    if total_frame_duration_ms > 0
-        current_fps = 1000.0 / total_frame_duration_ms
-    endif
+    on total_frame_duration_ms > 0 do current_fps = 1000.0 / total_frame_duration_ms
 
     # Start timing next frame
     frame_start_time = epoch_nano_time()
-
-    frame_count = frame_count + 1
+    frame_count++
 
     # Periodic FPS output to CLI
     if frame_count % FPS_PRINT_INTERVAL == 0
