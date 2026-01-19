@@ -219,9 +219,109 @@ import "C"
 import (
     "debug/elf"
     "fmt"
+    "os"
+    "path/filepath"
+    "regexp"
     "strings"
     "unsafe"
 )
+
+// isTextFile checks if content appears to be a text file (no null bytes, valid UTF-8 patterns)
+func isTextFile(content []byte) bool {
+    // Check for null bytes (binary file indicator)
+    for _, b := range content {
+        if b == 0 {
+            return false
+        }
+    }
+    return true
+}
+
+// isLinkerScript checks if the content contains ld script directives
+func isLinkerScript(content string) bool {
+    return strings.Contains(content, "GROUP") ||
+        strings.Contains(content, "INPUT") ||
+        strings.Contains(content, "AS_NEEDED")
+}
+
+// extractLdScriptPaths extracts library paths from GNU ld script directives
+func extractLdScriptPaths(content string) []string {
+    var paths []string
+    seen := make(map[string]bool) // Track already-added paths to avoid duplicates
+
+    // Pattern to match GROUP ( ... ) and INPUT ( ... )
+    // This captures paths within the outermost parentheses
+    pattern := regexp.MustCompile(`(?i)(GROUP|INPUT)\s*\(\s*([^()]+(?:\([^)]*\))?[^()]*)\)`)
+    matches := pattern.FindAllStringSubmatch(content, -1)
+
+    for _, match := range matches {
+        if len(match) > 2 {
+            // Extract all paths from within the directive
+            pathContent := match[2]
+            // Split by whitespace
+            for _, path := range strings.Fields(pathContent) {
+                // Skip nested directives, parentheses, and filter duplicates
+                if !strings.Contains(path, "(") && !strings.Contains(path, ")") &&
+                    strings.ToLower(path) != "as_needed" && // Skip AS_NEEDED keyword
+                    !seen[path] {
+                    paths = append(paths, path)
+                    seen[path] = true
+                }
+            }
+        }
+    }
+
+    return paths
+}
+
+// resolveLdScriptPaths resolves relative paths in ld script to absolute paths
+func resolveLdScriptPaths(paths []string, scriptPath string) []string {
+    var resolved []string
+    scriptDir := filepath.Dir(scriptPath)
+
+    for _, path := range paths {
+        // If already absolute, use as-is
+        if filepath.IsAbs(path) {
+            resolved = append(resolved, path)
+        } else {
+            // Resolve relative to script directory
+            absPath := filepath.Join(scriptDir, path)
+            resolved = append(resolved, absPath)
+        }
+    }
+
+    return resolved
+}
+
+// parseLinkerScript attempts to parse a GNU ld script and extract library paths
+func parseLinkerScript(scriptPath string) ([]string, error) {
+    content, err := os.ReadFile(scriptPath)
+    if err != nil {
+        return nil, err
+    }
+
+    // Check if it's a text file
+    if !isTextFile(content) {
+        return nil, fmt.Errorf("not a text file")
+    }
+
+    contentStr := string(content)
+
+    // Check if it contains ld script directives
+    if !isLinkerScript(contentStr) {
+        return nil, fmt.Errorf("not a linker script")
+    }
+
+    // Extract paths from directives
+    paths := extractLdScriptPaths(contentStr)
+    if len(paths) == 0 {
+        return nil, fmt.Errorf("no library paths found in linker script")
+    }
+
+    // Resolve relative paths
+    resolved := resolveLdScriptPaths(paths, scriptPath)
+    return resolved, nil
+}
 
 // LoadCLibrary loads a C shared library using dlopen
 func LoadCLibrary(path string) (*CLibrary, error) {
@@ -231,6 +331,19 @@ func LoadCLibrary(path string) (*CLibrary, error) {
     // Try RTLD_NOW | RTLD_GLOBAL for better symbol resolution
     handle := C.dlopen(pathC, C.RTLD_NOW|C.RTLD_GLOBAL)
     if handle == nil {
+        // dlopen failed - try parsing as GNU ld script
+        if ldPaths, err := parseLinkerScript(path); err == nil {
+            // Successfully parsed as ld script, try loading each library in order
+            for _, libPath := range ldPaths {
+                lib, err := LoadCLibrary(libPath)
+                if err == nil {
+                    // Successfully loaded from ld script
+                    return lib, nil
+                }
+            }
+        }
+
+        // If ld script parsing failed or all paths failed, return original dlopen error
         errMsg := C.GoString(C.dlerror())
         return nil, fmt.Errorf("failed to load library %s: %s", path, errMsg)
     }
@@ -355,7 +468,8 @@ func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrar
         }
     }
 
-    err := DiscoverLibrarySymbols(lib, libPath)
+    // Use lib.Name for symbol discovery, not libPath (in case libPath was an ld script)
+    err := DiscoverLibrarySymbols(lib, lib.Name)
     if err != nil {
         return nil, err
     }
