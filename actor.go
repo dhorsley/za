@@ -2254,7 +2254,31 @@ tco_reentry:
                             structName := parts[1]
 
                             ffiStructLock.RLock()
-                            if structDef, exists := ffiStructDefinitions[sname]; exists {
+
+                            // Debug: Show what we're looking for and what's registered
+                            if os.Getenv("ZA_DEBUG_VAR_STRUCT") != "" {
+                                fmt.Printf("[DEBUG VAR] Looking for struct '%s' with sname='%s'\n", structName, sname)
+                                fmt.Printf("[DEBUG VAR] All keys in ffiStructDefinitions:\n")
+                                for key, def := range ffiStructDefinitions {
+                                    isUnion := "struct"
+                                    if def.IsUnion {
+                                        isUnion = "union"
+                                    }
+                                    fmt.Printf("[DEBUG VAR]   '%s' (%s)\n", key, isUnion)
+                                }
+                            }
+
+                            // Look up qualified struct name (C structs must be namespaced)
+                            structDef, found := ffiStructDefinitions[sname]
+                            if os.Getenv("ZA_DEBUG_VAR_STRUCT") != "" {
+                                if found {
+                                    fmt.Printf("[DEBUG VAR] Found as '%s'\n", sname)
+                                } else {
+                                    fmt.Printf("[DEBUG VAR] NOT found as '%s'\n", sname)
+                                }
+                            }
+
+                            if found && structDef != nil {
                                 // Verify it's actually a struct type (not a union or other type)
                                 // This is the type field filtering condition
                                 if !structDef.IsUnion {
