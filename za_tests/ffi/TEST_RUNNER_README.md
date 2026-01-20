@@ -2,6 +2,9 @@
 
 This directory contains a comprehensive test suite for Za's FFI (Foreign Function Interface) and AUTO (C header auto-import) functionality.
 
+These tests are intended to be run on Arch. Module library/header paths may need adjusting
+for other OS.
+
 ## Quick Start
 
 To run all tests:
@@ -39,13 +42,6 @@ Options:
 ./run_all_tests.sh -v -f
 ```
 
-## What the Test Runner Does
-
-1. **Automatic Setup**: Compiles the `test_union_struct.so` shared library if it doesn't exist
-2. **Runs All Tests**: Executes all `test_*.za` files in the directory
-3. **Handles Known Issues**: Automatically skips tests with known pre-existing issues
-4. **Summary Report**: Displays pass/fail counts and lists any failed tests
-
 ## Test Coverage
 
 The test suite includes tests for:
@@ -60,26 +56,6 @@ The test suite includes tests for:
   - GLib structures
 - **Callbacks**: Dynamic callback registration and trampolines
 - **Type System**: Type checking, typedef resolution, fixed arrays
-
-## Known Issues
-
-The following tests are automatically skipped due to pre-existing issues:
-- `test_union_marshal.za` - Union marshaling (Za→C) has partial implementation
-- `test_ffi_libc.za` - fclose() FILE* pointer handling issue
-- `test_callback_comprehensive.za` - Output formatting issue
-
-These issues are pre-existing and not related to recent fixes.
-
-## Recent Fixes (2026-01-18)
-
-### Fix #1: Union Struct Library Compilation
-- Compiled `test_union_struct.so` with proper PIC flags
-- Tests `test_union_struct_simple.za` and `test_union_debug.za` now pass
-
-### Fix #2: AUTO Preprocessor String Literal Bug
-- Fixed `addCPrefixToIdentifiers()` in `lib-c_headers.go`
-- String literals inside macro values are no longer incorrectly transformed
-- Test `test_auto_if_elif.za` now passes with all assertions
 
 ## Test Results
 
@@ -108,28 +84,9 @@ To run a single test manually:
 ../../za -a test_ffi_struct_basic.za
 ```
 
-The `../../za` binary is the compiled Za language interpreter located in the parent directory.
-
-## Rebuilding the Za Compiler
-
-After making code changes to Za, rebuild the compiler:
-```bash
-cd ../../
-go build -o za .
-```
-
-Then re-run the test suite:
-```bash
-cd za_tests/ffi
-./run_all_tests.sh
-```
-
 ## Notes
 
 - The test runner automatically recompiles `test_union_struct.so` if it's missing
-- Tests are sorted alphabetically for consistent ordering
-- All output uses ANSI color codes for better readability
-- Test results are cached (the script doesn't skip already-passed tests)
 
 ## Troubleshooting
 
@@ -148,3 +105,4 @@ gcc -shared -fPIC -o test_union_struct.so test_union_struct_lib.c
 ```bash
 ./run_all_tests.sh -v -f
 ```
+
