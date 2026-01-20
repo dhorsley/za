@@ -5,7 +5,7 @@ println "[#4]Testing libgd FFI[#-]"
 println "=" * 50
 
 # Load libgd
-module "/usr/lib/libgd.so.3" as gd
+module "libgd.so.3" as gd
 use +gd
 
 # Declare function signatures

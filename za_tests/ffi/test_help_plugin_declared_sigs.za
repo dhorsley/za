@@ -12,7 +12,7 @@ println "=== Test: Help Plugin Declared Signatures ==="
 println ""
 
 # Load libc
-module "/usr/lib/libc.so.6" as c
+module "libc.so.6" as c
 module "libpng.so" as png
 
 println "Step 1: Declaring some functions with LIB"

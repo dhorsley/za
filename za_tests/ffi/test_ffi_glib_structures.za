@@ -5,7 +5,7 @@ println "[#4]Testing GLib FFI - Structure Pointers[#-]"
 println "=" * 50
 
 # Load GLib
-module "/usr/lib/libglib-2.0.so.0" as glib
+module "libglib-2.0.so.0" as glib
 use +glib
 
 # Declare GList functions
