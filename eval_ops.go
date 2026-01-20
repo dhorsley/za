@@ -2476,7 +2476,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     result, notes := CallCFunction(libraryName, functionName, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                        return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
+                        return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
                     }
                     return result, false, nil, nil
                 }
@@ -2487,7 +2487,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     result, notes := CallCFunction(foundNamespace, name, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                        return nil, true, nil, fmt.Errorf(str.Join(notes, "; "))
+                        return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
                     }
                     return result, false, nil, nil
                 }
