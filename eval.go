@@ -1315,7 +1315,7 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         }
 
         if !isFunc {
-            panic(fmt.Errorf("'%v' (l:%#v,r:%#v) is not a function", name, left, right))
+            panic(fmt.Errorf("'%v' is not a function", name))
         }
     }
 
