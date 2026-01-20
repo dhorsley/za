@@ -5,7 +5,7 @@ println "[#4]Testing libcurl FFI[#-]"
 println "=" * 50
 
 # Load libcurl
-module "/usr/lib/libcurl.so.4" as curl
+module "libcurl.so.4" as curl
 use +curl
 
 # Declare function signatures

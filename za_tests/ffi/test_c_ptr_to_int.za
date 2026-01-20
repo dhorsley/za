@@ -2,7 +2,7 @@
 # Test c_ptr_to_int function
 
 println "Loading libc..."
-module "/usr/lib/libc.so.6" as c
+module "libc.so.6" as c
 use +c
 LIB c::malloc(size:int) -> ptr
 LIB c::free(p:ptr) -> void

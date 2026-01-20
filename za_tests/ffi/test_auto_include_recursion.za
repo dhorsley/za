@@ -14,7 +14,7 @@ println "      └─ test_include_base.h"
 println
 
 # Load a dummy module with the test header
-module "/lib64/libc.so.6" as test auto "./test_include_main.h"
+module "libc.so.6" as test auto "./test_include_main.h"
 use +test
 
 # Test 1: Constants from base header (included transitively)
