@@ -98,6 +98,11 @@ func newPreprocessorState(alias string) *PreprocessorState {
     }
     state.definedMacros["__WORDSIZE_TIME64_COMPAT32"] = "1"
 
+    // Time64 macros: Za only targets 64-bit systems, so enable time64 support
+    // These control whether 64-bit time_t structures are exposed in headers
+    state.definedMacros["__USE_TIME64_REDIRECTS"] = "1" // Use 64-bit time redirects
+    state.definedMacros["__USE_TIME_BITS64"] = "1"      // Use 64-bit time_t
+
     // Common feature test macros
     state.definedMacros["__USE_MISC"] = "1"  // Misc extensions
     state.definedMacros["__USE_XOPEN"] = "1" // X/Open compliance
