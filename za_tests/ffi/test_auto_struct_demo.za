@@ -10,8 +10,8 @@ use +test_c
 
 println "\n[#6]Feature 1: Fully Qualified VAR Declarations[#-]"
 println "  BEFORE: Manual STRUCT definition required"
-println "  AFTER: Just use AUTO-imported type"
-println ""
+println "  AFTER: Just use AUTO-imported type\n"
+
 var mycolor test_c::color_t
 var myblock test_c::data_block_t
 println "  ✓ var mycolor test_c::color_t"
@@ -24,6 +24,7 @@ println "  color.rgb[0] = ", color.rgb[0]
 println "  color.rgb[1] = ", color.rgb[1]
 println "  color.rgb[2] = ", color.rgb[2]
 println "  color.alpha = ", color.alpha
+assert (color.rgb == [255,128,64]) , "mismatched rgb result"
 println "  ✓ All field values correct"
 
 println "\n[#6]Feature 3: Pass Structs to C Functions[#-]"
@@ -66,13 +67,12 @@ endif
 
 println "\n[#6]Feature 6: Show Registered Structs[#-]"
 println "  Structs registered via AUTO:"
-showstruct color_t
-showstruct data_block_t
+showstruct
 
-println "\n[#2]════════════════════════════════════════════════════════════[#-]"
-println "[#2]✅ AUTO Struct Import Feature is Working![#-]"
-println "[#2]════════════════════════════════════════════════════════════[#-]"
-println ""
+println "\n[#2]════════════════════════════════════════════[#-]"
+println "[#2]AUTO Struct Import Feature is Working![#-]"
+println "[#2]════════════════════════════════════════════[#-]"
+println
 println "[#3]What works:[#-]"
 println "  • C structs automatically registered from headers"
 println "  • Fully qualified VAR declarations (e.g., var c test_c::color_t)"
@@ -80,5 +80,6 @@ println "  • Structs from C functions have correct field values"
 println "  • Structs can be passed to C functions"
 println "  • Array fields work correctly"
 println "  • No manual STRUCT/ENDSTRUCT definitions needed!"
-println ""
+println
 println "[#5]Note:[#-] Za maps can still be used as structs (backward compatible)"
+

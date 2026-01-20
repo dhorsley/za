@@ -10,18 +10,16 @@ try
 
     # Test strlen - should work automatically
     str = "Hello, World!"
-    len = strlen(str)
-    println "  ✓ strlen(\"" + str + "\") = " + as_string(len) + " (expected 13)"
+    length = strlen(str)
+    println "  ✓ strlen(\"{str}\") = {length} (expected 13)"
 
     # Test strcmp - compare two strings
     cmp = strcmp("hello", "hello")
-    println "  ✓ strcmp(\"hello\", \"hello\") = " + as_string(cmp) + " (expected 0)"
+    println "  ✓ strcmp(\"hello\", \"hello\") = {cmp} (expected 0)"
 
     # Test strcmp with different strings
     cmp2 = strcmp("hello", "world")
-    if cmp2 != 0
-        println "  ✓ strcmp(\"hello\", \"world\") = " + as_string(cmp2) + " (expected non-zero)"
-    endif
+    on cmp2 != 0 do println "  ✓ strcmp(\"hello\", \"world\") = {cmp2} (expected non-zero)"
 
     # Test malloc and free
     ptr = malloc(100)
@@ -33,7 +31,7 @@ try
 
     println "\n[#2]Function auto-discovery tests completed[#-]"
 catch e
-    println "[#1]  ✗ Error occurred: " + as_string(e) + "[#-]"
+    println "[#1]  ✗ Error occurred: [#-]\n",e.pp
 endtry
 
 println "\n[#2]═══════════════════════════════[#-]"
