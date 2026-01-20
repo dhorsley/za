@@ -2247,14 +2247,47 @@ tco_reentry:
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
                     structmapslock.RLock()
-                    for sn, _ := range structmaps {
-                        if sn == sname {
-                            isStruct = true
-                            structvalues = structmaps[sn]
-                            break
+                    if vals, found := structmaps[sname]; found {
+                        isStruct = true
+                        structvalues = vals
+                    } else {
+                        // Fallback: loop through structmaps for a match (handles unqualified lookups)
+                        for sn, _ := range structmaps {
+                            if sn == sname {
+                                isStruct = true
+                                structvalues = structmaps[sn]
+                                break
+                            }
                         }
                     }
                     structmapslock.RUnlock()
+
+                    // For C library types, check ffiStructDefinitions as a fallback
+                    // In VAR context, we want to use struct types even if a function shares the name
+                    // (e.g., c::stat is both a function and a struct in libc)
+                    // This handles the case where AUTO parsing created the FFI struct but
+                    // the Za struct registration might have had issues
+                    if !isStruct && str.Contains(sname, "::") {
+                        parts := str.SplitN(sname, "::", 2)
+                        if len(parts) == 2 {
+                            namespace := parts[0]
+                            structName := parts[1]
+
+                            ffiStructLock.RLock()
+                            if structDef, exists := ffiStructDefinitions[sname]; exists {
+                                // Register it in structmaps now for future use
+                                registerStructInZa(namespace, structName, structDef)
+                                // Now retrieve from structmaps
+                                structmapslock.RLock()
+                                if vals, found := structmaps[sname]; found {
+                                    isStruct = true
+                                    structvalues = vals
+                                }
+                                structmapslock.RUnlock()
+                            }
+                            ffiStructLock.RUnlock()
+                        }
+                    }
 
                     if isStruct {
                         t := (*ident)[sid]
