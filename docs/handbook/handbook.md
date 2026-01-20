@@ -5128,23 +5128,25 @@ c_free_struct(ptr)
 
 ### c_unmarshal_struct(ptr:pointer, struct_type_name:string) -> struct
 
-Reads C memory and converts it to a Za struct. Essential for "out parameters" where C functions fill struct data.
+Reads C memory and converts it to a Za struct. **Note:** For AUTO-registered structs, use the `mut` keyword approach instead (see above), which is simpler and automatic.
+
+**Legacy usage** (for manually-defined structs without AUTO):
 
 ```za
-struct StatStruct
-    st_size int
+struct FileStat
     st_mode int
+    st_size int
 endstruct
 
 # Allocate memory for C to fill
-statbuf = c_alloc_struct("StatStruct")
+statbuf = c_alloc_struct("FileStat")
 
-# Call C function that fills the struct
+# Call C function with pointer
 LIB c::stat(pathname:string, statbuf:pointer) -> int
 c::stat("/etc/passwd", statbuf)
 
 # Unmarshal C data back to Za struct
-stats = c_unmarshal_struct(statbuf, "StatStruct")
+stats = c_unmarshal_struct(statbuf, "FileStat")
 println "File size:", stats.st_size
 
 c_free_struct(statbuf)
@@ -5669,39 +5671,27 @@ Za automatically:
 3. Passes pointer to C function
 4. Frees C memory after the call
 
-#### Manual Marshaling (Out Parameters)
+#### Using AUTO with Out Parameters (Recommended)
 
-When C functions fill struct data, use manual marshaling:
+When C functions fill struct data using AUTO-registered structs, use the `mut` keyword for clean, automatic handling:
 
 ```za
-module "libc.so.6" as c
+module "libc.so.6" as c auto "/usr/include/sys/stat.h"
 use +c
 
-struct FileStat
-    st_mode int
-    st_size int
-    st_uid int
-endstruct
-
 def get_file_info(filepath)
-    # Step 1: Allocate C memory
-    statbuf = c_alloc_struct("FileStat")
+    # Declare struct variable from AUTO-parsed C header
+    var info c::stat
 
-    # Step 2: Call C function with pointer (not struct<T>)
-    LIB c::stat(path:string, buf:pointer) -> int
-    result = c::stat(filepath, statbuf)
+    # Call C function that fills the struct
+    # The mut keyword passes by reference, allowing C to modify fields
+    result = c::stat(filepath, mut info)
 
     if result != 0
-        c_free_struct(statbuf)
         return null
     endif
 
-    # Step 3: Unmarshal C data to Za struct
-    info = c_unmarshal_struct(statbuf, "FileStat")
-
-    # Step 4: Free C memory
-    c_free_struct(statbuf)
-
+    # Fields are directly accessible - no unmarshaling needed
     return info
 end
 
@@ -5710,8 +5700,17 @@ info = get_file_info("/etc/passwd")
 if info != null
     println "Size: {info.st_size} bytes"
     println "Owner: UID {info.st_uid}"
+    println "Mode: {info.st_mode}"
 endif
 ```
+
+**How it works:**
+
+1. **AUTO clause**: Loads struct definitions from C headers automatically
+2. **var declaration**: Creates a struct variable using the C type directly (c::stat)
+3. **mut keyword**: Passes the struct by reference, so C can modify fields in-place
+4. **Direct access**: Fields are accessible with dot notation - no marshaling required
+5. **Automatic cleanup**: Memory is managed automatically
 
 #### Supported Field Types
 

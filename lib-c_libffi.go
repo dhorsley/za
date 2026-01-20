@@ -1172,6 +1172,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 isPointer := strings.HasSuffix(structTypeName, "*")
                 baseStructName := strings.TrimSuffix(structTypeName, "*")
 
+                // Strip "struct" and "union" keywords from the lookup name
+                baseStructName = strings.TrimSpace(baseStructName)
+                baseStructName = strings.TrimPrefix(baseStructName, "struct ")
+                baseStructName = strings.TrimPrefix(baseStructName, "union ")
+                baseStructName = strings.TrimSpace(baseStructName)
+
                 // Look up the struct/union definition using base name
                 // First try as union (from AUTO parsing), then as Za struct
                 var structDef *CLibraryStruct

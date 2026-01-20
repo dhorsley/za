@@ -1276,14 +1276,27 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     name := left.(string)
     isStruct := false
 
+    // Special handling for C library namespaces: check if it's a C function first
+    // This prevents struct constructors from shadowing C functions (e.g., c::stat)
+    isCLibFunction := false
+    if str.Contains(name, "::") {
+        parts := str.SplitN(name, "::", 2)
+        if len(parts) == 2 && isCFunction(parts[0], parts[1]) {
+            isCLibFunction = true
+        }
+    }
+
     // filter for enabling struct type names here:
+    // But skip struct check if this is a C library function
     structvalues := []any{}
     found := false
-    structmapslock.RLock()
-    if structvalues, found = structmaps[name]; found || name == "anon" {
-        isStruct = true
+    if !isCLibFunction {
+        structmapslock.RLock()
+        if structvalues, found = structmaps[name]; found || name == "anon" {
+            isStruct = true
+        }
+        structmapslock.RUnlock()
     }
-    structmapslock.RUnlock()
     // end-struct-filter
 
     if !isStruct {

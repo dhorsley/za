@@ -605,8 +605,16 @@ func discoverHeaders(libraryPath string) []string {
 // parseHeaderFile parses a single C header file and returns the processed text
 // Enums and functions are not parsed here - they're parsed later after macro evaluation
 func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] parseHeaderFile START: path=%s, alias=%s\n", path, alias)
+    }
+
     content, err := os.ReadFile(path)
     if err != nil {
+        if debugAuto {
+            fmt.Printf("[AUTO] parseHeaderFile: failed to read file: %v\n", err)
+        }
         return "", err
     }
 
@@ -616,21 +624,46 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     // Otherwise, preprocessor directives inside comments will be processed
     text = stripCComments(text)
 
-    // Step 0.5: Parse preprocessor conditionals
+    // Step 0.1a: Parse included headers for typedefs and struct definitions
+    // This MUST happen on the ORIGINAL text before preprocessing, because
+    // parsePreprocessor may remove or modify #include directives
+    parseIncludedHeaders(text, alias, path)
+
+    // Step 0.1b: Parse preprocessor conditionals
+    // This resolves #ifdef blocks so that typedef and struct definitions are clean
     text = parsePreprocessor(text, alias, path, fs)
 
-    // Step 0.6: Remove known empty marker macros that interfere with parsing
+    // Step 0.3: Parse typedefs from main file before structs
+    // Typedefs must be registered before parsing structs that use them
+    if err := parseTypedefs(text, alias); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: early typedef parsing failed for %s: %v\n",
+                path, err)
+        }
+    }
+
+    // Step 0.4: Parse plain structs AFTER typedefs and preprocessing
+    // Now typedef-based types can be resolved
+    if err := parsePlainStructs(text, alias); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: plain struct parsing failed for %s: %v\n",
+                path, err)
+        }
+        // Don't fail - continue with other parsing
+    }
+
+    // Step 0.5: Remove known empty marker macros that interfere with parsing
     // These are typically defined as empty and used for C++ compatibility
     text = removeEmptyMarkerMacros(text)
 
-    // Step 0.7: Remove export macros with parameters (e.g., FT_EXPORT(type))
+    // Step 0.6: Remove export macros with parameters (e.g., FT_EXPORT(type))
     // These interfere with function signature regex matching
     text = removeExportMacros(text)
 
     // Step 1.5: Normalize multiline declarations
     text = normalizeFunctionDeclarations(text)
 
-    // Step 1.6: Parse #define macros for simple constants (before typedefs)
+    // Step 1.6: Parse #define macros for simple constants
     if err := parseDefines(text, alias, fs); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
             fmt.Fprintf(os.Stderr, "[AUTO] Warning: define parsing failed for %s: %v\n",
@@ -639,14 +672,8 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
         // Don't fail on define parsing errors - continue with other parsing
     }
 
-    // Step 1.7: Parse typedefs FIRST so they're available for function parsing
-    if err := parseTypedefs(text, alias); err != nil {
-        if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: typedef parsing failed for %s: %v\n",
-                path, err)
-        }
-        // Don't fail on typedef parsing errors - continue with other parsing
-    }
+    // Step 1.7: Skip duplicate typedef parsing (already done in step 0.3)
+    // We already parsed typedefs early to support struct field type resolution
 
     // Step 1.8: Parse struct typedefs (before unions so they can reference structs)
     if err := parseStructTypedefs(text, alias); err != nil {
@@ -656,6 +683,8 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
         }
         // Don't fail on struct parsing errors - continue with other parsing
     }
+
+    // Note: Plain structs are now parsed early (before preprocessing) in Step 0.3 above
 
     // Step 1.9: Parse union typedefs (after structs so they can use struct-typed fields)
     if err := parseUnionTypedefs(text, alias); err != nil {
@@ -3035,6 +3064,345 @@ func parseStructTypedefs(text string, alias string) error {
     return nil
 }
 
+// removeConditionalDirectives removes #ifdef, #else, #endif, and #include directives from text
+// Used to clean struct field blocks before parsing
+func removeConditionalDirectives(text string) string {
+    lines := strings.Split(text, "\n")
+    var cleaned []string
+
+    for _, line := range lines {
+        trimmed := strings.TrimSpace(line)
+        // Skip empty lines and conditional directives
+        if trimmed == "" {
+            cleaned = append(cleaned, "") // Preserve empty lines for structure
+            continue
+        }
+
+        // Check if line starts with # directive (may have leading spaces)
+        if strings.HasPrefix(trimmed, "#") {
+            // Skip any # directive
+            continue
+        }
+
+        // Keep non-directive lines
+        cleaned = append(cleaned, line)
+    }
+
+    return strings.Join(cleaned, "\n")
+}
+
+// parseIncludedHeaders reads #include directives and parses included files for struct definitions
+func parseIncludedHeaders(text string, alias string, currentFile string) {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    if debugAuto {
+        fmt.Printf("[AUTO] parseIncludedHeaders: scanning for #include directives in %s\n", currentFile)
+    }
+
+    // Find all #include directives
+    // Pattern: #include <file.h> or #include "file.h"
+    re := regexp.MustCompile(`#include\s+(?:<([^>]+)>|"([^"]+)")`)
+    matches := re.FindAllStringSubmatch(text, -1)
+
+    if debugAuto {
+        fmt.Printf("[AUTO] parseIncludedHeaders: found %d #include directives\n", len(matches))
+
+        // Debug: check if #include directives are visible in text
+        if strings.Contains(text, "#include") {
+            fmt.Printf("[AUTO] DEBUG: Text contains '#include' but regex found %d matches\n", len(matches))
+            // Show where #include appears
+            idx := strings.Index(text, "#include")
+            if idx >= 0 {
+                start := idx
+                if start > 50 {
+                    start -= 50
+                }
+                end := idx + 100
+                if end > len(text) {
+                    end = len(text)
+                }
+                snippet := text[start:end]
+                fmt.Printf("[AUTO] DEBUG: Context around first #include:\n%q\n", snippet)
+            }
+        }
+    }
+
+    for _, match := range matches {
+        var includePath string
+        isSystem := false
+        if match[1] != "" {
+            // System include: <file.h>
+            includePath = match[1]
+            isSystem = true
+        } else {
+            // Local include: "file.h"
+            includePath = match[2]
+        }
+
+        var resolvedPath string
+
+        if isSystem {
+            // For system includes like <bits/struct_stat.h>, try common system paths
+            systemPaths := []string{
+                "/usr/include/" + includePath,
+                "/usr/local/include/" + includePath,
+            }
+
+            for _, tryPath := range systemPaths {
+                if _, err := os.Stat(tryPath); err == nil {
+                    resolvedPath = tryPath
+                    break
+                }
+            }
+        } else {
+            // For local includes, resolve relative to current file
+            resolvedPath = resolveIncludePath("#include \""+includePath+"\"", currentFile)
+        }
+
+        if resolvedPath == "" {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: could not resolve include path: %s\n", includePath)
+            }
+            continue
+        }
+
+        // Read the included file
+        content, err := os.ReadFile(resolvedPath)
+        if err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: could not read included file %s: %v\n", resolvedPath, err)
+            }
+            continue
+        }
+
+        includedText := string(content)
+        includedText = stripCComments(includedText)
+
+        // THIRD: Recursively process includes BEFORE preprocessing
+        // This must happen on the original (non-preprocessed) text so #include directives are still visible
+        // Do this FIRST so we can find nested includes like <bits/struct_stat.h> from <bits/stat.h>
+        if debugAuto {
+            fmt.Printf("[AUTO] Recursively processing includes from: %s\n", resolvedPath)
+        }
+        parseIncludedHeaders(includedText, alias, resolvedPath)
+
+        // PREPROCESSOR: Run preprocessor on included file to resolve #ifdef blocks
+        // This reveals struct definitions that may be hidden behind conditionals
+        if debugAuto {
+            fmt.Printf("[AUTO] Running preprocessor on included file: %s\n", resolvedPath)
+        }
+        includedText = parsePreprocessor(includedText, alias, resolvedPath, 0)
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Parsing typedefs from included file: %s\n", resolvedPath)
+        }
+
+        // FIRST: Parse typedefs from the included file
+        // This must happen before struct parsing so that typedef'd types in struct fields are resolved
+        if err := parseTypedefs(includedText, alias); err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: failed to parse typedefs from %s: %v\n", resolvedPath, err)
+            }
+        }
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Parsing structs from included file: %s\n", resolvedPath)
+        }
+
+        // SECOND: Parse structs from the included file
+        // Now that typedefs are registered, struct fields can be resolved properly
+        if err := parsePlainStructs(includedText, alias); err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: failed to parse structs from %s: %v\n", resolvedPath, err)
+            }
+        }
+    }
+}
+
+// parsePlainStructs parses plain struct definitions (not typedefs)
+// Pattern: struct name { fields };
+// This complements parseStructTypedefs which only handles: typedef struct name { fields } name;
+func parsePlainStructs(text string, alias string) error {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] parsePlainStructs called for alias=%s, text length=%d\n", alias, len(text))
+
+        // Debug: Check if "struct stat" appears in text at all
+        if strings.Contains(text, "struct stat") {
+            fmt.Printf("[AUTO]   Text contains 'struct stat'\n")
+        } else {
+            fmt.Printf("[AUTO]   WARNING: Text does NOT contain 'struct stat'\n")
+        }
+    }
+
+    // Find struct definitions using proper brace matching (not regex)
+    // This handles nested #ifdef blocks and other complexities
+    var structs []struct {
+        name      string
+        fieldBlock string
+    }
+
+    // Pattern to find struct declarations: "struct Name {"
+    // Note: \s includes newlines in Go's regexp package
+    startRe := regexp.MustCompile(`\bstruct\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{`)
+    matches := startRe.FindAllStringSubmatchIndex(text, -1)
+
+    if debugAuto && len(matches) == 0 {
+        // Debug: check if "struct stat" appears at all
+        if strings.Contains(text, "struct stat") {
+            fmt.Printf("[AUTO] DEBUG: Text contains 'struct stat' but regex didn't match\n")
+            // Show the context around "struct stat"
+            idx := strings.Index(text, "struct stat")
+            start := idx
+            if start > 100 {
+                start -= 100
+            }
+            end := idx + len("struct stat") + 200
+            if end > len(text) {
+                end = len(text)
+            }
+            snippet := text[start:end]
+            fmt.Printf("[AUTO] DEBUG: Context around 'struct stat':\n%q\n", snippet)
+        }
+    }
+
+    for _, matchIdx := range matches {
+        // matchIdx format: [start0, end0, start1, end1]
+        // Group 1: struct name
+        structName := text[matchIdx[2]:matchIdx[3]]
+        openBracePos := matchIdx[1] - 1  // Position of the '{'
+
+        // Find matching closing brace using brace counting
+        braceCount := 1
+        closePos := openBracePos + 1
+
+        for closePos < len(text) && braceCount > 0 {
+            ch := text[closePos]
+            if ch == '{' {
+                braceCount++
+            } else if ch == '}' {
+                braceCount--
+                if braceCount == 0 {
+                    break
+                }
+            } else if ch == '"' {
+                // Skip string literals
+                closePos++
+                for closePos < len(text) && text[closePos] != '"' {
+                    if text[closePos] == '\\' && closePos+1 < len(text) {
+                        closePos += 2
+                    } else {
+                        closePos++
+                    }
+                }
+            }
+            closePos++
+        }
+
+        if braceCount == 0 {
+            // Extract field block (content between { and })
+            fieldBlock := text[openBracePos+1 : closePos]
+            structs = append(structs, struct {
+                name      string
+                fieldBlock string
+            }{structName, fieldBlock})
+
+            if debugAuto {
+                fmt.Printf("[AUTO] Found struct %s with field block size %d\n", structName, len(fieldBlock))
+            }
+        }
+    }
+
+    if debugAuto {
+        fmt.Printf("[AUTO] parsePlainStructs: found %d struct definitions\n", len(structs))
+    }
+
+    for _, s := range structs {
+        structName := s.name
+        fieldBlock := s.fieldBlock
+        fullName := alias + "::" + structName
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Found plain struct: %s\n", structName)
+            // Show first part of field block for debugging
+            blockPreview := fieldBlock
+            if len(blockPreview) > 200 {
+                blockPreview = blockPreview[:200]
+            }
+            fmt.Printf("[AUTO]   Field block preview (first 200 chars): %q\n", blockPreview)
+        }
+
+        // Skip if this struct was already parsed as a typedef
+        ffiStructLock.RLock()
+        alreadyExists := ffiStructDefinitions[fullName] != nil
+        ffiStructLock.RUnlock()
+
+        if alreadyExists {
+            if debugAuto {
+                fmt.Printf("[AUTO] Struct %s already registered (from typedef), skipping plain struct\n", structName)
+            }
+            continue
+        }
+
+        // Remove #ifdef directives from field block before parsing
+        // This ensures the field block contains only actual field declarations
+        cleanedFieldBlock := removeConditionalDirectives(fieldBlock)
+
+        if debugAuto {
+            fmt.Printf("[AUTO]   After removing conditionals, field block size: %d chars\n", len(cleanedFieldBlock))
+            // Show first part of cleaned field block
+            cleanedPreview := cleanedFieldBlock
+            if len(cleanedPreview) > 200 {
+                cleanedPreview = cleanedPreview[:200]
+            }
+            fmt.Printf("[AUTO]   Cleaned field block preview: %q\n", cleanedPreview)
+        }
+
+        // Parse fields from the cleaned field block
+        fields, totalSize, err := parseStructFields(cleanedFieldBlock, alias, debugAuto)
+        if err != nil {
+            if debugAuto {
+                fmt.Printf("[AUTO] Warning: failed to parse plain struct %s: %v\n", structName, err)
+            }
+            continue // Skip this struct but continue parsing others
+        }
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Parsed %d fields from struct %s, total size: %d bytes\n", len(fields), structName, totalSize)
+        }
+
+        // Create CLibraryStruct for the struct
+        structDef := &CLibraryStruct{
+            Name:    structName,
+            Fields:  fields,
+            Size:    totalSize,
+            IsUnion: false,
+        }
+
+        // Store in FFI struct registry (from lib-c.go)
+        ffiStructLock.Lock()
+        ffiStructDefinitions[fullName] = structDef
+        // Also store without namespace for easier lookup
+        ffiStructDefinitions[structName] = structDef
+        ffiStructLock.Unlock()
+
+        // ALSO register as typed Za struct (makes AUTO structs available in Za code)
+        registerStructInZa(alias, structName, structDef)
+
+        if debugAuto {
+            fmt.Printf("[AUTO] Registered plain struct %s (size: %d bytes, %d fields)\n",
+                structName, totalSize, len(fields))
+        }
+
+        // Check if we should abort (interactive mode error signaled via sig_int)
+        if sig_int {
+            return fmt.Errorf("AUTO import aborted during plain struct parsing")
+        }
+    }
+
+    return nil
+}
+
 // parseStructFields parses the field declarations inside a struct definition
 // Returns the fields, the total size, and any error
 // Unlike unions, struct fields have sequential offsets
@@ -3405,6 +3773,27 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
         }
     }
     moduleTypedefsLock.RUnlock()
+
+    // Handle glibc-specific types before lowercasing
+    // These are special types used in glibc headers that may not resolve via typedefs
+    // On 64-bit Linux, these are typically 8-byte or 4-byte integer types
+    switch typeStr {
+    case "__dev_t", "__ino_t", "__ino64_t", "__off_t", "__off64_t":
+        // Device number, inode number, file offset - typically 8 bytes on 64-bit
+        return CUInt64, 8
+    case "__mode_t", "__nlink_t", "__uid_t", "__gid_t":
+        // Mode (permissions), link count, user id, group id - typically 4 bytes on 64-bit
+        return CUInt, 4
+    case "__time_t":
+        // Time value - 8 bytes on 64-bit with __TIMESIZE=64
+        return CInt64, 8
+    case "__blksize_t", "__blkcnt_t", "__blkcnt64_t":
+        // Block size, block count - typically 8 bytes on 64-bit
+        return CInt64, 8
+    case "__syscall_ulong_t", "__syscall_slong_t":
+        // Syscall long types - 8 bytes on 64-bit
+        return CInt64, 8
+    }
 
     typeStr = strings.ToLower(typeStr)
 
