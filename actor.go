@@ -2304,15 +2304,6 @@ tco_reentry:
                         if vals, found := structmaps[sname]; found {
                             isStruct = true
                             structvalues = vals
-                        } else {
-                            // Fallback: loop through structmaps for a match (handles unqualified lookups)
-                            for sn, _ := range structmaps {
-                                if sn == sname {
-                                    isStruct = true
-                                    structvalues = structmaps[sn]
-                                    break
-                                }
-                            }
                         }
                         structmapslock.RUnlock()
                     }
