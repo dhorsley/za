@@ -6,8 +6,8 @@ println "Testing struct marshaling with stat() system call"
 println "This demonstrates handling C functions that fill struct data (out parameters)"
 
 # Load libc with AUTO to import struct and function definitions from C headers
-if release_id() == "ubuntu"
-    module "libc.so.6" as c auto "/usr/include/x86_64-linux-gnu/sys/stat.h"
+if release_id()=="ubuntu"
+    module "libc.so" as c auto "/usr/include/x86_64-linux-gnu/sys/stat.h"
 else
     module "libc.so.6" as c auto "/usr/include/sys/stat.h"
 endif
