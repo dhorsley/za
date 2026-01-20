@@ -98,16 +98,6 @@ func newPreprocessorState(alias string) *PreprocessorState {
     }
     state.definedMacros["__WORDSIZE_TIME64_COMPAT32"] = "1"
 
-    // Time64 macros: Za only targets 64-bit systems, so enable time64 support
-    // These control whether 64-bit time_t structures are exposed in headers
-    state.definedMacros["__USE_TIME64_REDIRECTS"] = "1" // Use 64-bit time redirects
-    state.definedMacros["__USE_TIME_BITS64"] = "1"      // Use 64-bit time_t
-    state.definedMacros["__USE_FILE_OFFSET64"] = "1"    // Use 64-bit file offsets
-
-    // Architecture macros: Za targets x86_64 and arm64, define both for compatibility
-    state.definedMacros["__x86_64__"] = "1"             // x86_64 architecture
-    state.definedMacros["__USE_XOPEN2K8"] = "1"         // POSIX 2008
-
     // Common feature test macros
     state.definedMacros["__USE_MISC"] = "1"  // Misc extensions
     state.definedMacros["__USE_XOPEN"] = "1" // X/Open compliance
@@ -955,8 +945,14 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                 condition := !state.isDefined(arg)
                 state.pushCondition(condition)
                 if debugAuto {
-                    fmt.Printf("[AUTO] Line %d: #ifndef %s → %v (depth %d)\n",
-                        lineNum+1, arg, condition, state.includeDepth)
+                    isStructStat := strings.Contains(currentFile, "struct_stat")
+                    if isStructStat || arg == "_BITS_STRUCT_STAT_H" {
+                        fmt.Printf("[AUTO] Line %d: #ifndef %s → %v (depth %d) in struct_stat file\n",
+                            lineNum+1, arg, condition, state.includeDepth)
+                    } else {
+                        fmt.Printf("[AUTO] Line %d: #ifndef %s → %v (depth %d)\n",
+                            lineNum+1, arg, condition, state.includeDepth)
+                    }
                 }
                 continue
 
@@ -1034,10 +1030,13 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
 
             case "endif":
                 // #endif
+                if debugAuto {
+                    fmt.Printf("[AUTO] Line %d: #endif (depth before=%d, stack size=%d)\n",
+                        lineNum+1, state.includeDepth, len(state.conditionStack))
+                }
                 state.popCondition()
                 if debugAuto {
-                    fmt.Printf("[AUTO] Line %d: #endif (depth %d)\n",
-                        lineNum+1, state.includeDepth)
+                    fmt.Printf("[AUTO]   After pop: depth=%d, isActive=%v\n", state.includeDepth, state.isActive())
                 }
                 continue
 
@@ -1251,8 +1250,15 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
         // Include line only if in active block
         if state.isActive() {
             result = append(result, line)
+            if debugAuto && (strings.Contains(trimmed, "struct stat") || strings.Contains(trimmed, "_BITS_STRUCT_STAT_H")) {
+                fmt.Printf("[AUTO] Line %d: INCLUDED (active): %s\n", lineNum+1, trimmed)
+            }
         } else if debugAuto && trimmed != "" {
-            fmt.Printf("[AUTO] Line %d: SKIPPED (inactive): %s\n", lineNum+1, trimmed)
+            if strings.Contains(trimmed, "struct stat") || strings.Contains(trimmed, "_BITS_STRUCT_STAT_H") {
+                fmt.Printf("[AUTO] Line %d: SKIPPED (inactive) [IMPORTANT]: %s\n", lineNum+1, trimmed)
+            } else {
+                fmt.Printf("[AUTO] Line %d: SKIPPED (inactive): %s\n", lineNum+1, trimmed)
+            }
         }
     }
 
@@ -3019,10 +3025,16 @@ func parseStructTypedefs(text string, alias string) error {
     // Also handles: typedef struct name { fields } name;
     // Matches both multiline and single-line declarations
 
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto {
+        fmt.Printf("[AUTO] parseStructTypedefs called for alias=%s, text length=%d\n", alias, len(text))
+        if strings.Contains(text, "struct stat") {
+            fmt.Printf("[AUTO] DEBUG parseStructTypedefs: text contains 'struct stat'\n")
+        }
+    }
+
     re := regexp.MustCompile(`(?s)typedef\s+struct\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{([^}]+)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`)
     matches := re.FindAllStringSubmatch(text, -1)
-
-    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
 
     for _, match := range matches {
         fieldBlock := match[1]  // Content between { }
@@ -3055,6 +3067,9 @@ func parseStructTypedefs(text string, alias string) error {
         ffiStructDefinitions[fullName] = structDef
         // Also store without namespace for easier lookup
         ffiStructDefinitions[structName] = structDef
+        if debugAuto {
+            fmt.Printf("[AUTO] Stored struct typedef in ffiStructDefinitions: fullName=%s, size=%d\n", fullName, totalSize)
+        }
         ffiStructLock.Unlock()
 
         // ALSO register as typed Za struct (makes AUTO structs available in Za code)
@@ -3158,6 +3173,15 @@ func parseIncludedHeaders(text string, alias string, currentFile string) {
                 "/usr/local/include/" + includePath,
             }
 
+            // Add architecture-specific paths for Linux systems
+            if runtime.GOOS == "linux" {
+                if runtime.GOARCH == "amd64" {
+                    systemPaths = append(systemPaths, "/usr/include/x86_64-linux-gnu/"+includePath)
+                } else if runtime.GOARCH == "arm64" {
+                    systemPaths = append(systemPaths, "/usr/include/aarch64-linux-gnu/"+includePath)
+                }
+            }
+
             for _, tryPath := range systemPaths {
                 if _, err := os.Stat(tryPath); err == nil {
                     resolvedPath = tryPath
@@ -3187,6 +3211,10 @@ func parseIncludedHeaders(text string, alias string, currentFile string) {
 
         includedText := string(content)
         includedText = stripCComments(includedText)
+
+        // Save the unpreprocessed text for fallback struct extraction
+        // Some structs have internal #ifdef directives that may cause them to be stripped by the preprocessor
+        unpreprocessedText := includedText
 
         // THIRD: Recursively process includes BEFORE preprocessing
         // This must happen on the original (non-preprocessed) text so #include directives are still visible
@@ -3221,7 +3249,8 @@ func parseIncludedHeaders(text string, alias string, currentFile string) {
 
         // SECOND: Parse structs from the included file
         // Now that typedefs are registered, struct fields can be resolved properly
-        if err := parsePlainStructs(includedText, alias); err != nil {
+        // Pass both preprocessed and unpreprocessed text; will use unpreprocessed as fallback
+        if err := parsePlainStructsWithFallback(includedText, unpreprocessedText, alias); err != nil {
             if debugAuto {
                 fmt.Printf("[AUTO] Warning: failed to parse structs from %s: %v\n", resolvedPath, err)
             }
@@ -3229,10 +3258,44 @@ func parseIncludedHeaders(text string, alias string, currentFile string) {
     }
 }
 
+// parsePlainStructsWithFallback parses plain struct definitions from preprocessed text,
+// and falls back to unpreprocessed text if no structs are found
+// This handles cases where internal #ifdef directives cause structs to be stripped by the preprocessor
+func parsePlainStructsWithFallback(preprocessedText, unpreprocessedText, alias string) error {
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    // First try parsing from the preprocessed text
+    structs, err := parsePlainStructsInternal(preprocessedText, alias, true)
+    if err != nil {
+        return err
+    }
+
+    // If no structs found in preprocessed text, try unpreprocessed as fallback
+    // This handles structs with internal preprocessor directives like #ifdef inside the struct body
+    if len(structs) == 0 && preprocessedText != unpreprocessedText {
+        if debugAuto {
+            fmt.Printf("[AUTO] No structs found in preprocessed text, trying unpreprocessed fallback...\n")
+        }
+        structs, err = parsePlainStructsInternal(unpreprocessedText, alias, false)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
+}
+
 // parsePlainStructs parses plain struct definitions (not typedefs)
 // Pattern: struct name { fields };
 // This complements parseStructTypedefs which only handles: typedef struct name { fields } name;
 func parsePlainStructs(text string, alias string) error {
+    _, err := parsePlainStructsInternal(text, alias, true)
+    return err
+}
+
+// parsePlainStructsInternal does the actual struct parsing
+// isPreprocessed indicates whether the text has been preprocessed (affects how we handle field parsing)
+func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) ([]struct{ name string; fieldBlock string }, error) {
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     if debugAuto {
         fmt.Printf("[AUTO] parsePlainStructs called for alias=%s, text length=%d\n", alias, len(text))
@@ -3240,6 +3303,18 @@ func parsePlainStructs(text string, alias string) error {
         // Debug: Check if "struct stat" appears in text at all
         if strings.Contains(text, "struct stat") {
             fmt.Printf("[AUTO]   Text contains 'struct stat'\n")
+            // Find and show the context around "struct stat"
+            idx := strings.Index(text, "struct stat")
+            start := idx
+            if start > 50 {
+                start -= 50
+            }
+            end := idx + len("struct stat") + 150
+            if end > len(text) {
+                end = len(text)
+            }
+            snippet := text[start:end]
+            fmt.Printf("[AUTO]   Context: %q\n", snippet)
         } else {
             fmt.Printf("[AUTO]   WARNING: Text does NOT contain 'struct stat'\n")
         }
@@ -3327,6 +3402,12 @@ func parsePlainStructs(text string, alias string) error {
         fmt.Printf("[AUTO] parsePlainStructs: found %d struct definitions\n", len(structs))
     }
 
+    // Return the found structs (internal helper returns array before processing)
+    if !isPreprocessed {
+        // For unpreprocessed text, just return the found structs without processing
+        return structs, nil
+    }
+
     for _, s := range structs {
         structName := s.name
         fieldBlock := s.fieldBlock
@@ -3342,16 +3423,18 @@ func parsePlainStructs(text string, alias string) error {
             fmt.Printf("[AUTO]   Field block preview (first 200 chars): %q\n", blockPreview)
         }
 
-        // Skip if this struct was already parsed as a typedef
-        ffiStructLock.RLock()
-        alreadyExists := ffiStructDefinitions[fullName] != nil
-        ffiStructLock.RUnlock()
+        // Skip if this struct was already parsed as a typedef (only for preprocessed text)
+        if isPreprocessed {
+            ffiStructLock.RLock()
+            alreadyExists := ffiStructDefinitions[fullName] != nil
+            ffiStructLock.RUnlock()
 
-        if alreadyExists {
-            if debugAuto {
-                fmt.Printf("[AUTO] Struct %s already registered (from typedef), skipping plain struct\n", structName)
+            if alreadyExists {
+                if debugAuto {
+                    fmt.Printf("[AUTO] Struct %s already registered (from typedef), skipping plain struct\n", structName)
+                }
+                continue
             }
-            continue
         }
 
         // Remove #ifdef directives from field block before parsing
@@ -3406,11 +3489,11 @@ func parsePlainStructs(text string, alias string) error {
 
         // Check if we should abort (interactive mode error signaled via sig_int)
         if sig_int {
-            return fmt.Errorf("AUTO import aborted during plain struct parsing")
+            return nil, fmt.Errorf("AUTO import aborted during plain struct parsing")
         }
     }
 
-    return nil
+    return structs, nil
 }
 
 // parseStructFields parses the field declarations inside a struct definition

@@ -2244,43 +2244,38 @@ tco_reentry:
                         }
                     }
 
-                    // For C library types, prioritize checking ffiStructDefinitions first
-                    // This ensures struct types are found even if a function with same name exists
+                    // structmap has list of field_name,field_type,... for each struct
+                    // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+                    structmapslock.RLock()
+                    if vals, found := structmaps[sname]; found {
+                        isStruct = true
+                        structvalues = vals
+                    } else {
+                        // Fallback: loop through structmaps for a match (handles unqualified lookups)
+                        for sn, _ := range structmaps {
+                            if sn == sname {
+                                isStruct = true
+                                structvalues = structmaps[sn]
+                                break
+                            }
+                        }
+                    }
+                    structmapslock.RUnlock()
+
+                    // For C library types, check ffiStructDefinitions as a fallback
+                    // In VAR context, we want to use struct types even if a function shares the name
                     // (e.g., c::stat is both a function and a struct in libc)
-                    if str.Contains(sname, "::") && !isStruct {
+                    // This handles the case where AUTO parsing created the FFI struct but
+                    // the Za struct registration might have had issues
+                    if !isStruct && str.Contains(sname, "::") {
                         parts := str.SplitN(sname, "::", 2)
                         if len(parts) == 2 {
                             namespace := parts[0]
                             structName := parts[1]
 
                             ffiStructLock.RLock()
-
-                            // Debug: Show what we're looking for and what's registered
-                            if os.Getenv("ZA_DEBUG_VAR_STRUCT") != "" {
-                                fmt.Printf("[DEBUG VAR] Looking for struct '%s' with sname='%s'\n", structName, sname)
-                                fmt.Printf("[DEBUG VAR] All keys in ffiStructDefinitions:\n")
-                                for key, def := range ffiStructDefinitions {
-                                    isUnion := "struct"
-                                    if def.IsUnion {
-                                        isUnion = "union"
-                                    }
-                                    fmt.Printf("[DEBUG VAR]   '%s' (%s)\n", key, isUnion)
-                                }
-                            }
-
-                            // Look up qualified struct name (C structs must be namespaced)
-                            structDef, found := ffiStructDefinitions[sname]
-                            if os.Getenv("ZA_DEBUG_VAR_STRUCT") != "" {
-                                if found {
-                                    fmt.Printf("[DEBUG VAR] Found as '%s'\n", sname)
-                                } else {
-                                    fmt.Printf("[DEBUG VAR] NOT found as '%s'\n", sname)
-                                }
-                            }
-
-                            if found && structDef != nil {
-                                // Verify it's actually a struct type (not a union or other type)
-                                // This is the type field filtering condition
+                            if structDef, exists := ffiStructDefinitions[sname]; exists {
+                                // Verify it's actually a struct, not a union
                                 if !structDef.IsUnion {
                                     // Register it in structmaps now for future use
                                     registerStructInZa(namespace, structName, structDef)
@@ -2295,17 +2290,6 @@ tco_reentry:
                             }
                             ffiStructLock.RUnlock()
                         }
-                    }
-
-                    // structmap has list of field_name,field_type,... for each struct
-                    // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
-                    if !isStruct {
-                        structmapslock.RLock()
-                        if vals, found := structmaps[sname]; found {
-                            isStruct = true
-                            structvalues = vals
-                        }
-                        structmapslock.RUnlock()
                     }
 
                     if isStruct {
