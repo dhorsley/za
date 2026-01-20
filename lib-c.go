@@ -768,6 +768,10 @@ func CallCFunction(library string, functionName string, args []any) (any, []stri
         return nil, []string{fmt.Sprintf("[ERROR: C library '%s' not loaded]", library)}
     }
 
+    if lib.Symbols == nil {
+        return nil, []string{fmt.Sprintf("[ERROR: C library '%s' has no symbols registered]", library)}
+    }
+
     symbol, exists := lib.Symbols[functionName]
     if !exists {
         return nil, []string{fmt.Sprintf("[ERROR: Function '%s' not found in library '%s']", functionName, library)}
@@ -1361,12 +1365,8 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
 
         // Check if it's a known struct/union from AUTO parsing
         ffiStructLock.RLock()
-        if def, exists := ffiStructDefinitions[lookupName]; exists {
+        if _, exists := ffiStructDefinitions[lookupName]; exists {
             ffiStructLock.RUnlock()
-            if os.Getenv("ZA_DEBUG_AUTO") != "" {
-                fmt.Fprintf(os.Stderr, "[AUTO] Type %s is known %s, using as struct reference\n",
-                    lookupName, map[bool]string{true: "union", false: "struct"}[def.IsUnion])
-            }
 
             // For pointer-to-struct types, return as CPointer with the struct name preserved
             // This allows auto-unmarshalling in convertReturnValue

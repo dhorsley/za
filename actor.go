@@ -5389,6 +5389,9 @@ tco_reentry:
                 for i := autoAt + 1; i < inbound.TokenCount; i++ {
                     if inbound.Tokens[i].tokType == StringLiteral {
                         headerPaths = append(headerPaths, inbound.Tokens[i].tokText)
+                        if os.Getenv("ZA_DEBUG_AUTO") != "" {
+                            fmt.Printf("[AUTO] Parsed explicit header path: %s\n", inbound.Tokens[i].tokText)
+                        }
                     } else if inbound.Tokens[i].tokType != O_Comma {
                         // Stop at first non-string, non-comma token
                         break
@@ -5397,6 +5400,9 @@ tco_reentry:
                 // asAt is now end of library path + AS clause, before AUTO
                 if autoAt > 0 {
                     asAt = autoAt
+                }
+                if os.Getenv("ZA_DEBUG_AUTO") != "" {
+                    fmt.Printf("[AUTO] Parsed %d explicit header paths from AUTO clause\n", len(headerPaths))
                 }
             }
 

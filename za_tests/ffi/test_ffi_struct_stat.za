@@ -5,69 +5,47 @@
 println "Testing struct marshaling with stat() system call"
 println "This demonstrates handling C functions that fill struct data (out parameters)"
 
-# Define the stat struct (simplified version with key fields)
-# Note: This is a simplified version - real struct stat has more fields
-struct StatStruct
-    st_dev int
-    st_ino int
-    st_mode int
-    st_nlink int
-    st_uid int
-    st_gid int
-    st_rdev int
-    st_size int
-    st_blksize int
-    st_blocks int
-endstruct
-
-println "\nTest 1: Allocate C memory for struct"
-statbuf_ptr = c_alloc_struct("StatStruct")
-assert !c_ptr_is_null(statbuf_ptr)
-println "✓ C memory allocated for struct"
-
-# Load libc
-module "libc.so.6" as c
+# Load libc with AUTO to import struct and function definitions from C headers
+module "libc.so.6" as c auto "/usr/include/sys/stat.h"
 use +c
 
-# Declare stat function: int stat(const char *pathname, struct stat *statbuf)
-# Note: We use pointer for the struct parameter since it's an "out" parameter
-LIB c::stat(pathname:string, statbuf:pointer) -> int
+println "\nTest 1: Declare C struct variable"
+var statbuf c::stat
+println "✓ Struct variable declared"
 
 println "\nTest 2: Call c::stat() to fill the struct"
-result = c::stat("/tmp", statbuf_ptr)
+result = c::stat("/tmp", mut statbuf)
 println "Result code:", result
 
 if result != 0
     println "✗ stat() call failed"
-    c_free_struct(statbuf_ptr)
     exit 1
 endif
 println "✓ stat() call succeeded - C function filled the struct"
 
-println "\nTest 3: Unmarshal C struct data back to Za struct"
-stats = c_unmarshal_struct(statbuf_ptr, "StatStruct")
-println "✓ Struct unmarshaled from C memory"
+println "\nTest 3: Access struct data directly"
+println "✓ Struct accessible via dot notation"
 
 println "\nTest 4: Verify struct data"
-println "  File size:", stats.st_size
-println "  File mode:", stats.st_mode
-println "  UID:", stats.st_uid
-println "  GID:", stats.st_gid
+println "  File size:", statbuf.st_size
+println "  File mode:", statbuf.st_mode
+println "  UID:", statbuf.st_uid
+println "  GID:", statbuf.st_gid
 
-if stats.st_mode == 1
-    println "✓ Struct contains valid data (mode == 1)"
+if statbuf.st_mode > 0
+    println "✓ Struct contains valid data (mode = {statbuf.st_mode})"
 else
-    println "✗ Struct mode is not 1 - unexpected"
+    println "✗ Struct mode is invalid"
 endif
 
 println "\nTest 5: Cleanup"
-c_free_struct(statbuf_ptr)
-println "✓ C memory freed"
+println "✓ Automatic cleanup (struct is stack-allocated)"
 
-println "\n✅ All stat() struct marshaling tests passed!"
+println "\nAll stat() struct marshaling tests passed!"
 println "\nSummary:"
-println "  1. Allocated C memory for struct"
-println "  2. Passed pointer to C function (out parameter)"
-println "  3. C function filled the struct with data"
-println "  4. Unmarshaled C memory back to Za struct"
-println "  5. Successfully read file metadata from struct"
+println "  1. Imported struct stat from C headers via AUTO clause"
+println "  2. Declared struct variable with Za type system"
+println "  3. Passed struct by reference to C function"
+println "  4. C function filled the struct with data"
+println "  5. Successfully read file metadata via direct field access"
+
