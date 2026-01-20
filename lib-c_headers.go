@@ -102,6 +102,11 @@ func newPreprocessorState(alias string) *PreprocessorState {
     // These control whether 64-bit time_t structures are exposed in headers
     state.definedMacros["__USE_TIME64_REDIRECTS"] = "1" // Use 64-bit time redirects
     state.definedMacros["__USE_TIME_BITS64"] = "1"      // Use 64-bit time_t
+    state.definedMacros["__USE_FILE_OFFSET64"] = "1"    // Use 64-bit file offsets
+
+    // Architecture macros: Za targets x86_64 and arm64, define both for compatibility
+    state.definedMacros["__x86_64__"] = "1"             // x86_64 architecture
+    state.definedMacros["__USE_XOPEN2K8"] = "1"         // POSIX 2008
 
     // Common feature test macros
     state.definedMacros["__USE_MISC"] = "1"  // Misc extensions
