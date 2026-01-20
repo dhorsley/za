@@ -2985,10 +2985,10 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
 
         if debug {
             if arraySize > 0 {
-                fmt.Printf("[AUTO]   Field: %s %s[%d] (size: %d bytes, offset: 0)\n",
+                fmt.Printf("[AUTO]   Field: %+v %s[%d] (size: %d bytes, offset: 0)\n",
                     fieldType, fieldName, arraySize, fieldSize)
             } else {
-                fmt.Printf("[AUTO]   Field: %s %s (size: %d bytes, offset: 0)\n",
+                fmt.Printf("[AUTO]   Field: %+v %s (size: %d bytes, offset: 0)\n",
                     fieldType, fieldName, fieldSize)
             }
         }
@@ -3642,10 +3642,10 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
 
         if debug {
             if arraySize > 0 {
-                fmt.Printf("[AUTO]   Field: %s %s[%d] (size: %d bytes, offset: %d)\n",
+                fmt.Printf("[AUTO]   Field: %+v %s[%d] (size: %d bytes, offset: %d)\n",
                     fieldType, fieldName, arraySize, fieldSize, field.Offset)
             } else {
-                fmt.Printf("[AUTO]   Field: %s %s (size: %d bytes, offset: %d)\n",
+                fmt.Printf("[AUTO]   Field: %+v %s (size: %d bytes, offset: %d)\n",
                     fieldType, fieldName, fieldSize, field.Offset)
             }
         }

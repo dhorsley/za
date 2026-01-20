@@ -1187,6 +1187,18 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 ffiStructLock.RLock()
                 if def, ok := ffiStructDefinitions[baseStructName]; ok {
                     structDef = def
+                } else {
+                    // Extract library alias from funcName (format: "alias::funcname")
+                    // Only search for structs from the same library
+                    parts := strings.Split(funcName, "::")
+                    if len(parts) == 2 {
+                        libAlias := parts[0]
+                        // Try to find the struct with the library's namespace
+                        qualifiedName := libAlias + "::" + baseStructName
+                        if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+                            structDef = def
+                        }
+                    }
                 }
                 ffiStructLock.RUnlock()
 
