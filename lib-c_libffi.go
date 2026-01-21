@@ -1101,6 +1101,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, fltPtr)
                 *(*C.float)(fltPtr) = C.float(v)
                 argValuesSlice[i] = fltPtr
+                // DEBUG: Log the marshalling
+                float32val := C.float(v)
+                ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> float32 %v (CFloat)\n", i, v, float32val)
                 // Capture C pointer for mutable arguments
                 if mutArg, ok := mutableArgIndices[i]; ok {
                     mutArg.CPtr = fltPtr
@@ -1112,6 +1115,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, dblPtr)
                 *(*C.double)(dblPtr) = C.double(v)
                 argValuesSlice[i] = dblPtr
+                // DEBUG: Log the marshalling
+                ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> double (CDouble)\n", i, v)
                 // Capture C pointer for mutable arguments
                 if mutArg, ok := mutableArgIndices[i]; ok {
                     mutArg.CPtr = dblPtr
@@ -1589,10 +1594,14 @@ func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (
         return uint8(*(*C.uchar)(unsafe.Pointer(&returnValue))), nil
 
     case CFloat:
-        return float64(*(*C.float)(unsafe.Pointer(&returnValue))), nil
+        result := float64(*(*C.float)(unsafe.Pointer(&returnValue)))
+        ffidebug("[FFI DEBUG] Unmarshalling return value: float32 C value -> float64 %v (CFloat)\n", result)
+        return result, nil
 
     case CDouble:
-        return float64(*(*C.double)(unsafe.Pointer(&returnValue))), nil
+        result := float64(*(*C.double)(unsafe.Pointer(&returnValue)))
+        ffidebug("[FFI DEBUG] Unmarshalling return value: double C value -> float64 %v (CDouble)\n", result)
+        return result, nil
 
     case CString:
         cstr := *(*unsafe.Pointer)(unsafe.Pointer(&returnValue))
