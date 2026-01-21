@@ -2153,15 +2153,10 @@ func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
     structDef, found := structmaps[structName]
 
     if !found {
-        // Try common namespace prefixes
-        namespaces := []string{"main::", "global::", ""}
-        for _, ns := range namespaces {
-            qualifiedName := ns + structName
-            if def, ok := structmaps[qualifiedName]; ok {
-                structDef = def
-                found = true
-                break
-            }
+				qualifiedName := "main::" + structName
+        if def, ok := structmaps[qualifiedName]; ok {
+            structDef = def
+            found = true
         }
     }
 
