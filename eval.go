@@ -1537,15 +1537,16 @@ func (p *leparser) reference(mut bool) any {
         // Variable not found in local scope, check globals
         gbin := bind_int(0, fullName)
         if gbin < uint64(len(gident)) && gident[gbin].declared {
-            // Get global variable value and wrap it
-            varValue := gident[gbin].IValue
-
-            return &MutableArg{
-                Value:    varValue,
-                Binding:  gbin,
-                IdentPtr: &gident,
-                IsGlobal: true,
-                // CPtr and StructDef will be set by FFI layer during marshaling
+            // Get global variable value with proper locking
+            varValue, ok := gvget(fullName)
+            if ok {
+                return &MutableArg{
+                    Value:    varValue,
+                    Binding:  gbin,
+                    IdentPtr: &gident,
+                    IsGlobal: true,
+                    // CPtr and StructDef will be set by FFI layer during marshaling
+                }
             }
         }
 

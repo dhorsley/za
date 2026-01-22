@@ -881,8 +881,38 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             // This is a mutable argument - track it
             mutableArgs = append(mutableArgs, mutArg)
             mutableArgIndices[i] = mutArg
-            // Use the wrapped value for marshaling
-            unwrappedArgs[i] = mutArg.Value
+
+            // Check if this is an output parameter (koutparam) that needs auto-allocation
+            bin := mutArg.Binding
+            if bin < uint64(len(*mutArg.IdentPtr)) && (*mutArg.IdentPtr)[bin].IKind == koutparam {
+                // Auto-allocate memory for output parameters with unknown type
+                // Allocate generously (64 bytes aligned) for output pointers/structs
+                allocSize := uintptr(64)
+                if i < len(sig.ParamTypes) && sig.ParamTypes[i] != CPointer {
+                    // For non-pointer types, use the actual size
+                    typeSize := getSizeForType(sig.ParamTypes[i])
+                    if typeSize > 0 && typeSize < 64 {
+                        allocSize = typeSize
+                    }
+                }
+                // Allocate memory with malloc and zero it
+                allocPtr := C.malloc(C.size_t(allocSize))
+                if allocPtr == nil {
+                    return nil, fmt.Errorf("failed to allocate memory for output parameter at index %d", i)
+                }
+                // Zero-initialize the allocated memory
+                C.memset(allocPtr, 0, C.size_t(allocSize))
+                ffidebug("[FFI DEBUG] Auto-allocated koutparam at index %d: ptr=%p, allocSize=%d (type=%d)\n", i, allocPtr, allocSize, sig.ParamTypes[i])
+                mutArg.CPtr = allocPtr
+                mutArg.IsAutoAllocated = true  // Mark for cleanup
+                // Store the pointer as CPointerValue for proper marshaling
+                // But mark it so we know NOT to add extra indirection in marshaling
+                pval := &CPointerValue{Ptr: allocPtr}
+                unwrappedArgs[i] = pval
+            } else {
+                // Regular mutable argument - use the wrapped value for marshaling
+                unwrappedArgs[i] = mutArg.Value
+            }
         } else {
             unwrappedArgs[i] = arg
         }
@@ -937,6 +967,18 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             // Array argument (including empty arrays) - pass through without conversion
             convertedArgs[i] = arg
             continue
+        }
+
+        // Check if this is a koutparam pointer that was auto-allocated
+        // It's passed as CPointerValue and needs special handling
+        if mutArg, ok := mutableArgIndices[i]; ok {
+            bin := mutArg.Binding
+            if bin < uint64(len(*mutArg.IdentPtr)) && (*mutArg.IdentPtr)[bin].IKind == koutparam && mutArg.IsAutoAllocated {
+                // This is an auto-allocated koutparam pointer
+                // Wrap it as CPointerValue so it gets marshaled as a simple pointer
+                convertedArgs[i] = &CPointerValue{Ptr: mutArg.CPtr}
+                continue
+            }
         }
 
         var expectedType CType
@@ -1013,7 +1055,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         C.memset(argValuesPtr, 0, C.size_t(len(convertedArgs))*C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
     }
 
+    ffidebug("[FFI DEBUG] Marshaling %d arguments total\n", len(convertedArgs))
     for i, arg := range convertedArgs {
+        ffidebug("[FFI DEBUG] Processing argument %d: type=%T\n", i, arg)
         // Get expected parameter type to handle float vs double correctly
         var expectedParamType CType
         if i < len(sig.ParamTypes) {
@@ -1028,8 +1072,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, intPtr)
             *(*C.int)(intPtr) = C.int(v)
             argValuesSlice[i] = intPtr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = intPtr
             }
 
@@ -1040,8 +1084,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, uintPtr)
             *(*C.uint)(uintPtr) = C.uint(v)
             argValuesSlice[i] = uintPtr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = uintPtr
             }
 
@@ -1068,8 +1112,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, int64Ptr)
             *(*C.longlong)(int64Ptr) = C.longlong(v)
             argValuesSlice[i] = int64Ptr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = int64Ptr
             }
 
@@ -1080,8 +1124,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, uint64Ptr)
             *(*C.ulonglong)(uint64Ptr) = C.ulonglong(v)
             argValuesSlice[i] = uint64Ptr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = uint64Ptr
             }
 
@@ -1113,8 +1157,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 // DEBUG: Log the marshalling
                 float32val := C.float(v)
                 ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> float32 %v (CFloat)\n", i, v, float32val)
-                // Capture C pointer for mutable arguments
-                if mutArg, ok := mutableArgIndices[i]; ok {
+                // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+                if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                     mutArg.CPtr = fltPtr
                 }
             } else {
@@ -1126,8 +1170,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 argValuesSlice[i] = dblPtr
                 // DEBUG: Log the marshalling
                 ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> double (CDouble)\n", i, v)
-                // Capture C pointer for mutable arguments
-                if mutArg, ok := mutableArgIndices[i]; ok {
+                // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+                if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                     mutArg.CPtr = dblPtr
                 }
             }
@@ -1141,8 +1185,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             allocatedMem = append(allocatedMem, ptrPtr)
             *(*unsafe.Pointer)(ptrPtr) = unsafe.Pointer(cstr)
             argValuesSlice[i] = ptrPtr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = unsafe.Pointer(cstr)
             }
 
@@ -1157,8 +1201,8 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 *(*C.uchar)(boolPtr) = 0
             }
             argValuesSlice[i] = boolPtr
-            // Capture C pointer for mutable arguments
-            if mutArg, ok := mutableArgIndices[i]; ok {
+            // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
+            if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                 mutArg.CPtr = boolPtr
             }
 
@@ -1762,14 +1806,50 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
         case *CPointerValue:
             argTypesSlice[i] = 7 // CPointer
-            // v.Ptr is the buffer address (like &db in the C test where db is the result variable)
-            // libffi needs: arg_values[i] points to the argument VALUE
-            // The argument value for a void** parameter IS the address (&db)
-            // So we just need to store v.Ptr and point to it
-            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
-            allocatedMem = append(allocatedMem, ptrPtr)
-            *(*unsafe.Pointer)(ptrPtr) = v.Ptr
-            argValuesSlice[i] = ptrPtr
+            var expectedType string
+            if i < len(sig.ParamTypes) {
+                expectedType = fmt.Sprintf("%d", sig.ParamTypes[i])
+            } else {
+                expectedType = "unknown"
+            }
+            ffidebug("[FFI DEBUG] Marshaling CPointerValue at index %d: v.Ptr=%p, expectedParamType=%s\n", i, v.Ptr, expectedType)
+
+            // Check if this is a koutparam auto-allocated pointer
+            isKoutparamPtr := false
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                bin := mutArg.Binding
+                if bin < uint64(len(*mutArg.IdentPtr)) && (*mutArg.IdentPtr)[bin].IKind == koutparam && mutArg.IsAutoAllocated {
+                    isKoutparamPtr = true
+                }
+            }
+
+            ffidebug("[FFI DEBUG] CPointerValue at index %d: isKoutparamPtr=%v\n", i, isKoutparamPtr)
+
+            if isKoutparamPtr {
+                // For koutparam pointers, pass the pointer value directly (no extra indirection)
+                // libffi gets the pointer value itself, not a pointer-to-pointer
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                if ptrPtr == nil {
+                    return nil, fmt.Errorf("failed to allocate memory for marshaling koutparam at index %d", i)
+                }
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = v.Ptr
+                argValuesSlice[i] = ptrPtr
+                // Verify what we wrote
+                stored := *(*unsafe.Pointer)(ptrPtr)
+                ffidebug("[FFI DEBUG] Koutparam [func %s]: allocated ptrPtr=%p, storing v.Ptr=%p into it, verified: %p\n", funcName, ptrPtr, v.Ptr, stored)
+            } else {
+                // For regular CPointerValue (struct output parameters), add extra indirection
+                // v.Ptr is the buffer address (like &db in the C test where db is the result variable)
+                // libffi needs: arg_values[i] points to the argument VALUE
+                // The argument value for a void** parameter IS the address (&db)
+                // So we just need to store v.Ptr and point to it
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = v.Ptr
+                argValuesSlice[i] = ptrPtr
+                ffidebug("[FFI DEBUG] Regular: allocated ptrPtr=%p, storing v.Ptr=%p into it\n", ptrPtr, v.Ptr)
+            }
 
         default:
             // Check if this is a struct/union type that needs marshaling
@@ -2084,6 +2164,86 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     }
 
     // Call via libffi with custom types
+    ffidebug("[FFI DEBUG] About to call libffi for %s with %d arguments\n", funcName, len(args))
+    ffidebug("[FFI DEBUG] Function pointer: %p\n", funcPtr)
+    ffidebug("[FFI DEBUG] argTypes pointer: %p (array of %d ints)\n", argTypes, len(argTypesSlice))
+    ffidebug("[FFI DEBUG] argValuesPtr: %p (array of %d pointers)\n", argValuesPtr, len(argValuesSlice))
+    ffidebug("[FFI DEBUG] Return type: %d, returnPtr: %p\n", expectedRetType, returnPtr)
+
+    // Verify all argValuesSlice entries are valid pointers
+    for i := 0; i < len(argValuesSlice); i++ {
+        if argValuesSlice[i] == nil {
+            return nil, fmt.Errorf("argument %d: argValuesSlice entry is nil", i)
+        }
+    }
+
+    // Debug: show argument types and values
+    for i := 0; i < len(args); i++ {
+        if i < len(argTypesSlice) {
+            var typeStr string
+            switch argTypesSlice[i] {
+            case 1:
+                typeStr = "CInt"
+            case 2:
+                typeStr = "CFloat"
+            case 3:
+                typeStr = "CDouble"
+            case 6:
+                typeStr = "CBool"
+            case 7:
+                typeStr = "CPointer"
+            case 9:
+                typeStr = "CUInt"
+            case 12:
+                typeStr = "CInt64"
+            case 13:
+                typeStr = "CUInt64"
+            case 14:
+                typeStr = "CString"
+            default:
+                typeStr = fmt.Sprintf("Type%d", argTypesSlice[i])
+            }
+
+            // Show what's in argValuesSlice[i]
+            if i < len(argValuesSlice) {
+                argPtr := argValuesSlice[i]
+                if argPtr != nil {
+                    ffidebug("[FFI DEBUG]   arg[%d]: type=%s, argValuesSlice[%d]=%p", i, typeStr, i, argPtr)
+
+                    // For pointer types, show what it points to (be careful not to dereference null)
+                    if argTypesSlice[i] == 1 { // CInt
+                        val := *(*C.int)(argPtr)
+                        ffidebug(" -> points to int value: %d", val)
+                    } else if argTypesSlice[i] == 5 { // CString
+                        ptrVal := *(*unsafe.Pointer)(argPtr)
+                        if ptrVal != nil {
+                            cstr := C.GoString((*C.char)(ptrVal))
+                            ffidebug(" -> points to string: \"%s\"", cstr)
+                        } else {
+                            ffidebug(" -> points to NULL string")
+                        }
+                    } else if argTypesSlice[i] == 12 { // CInt64
+                        val := *(*C.longlong)(argPtr)
+                        ffidebug(" -> points to int64 value: %lld", val)
+                    } else if argTypesSlice[i] == 7 { // CPointer
+                        ptrVal := *(*unsafe.Pointer)(argPtr)
+                        ffidebug(" -> points to pointer value: %p", ptrVal)
+                    }
+                    ffidebug("\n")
+                } else {
+                    ffidebug("[FFI DEBUG]   arg[%d]: type=%s, argValuesSlice[%d]=nil\n", i, typeStr, i)
+                }
+            }
+        }
+    }
+
+    // Debug: show auto-allocated koutparam pointers
+    for _, mutArg := range mutableArgs {
+        if mutArg.IsAutoAllocated {
+            ffidebug("[FFI DEBUG] Auto-allocated koutparam: CPtr=%p (bound to variable at index %d)\n", mutArg.CPtr, mutArg.Binding)
+        }
+    }
+
     result := C.call_via_libffi(
         funcPtr,
         C.int(len(args)),
@@ -2096,6 +2256,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         customArgTypesC,     // custom_arg_types
         (*C.ffi_type)(customReturnType), // custom_return_type
     )
+    ffidebug("[FFI DEBUG] libffi returned with code %d for %s\n", result, funcName)
 
     if result != 0 {
         return nil, fmt.Errorf("libffi call failed with code %d", result)
@@ -2119,26 +2280,83 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             newValue, err = unmarshalArrayFromC(mutArg.CPtr, mutArg.ArrayLen, mutArg.ArrayElemType)
         } else {
             // Primitive type - read directly from C memory
-            // Determine type from the C pointer value type
-            switch mutArg.Value.(type) {
-            case int:
-                newValue = int(*(*C.int)(mutArg.CPtr))
-            case uint:
-                newValue = uint(*(*C.uint)(mutArg.CPtr))
-            case int64:
-                newValue = int64(*(*C.longlong)(mutArg.CPtr))
-            case uint64:
-                newValue = uint64(*(*C.ulonglong)(mutArg.CPtr))
-            case float64:
-                newValue = float64(*(*C.double)(mutArg.CPtr))
-            case bool:
-                newValue = *(*C.int)(mutArg.CPtr) != 0  // 0 → false, non-zero → true
-            case string:
-                // For strings, assume it's a char buffer we filled
-                newValue = C.GoString((*C.char)(mutArg.CPtr))
-            default:
-                // Unknown type, skip
-                continue
+
+            // For koutparam (output parameters with unknown type), determine type from signature
+            bin := mutArg.Binding
+            if bin < uint64(len(*mutArg.IdentPtr)) && (*mutArg.IdentPtr)[bin].IKind == koutparam {
+                // Use the expected parameter type from function signature
+                var paramType CType
+                paramIndex := -1
+                for idx, marg := range mutableArgIndices {
+                    if marg == mutArg {
+                        paramIndex = idx
+                        break
+                    }
+                }
+
+                if paramIndex >= 0 && paramIndex < len(sig.ParamTypes) {
+                    paramType = sig.ParamTypes[paramIndex]
+                } else {
+                    // Fallback to pointer type if we can't determine
+                    paramType = CPointer
+                }
+
+                // Read value based on expected parameter type
+                switch paramType {
+                case CInt:
+                    newValue = int(*(*C.int)(mutArg.CPtr))
+                case CUInt:
+                    newValue = uint(*(*C.uint)(mutArg.CPtr))
+                case CInt64:
+                    newValue = int64(*(*C.longlong)(mutArg.CPtr))
+                case CUInt64:
+                    newValue = uint64(*(*C.ulonglong)(mutArg.CPtr))
+                case CInt16:
+                    newValue = int(*(*C.short)(mutArg.CPtr))
+                case CUInt16:
+                    newValue = uint(*(*C.ushort)(mutArg.CPtr))
+                case CInt8:
+                    newValue = int(*(*C.char)(mutArg.CPtr))
+                case CUInt8:
+                    newValue = uint(*(*C.uchar)(mutArg.CPtr))
+                case CFloat:
+                    newValue = float64(*(*C.float)(mutArg.CPtr))
+                case CDouble:
+                    newValue = float64(*(*C.double)(mutArg.CPtr))
+                case CBool:
+                    newValue = *(*C.int)(mutArg.CPtr) != 0  // 0 → false, non-zero → true
+                case CPointer:
+                    // For pointers, dereference the buffer to get the pointer value written by the function
+                    ptrVal := *(*unsafe.Pointer)(mutArg.CPtr)
+                    newValue = int64(uintptr(ptrVal))
+                case CString:
+                    newValue = C.GoString((*C.char)(mutArg.CPtr))
+                default:
+                    // Unknown type, skip
+                    continue
+                }
+            } else {
+                // Regular mutable argument - determine type from original value
+                switch mutArg.Value.(type) {
+                case int:
+                    newValue = int(*(*C.int)(mutArg.CPtr))
+                case uint:
+                    newValue = uint(*(*C.uint)(mutArg.CPtr))
+                case int64:
+                    newValue = int64(*(*C.longlong)(mutArg.CPtr))
+                case uint64:
+                    newValue = uint64(*(*C.ulonglong)(mutArg.CPtr))
+                case float64:
+                    newValue = float64(*(*C.double)(mutArg.CPtr))
+                case bool:
+                    newValue = *(*C.int)(mutArg.CPtr) != 0  // 0 → false, non-zero → true
+                case string:
+                    // For strings, assume it's a char buffer we filled
+                    newValue = C.GoString((*C.char)(mutArg.CPtr))
+                default:
+                    // Unknown type, skip
+                    continue
+                }
             }
         }
 
@@ -2222,6 +2440,15 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                     (*mutArg.IdentPtr)[bin].IValue = newValue
                 }
             }
+        }
+    }
+
+    // Free allocated memory for koutparam variables (after unmarshaling is complete)
+    // At this point, the variable has been updated with the dereferenced pointer value,
+    // so the temporary buffer is no longer needed
+    for _, mutArg := range mutableArgs {
+        if mutArg.IsAutoAllocated && mutArg.CPtr != nil {
+            C.free(mutArg.CPtr)
         }
     }
 
