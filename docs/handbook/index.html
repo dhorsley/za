@@ -4293,6 +4293,27 @@ for floating-point)</li>
 <li><code>void</code> - Return type only (function returns nothing)</li>
 <li><code>bool</code> - C boolean type</li>
 </ul>
+<p><strong>Array types (v1.2.2+):</strong></p>
+<ul>
+<li><code>[]int</code> - C pointer to int array (int*)</li>
+<li><code>[]float64</code> - C pointer to double array (double*)</li>
+<li><code>[]uint8</code> - C pointer to unsigned char array
+(uint8_t*)</li>
+<li><code>[]int64</code> - C pointer to long long array (long
+long*)</li>
+<li><code>[]uint</code> - C pointer to unsigned int array (unsigned
+int*)</li>
+<li><code>[]uint16</code> - C pointer to unsigned short array
+(uint16_t*)</li>
+<li><code>[]uint64</code> - C pointer to unsigned long long array
+(uint64_t*)</li>
+<li><code>[]int8</code> - C pointer to signed char array (int8_t*)</li>
+<li><code>[]int16</code> - C pointer to short array (short*)</li>
+<li><code>[]bool</code> - C pointer to unsigned char array (0/1
+values)</li>
+<li><code>[]string</code> - C pointer to string pointer array
+(char**)</li>
+</ul>
 <p><strong>Examples covering all type combinations:</strong></p>
 <pre class="za"><code># Math functions (double parameters and returns)
 lib m::sqrt(x:double) -&gt; double
@@ -4339,20 +4360,130 @@ lib json::json_object_put(obj:pointer) -&gt; void
 # Graphics (libgd)
 lib gd::gdImageCreate(width:int, height:int) -&gt; pointer
 lib gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -&gt; int
-lib gd::gdImageDestroy(im:pointer) -&gt; void</code></pre>
+lib gd::gdImageDestroy(im:pointer) -&gt; void
+
+# Array parameters (v1.2.2+) - automatic conversion to C pointers
+lib arr::sum_int_array(data:[]int, len:int) -&gt; int
+lib arr::average_float_array(values:[]float64, len:int) -&gt; double
+lib arr::double_int_array(data:mut []int, len:int) -&gt; void
+lib arr::fill_sequence(arr:mut []int, len:int, start:int) -&gt; void</code></pre>
 <p><strong>Variadic functions</strong> (experimental):</p>
 <pre class="za"><code># Functions with variable arguments
 lib c::printf(fmt:string, ...args) -&gt; int</code></pre>
 <p><strong>Optional return types:</strong> Functions that perform side
 effects without returning meaningful values use
 <code>-&gt; void</code>.</p>
+<h2 id="f.4.4-arrays-as-function-parameters-v1.2.2">F.4.4 Arrays as
+Function Parameters (v1.2.2+)</h2>
+<p>Za automatically converts Za arrays to C pointers when passing them
+to C functions. This eliminates the need for verbose manual memory
+allocation patterns like <code>c_alloc()</code> and
+<code>c_set_byte()</code>.</p>
+<h3 id="basic-usage-1">Basic Usage</h3>
+<p><strong>Read-only arrays:</strong></p>
+<p>Za arrays are automatically converted to C pointers and passed to C
+functions without any extra work:</p>
+<pre class="za"><code>module &quot;libarray.so&quot; as arr auto &quot;array.h&quot;
+use +arr
+
+# Arrays are automatically converted to C pointers
+data = [1, 2, 3, 4, 5]
+sum = arr::sum_int_array(data, 5)  # Automatically converts to int*
+println &quot;Sum: {sum}&quot;  # 15
+
+# Float arrays
+values = [1.5, 2.5, 3.5]
+avg = arr::average_float_array(values, 3)  # Automatically converts to double*
+println &quot;Average: {avg}&quot;  # 2.5</code></pre>
+<p><strong>Mutable arrays (C function modifies in place):</strong></p>
+<p>Use the <code>mut</code> keyword to allow C functions to modify array
+contents:</p>
+<pre class="za"><code># Mutable array - C function can modify values
+buffer = [10, 20, 30]
+arr::double_int_array(mut buffer, 3)  # Values are doubled in place
+
+println buffer[0]  # 20
+println buffer[1]  # 40
+println buffer[2]  # 60</code></pre>
+<h3 id="supported-array-types">Supported Array Types</h3>
+<p>All numeric types are supported:</p>
+<pre class="za"><code># Create arrays of any supported type
+int_array = [1, 2, 3, 4, 5]
+float_array = [1.5, 2.5, 3.5]
+byte_array = [0xFF, 0xFE, 0xFD]
+uint64_array = [1000000000000, 2000000000000]
+
+# Pass to C functions
+sum = lib::process_ints(int_array, 5)
+doubled = lib::scale_floats(float_array, 3, 2.0)
+checksum = lib::compute_checksum(byte_array, 3)
+
+# String arrays are also supported
+args = [&quot;program&quot;, &quot;--option&quot;, &quot;value&quot;]
+count = lib::count_args(args, 3)</code></pre>
+<h3 id="how-it-works">How It Works</h3>
+<ol type="1">
+<li><strong>Memory allocation</strong>: Za automatically allocates C
+memory for the array</li>
+<li><strong>Data copying</strong>: Array elements are copied to the C
+buffer</li>
+<li><strong>Pointer passing</strong>: The pointer is passed to the C
+function</li>
+<li><strong>Memory cleanup</strong>: Allocated memory is automatically
+freed after the call</li>
+<li><strong>Mutable updates</strong>: If <code>mut</code> is used,
+modifications are copied back to the Za array</li>
+</ol>
+<p><strong>Example: Building pixel data</strong></p>
+<p>Before (verbose):</p>
+<pre class="za"><code>row = c_alloc(ROW_SIZE)
+for x = 0 to WIDTH - 1
+    offset = x * 3
+    c_set_byte(row, offset, r)
+    c_set_byte(row, offset + 1, g)
+    c_set_byte(row, offset + 2, b)
+endfor
+png_write_row(png_ptr, row)
+c_free(row)</code></pre>
+<p>After (automatic):</p>
+<pre class="za"><code>row = []
+for x = 0 to WIDTH - 1
+    row = append(row, r)
+    row = append(row, g)
+    row = append(row, b)
+endfor
+png_write_row(png_ptr, row)  # Automatic allocation and cleanup!</code></pre>
+<h3 id="edge-cases">Edge Cases</h3>
+<p><strong>Empty arrays:</strong> Handled correctly (passed as null
+pointers)</p>
+<pre class="za"><code>empty = []
+result = lib::sum_array(empty, 0)  # C receives NULL pointer and count=0</code></pre>
+<p><strong>Large arrays:</strong> No practical size limit (limited only
+by available memory)</p>
+<pre class="za"><code>large = [1..100000]  # Create array with 100,000 elements
+result = lib::process(large, 100000)  # Automatically allocated and managed</code></pre>
+<h3 id="benefits">Benefits</h3>
+<ul>
+<li><strong>Cleaner code</strong>: No more verbose
+<code>c_alloc()</code> + loop of <code>c_set_byte()</code> calls</li>
+<li><strong>No memory leaks</strong>: Automatic cleanup prevents leaks
+from forgotten <code>c_free()</code></li>
+<li><strong>Self-documenting</strong>: Direct array literals show the
+data being passed</li>
+<li><strong>Less error-prone</strong>: Eliminates manual index
+calculation and offset management</li>
+<li><strong>Dynamic building</strong>: Use <code>append()</code> to
+build arrays in loops without manual memory management</li>
+<li><strong>Typical reduction</strong>: Bitmap font code: ~469 lines →
+~30 lines (87% reduction)</li>
+</ul>
 <h2 id="f.4.5-passing-structs-by-reference-with-mut">F.4.5 Passing
 Structs by Reference with <code>mut</code></h2>
 <p>The <code>mut</code> keyword allows passing VAR-declared structs by
 reference to C functions, enabling C code to modify struct fields in
 place. This is the preferred method for “out parameters” with
 AUTO-registered structs (available in v1.2.2+).</p>
-<h4 id="basic-usage-1">Basic Usage</h4>
+<h4 id="basic-usage-2">Basic Usage</h4>
 <pre class="za"><code>module &quot;libexample.so&quot; as ex auto &quot;example.h&quot;
 use +ex
 
@@ -4369,7 +4500,7 @@ ex::compute(10, 20, mut result)
 # Access modified fields directly
 println &quot;Status:&quot;, result.status
 println &quot;Value:&quot;, result.value</code></pre>
-<h4 id="how-it-works">How It Works</h4>
+<h4 id="how-it-works-1">How It Works</h4>
 <ol type="1">
 <li><strong>Declaration</strong>: <code>var name namespace::Type</code>
 creates a struct variable from AUTO-parsed C header</li>
@@ -4974,6 +5105,89 @@ detailed evaluation diagnostics</li>
 </tr>
 </tbody>
 </table>
+<p><strong>Array types (v1.2.2+):</strong></p>
+<table>
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 44%" />
+<col style="width: 24%" />
+</colgroup>
+<thead>
+<tr>
+<th>Za Type</th>
+<th>C Equivalent</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[]int</code></td>
+<td><code>int*</code></td>
+<td>Dynamic array of integers, automatically converted to pointer</td>
+</tr>
+<tr>
+<td><code>[]float64</code></td>
+<td><code>double*</code></td>
+<td>Dynamic array of doubles, automatically converted to pointer</td>
+</tr>
+<tr>
+<td><code>[]uint8</code></td>
+<td><code>uint8_t*</code>, <code>unsigned char*</code></td>
+<td>Byte array, useful for binary data and buffers</td>
+</tr>
+<tr>
+<td><code>[]int64</code></td>
+<td><code>long long*</code>, <code>int64_t*</code></td>
+<td>Dynamic array of 64-bit integers</td>
+</tr>
+<tr>
+<td><code>[]uint</code></td>
+<td><code>unsigned int*</code></td>
+<td>Dynamic array of unsigned integers</td>
+</tr>
+<tr>
+<td><code>[]uint16</code></td>
+<td><code>uint16_t*</code>, <code>unsigned short*</code></td>
+<td>Dynamic array of 16-bit unsigned integers</td>
+</tr>
+<tr>
+<td><code>[]uint64</code></td>
+<td><code>uint64_t*</code>, <code>unsigned long long*</code></td>
+<td>Dynamic array of 64-bit unsigned integers</td>
+</tr>
+<tr>
+<td><code>[]int8</code></td>
+<td><code>int8_t*</code>, <code>signed char*</code></td>
+<td>Dynamic array of 8-bit signed integers</td>
+</tr>
+<tr>
+<td><code>[]int16</code></td>
+<td><code>short*</code>, <code>int16_t*</code></td>
+<td>Dynamic array of 16-bit signed integers</td>
+</tr>
+<tr>
+<td><code>[]bool</code></td>
+<td><code>unsigned char*</code></td>
+<td>Dynamic array of booleans (0/1), useful for flags</td>
+</tr>
+<tr>
+<td><code>[]string</code></td>
+<td><code>char**</code></td>
+<td>Dynamic array of string pointers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Array behavior:</strong></p>
+<ul>
+<li>Arrays are automatically allocated in C memory when passed to C
+functions</li>
+<li>Memory is automatically freed after the call</li>
+<li>Use <code>mut array</code> syntax to capture C modifications back
+into Za array</li>
+<li>Empty arrays are passed as null pointers</li>
+<li>Element-wise type conversions follow normal Za-to-C mapping
+rules</li>
+</ul>
 <p><strong>String handling:</strong> Za strings are automatically
 converted to null-terminated <code>char*</code> when passed to C. C
 strings returned as <code>string</code> type are copied into Za
@@ -5087,7 +5301,48 @@ println json_str
 
 # Cleanup
 json_object_put(person)</code></pre>
-<h3 id="f.9.5-graphics-libgd">F.9.5 Graphics (libgd)</h3>
+<h3 id="f.9.5-array-processing-v1.2.2">F.9.5 Array Processing
+(v1.2.2+)</h3>
+<p>Arrays are automatically converted to C pointers when passed to C
+functions, eliminating manual memory management:</p>
+<pre class="za"><code>module &quot;libarray.so&quot; as arr auto &quot;array.h&quot;
+use +arr
+
+# Read-only arrays - automatically converted to C pointers
+data = [1, 2, 3, 4, 5]
+sum = arr::sum_int_array(data, 5)
+println &quot;Sum: {sum}&quot;  # 15
+
+# Float arrays
+values = [1.5, 2.5, 3.5]
+avg = arr::average_float_array(values, 3)
+println &quot;Average: {avg}&quot;  # 2.5
+
+# Byte arrays (useful for image data, checksums, etc.)
+bytes = [0xFF, 0xFE, 0xFD, 0xFC]
+checksum = arr::compute_checksum(bytes, 4)
+println &quot;Checksum: {checksum}&quot;
+
+# Mutable arrays - C function modifies values in place
+buffer = [10, 20, 30]
+arr::double_int_array(mut buffer, 3)
+println &quot;After doubling: {buffer[0]}, {buffer[1]}, {buffer[2]}&quot;  # 20, 40, 60
+
+# Build array dynamically
+row = []
+for x = 0 to 2
+    row = append(row, x * 100)
+    row = append(row, x * 50)
+    row = append(row, x * 25)
+endfor
+result = arr::process_rgb_row(row, 9)  # 3 pixels × 3 components
+println &quot;Processed: {result}&quot;
+
+# String arrays
+args = [&quot;program&quot;, &quot;--verbose&quot;, &quot;--output&quot;, &quot;file.txt&quot;]
+arg_count = arr::count_args(args, 4)
+println &quot;Args: {arg_count}&quot;</code></pre>
+<h3 id="f.9.6-graphics-libgd">F.9.6 Graphics (libgd)</h3>
 <pre class="za"><code>module &quot;/usr/lib/libgd.so.3&quot; as gd
 use +gd
 
@@ -5120,7 +5375,7 @@ endif
 
 # Cleanup
 gdImageDestroy(im)</code></pre>
-<h3 id="f.9.6-terminal-ui-ncurses">F.9.6 Terminal UI (ncurses)</h3>
+<h3 id="f.9.7-terminal-ui-ncurses">F.9.7 Terminal UI (ncurses)</h3>
 <pre class="za"><code>module &quot;/usr/lib/libncursesw.so.6&quot; as nc
 use +nc
 
@@ -5150,7 +5405,7 @@ nc::getch()
 
 # Cleanup
 nc::endwin()</code></pre>
-<h3 id="f.9.7-x11-window-xlib---complete-auto-example">F.9.7 X11 Window
+<h3 id="f.9.8-x11-window-xlib---complete-auto-example">F.9.8 X11 Window
 (Xlib) - Complete AUTO Example</h3>
 <p>This example demonstrates Za’s comprehensive FFI/AUTO capabilities
 including unions, structs, and auto-discovered constants:</p>
@@ -6342,8 +6597,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb267"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb267-1"><a href="#cb267-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb275"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb275-1"><a href="#cb275-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

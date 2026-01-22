@@ -201,6 +201,19 @@ language changes
           - example: Point make_point(int x, int y); int distance(Point p);
           - backward compatible: pointer-based struct passing still works
 
+      - automatic array-to-pointer conversion for C FFI
+          - arrays automatically converted to C pointers when passing to C functions
+          - supported numeric types: []int, []float64, []uint8, []int64, []uint, []int16, []uint16, []uint64, []int8
+          - supported special types: []bool (converted to 0/1 unsigned char), []string (char**)
+          - automatic memory allocation and cleanup - no manual c_alloc/c_free needed
+          - mutable array support: use 'mut array' syntax to get C modifications back
+          - example: some_c_function([60, 102, 102, 102], 4) - no allocation overhead
+          - empty arrays handled correctly (null pointers)
+          - eliminates verbose c_set_byte() patterns - massive code reduction for bitmap/pixel data
+          - typical use case: bitmap fonts ~87% code reduction (469 lines → 30 lines)
+          - enables cleaner array building in loops: row << r; row << g; row << b;
+          - test coverage: za_tests/ffi/test_array_args.za, test_array_mutable_correct.za
+
       - callback support (C calling Za functions):
           - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
           - Za functions can be passed as callbacks to C APIs

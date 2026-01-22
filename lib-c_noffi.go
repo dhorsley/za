@@ -132,5 +132,10 @@ func CNewString(s string) *CPointerValue {
     return NullPointer()
 }
 
+// CPtrToString - FFI disabled in this build
+func CPtrToString(ptr *CPointerValue) (string, error) {
+    return "", fmt.Errorf("C FFI disabled in this build (c_ptr_to_string not available)")
+}
+
 // wcharSize - Platform-detected wchar_t size (unavailable in noffi builds)
 var wcharSize uintptr = 0

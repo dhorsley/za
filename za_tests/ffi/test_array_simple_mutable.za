@@ -1,0 +1,16 @@
+println "Simple Mutable Array Test"
+
+module "./libtest_array.so" as arr auto "./test_array_lib.h"
+use +arr
+
+println "Creating mutable array..."
+buffer = [10, 20, 30]
+println "Mutable array created"
+println "buffer = [", buffer[0], ",", buffer[1], ",", buffer[2], "]"
+
+println "Calling double_int_array..."
+arr::double_int_array(mut buffer, 3)
+println "Function returned"
+println "After: buffer = [", buffer[0], ",", buffer[1], ",", buffer[2], "]"
+
+println "Done!"

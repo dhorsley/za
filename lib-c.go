@@ -947,7 +947,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1191,6 +1191,17 @@ func buildFfiLib() {
             return nil, err
         }
         return CNewString(args[0].(string)), nil
+    }
+
+    slhelp["c_ptr_to_string"] = LibHelp{in: "ptr", out: "string", action: "Converts a C string pointer (char*) to a Za string. The pointer should reference valid C string memory."}
+    stdlib["c_ptr_to_string"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_ptr_to_string", args, 1, "1", "any"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CPtrToString(p)
+        }
+        return nil, fmt.Errorf("c_ptr_to_string: argument must be a C pointer")
     }
 }
 // FunctionSignature represents a parsed C function signature from man pages
@@ -2153,7 +2164,7 @@ func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
     structDef, found := structmaps[structName]
 
     if !found {
-				qualifiedName := "main::" + structName
+                qualifiedName := "main::" + structName
         if def, ok := structmaps[qualifiedName]; ok {
             structDef = def
             found = true

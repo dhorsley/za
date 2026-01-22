@@ -4695,6 +4695,20 @@ lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
 - `void` - Return type only (function returns nothing)
 - `bool` - C boolean type
 
+**Array types (v1.2.2+):**
+
+- `[]int` - C pointer to int array (int*)
+- `[]float64` - C pointer to double array (double*)
+- `[]uint8` - C pointer to unsigned char array (uint8_t*)
+- `[]int64` - C pointer to long long array (long long*)
+- `[]uint` - C pointer to unsigned int array (unsigned int*)
+- `[]uint16` - C pointer to unsigned short array (uint16_t*)
+- `[]uint64` - C pointer to unsigned long long array (uint64_t*)
+- `[]int8` - C pointer to signed char array (int8_t*)
+- `[]int16` - C pointer to short array (short*)
+- `[]bool` - C pointer to unsigned char array (0/1 values)
+- `[]string` - C pointer to string pointer array (char**)
+
 **Examples covering all type combinations:**
 
 ```za
@@ -4744,6 +4758,12 @@ lib json::json_object_put(obj:pointer) -> void
 lib gd::gdImageCreate(width:int, height:int) -> pointer
 lib gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -> int
 lib gd::gdImageDestroy(im:pointer) -> void
+
+# Array parameters (v1.2.2+) - automatic conversion to C pointers
+lib arr::sum_int_array(data:[]int, len:int) -> int
+lib arr::average_float_array(values:[]float64, len:int) -> double
+lib arr::double_int_array(data:mut []int, len:int) -> void
+lib arr::fill_sequence(arr:mut []int, len:int, start:int) -> void
 ```
 
 **Variadic functions** (experimental):
@@ -4753,6 +4773,127 @@ lib c::printf(fmt:string, ...args) -> int
 ```
 
 **Optional return types:** Functions that perform side effects without returning meaningful values use `-> void`.
+
+## F.4.4 Arrays as Function Parameters (v1.2.2+)
+
+Za automatically converts Za arrays to C pointers when passing them to C functions. This eliminates the need for verbose manual memory allocation patterns like `c_alloc()` and `c_set_byte()`.
+
+### Basic Usage
+
+**Read-only arrays:**
+
+Za arrays are automatically converted to C pointers and passed to C functions without any extra work:
+
+```za
+module "libarray.so" as arr auto "array.h"
+use +arr
+
+# Arrays are automatically converted to C pointers
+data = [1, 2, 3, 4, 5]
+sum = arr::sum_int_array(data, 5)  # Automatically converts to int*
+println "Sum: {sum}"  # 15
+
+# Float arrays
+values = [1.5, 2.5, 3.5]
+avg = arr::average_float_array(values, 3)  # Automatically converts to double*
+println "Average: {avg}"  # 2.5
+```
+
+**Mutable arrays (C function modifies in place):**
+
+Use the `mut` keyword to allow C functions to modify array contents:
+
+```za
+# Mutable array - C function can modify values
+buffer = [10, 20, 30]
+arr::double_int_array(mut buffer, 3)  # Values are doubled in place
+
+println buffer[0]  # 20
+println buffer[1]  # 40
+println buffer[2]  # 60
+```
+
+### Supported Array Types
+
+All numeric types are supported:
+
+```za
+# Create arrays of any supported type
+int_array = [1, 2, 3, 4, 5]
+float_array = [1.5, 2.5, 3.5]
+byte_array = [0xFF, 0xFE, 0xFD]
+uint64_array = [1000000000000, 2000000000000]
+
+# Pass to C functions
+sum = lib::process_ints(int_array, 5)
+doubled = lib::scale_floats(float_array, 3, 2.0)
+checksum = lib::compute_checksum(byte_array, 3)
+
+# String arrays are also supported
+args = ["program", "--option", "value"]
+count = lib::count_args(args, 3)
+```
+
+### How It Works
+
+1. **Memory allocation**: Za automatically allocates C memory for the array
+2. **Data copying**: Array elements are copied to the C buffer
+3. **Pointer passing**: The pointer is passed to the C function
+4. **Memory cleanup**: Allocated memory is automatically freed after the call
+5. **Mutable updates**: If `mut` is used, modifications are copied back to the Za array
+
+**Example: Building pixel data**
+
+Before (verbose):
+
+```za
+row = c_alloc(ROW_SIZE)
+for x = 0 to WIDTH - 1
+    offset = x * 3
+    c_set_byte(row, offset, r)
+    c_set_byte(row, offset + 1, g)
+    c_set_byte(row, offset + 2, b)
+endfor
+png_write_row(png_ptr, row)
+c_free(row)
+```
+
+After (automatic):
+
+```za
+row = []
+for x = 0 to WIDTH - 1
+    row = append(row, r)
+    row = append(row, g)
+    row = append(row, b)
+endfor
+png_write_row(png_ptr, row)  # Automatic allocation and cleanup!
+```
+
+### Edge Cases
+
+**Empty arrays:** Handled correctly (passed as null pointers)
+
+```za
+empty = []
+result = lib::sum_array(empty, 0)  # C receives NULL pointer and count=0
+```
+
+**Large arrays:** No practical size limit (limited only by available memory)
+
+```za
+large = [1..100000]  # Create array with 100,000 elements
+result = lib::process(large, 100000)  # Automatically allocated and managed
+```
+
+### Benefits
+
+- **Cleaner code**: No more verbose `c_alloc()` + loop of `c_set_byte()` calls
+- **No memory leaks**: Automatic cleanup prevents leaks from forgotten `c_free()`
+- **Self-documenting**: Direct array literals show the data being passed
+- **Less error-prone**: Eliminates manual index calculation and offset management
+- **Dynamic building**: Use `append()` to build arrays in loops without manual memory management
+- **Typical reduction**: Bitmap font code: ~469 lines → ~30 lines (87% reduction)
 
 ## F.4.5 Passing Structs by Reference with `mut`
 
@@ -5321,6 +5462,30 @@ Functions:
 | `bool`, `_Bool` | `bool` | Boolean type |
 | `struct`, `union` | `pointer` or `struct<name>` | Opaque pointer OR marshaled struct (see F.9.1, F.9.2) |
 
+**Array types (v1.2.2+):**
+
+| Za Type | C Equivalent | Notes |
+|---------|-------------|-------|
+| `[]int` | `int*` | Dynamic array of integers, automatically converted to pointer |
+| `[]float64` | `double*` | Dynamic array of doubles, automatically converted to pointer |
+| `[]uint8` | `uint8_t*`, `unsigned char*` | Byte array, useful for binary data and buffers |
+| `[]int64` | `long long*`, `int64_t*` | Dynamic array of 64-bit integers |
+| `[]uint` | `unsigned int*` | Dynamic array of unsigned integers |
+| `[]uint16` | `uint16_t*`, `unsigned short*` | Dynamic array of 16-bit unsigned integers |
+| `[]uint64` | `uint64_t*`, `unsigned long long*` | Dynamic array of 64-bit unsigned integers |
+| `[]int8` | `int8_t*`, `signed char*` | Dynamic array of 8-bit signed integers |
+| `[]int16` | `short*`, `int16_t*` | Dynamic array of 16-bit signed integers |
+| `[]bool` | `unsigned char*` | Dynamic array of booleans (0/1), useful for flags |
+| `[]string` | `char**` | Dynamic array of string pointers |
+
+**Array behavior:**
+
+- Arrays are automatically allocated in C memory when passed to C functions
+- Memory is automatically freed after the call
+- Use `mut array` syntax to capture C modifications back into Za array
+- Empty arrays are passed as null pointers
+- Element-wise type conversions follow normal Za-to-C mapping rules
+
 **String handling:** Za strings are automatically converted to null-terminated `char*` when passed to C. C strings returned as `string` type are copied into Za memory.
 
 **Pointer considerations:** Pointers to structures are opaque in Za. You cannot access struct fields directly—pass pointers to C functions that know the layout.
@@ -5440,7 +5605,53 @@ println json_str
 json_object_put(person)
 ```
 
-### F.9.5 Graphics (libgd)
+### F.9.5 Array Processing (v1.2.2+)
+
+Arrays are automatically converted to C pointers when passed to C functions, eliminating manual memory management:
+
+```za
+module "libarray.so" as arr auto "array.h"
+use +arr
+
+# Read-only arrays - automatically converted to C pointers
+data = [1, 2, 3, 4, 5]
+sum = arr::sum_int_array(data, 5)
+println "Sum: {sum}"  # 15
+
+# Float arrays
+values = [1.5, 2.5, 3.5]
+avg = arr::average_float_array(values, 3)
+println "Average: {avg}"  # 2.5
+
+# Byte arrays (useful for image data, checksums, etc.)
+bytes = [0xFF, 0xFE, 0xFD, 0xFC]
+checksum = arr::compute_checksum(bytes, 4)
+println "Checksum: {checksum}"
+
+# Mutable arrays - C function modifies values in place
+buffer = [10, 20, 30]
+arr::double_int_array(mut buffer, 3)
+println "After doubling: {buffer[0]}, {buffer[1]}, {buffer[2]}"  # 20, 40, 60
+
+# Build array dynamically
+row = []
+for x = 0 to 2
+    row = append(row, x * 100)
+    row = append(row, x * 50)
+    row = append(row, x * 25)
+endfor
+result = arr::process_rgb_row(row, 9)  # 3 pixels × 3 components
+println "Processed: {result}"
+
+# String arrays
+args = ["program", "--verbose", "--output", "file.txt"]
+arg_count = arr::count_args(args, 4)
+println "Args: {arg_count}"
+```
+
+### F.9.6 Graphics (libgd)
+
+
 
 ```za
 module "/usr/lib/libgd.so.3" as gd
@@ -5477,7 +5688,7 @@ endif
 gdImageDestroy(im)
 ```
 
-### F.9.6 Terminal UI (ncurses)
+### F.9.7 Terminal UI (ncurses)
 
 ```za
 module "/usr/lib/libncursesw.so.6" as nc
@@ -5511,7 +5722,7 @@ nc::getch()
 nc::endwin()
 ```
 
-### F.9.7 X11 Window (Xlib) - Complete AUTO Example
+### F.9.8 X11 Window (Xlib) - Complete AUTO Example
 
 This example demonstrates Za's comprehensive FFI/AUTO capabilities including unions, structs, and auto-discovered constants:
 
