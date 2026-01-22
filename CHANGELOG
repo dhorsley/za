@@ -39,7 +39,20 @@ library changes
       - c_get_uint32(ptr, offset) - reads 32-bit unsigned integer from buffer
       - c_get_int16(ptr, offset) - reads 16-bit signed integer from buffer
       - c_get_int32(ptr, offset) - reads 32-bit signed integer from buffer
+      - c_get_uint64(ptr, offset) - reads 64-bit unsigned integer from buffer
+      - c_get_int64(ptr, offset) - reads 64-bit signed integer from buffer
       - c_get_symbol(lib, name) - reads data symbol from library
+
+  * added memory access functions for opaque pointers returned as int64 from FFI calls
+      - c_get_byte_at_addr(address, offset) - reads byte at int64 address + offset
+      - c_get_uint16_at_addr(address, offset) - reads 16-bit unsigned int at int64 address + offset
+      - c_get_int16_at_addr(address, offset) - reads 16-bit signed int at int64 address + offset
+      - c_get_uint32_at_addr(address, offset) - reads 32-bit unsigned int at int64 address + offset
+      - c_get_int32_at_addr(address, offset) - reads 32-bit signed int at int64 address + offset
+      - c_get_uint64_at_addr(address, offset) - reads 64-bit unsigned int at int64 address + offset
+      - c_get_int64_at_addr(address, offset) - reads 64-bit signed int at int64 address + offset
+      - allows direct memory access with opaque pointers (e.g., FT_Library, FT_Face from FreeType)
+      - enables struct field offset calculations: glyph_ptr = face + offset; value = c_get_uint32_at_addr(glyph_ptr, field_offset)
       - c_alloc_struct(struct_type_name) - allocates C memory for structs
       - c_free_struct(ptr) - frees struct memory allocated by c_alloc_struct
       - c_unmarshal_struct(ptr, struct_type_name) - reads C struct data into Za structs

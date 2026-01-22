@@ -149,6 +149,34 @@ func CGetInt64(p *CPointerValue, offset int) int64 {
     return 0
 }
 
+func CGetByteAtAddr(addr int64, offset int) byte {
+    return 0
+}
+
+func CGetUint16AtAddr(addr int64, offset int) uint16 {
+    return 0
+}
+
+func CGetInt16AtAddr(addr int64, offset int) int16 {
+    return 0
+}
+
+func CGetUint32AtAddr(addr int64, offset int) uint32 {
+    return 0
+}
+
+func CGetInt32AtAddr(addr int64, offset int) int32 {
+    return 0
+}
+
+func CGetUint64AtAddr(addr int64, offset int) uint64 {
+    return 0
+}
+
+func CGetInt64AtAddr(addr int64, offset int) int64 {
+    return 0
+}
+
 func CGetDataSymbol(libName, symbolName string) (any, error) {
     return nil, fmt.Errorf("FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms.")
 }
