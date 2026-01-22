@@ -637,6 +637,7 @@ static void cleanup_ffi_closure(void* closure, void* cif, void** arg_types) {
 import "C"
 import (
     "fmt"
+    "math/big"
     "reflect"
     "runtime"
     "runtime/cgo"
@@ -2148,7 +2149,79 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         // Update the original Za variable
         bin := mutArg.Binding
         if bin < uint64(len(*mutArg.IdentPtr)) {
-            (*mutArg.IdentPtr)[bin].IValue = newValue
+            // Check if this is an output parameter with unknown type
+            if (*mutArg.IdentPtr)[bin].IKind == koutparam {
+                // Determine the appropriate kind based on the actual value type
+                var newKind uint8
+                switch newValue.(type) {
+                case nil:
+                    newKind = knil
+                case bool:
+                    newKind = kbool
+                case int:
+                    newKind = kint
+                case int64:
+                    newKind = kint64
+                case uint:
+                    newKind = kuint
+                case uint64:
+                    newKind = kuint64
+                case float64:
+                    newKind = kfloat
+                case string:
+                    newKind = kstring
+                case *big.Int:
+                    newKind = kbigi
+                case *big.Float:
+                    newKind = kbigf
+                case []bool:
+                    newKind = ksbool
+                case []int:
+                    newKind = ksint
+                case []int64:
+                    newKind = ksint64
+                case []uint:
+                    newKind = ksuint
+                case []uint64:
+                    newKind = ksuint64
+                case []float64:
+                    newKind = ksfloat
+                case []string:
+                    newKind = ksstring
+                case []*big.Int:
+                    newKind = ksbigi
+                case []*big.Float:
+                    newKind = ksbigf
+                case []uint8:
+                    newKind = kbyte
+                case map[string]any:
+                    newKind = kmap
+                default:
+                    // For unknown types (likely structs), use kany
+                    newKind = kany
+                }
+
+                if mutArg.IsGlobal {
+                    glock.Lock()
+                    (*mutArg.IdentPtr)[bin].IValue = newValue
+                    (*mutArg.IdentPtr)[bin].IKind = newKind
+                    (*mutArg.IdentPtr)[bin].ITyped = true
+                    glock.Unlock()
+                } else {
+                    (*mutArg.IdentPtr)[bin].IValue = newValue
+                    (*mutArg.IdentPtr)[bin].IKind = newKind
+                    (*mutArg.IdentPtr)[bin].ITyped = true
+                }
+            } else {
+                // Normal update for already-typed variables
+                if mutArg.IsGlobal {
+                    glock.Lock()
+                    (*mutArg.IdentPtr)[bin].IValue = newValue
+                    glock.Unlock()
+                } else {
+                    (*mutArg.IdentPtr)[bin].IValue = newValue
+                }
+            }
         }
     }
 

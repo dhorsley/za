@@ -1516,6 +1516,10 @@ func buildConversionLib() {
             return -1, errors.New("invalid arguments provided to kind()")
         }
 
+        // Note: This function receives evaluated values, so we cannot determine if a variable
+        // is koutparam here. The caller (eval_ops.go:2509) has special handling to detect
+        // koutparam variables before evaluation and return "mut" directly.
+
         repl := str.Replace(sf("%T", args[0]), "float64", "float", -1)
         repl = str.Replace(repl, "interface {}", "any", -1)
         return repl, nil

@@ -214,6 +214,26 @@ language changes
           - enables cleaner array building in loops: row << r; row << g; row << b;
           - test coverage: za_tests/ffi/test_array_args.za, test_array_mutable_correct.za
 
+      - enhanced mutable parameter ('mut') support for FFI
+          - global variable fallback: mut parameters now check global scope if local variable not found
+          - enables cleaner FFI patterns when passing globals to C functions
+          - local variables take precedence (backward compatible)
+          - proper thread-safe locking for global variable updates
+          - example: global buffer = [1,2,3]; func(mut buffer) - works correctly
+          - test coverage: za_tests/ffi/test_global_mutable.za
+
+      - output parameter declaration syntax: var name mut
+          - declares variables with unknown type, determined by FFI call result
+          - enables receiving opaque pointers and complex types from C
+          - syntax: var face mut (type unknown until first FFI assignment)
+          - compatible with all Za types including opaque C structs
+          - automatic type assignment on FFI return: variable gains proper type
+          - no pre-declaration of C struct types required
+          - example: var font mut; font = freetype_create_font(...) - font is auto-typed
+          - prevents typos: syntax still requires explicit declaration (not auto-create on reference)
+          - works with both local and global output parameters
+          - test coverage: za_tests/ffi/test_output_param.za
+
       - callback support (C calling Za functions):
           - CGO trampoline-based callback infrastructure using runtime/cgo.Handle
           - Za functions can be passed as callbacks to C APIs

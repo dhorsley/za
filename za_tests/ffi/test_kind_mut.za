@@ -1,0 +1,14 @@
+module "./libtest_array.so" as arr auto "./test_array_lib.h"
+use +arr
+
+# Test kind() with mut variable
+var output mut
+
+println "kind(output) = ", kind(output)
+
+# After FFI call, should still be "mut" before type is assigned
+# Actually no - after FFI call it gets a real type
+output = [0, 0, 0]
+arr::fill_sequence(mut output, 3, 100)
+
+println "kind(output) after FFI call = ", kind(output)
