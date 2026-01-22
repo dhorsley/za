@@ -700,6 +700,70 @@ func CGetInt64(p *CPointerValue, offset int) int64 {
     return 0
 }
 
+// CGetByteAtAddr reads a byte at an int64 address + offset
+// This allows working with opaque pointers returned as int64 from FFI calls
+func CGetByteAtAddr(addr int64, offset int) byte {
+    if addr != 0 {
+        bytePtr := (*byte)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *bytePtr
+    }
+    return 0
+}
+
+// CGetUint16AtAddr reads a uint16 at an int64 address + offset
+func CGetUint16AtAddr(addr int64, offset int) uint16 {
+    if addr != 0 {
+        uint16Ptr := (*uint16)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *uint16Ptr
+    }
+    return 0
+}
+
+// CGetInt16AtAddr reads an int16 at an int64 address + offset
+func CGetInt16AtAddr(addr int64, offset int) int16 {
+    if addr != 0 {
+        int16Ptr := (*int16)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *int16Ptr
+    }
+    return 0
+}
+
+// CGetUint32AtAddr reads a uint32 at an int64 address + offset
+func CGetUint32AtAddr(addr int64, offset int) uint32 {
+    if addr != 0 {
+        uint32Ptr := (*uint32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *uint32Ptr
+    }
+    return 0
+}
+
+// CGetInt32AtAddr reads an int32 at an int64 address + offset
+func CGetInt32AtAddr(addr int64, offset int) int32 {
+    if addr != 0 {
+        int32Ptr := (*int32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *int32Ptr
+    }
+    return 0
+}
+
+// CGetUint64AtAddr reads a uint64 at an int64 address + offset
+func CGetUint64AtAddr(addr int64, offset int) uint64 {
+    if addr != 0 {
+        uint64Ptr := (*uint64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *uint64Ptr
+    }
+    return 0
+}
+
+// CGetInt64AtAddr reads an int64 at an int64 address + offset
+func CGetInt64AtAddr(addr int64, offset int) int64 {
+    if addr != 0 {
+        int64Ptr := (*int64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *int64Ptr
+    }
+    return 0
+}
+
 // CGetDataSymbol reads a data symbol value from a loaded C library
 // Returns the value as int, float64, or string depending on what works
 func CGetDataSymbol(libName, symbolName string) (any, error) {

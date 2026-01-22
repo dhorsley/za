@@ -4598,6 +4598,279 @@ parsing</li>
 <li><strong>F.10.2</strong>: Struct marshaling reference (alternative
 approach)</li>
 </ul>
+<h2 id="f.4.6-global-variable-fallback-for-mut-parameters-v1.2.2">F.4.6
+Global Variable Fallback for <code>mut</code> Parameters (v1.2.2+)</h2>
+<p>When using the <code>mut</code> keyword to pass a variable to a C
+function, Za now checks both local and global scopes for the variable.
+If a local variable with the given name doesn’t exist, Za will look for
+a global variable with the same identifier.</p>
+<h3 id="how-it-works-2">How It Works</h3>
+<p><strong>Variable scope resolution for <code>mut</code>
+parameters:</strong></p>
+<ol type="1">
+<li>First: Look for local variable in current function scope</li>
+<li>Second: Look for global variable with same identifier</li>
+<li>Error: If neither exists, report undefined variable</li>
+</ol>
+<p>Local variables take precedence over globals, maintaining backward
+compatibility.</p>
+<h3 id="basic-example">Basic Example</h3>
+<pre class="za"><code># Global variable
+global_buffer = [10, 20, 30]
+
+def modify_global()
+    # Pass global variable to C function using mut
+    arr::double_int_array(mut global_buffer, 3)
+    # global_buffer is now [20, 40, 60]
+    println global_buffer[0]  # 20
+end
+
+modify_global()
+
+# Can also use global in main scope
+arr::double_int_array(mut global_buffer, 3)  # Works here too</code></pre>
+<h3 id="local-variable-precedence">Local Variable Precedence</h3>
+<p>Local variables shadow globals:</p>
+<pre class="za"><code>global_data = [1, 2, 3]
+
+def process()
+    # Local variable shadows global
+    var local_data = [10, 20, 30]
+
+    # This modifies the local variable, not the global
+    arr::double_int_array(mut local_data, 3)
+    println local_data[0]     # 20
+end
+
+process()
+println global_data[0]  # Still 1 (unchanged)</code></pre>
+<h3 id="thread-safety">Thread Safety</h3>
+<p>Global variable updates via <code>mut</code> parameters are protected
+with locks to ensure thread-safe access in concurrent scenarios.</p>
+<h3 id="when-to-use-global-mut-parameters">When to Use Global
+<code>mut</code> Parameters</h3>
+<p><strong>Good use cases:</strong></p>
+<ul>
+<li>Shared configuration or state modified by C functions</li>
+<li>Large buffers that all functions need to access</li>
+<li>Results from C functions that populate global state</li>
+</ul>
+<p><strong>Avoid when:</strong></p>
+<ul>
+<li>Local variables would be clearer (prefer local when possible)</li>
+<li>Function semantics require explicit parameter passing</li>
+<li>You want to avoid implicit global state changes</li>
+</ul>
+<h2 id="f.4.7-output-parameter-declaration-var-name-mut-v1.2.2">F.4.7
+Output Parameter Declaration: <code>var name mut</code> (v1.2.2+)</h2>
+<p>The <code>var name mut</code> syntax declares variables with unknown
+types that will be determined by the result of FFI calls. This is useful
+for receiving opaque pointers and complex types from C functions without
+pre-declaring their types.</p>
+<h3 id="basic-usage-3">Basic Usage</h3>
+<pre class="za"><code># Declare a variable with unknown type (will be determined by FFI call)
+var buffer mut
+
+# Pass to C function as output parameter - type is determined from result
+arr::fill_sequence(mut buffer, 3, 100)
+
+# Variable now has proper type (array in this case) from FFI call result
+println buffer[0]  # 100
+println buffer[1]  # 101
+println buffer[2]  # 102
+
+# After FFI assignment, variable can be used normally
+buffer[0] = 200
+println buffer[0]  # 200</code></pre>
+<h3 id="when-to-use-var-name-mut">When to Use
+<code>var name mut</code></h3>
+<p>This syntax is specifically for declaring output parameters that will
+receive their type and initial value from C functions. Use it when:</p>
+<ol type="1">
+<li><strong>Opaque pointers from C</strong> - You receive a pointer to
+an unknown struct type:</li>
+</ol>
+<pre class="za"><code>var font mut
+# FreeType function fills the font pointer - type unknown until call
+arr::create_font(mut font, &quot;/path/to/font.ttf&quot;)
+# font now has proper type from C function result</code></pre>
+<ol start="2" type="1">
+<li><strong>Complex C types</strong> - You need to receive struct/union
+types without pre-declaring them:</li>
+</ol>
+<pre class="za"><code>var result mut
+# C function writes struct data to result parameter
+my_lib::get_struct_data(mut result)
+# result gains proper type automatically from C data</code></pre>
+<ol start="3" type="1">
+<li><strong>When type is truly unknown</strong> - C function returns
+data with type determined at runtime:</li>
+</ol>
+<pre class="za"><code>var data mut
+# C function determines what data structure to create
+lib::fetch_data(mut data, some_config)
+# data now typed based on what C returned</code></pre>
+<h3 id="how-type-determination-works">How Type Determination Works</h3>
+<p>When a <code>mut</code>-declared variable is used as an output
+parameter (<code>mut varname</code>):</p>
+<ol type="1">
+<li><strong>Before FFI call</strong>: Type is unknown
+(<code>koutparam</code>), value is <code>nil</code></li>
+<li><strong>During FFI call</strong>: C function writes to the
+variable</li>
+<li><strong>After FFI call</strong>: Za inspects the returned value and
+automatically sets:
+<ul>
+<li><code>IKind</code>: The appropriate type constant (kint, ksint,
+kmap, etc.)</li>
+<li><code>IValue</code>: The actual value</li>
+<li><code>ITyped</code>: Set to true (type is now known)</li>
+</ul></li>
+</ol>
+<h3 id="type-mapping-on-return">Type Mapping on Return</h3>
+<p>Supported return types are automatically determined:</p>
+<table>
+<thead>
+<tr>
+<th>C Return Type</th>
+<th>Za Type</th>
+<th>IKind</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>int</code></td>
+<td><code>kint</code></td>
+</tr>
+<tr>
+<td><code>int[]</code></td>
+<td><code>[]int</code></td>
+<td><code>ksint</code></td>
+</tr>
+<tr>
+<td><code>float64</code></td>
+<td><code>float</code></td>
+<td><code>kfloat</code></td>
+</tr>
+<tr>
+<td><code>float64[]</code></td>
+<td><code>[]float</code></td>
+<td><code>ksfloat</code></td>
+</tr>
+<tr>
+<td>Struct/pointer</td>
+<td><code>any</code></td>
+<td><code>kany</code></td>
+</tr>
+<tr>
+<td>Map data</td>
+<td><code>map</code></td>
+<td><code>kmap</code></td>
+</tr>
+<tr>
+<td>All other types</td>
+<td>(mapped accordingly)</td>
+<td>(appropriate kind)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="comparison-var-name-mut-vs-pre-declaration">Comparison:
+<code>var name mut</code> vs Pre-Declaration</h3>
+<p><strong>With <code>var name mut</code> (for FFI output parameters
+with unknown type):</strong></p>
+<pre class="za"><code>var result mut
+# Pass as output parameter to C function
+lib::get_result(mut result)
+# result now has proper type determined by C function</code></pre>
+<p><strong>With pre-declared type (when type is known):</strong></p>
+<pre class="za"><code>var result []int  # Must know type upfront
+result = []  # Initialize with empty array
+lib::fill_result(mut result)  # C function fills it</code></pre>
+<p>The <code>var name mut</code> syntax is specifically for cases where
+the type is truly unknown at declaration time and will be determined by
+the FFI call.</p>
+<h3 id="key-behavior">Key Behavior</h3>
+<ul>
+<li><strong>Pre-declaration required</strong>: Still must use
+<code>var name mut</code> syntax (prevents typos)</li>
+<li><strong>Type flexibility</strong>: Variable type determined by first
+assignment, not by syntax</li>
+<li><strong>Thread-safe</strong>: Works with both local and global
+variables with proper locking</li>
+<li><strong>No implicit creation</strong>: Unlike looser languages, Za
+requires explicit <code>var</code> declaration</li>
+<li><strong>Full type support</strong>: Supports all Za types including
+complex structs and arrays</li>
+</ul>
+<h3 id="examples">Examples</h3>
+<p><strong>Receiving array from C function as output
+parameter:</strong></p>
+<pre class="za"><code>var filled_array mut
+# Pass to C function which will fill it
+lib::fill_sequence(mut filled_array, 5, 100)
+# filled_array is now typed as []int with values [100, 101, 102, 103, 104]
+println filled_array[0]  # 100</code></pre>
+<p><strong>Global output parameter:</strong></p>
+<pre class="za"><code>var global_result mut
+
+def fetch_from_c()
+    # C function writes to global output parameter
+    c_library::get_data(mut global_result)
+    # global_result now contains C data with proper type
+    println global_result
+end
+
+fetch_from_c()</code></pre>
+<p><strong>Using output parameters in function:</strong></p>
+<pre class="za"><code># Multiple variables with unknown types from different C calls
+var config, data mut
+
+lib::load_config(mut config, &quot;config.ini&quot;)
+lib::load_data(mut data, &quot;data.bin&quot;)
+
+# Both are now properly typed based on what C functions returned
+if config
+    println &quot;Config loaded&quot;
+endif</code></pre>
+<h3 id="advantages-over-manual-marshaling">Advantages Over Manual
+Marshaling</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th><code>var mut</code></th>
+<th>Manual Marshaling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Syntax</td>
+<td>Simple: <code>var x mut</code></td>
+<td>Complex: <code>c_alloc()</code> + setup</td>
+</tr>
+<tr>
+<td>Type declaration</td>
+<td>Automatic</td>
+<td>Manual via <code>c_unmarshal_struct()</code></td>
+</tr>
+<tr>
+<td>Memory management</td>
+<td>Automatic</td>
+<td>Manual: <code>c_alloc()</code> + <code>c_free()</code></td>
+</tr>
+<tr>
+<td>Readability</td>
+<td>Clean</td>
+<td>Verbose</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Slightly faster</td>
+<td>Overhead of allocation/deallocation</td>
+</tr>
+</tbody>
+</table>
 <h2 id="f.5-calling-c-functions">F.5 Calling C Functions</h2>
 <p>Once declared with <code>LIB</code>, C functions are called using
 <code>namespace::function(args)</code> syntax. The namespace qualifier
@@ -4617,7 +4890,7 @@ strlen(str)        # May call Za built-in or libc, depending on USE chain</code>
 <p><strong>Best practice:</strong> Always use explicit namespace
 qualifiers for C library functions (see F.11.10 for common
 conflicts).</p>
-<h4 id="examples">Examples</h4>
+<h4 id="examples-1">Examples</h4>
 <pre class="za"><code>use +c
 # Simple calls with return values
 result = m::sqrt(16.0)           # result = 4.0
@@ -4756,6 +5029,158 @@ for i = 0 to 4
     println &quot;Value {i}: {val}&quot;
 endfor
 c_free(arr_ptr)</code></pre>
+<h2 id="f.5.2-working-with-opaque-pointers-as-int64-addresses">F.5.2
+Working with Opaque Pointers as int64 Addresses</h2>
+<p>When FFI functions return opaque pointers (like
+<code>FT_Library</code> from FreeType or <code>png_structp</code> from
+libpng), Za represents them as <code>int64</code> values rather than
+<code>CPointerValue</code> objects. This is necessary because opaque
+types cannot be materialized as concrete Za objects.</p>
+<p>The memory access functions (<code>c_get_uint32</code>,
+<code>c_get_int32</code>, etc.) require a <code>CPointerValue</code> as
+the first parameter, which means you cannot directly use them with these
+opaque pointer values. To solve this, Za provides a parallel set of
+memory access functions that work directly with <code>int64</code>
+addresses.</p>
+<h3 id="the-problem-and-solution">The Problem and Solution</h3>
+<p><strong>The Problem:</strong></p>
+<pre class="za"><code># Opaque pointer returned as int64 (from FreeType library)
+library_handle = FT_Init_FreeType(mut ft_library)  # Returns int64
+face_handle = FT_New_Face(library_handle, font_path, 0, mut face)  # Returns int64
+
+# Calculate struct field offset
+glyph_slot_ptr = face_handle + 16  # Valid arithmetic, still int64
+
+# But this fails - c_get_uint32 expects a CPointerValue, not int64:
+bitmap_width = c_get_uint32(glyph_slot_ptr, 4)  # ERROR!</code></pre>
+<p><strong>The Solution:</strong> Use the new <code>*_at_addr</code>
+functions that accept <code>int64</code> addresses directly:</p>
+<pre class="za"><code># Same calculation as above
+glyph_slot_ptr = face_handle + 16
+
+# Now this works - c_get_uint32_at_addr accepts int64:
+bitmap_width = c_get_uint32_at_addr(glyph_slot_ptr, 4)  # OK!</code></pre>
+<h3 id="available-functions">Available Functions</h3>
+<p>These functions all have the same signature pattern:
+<code>function_name(address:int, offset:int) -&gt; type</code></p>
+<ul>
+<li><code>c_get_byte_at_addr(address, offset)</code> → int</li>
+<li><code>c_get_uint16_at_addr(address, offset)</code> → int</li>
+<li><code>c_get_int16_at_addr(address, offset)</code> → int</li>
+<li><code>c_get_uint32_at_addr(address, offset)</code> → int</li>
+<li><code>c_get_int32_at_addr(address, offset)</code> → int</li>
+<li><code>c_get_uint64_at_addr(address, offset)</code> → uint</li>
+<li><code>c_get_int64_at_addr(address, offset)</code> → int</li>
+</ul>
+<p>All functions: - Accept an <code>int64</code> address (from opaque
+pointers) - Accept an <code>int</code> offset (byte offset within the
+structure) - Return the same types as their <code>CPointerValue</code>
+counterparts - Perform address validation (return 0 if address is
+null)</p>
+<h3 id="real-world-example-freetype-font-rendering">Real-World Example:
+FreeType Font Rendering</h3>
+<p>This example demonstrates accessing nested struct fields through
+opaque pointers:</p>
+<pre class="za"><code>module &quot;libfreetype.so.6&quot; as ft auto
+use +ft
+
+# Initialize FreeType (returns opaque FT_Library handle as int64)
+library_ptr = c_alloc(8)
+ft_error = FT_Init_FreeType(library_ptr)
+ft_library = c_get_int64(library_ptr, 0)  # Extract int64 from buffer
+c_free(library_ptr)
+
+# Load font (returns opaque FT_Face handle as int64)
+face_ptr = c_alloc(8)
+ft_error = FT_New_Face(ft_library, &quot;/usr/share/fonts/TTF/font.ttf&quot;, 0, face_ptr)
+ft_face = c_get_int64(face_ptr, 0)  # Extract int64 from buffer
+c_free(face_ptr)
+
+# Load a glyph for character &#39;A&#39;
+load_flags = 4  # FT_LOAD_RENDER
+FT_Load_Char(ft_face, 65, load_flags)
+
+# Navigate opaque struct to get bitmap dimensions
+# FT_Face-&gt;glyph offset is 16 bytes (64-bit pointer)
+FT_FACE_GLYPH_OFFSET = 16
+glyph_slot_ptr = ft_face + FT_FACE_GLYPH_OFFSET
+
+# FT_GlyphSlot-&gt;bitmap offset is 216 bytes
+FT_GLYPHSLOT_BITMAP_OFFSET = 216
+bitmap_ptr = glyph_slot_ptr + FT_GLYPHSLOT_BITMAP_OFFSET
+
+# FT_Bitmap fields (within glyph slot)
+FT_BITMAP_ROWS_OFFSET = 0      # rows: unsigned int
+FT_BITMAP_WIDTH_OFFSET = 4     # width: unsigned int
+FT_BITMAP_PITCH_OFFSET = 8     # pitch: int
+FT_BITMAP_BUFFER_OFFSET = 16   # buffer: void*
+
+# Read bitmap metadata using new *_at_addr functions
+bitmap_height = c_get_uint32_at_addr(bitmap_ptr, FT_BITMAP_ROWS_OFFSET)
+bitmap_width = c_get_uint32_at_addr(bitmap_ptr, FT_BITMAP_WIDTH_OFFSET)
+bitmap_pitch = c_get_int32_at_addr(bitmap_ptr, FT_BITMAP_PITCH_OFFSET)
+bitmap_buffer = c_get_int64_at_addr(bitmap_ptr, FT_BITMAP_BUFFER_OFFSET)
+
+# Now you can read pixel data from the bitmap buffer
+for row = 0 to bitmap_height - 1
+    for col = 0 to bitmap_width - 1
+        offset = row * bitmap_pitch + col
+        # Read individual pixel (byte)
+        pixel = c_get_byte_at_addr(bitmap_buffer, offset)
+        if pixel &gt; 0
+            println &quot;Pixel ({col}, {row}): {pixel}&quot;
+        endif
+    endfor
+endfor</code></pre>
+<h3 id="why-this-is-necessary">Why This Is Necessary</h3>
+<ol type="1">
+<li><p><strong>Opaque Types</strong>: Many C libraries use opaque
+pointers (pointer to incomplete types) that have no C definition
+available. Za cannot create <code>CPointerValue</code> wrappers for
+types it doesn’t know.</p></li>
+<li><p><strong>Void Pointers</strong>: Return types like
+<code>void*</code> or library-specific types like
+<code>png_structp</code> are represented as <code>int64</code> for
+safety and consistency.</p></li>
+<li><p><strong>Memory Navigation</strong>: Once you have an opaque
+pointer, you often need to:</p>
+<ul>
+<li>Perform arithmetic to navigate to nested struct fields</li>
+<li>Read field values at known byte offsets</li>
+<li>Pass calculated addresses to other functions</li>
+</ul></li>
+<li><p><strong>Struct Field Discovery</strong>: C libraries often
+provide accessor macros or documentation that specify byte offsets for
+struct fields. The <code>*_at_addr</code> functions let you use this
+documented information directly.</p></li>
+</ol>
+<h3 id="common-patterns">Common Patterns</h3>
+<p><strong>Pattern 1: Nested struct access</strong></p>
+<pre class="za"><code># Get address of nested struct field
+base_address = opaque_ptr
+nested_address = base_address + offset_to_nested_struct
+
+# Read field from nested struct
+value = c_get_uint32_at_addr(nested_address, field_offset)</code></pre>
+<p><strong>Pattern 2: Array element access</strong></p>
+<pre class="za"><code># Array of int32 at opaque_address, get element 5
+element_5 = c_get_int32_at_addr(opaque_address, 5 * 4)  # 4 bytes per int32</code></pre>
+<p><strong>Pattern 3: Chain of pointers</strong></p>
+<pre class="za"><code># Read pointer field from opaque struct
+pointer_field = c_get_int64_at_addr(opaque_address, pointer_offset)
+
+# Use the pointer field as a new address
+value = c_get_uint32_at_addr(pointer_field, value_offset)</code></pre>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li><strong>Use <code>*_at_addr</code> functions</strong>: When working
+with opaque pointers (int64) from FFI calls</li>
+<li><strong>Use regular <code>c_get_*</code> functions</strong>: When
+working with pointers from <code>c_alloc()</code> or other
+<code>CPointerValue</code> sources</li>
+<li><strong>Use <code>mut</code> keyword</strong>: For AUTO-registered
+structs that C functions will modify</li>
+</ul>
 <h3
 id="c_alloc_structstruct_type_namestring---pointer">c_alloc_struct(struct_type_name:string)
 -&gt; pointer</h3>
@@ -6597,8 +7022,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb275"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb275-1"><a href="#cb275-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb292"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb292-1"><a href="#cb292-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
