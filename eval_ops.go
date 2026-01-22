@@ -2507,6 +2507,21 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
 
         // hijack kind() calls here
         if name == "kind" {
+            // Check if argument is nil - might be a koutparam variable
+            if args[0] == nil {
+                // Check if this is a koutparam variable (var name mut)
+                // arg_names contains the original identifier names passed to kind()
+                if len(arg_names) > 0 && arg_names[0] != "" {
+                    varName := arg_names[0]
+                    bin := bind_int(evalfs, varName)
+                    if bin < uint64(len(*ident)) && (*ident)[bin].IKind == koutparam {
+                        return "mut", false, method_result, nil
+                    }
+                }
+                // If still nil and not a mut type, return "nil"
+                return "nil", false, method_result, nil
+            }
+
             isStruct := reflect.TypeOf(args[0]).Kind() == reflect.Struct
             struct_name := ""
             if isStruct {

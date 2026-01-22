@@ -355,6 +355,7 @@ type MutableArg struct {
     Value         any          // The actual argument value (e.g., map[string]any for structs)
     Binding       uint64       // Variable binding position in ident array
     IdentPtr      *[]Variable  // Pointer to identifier array for updating
+    IsGlobal      bool         // Whether this references a global variable
     CPtr          unsafe.Pointer   // C memory pointer (set during marshaling)
     StructDef     *CLibraryStruct  // Struct definition (set during marshaling)
     ArrayLen      int          // Array length for mutable arrays

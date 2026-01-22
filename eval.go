@@ -1520,21 +1520,37 @@ func (p *leparser) reference(mut bool) any {
     bin := bind_int(p.fs, fullName)
 
     if mut {
-        // Ensure variable exists
-        if bin >= uint64(len(*p.ident)) || !(*p.ident)[bin].declared {
-            // Variable not declared - will error later in identifier()
-            return nil
+        // First check if variable exists in local scope
+        if bin < uint64(len(*p.ident)) && (*p.ident)[bin].declared {
+            // Get variable value and wrap it
+            varValue := (*p.ident)[bin].IValue
+
+            return &MutableArg{
+                Value:    varValue,
+                Binding:  bin,
+                IdentPtr: p.ident,
+                IsGlobal: false,
+                // CPtr and StructDef will be set by FFI layer during marshaling
+            }
         }
 
-        // Get variable value and wrap it
-        varValue := (*p.ident)[bin].IValue
+        // Variable not found in local scope, check globals
+        gbin := bind_int(0, fullName)
+        if gbin < uint64(len(gident)) && gident[gbin].declared {
+            // Get global variable value and wrap it
+            varValue := gident[gbin].IValue
 
-        return &MutableArg{
-            Value:    varValue,
-            Binding:  bin,
-            IdentPtr: p.ident,
-            // CPtr and StructDef will be set by FFI layer during marshaling
+            return &MutableArg{
+                Value:    varValue,
+                Binding:  gbin,
+                IdentPtr: &gident,
+                IsGlobal: true,
+                // CPtr and StructDef will be set by FFI layer during marshaling
+            }
         }
+
+        // Variable not declared in either local or global scope - will error later in identifier()
+        return nil
     }
 
     // Original ref behavior - just return identifier name

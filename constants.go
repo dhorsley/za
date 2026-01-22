@@ -170,6 +170,7 @@ const (
     ksbyte
     kdynamic // for dynamically constructed multi-dimensional types
     kpointer // for pointer types
+    koutparam // for output parameters with unknown type (determined by FFI call)
 )
 
 type TokenType = int64

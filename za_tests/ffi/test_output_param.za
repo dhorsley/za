@@ -1,0 +1,25 @@
+# Test var declaration with mut - output parameter support
+
+module "./libtest_array.so" as arr auto "./test_array_lib.h"
+use +arr
+
+println "Output Parameter Test (var name mut syntax)"
+
+# Declare a variable with unknown type (mut) then initialize it
+var result mut
+result = [10, 20, 30]
+
+println "Output param declared and initialized: [", result[0], ",", result[1], ",", result[2], "]"
+
+# Use it with mut in FFI call
+arr::double_int_array(mut result, 3)
+
+println "After FFI call: [", result[0], ",", result[1], ",", result[2], "]"
+
+if result[0] == 20 && result[1] == 40 && result[2] == 60
+    println "PASS: mut declaration syntax works with FFI"
+else
+    println "FAIL: Unexpected values"
+endif
+
+println "Done!"

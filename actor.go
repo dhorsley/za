@@ -2013,6 +2013,27 @@ tco_reentry:
                     break
                 }
 
+                // Check if this is an output parameter (var name mut)
+                var isOutParam bool
+                for i := eqPos - 1; i >= c; i-- {
+                    if inbound.Tokens[i].tokType == O_Mut {
+                        isOutParam = true
+                        break
+                    }
+                }
+
+                // Handle output parameters first - skip normal type processing
+                if isOutParam {
+                    t := Variable{}
+                    t.IName = vname
+                    t.IKind = koutparam
+                    t.IValue = nil
+                    t.ITyped = false
+                    t.declared = true
+                    (*ident)[sid] = t
+                    continue // Skip to next variable in the name list
+                }
+
                 // Build the complete type string from all tokens
                 var new_type_token_string string
 

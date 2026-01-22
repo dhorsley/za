@@ -5025,6 +5025,234 @@ This is more efficient than manual marshaling which requires:
 - **F.3.10**: AUTO struct registration from headers
 - **F.10.2**: Struct marshaling reference (alternative approach)
 
+## F.4.6 Global Variable Fallback for `mut` Parameters (v1.2.2+)
+
+When using the `mut` keyword to pass a variable to a C function, Za now checks both local and global scopes for the variable. If a local variable with the given name doesn't exist, Za will look for a global variable with the same identifier.
+
+### How It Works
+
+**Variable scope resolution for `mut` parameters:**
+
+1. First: Look for local variable in current function scope
+2. Second: Look for global variable with same identifier
+3. Error: If neither exists, report undefined variable
+
+Local variables take precedence over globals, maintaining backward compatibility.
+
+### Basic Example
+
+```za
+# Global variable
+global_buffer = [10, 20, 30]
+
+def modify_global()
+    # Pass global variable to C function using mut
+    arr::double_int_array(mut global_buffer, 3)
+    # global_buffer is now [20, 40, 60]
+    println global_buffer[0]  # 20
+end
+
+modify_global()
+
+# Can also use global in main scope
+arr::double_int_array(mut global_buffer, 3)  # Works here too
+```
+
+### Local Variable Precedence
+
+Local variables shadow globals:
+
+```za
+global_data = [1, 2, 3]
+
+def process()
+    # Local variable shadows global
+    var local_data = [10, 20, 30]
+
+    # This modifies the local variable, not the global
+    arr::double_int_array(mut local_data, 3)
+    println local_data[0]     # 20
+end
+
+process()
+println global_data[0]  # Still 1 (unchanged)
+```
+
+### Thread Safety
+
+Global variable updates via `mut` parameters are protected with locks to ensure thread-safe access in concurrent scenarios.
+
+### When to Use Global `mut` Parameters
+
+**Good use cases:**
+
+- Shared configuration or state modified by C functions
+- Large buffers that all functions need to access
+- Results from C functions that populate global state
+
+**Avoid when:**
+
+- Local variables would be clearer (prefer local when possible)
+- Function semantics require explicit parameter passing
+- You want to avoid implicit global state changes
+
+## F.4.7 Output Parameter Declaration: `var name mut` (v1.2.2+)
+
+The `var name mut` syntax declares variables with unknown types that will be determined by the result of FFI calls. This is useful for receiving opaque pointers and complex types from C functions without pre-declaring their types.
+
+### Basic Usage
+
+```za
+# Declare a variable with unknown type (will be determined by FFI call)
+var buffer mut
+
+# Pass to C function as output parameter - type is determined from result
+arr::fill_sequence(mut buffer, 3, 100)
+
+# Variable now has proper type (array in this case) from FFI call result
+println buffer[0]  # 100
+println buffer[1]  # 101
+println buffer[2]  # 102
+
+# After FFI assignment, variable can be used normally
+buffer[0] = 200
+println buffer[0]  # 200
+```
+
+### When to Use `var name mut`
+
+This syntax is specifically for declaring output parameters that will receive their type and initial value from C functions. Use it when:
+
+1. **Opaque pointers from C** - You receive a pointer to an unknown struct type:
+```za
+var font mut
+# FreeType function fills the font pointer - type unknown until call
+arr::create_font(mut font, "/path/to/font.ttf")
+# font now has proper type from C function result
+```
+
+2. **Complex C types** - You need to receive struct/union types without pre-declaring them:
+```za
+var result mut
+# C function writes struct data to result parameter
+my_lib::get_struct_data(mut result)
+# result gains proper type automatically from C data
+```
+
+3. **When type is truly unknown** - C function returns data with type determined at runtime:
+```za
+var data mut
+# C function determines what data structure to create
+lib::fetch_data(mut data, some_config)
+# data now typed based on what C returned
+```
+
+### How Type Determination Works
+
+When a `mut`-declared variable is used as an output parameter (`mut varname`):
+
+1. **Before FFI call**: Type is unknown (`koutparam`), value is `nil`
+2. **During FFI call**: C function writes to the variable
+3. **After FFI call**: Za inspects the returned value and automatically sets:
+   - `IKind`: The appropriate type constant (kint, ksint, kmap, etc.)
+   - `IValue`: The actual value
+   - `ITyped`: Set to true (type is now known)
+
+### Type Mapping on Return
+
+Supported return types are automatically determined:
+
+| C Return Type | Za Type | IKind |
+|---|---|---|
+| `int` | `int` | `kint` |
+| `int[]` | `[]int` | `ksint` |
+| `float64` | `float` | `kfloat` |
+| `float64[]` | `[]float` | `ksfloat` |
+| Struct/pointer | `any` | `kany` |
+| Map data | `map` | `kmap` |
+| All other types | (mapped accordingly) | (appropriate kind) |
+
+### Comparison: `var name mut` vs Pre-Declaration
+
+**With `var name mut` (for FFI output parameters with unknown type):**
+
+```za
+var result mut
+# Pass as output parameter to C function
+lib::get_result(mut result)
+# result now has proper type determined by C function
+```
+
+**With pre-declared type (when type is known):**
+
+```za
+var result []int  # Must know type upfront
+result = []  # Initialize with empty array
+lib::fill_result(mut result)  # C function fills it
+```
+
+The `var name mut` syntax is specifically for cases where the type is truly unknown at declaration time and will be determined by the FFI call.
+
+### Key Behavior
+
+- **Pre-declaration required**: Still must use `var name mut` syntax (prevents typos)
+- **Type flexibility**: Variable type determined by first assignment, not by syntax
+- **Thread-safe**: Works with both local and global variables with proper locking
+- **No implicit creation**: Unlike looser languages, Za requires explicit `var` declaration
+- **Full type support**: Supports all Za types including complex structs and arrays
+
+### Examples
+
+**Receiving array from C function as output parameter:**
+
+```za
+var filled_array mut
+# Pass to C function which will fill it
+lib::fill_sequence(mut filled_array, 5, 100)
+# filled_array is now typed as []int with values [100, 101, 102, 103, 104]
+println filled_array[0]  # 100
+```
+
+**Global output parameter:**
+
+```za
+var global_result mut
+
+def fetch_from_c()
+    # C function writes to global output parameter
+    c_library::get_data(mut global_result)
+    # global_result now contains C data with proper type
+    println global_result
+end
+
+fetch_from_c()
+```
+
+**Using output parameters in function:**
+
+```za
+# Multiple variables with unknown types from different C calls
+var config, data mut
+
+lib::load_config(mut config, "config.ini")
+lib::load_data(mut data, "data.bin")
+
+# Both are now properly typed based on what C functions returned
+if config
+    println "Config loaded"
+endif
+```
+
+### Advantages Over Manual Marshaling
+
+| Aspect | `var mut` | Manual Marshaling |
+|---|---|---|
+| Syntax | Simple: `var x mut` | Complex: `c_alloc()` + setup |
+| Type declaration | Automatic | Manual via `c_unmarshal_struct()` |
+| Memory management | Automatic | Manual: `c_alloc()` + `c_free()` |
+| Readability | Clean | Verbose |
+| Performance | Slightly faster | Overhead of allocation/deallocation |
+
 ## F.5 Calling C Functions
 
 Once declared with `LIB`, C functions are called using `namespace::function(args)` syntax. The namespace qualifier is optional but **strongly recommended** to avoid conflicts with Za's built-in functions.
