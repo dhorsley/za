@@ -1,0 +1,21 @@
+println "Correct Mutable Array Test"
+
+module "./libtest_array.so" as arr auto "./test_array_lib.h"
+use +arr
+
+println "Creating array..."
+buffer = [10, 20, 30]
+println "Array created: [", buffer[0], ",", buffer[1], ",", buffer[2], "]"
+
+println "Calling double_int_array with mut..."
+arr::double_int_array(mut buffer, 3)
+println "Function returned"
+println "After: buffer = [", buffer[0], ",", buffer[1], ",", buffer[2], "]"
+
+if buffer[0] == 20 && buffer[1] == 40 && buffer[2] == 60
+    println "PASS: Values correctly doubled"
+else
+    println "FAIL: Expected [20,40,60]"
+endif
+
+println "Done!"

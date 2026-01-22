@@ -1,0 +1,98 @@
+# Array Arguments FFI Test
+# Tests automatic conversion of Za arrays to C pointers
+
+println "[#4]Za FFI Array Arguments Test[#-]"
+println "=================================="
+
+# Load the test library with AUTO parsing of header
+module "./libtest_array.so" as arr auto "./test_array_lib.h"
+use +arr
+
+println "\n[#6]Test 1: Sum int array (read-only)[#-]"
+data = [1, 2, 3, 4, 5]
+result = arr::sum_int_array(data, 5)
+println "  sum([1,2,3,4,5]) = ", result
+if result == 15
+    println "  [#2]PASS[#-]: Got expected result 15"
+else
+    println "  [#1]FAIL[#-]: Expected 15, got ", result
+endif
+
+println "\n[#6]Test 2: Average float array (read-only)[#-]"
+values = [1.5, 2.5, 3.5]
+result = arr::average_float_array(values, 3)
+println "  average([1.5, 2.5, 3.5]) = ", result
+if result > 2.4 && result < 2.6
+    println "  [#2]PASS[#-]: Got expected result ~2.5"
+else
+    println "  [#1]FAIL[#-]: Expected ~2.5, got ", result
+endif
+
+println "\n[#6]Test 3: Mutable int array (C modifies in place)[#-]"
+buffer = [10, 20, 30]
+arr::double_int_array(mut buffer, 3)
+println "  After double_int_array([10,20,30]):"
+println "  buffer[0] = ", buffer[0]
+println "  buffer[1] = ", buffer[1]
+println "  buffer[2] = ", buffer[2]
+if buffer[0] == 20 && buffer[1] == 40 && buffer[2] == 60
+    println "  [#2]PASS[#-]: Values correctly doubled"
+else
+    println "  [#1]FAIL[#-]: Expected [20,40,60], got [", buffer[0], ",", buffer[1], ",", buffer[2], "]"
+endif
+
+println "\n[#6]Test 4: Mutable float array[#-]"
+fvalues = [1.0, 2.0, 3.0]
+arr::double_float_array(mut fvalues, 3)
+println "  After double_float_array([1.0, 2.0, 3.0]):"
+println "  fvalues[0] = ", fvalues[0]
+println "  fvalues[1] = ", fvalues[1]
+println "  fvalues[2] = ", fvalues[2]
+if fvalues[0] > 1.9 && fvalues[0] < 2.1
+    println "  [#2]PASS[#-]: Values correctly doubled"
+else
+    println "  [#1]FAIL[#-]: Expected ~2.0, got ", fvalues[0]
+endif
+
+println "\n[#6]Test 5: Uint8 array[#-]"
+bytes = [255, 254, 253]
+result = arr::sum_uint8_array(bytes, 3)
+println "  sum([255, 254, 253]) = ", result
+if result > 0
+    println "  [#2]PASS[#-]: Got result ", result
+else
+    println "  [#1]FAIL[#-]: Expected positive sum"
+endif
+
+println "\n[#6]Test 6: Bool array[#-]"
+flags = [true, false, true, true]
+result = arr::count_true_bool(flags, 4)
+println "  count_true([true, false, true, true]) = ", result
+if result == 3
+    println "  [#2]PASS[#-]: Got expected result 3"
+else
+    println "  [#1]FAIL[#-]: Expected 3, got ", result
+endif
+
+println "\n[#6]Test 7: Fill sequence (mutable)[#-]"
+seq = [0, 0, 0, 0, 0]
+arr::fill_sequence(mut seq, 5, 10)
+println "  After fill_sequence(5, start=10):"
+println "  seq = [", seq[0], ",", seq[1], ",", seq[2], ",", seq[3], ",", seq[4], "]"
+if seq[0] == 10 && seq[1] == 11 && seq[2] == 12
+    println "  [#2]PASS[#-]: Sequence filled correctly"
+else
+    println "  [#1]FAIL[#-]: Expected [10,11,12,13,14]"
+endif
+
+println "\n[#6]Test 8: Empty array[#-]"
+empty = []
+result = arr::sum_int_array(empty, 0)
+println "  sum([]) = ", result
+if result == 0
+    println "  [#2]PASS[#-]: Got expected result 0"
+else
+    println "  [#1]FAIL[#-]: Expected 0, got ", result
+endif
+
+println "\n[#2]Array arguments test completed![#-]"

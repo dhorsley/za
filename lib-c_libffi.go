@@ -637,6 +637,7 @@ static void cleanup_ffi_closure(void* closure, void* cif, void** arg_types) {
 import "C"
 import (
     "fmt"
+    "reflect"
     "runtime"
     "runtime/cgo"
     "strings"
@@ -930,6 +931,13 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     // Convert Za arguments to C values with type checking and range validation
     convertedArgs := make([]any, len(args))
     for i, arg := range args {
+        // Check if this is an array - if so, skip ConvertZaToCValue and pass through
+        if _, ok := arg.([]interface{}); ok {
+            // Array argument (including empty arrays) - pass through without conversion
+            convertedArgs[i] = arg
+            continue
+        }
+
         var expectedType CType
         if i < len(sig.ParamTypes) {
             expectedType = sig.ParamTypes[i]
@@ -1151,6 +1159,604 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             // Capture C pointer for mutable arguments
             if mutArg, ok := mutableArgIndices[i]; ok {
                 mutArg.CPtr = boolPtr
+            }
+
+        case []int:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.int(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate int array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.int)(elemPtr) = C.int(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "int"
+            }
+
+        case []float64:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.double(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate float64 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.double)(elemPtr) = C.double(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "float64"
+            }
+
+        case []uint8:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.uchar(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate uint8 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.uchar)(elemPtr) = C.uchar(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "uint8"
+            }
+
+        case []int64:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.longlong(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate int64 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.longlong)(elemPtr) = C.longlong(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "int64"
+            }
+
+        case []uint:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.uint(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate uint array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.uint)(elemPtr) = C.uint(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "uint"
+            }
+
+        case []bool:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.uchar(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate bool array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                if elem {
+                    *(*C.uchar)(elemPtr) = 1
+                } else {
+                    *(*C.uchar)(elemPtr) = 0
+                }
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "bool"
+            }
+
+        case []int16:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.short(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate int16 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.short)(elemPtr) = C.short(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "int16"
+            }
+
+        case []uint16:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.ushort(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate uint16 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.ushort)(elemPtr) = C.ushort(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "uint16"
+            }
+
+        case []uint64:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.ulonglong(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate uint64 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.ulonglong)(elemPtr) = C.ulonglong(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "uint64"
+            }
+
+        case []int8:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.char(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate int8 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.char)(elemPtr) = C.char(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "int8"
+            }
+
+        case []string:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate array of char* pointers
+            ptrArraySize := C.size_t(arrayLen) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil)))
+            ptrArray := C.malloc(ptrArraySize)
+            if ptrArray == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate string array", i)
+            }
+            allocatedMem = append(allocatedMem, ptrArray)
+            C.memset(ptrArray, 0, ptrArraySize)
+
+            // Create slice view of pointer array
+            ptrSlice := (*[1 << 30]*C.char)(unsafe.Pointer(ptrArray))[:arrayLen:arrayLen]
+
+            // Allocate each string
+            for idx, str := range v {
+                cstr := C.CString(str)
+                cstrings = append(cstrings, unsafe.Pointer(cstr))
+                ptrSlice[idx] = cstr
+            }
+
+            // Create pointer slot
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = ptrArray
+            argValuesSlice[i] = ptrPtr
+
+        case []interface{}:
+            // Handle generic Za arrays by inspecting element types
+            if len(v) == 0 {
+                // Empty array
+                argTypesSlice[i] = 7 // CPointer
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Determine element type from first element
+            elemType := reflect.TypeOf(v[0])
+            argTypesSlice[i] = 7 // CPointer
+
+            switch elemType.Kind() {
+            case reflect.Int:
+                // Convert to []int and marshal
+                intArray := make([]C.int, len(v))
+                for j, elem := range v {
+                    if val, ok := elem.(int); ok {
+                        intArray[j] = C.int(val)
+                    } else {
+                        return nil, fmt.Errorf("argument %d: array element %d is not int", i, j)
+                    }
+                }
+                arrayPtr := C.malloc(C.size_t(len(v)) * C.size_t(unsafe.Sizeof(C.int(0))))
+                if arrayPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate int array", i)
+                }
+                allocatedMem = append(allocatedMem, arrayPtr)
+                C.memcpy(arrayPtr, unsafe.Pointer(unsafe.SliceData(intArray)), C.size_t(len(intArray))*C.size_t(unsafe.Sizeof(C.int(0))))
+
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+                argValuesSlice[i] = ptrPtr
+
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = arrayPtr
+                    mutArg.ArrayLen = len(v)
+                    mutArg.ArrayElemType = "int"
+                }
+
+            case reflect.Float64:
+                // Convert to []float64 and marshal
+                floatArray := make([]C.double, len(v))
+                for j, elem := range v {
+                    if val, ok := elem.(float64); ok {
+                        floatArray[j] = C.double(val)
+                    } else {
+                        return nil, fmt.Errorf("argument %d: array element %d is not float64", i, j)
+                    }
+                }
+                arrayPtr := C.malloc(C.size_t(len(v)) * C.size_t(unsafe.Sizeof(C.double(0))))
+                if arrayPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate float64 array", i)
+                }
+                allocatedMem = append(allocatedMem, arrayPtr)
+                C.memcpy(arrayPtr, unsafe.Pointer(unsafe.SliceData(floatArray)), C.size_t(len(floatArray))*C.size_t(unsafe.Sizeof(C.double(0))))
+
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+                argValuesSlice[i] = ptrPtr
+
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = arrayPtr
+                    mutArg.ArrayLen = len(v)
+                    mutArg.ArrayElemType = "float64"
+                }
+
+            case reflect.String:
+                // String array handling
+                arrayLen := len(v)
+                ptrArraySize := C.size_t(arrayLen) * C.size_t(unsafe.Sizeof(unsafe.Pointer(nil)))
+                ptrArray := C.malloc(ptrArraySize)
+                if ptrArray == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate string array", i)
+                }
+                allocatedMem = append(allocatedMem, ptrArray)
+                C.memset(ptrArray, 0, ptrArraySize)
+
+                ptrSlice := (*[1 << 30]*C.char)(unsafe.Pointer(ptrArray))[:arrayLen:arrayLen]
+                for j, elem := range v {
+                    if str, ok := elem.(string); ok {
+                        cstr := C.CString(str)
+                        cstrings = append(cstrings, unsafe.Pointer(cstr))
+                        ptrSlice[j] = cstr
+                    } else {
+                        return nil, fmt.Errorf("argument %d: array element %d is not string", i, j)
+                    }
+                }
+
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = ptrArray
+                argValuesSlice[i] = ptrPtr
+
+            case reflect.Bool:
+                // Bool array handling
+                boolArray := make([]C.uchar, len(v))
+                for j, elem := range v {
+                    if val, ok := elem.(bool); ok {
+                        if val {
+                            boolArray[j] = 1
+                        } else {
+                            boolArray[j] = 0
+                        }
+                    } else {
+                        return nil, fmt.Errorf("argument %d: array element %d is not bool", i, j)
+                    }
+                }
+                arrayPtr := C.malloc(C.size_t(len(v)) * C.size_t(unsafe.Sizeof(C.uchar(0))))
+                if arrayPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate bool array", i)
+                }
+                allocatedMem = append(allocatedMem, arrayPtr)
+                C.memcpy(arrayPtr, unsafe.Pointer(unsafe.SliceData(boolArray)), C.size_t(len(boolArray))*C.size_t(unsafe.Sizeof(C.uchar(0))))
+
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+                argValuesSlice[i] = ptrPtr
+
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = arrayPtr
+                    mutArg.ArrayLen = len(v)
+                    mutArg.ArrayElemType = "bool"
+                }
+
+            default:
+                return nil, fmt.Errorf("argument %d: unsupported array element type %v. Supported: int, float64, string, bool", i, elemType)
             }
 
         case *CPointerValue:
@@ -1507,6 +2113,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         if mutArg.StructDef != nil {
             // Struct type - use UnmarshalStructFromC
             newValue, err = UnmarshalStructFromC(mutArg.CPtr, mutArg.StructDef, "")
+        } else if mutArg.ArrayLen > 0 {
+            // Array type - unmarshal from C
+            newValue, err = unmarshalArrayFromC(mutArg.CPtr, mutArg.ArrayLen, mutArg.ArrayElemType)
         } else {
             // Primitive type - read directly from C memory
             // Determine type from the C pointer value type
@@ -1956,4 +2565,92 @@ func createFFIClosure(signature string, handle cgo.Handle) (unsafe.Pointer, func
     }
 
     return result.codeloc, cleanup, nil
+}
+
+// unmarshalArrayFromC copies data from C array back to Go slice
+func unmarshalArrayFromC(cPtr unsafe.Pointer, length int, elemType string) (any, error) {
+    switch elemType {
+    case "int":
+        result := make([]int, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.int(0)))
+            result[i] = int(*(*C.int)(elemPtr))
+        }
+        return result, nil
+
+    case "float64":
+        result := make([]float64, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.double(0)))
+            result[i] = float64(*(*C.double)(elemPtr))
+        }
+        return result, nil
+
+    case "uint8":
+        result := make([]uint8, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i))
+            result[i] = uint8(*(*C.uchar)(elemPtr))
+        }
+        return result, nil
+
+    case "bool":
+        result := make([]bool, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i))
+            result[i] = *(*C.uchar)(elemPtr) != 0
+        }
+        return result, nil
+
+    case "int64":
+        result := make([]int64, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.longlong(0)))
+            result[i] = int64(*(*C.longlong)(elemPtr))
+        }
+        return result, nil
+
+    case "uint64":
+        result := make([]uint64, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.ulonglong(0)))
+            result[i] = uint64(*(*C.ulonglong)(elemPtr))
+        }
+        return result, nil
+
+    case "int16":
+        result := make([]int16, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.short(0)))
+            result[i] = int16(*(*C.short)(elemPtr))
+        }
+        return result, nil
+
+    case "uint16":
+        result := make([]uint16, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.ushort(0)))
+            result[i] = uint16(*(*C.ushort)(elemPtr))
+        }
+        return result, nil
+
+    case "uint":
+        result := make([]uint, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.uint(0)))
+            result[i] = uint(*(*C.uint)(elemPtr))
+        }
+        return result, nil
+
+    case "int8":
+        result := make([]int8, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i))
+            result[i] = int8(*(*C.char)(elemPtr))
+        }
+        return result, nil
+
+    default:
+        return nil, fmt.Errorf("unsupported array element type for unmarshal: %s", elemType)
+    }
 }

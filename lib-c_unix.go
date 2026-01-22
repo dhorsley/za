@@ -750,3 +750,11 @@ func CNewString(s string) *CPointerValue {
     }
     return NewCPointer(unsafe.Pointer(cstr), "char*")
 }
+
+// CPtrToString converts a C string pointer to a Za string
+func CPtrToString(ptr *CPointerValue) (string, error) {
+    if ptr == nil || ptr.Ptr == nil {
+        return "", fmt.Errorf("c_ptr_to_string: pointer is null")
+    }
+    return C.GoString((*C.char)(ptr.Ptr)), nil
+}
