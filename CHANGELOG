@@ -103,6 +103,12 @@ language changes
           * auto-generates LIB declarations from C function prototypes
           * eliminates need for manual function signature declarations
           * supports pointer return types (void *malloc, char *strcpy)
+          * supports declaration macros (e.g., BGD_DECLARE(type), __declspec(dllexport))
+              - preprocesses macro calls in function declarations
+              - expands declaration macros before parsing function signatures
+              - recursive macro resolution with parameter substitution
+              - properly identifies return types wrapped in export/calling-convention macros
+              - enables correct parsing of libgd, Windows DLL, and cross-platform library functions
           * supports multiline function declarations
           * supports variadic functions (printf, scanf)
           * supports extern and const qualifiers

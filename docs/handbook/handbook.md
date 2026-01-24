@@ -4296,12 +4296,15 @@ The AUTO clause parses C headers and extracts:
    size_t strlen(const char *s);
    void *malloc(size_t size);
    int printf(const char *format, ...);
+   BGD_DECLARE(gdImagePtr) gdImageCreateTrueColor(int sx, int sy);
+   __declspec(dllexport) void exported_function(void);
    ```
 
    - Supports simple and pointer return types
    - Supports multiline declarations
    - Supports variadic functions (...)
    - Supports extern and const qualifiers
+   - Supports declaration macros (export, visibility, calling conventions)
    - Skips static inline, typedef, and private functions (_prefix)
 
 7. **Constants referencing earlier constants**:
@@ -4530,15 +4533,17 @@ len = strlen("hello")  # Requires manual LIB declaration above
 
 **With AUTO:**
 ```za
-module "libc.so.6" as c auto
-use +c
+module "libgd.so" as gd auto
+use +gd
 
 # Functions automatically discovered from headers - no LIB needed!
-len = strlen("hello")       # Works automatically
-cmp = strcmp("a", "b")      # Works automatically
-ptr = malloc(100)           # Works automatically
-free(ptr)                   # Works automatically
+image = gdImageCreateTrueColor(400, 300)  # Works automatically
+if not c_ptr_is_null(image)
+    gdImageDestroy(image)                  # Works automatically
+endif
 ```
+
+(Note: Explicit header paths may be needed for libraries where the header filename doesn't match the alias. See F.3.4 for details.)
 
 **What gets auto-discovered:**
 
@@ -4547,11 +4552,15 @@ free(ptr)                   # Works automatically
 - Multiline declarations (automatically normalized)
 - Variadic functions: `int printf(const char *fmt, ...);`
 - Const/extern qualifiers: `extern size_t fread(...);`
+- **Declaration macros in function signatures** (e.g., `BGD_DECLARE(type) function(...);`, `__declspec(dllexport) void func(...);`)
+  - Macros are expanded before parsing to correctly identify return types
+  - Supports export/calling-convention macros from libraries like libgd and Windows DLLs
+  - Enables proper type inference for wrapped return types
 
 **What gets skipped:**
 
 - `typedef` statements
-- `#define` macros
+- Object-like `#define` constants (handled separately in constants section)
 - `static inline` functions
 - Functions starting with `_` (considered private)
 
@@ -4569,7 +4578,69 @@ lib c::strlen(s:string) -> int   # Override: use int instead of int64
 len = strlen("hello")  # Uses our override signature
 ```
 
-### F.3.7 Error Handling
+### F.3.7 Declaration Macros
+
+Many C libraries use declaration macros to wrap function signatures with platform-specific attributes (calling conventions, visibility, export decorators, etc.). Za's AUTO clause automatically expands these macros to correctly identify the actual return types.
+
+**Examples of declaration macros:**
+
+| Library | Macro | Definition | Used For |
+|---------|-------|------------|----------|
+| libgd   | `BGD_DECLARE(type)` | Expands to platform-specific export qualifiers | Export control on different platforms |
+| Windows | `__declspec(dllexport)` | Windows DLL export decorator | DLL symbol visibility |
+| GCC/POSIX | `__attribute__((visibility(...)))` | Visibility control | Symbol visibility management |
+| POSIX | `WINAPI`, `__stdcall` | Calling conventions | Function calling convention specifiers |
+
+**Problem without macro expansion:**
+
+```c
+// Header file (libgd.h)
+#define BGD_DECLARE(type) BGD_EXPORT_DATA_PROT type BGD_STDCALL
+BGD_DECLARE(gdImagePtr) gdImageCreateTrueColor(int sx, int sy);
+```
+
+Without expansion, Za would see this as:
+```
+gdImageCreateTrueColor(...) -> void    # WRONG: No visible return type!
+```
+
+**Solution with AUTO (macro expansion enabled):**
+
+Za automatically expands the `BGD_DECLARE` macro, then correctly parses:
+```
+gdImageCreateTrueColor(...) -> void*<gdImagePtr*>   # CORRECT: Pointer return type identified
+```
+
+**How it works:**
+
+1. AUTO scans for macro calls in function declarations (e.g., `MACRO_NAME(...) function_name(...)`)
+2. Looks up the macro definition from the parsed header
+3. Substitutes parameters (e.g., `type` → `gdImagePtr`)
+4. Recursively expands any nested macros
+5. Parses the expanded declaration to extract the real return type
+
+**Real-world example:**
+
+```za
+module "libgd.so" as gd auto
+use +gd
+
+# AUTO automatically handles BGD_DECLARE(gdImagePtr) expansion
+# No manual LIB declaration needed - return type is correctly identified as pointer
+image = gdImageCreateTrueColor(400, 300)
+
+if c_ptr_is_null(image)
+    panic("Failed to create image")
+endif
+```
+
+**Limitations:**
+
+- Macro expansion is limited to function-like macros in function declarations
+- Forward references in macro definitions are not supported
+- Circular macro references are prevented (max 500 expansion iterations)
+
+### F.3.8 Error Handling
 
 If AUTO cannot find or parse headers:
 
@@ -4583,70 +4654,72 @@ Warning: failed to parse headers for png: header file not found
   Hint: Specify explicit path: module "libpng.so" as png auto "/path/to/png.h"
 ```
 
-### F.3.8 Complete Example
+### F.3.9 Complete Example
 
 ```za
-# Load libpng with automatic header parsing
-module "libpng.so.16" as png auto
-use +png
+# Load libgd with automatic header parsing
+# Header auto-discovery finds /usr/include/gd.h
+module "libgd.so" as gd auto
+use +gd
 
 # No LIB declarations needed - AUTO discovers function signatures!
-# Constants and functions automatically available from png.h
+# Constants and functions automatically available from gd.h
 
-def create_png_reader()
-    # PNG_LIBPNG_VER_STRING, PNG_COLOR_TYPE_RGB, etc. are auto-discovered constants
-    # png_create_read_struct is auto-discovered function (no LIB needed)
-    ver = PNG_LIBPNG_VER_STRING
-    rs = png_create_read_struct(ver, c_null(), c_null(), c_null())
+def create_image(width:int, height:int)
+    # gdImageCreateTrueColor is auto-discovered function (no LIB needed)
+    # Return type correctly identified as gdImagePtr despite BGD_DECLARE wrapper
+    image = gdImageCreateTrueColor(width, height)
 
-    if c_ptr_is_null(rs)
-        panic("Failed to create PNG read struct")
+    if c_ptr_is_null(image)
+        panic("Failed to create image")
     endif
 
-    return rs
+    return image
 end
 
-def cleanup_png_reader(rs, ps, is)
-    # png_destroy_read_struct is also auto-discovered
-    png_destroy_read_struct(rs, ps, is)
+def cleanup_image(image)
+    # gdImageDestroy is also auto-discovered
+    gdImageDestroy(image)
 end
+
+# Usage
+img = create_image(640, 480)
+println "Image created: 640x480"
+cleanup_image(img)
+println "Image destroyed"
 ```
 
-### F.3.9 Benefits Over Manual Constants and LIB Declarations
+### F.3.10 Benefits Over Manual Constants and LIB Declarations
 
 **Before AUTO (manual constants and LIB declarations):**
 
 ```za
-module "libpng.so.16" as png
-use +png
+module "libgd.so" as gd
+use +gd
 
 # Must manually declare every constant
-PNG_COLOR_TYPE_GRAY = 0
-PNG_COLOR_TYPE_RGB = 2
-PNG_COLOR_TYPE_RGBA = 6
-PNG_INTERLACE_NONE = 0
-PNG_INTERLACE_ADAM7 = 1
-# ... dozens more ...
+GD_TRUE = 1
+GD_FALSE = 0
 
 # Must manually declare every function signature
-lib png::png_create_read_struct(ver:string, err:ptr, warn:ptr, user:ptr) -> ptr
-lib png::png_create_info_struct(png:ptr) -> ptr
-lib png::png_destroy_read_struct(png:ptr, info:ptr, end:ptr) -> void
-lib png::png_read_info(png:ptr, info:ptr) -> void
-lib png::png_read_image(png:ptr, rows:ptr) -> void
+lib gd::gdImageCreateTrueColor(sx:int, sy:int) -> pointer
+lib gd::gdImageDestroy(im:pointer) -> void
+lib gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -> int
+lib gd::gdImageFill(im:pointer, x:int, y:int, col:int) -> void
 # ... dozens more ...
 ```
 
 **After AUTO (everything automatic):**
 
 ```za
-module "libpng.so.16" as png auto
-use +png
+module "libgd.so" as gd auto
+use +gd
 
 # All constants and functions automatically available!
-color = PNG_COLOR_TYPE_RGB
-rs = png_create_read_struct(PNG_LIBPNG_VER_STRING, c_null(), c_null(), c_null())
-info = png_create_info_struct(rs)
+# GD_TRUE, GD_FALSE, etc. auto-discovered
+# gdImageCreateTrueColor, gdImageDestroy, etc. auto-discovered
+image = gdImageCreateTrueColor(400, 300)
+gdImageDestroy(image)
 # ... etc - no manual declarations needed!
 ```
 

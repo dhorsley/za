@@ -3983,9 +3983,273 @@ func extractBalancedParentheses(text string, startPos int) (content string, endP
     return "", -1, errors.New("unclosed parentheses")
 }
 
+// expandDeclarationMacros expands macro calls in function declaration text
+// Uses macro definitions from moduleTypedefs (populated during Phase 1)
+// Recursively resolves nested macros
+// Follows C preprocessor semantics: preprocessor directives in expansions are NOT re-processed
+func expandDeclarationMacros(text string, alias string) string {
+    result := text
+    maxIterations := 500 // Allow enough iterations for large headers with many macros
+    iteration := 0
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+
+    if debugAuto {
+        // Try both moduleTypedefs and moduleMacros
+        moduleTypedefsLock.RLock()
+        typedefCount := len(moduleTypedefs[alias])
+        moduleTypedefsLock.RUnlock()
+
+        moduleMacrosLock.RLock()
+        macroCount := len(moduleMacros[alias])
+        moduleMacrosLock.RUnlock()
+
+        fmt.Fprintf(os.Stderr, "[AUTO] expandDeclarationMacros: alias=%s, typedefs=%d, macros=%d\n",
+            alias, typedefCount, macroCount)
+    }
+
+    for iteration < maxIterations {
+        iteration++
+        changed := false
+
+        // Pattern: detect function-like macro calls
+        // MACRO_NAME(...) where MACRO_NAME starts with uppercase
+        re := regexp.MustCompile(`\b([A-Z][A-Z0-9_]*)\s*\(`)
+
+        matches := re.FindAllStringSubmatchIndex(result, -1)
+        if debugAuto && iteration == 1 && strings.Contains(result, "gdImageCreateTrueColor") {
+            fmt.Fprintf(os.Stderr, "[AUTO] Macro expansion iteration %d: found %d macro calls\n", iteration, len(matches))
+            // Find BGD_DECLARE in the matches
+            for _, m := range matches {
+                macroName := result[m[2]:m[3]]
+                if macroName == "BGD_DECLARE" {
+                    endPos := m[1] + 30
+                    if endPos > len(result) {
+                        endPos = len(result)
+                    }
+                    fmt.Fprintf(os.Stderr, "[AUTO]   Found BGD_DECLARE at offset %d: %q\n", m[0], result[m[0]:endPos])
+                }
+            }
+        }
+        if len(matches) == 0 {
+            // No function-like macros found; look for object-like macros (bare identifiers)
+            // First, remove known attribute/calling convention macros that don't help with type parsing
+            knownAttrs := []string{"BGD_EXPORT_DATA_PROT", "BGD_STDCALL", "WINAPI", "__stdcall", "__cdecl"}
+            for _, attr := range knownAttrs {
+                // Match the macro with surrounding whitespace and remove it
+                reAttr := regexp.MustCompile(`\s*\b` + regexp.QuoteMeta(attr) + `\b\s*`)
+                if reAttr.MatchString(result) {
+                    result = reAttr.ReplaceAllString(result, " ")
+                    changed = true
+                }
+            }
+
+            if changed {
+                continue // Continue to next iteration to process remaining macros
+            }
+
+            // Pattern: uppercase identifier surrounded by word boundaries
+            reObj := regexp.MustCompile(`\b([A-Z][A-Z0-9_]*)\b`)
+            objMatches := reObj.FindAllStringSubmatchIndex(result, -1)
+            if len(objMatches) == 0 {
+                break
+            }
+
+            // Process matches in reverse to maintain string indices
+            found := false
+            for i := len(objMatches) - 1; i >= 0; i-- {
+                match := objMatches[i]
+                macroStart := match[0]
+                macroEnd := match[1]
+                macroNameStart := match[2]
+                macroNameEnd := match[3]
+
+                macroName := result[macroNameStart:macroNameEnd]
+
+                // Skip keywords that look like macros but aren't
+                if len(macroName) <= 2 || strings.HasPrefix(macroName, "_") {
+                    continue
+                }
+
+                // Look up macro definition
+                moduleTypedefsLock.RLock()
+                macroBody, exists := moduleTypedefs[alias][macroName]
+                moduleTypedefsLock.RUnlock()
+
+                // If not in moduleTypedefs, try moduleMacros
+                if !exists {
+                    moduleMacrosLock.RLock()
+                    macroBody, exists = moduleMacros[alias][macroName]
+                    moduleMacrosLock.RUnlock()
+                }
+
+                if !exists || macroBody == "" {
+                    continue
+                }
+
+                // Extract the body part from function-like macro definitions
+                expanded := macroBody
+                if strings.Contains(macroBody, macroName+"(") {
+                    // Function-like macro: extract the body after the parameter list
+                    reStart := regexp.MustCompile(regexp.QuoteMeta(macroName) + `\s*\([^)]*\)\s*`)
+                    matchIdxes := reStart.FindStringIndex(macroBody)
+                    if matchIdxes != nil {
+                        expanded = macroBody[matchIdxes[1]:]
+                    }
+                }
+
+                if debugAuto {
+                    fmt.Fprintf(os.Stderr, "[AUTO] Expanding object-like macro %s to: %q\n", macroName, expanded)
+                }
+
+                result = result[:macroStart] + expanded + result[macroEnd:]
+                changed = true
+                found = true
+                break // Restart from beginning due to index changes
+            }
+
+            if !found {
+                break
+            }
+        }
+
+        // Process matches in reverse to maintain string indices
+        for i := len(matches) - 1; i >= 0; i-- {
+            match := matches[i]
+            macroStart := match[0]
+            macroEnd := match[1]
+            macroNameStart := match[2]
+            macroNameEnd := match[3]
+
+            macroName := result[macroNameStart:macroNameEnd]
+
+            // Skip macros that are commonly attributes/empty (on Linux)
+            // These don't contribute to type information
+            if macroName == "BGD_STDCALL" || macroName == "__GNUC__" ||
+                macroName == "__attribute__" || macroName == "__declspec" {
+                continue
+            }
+
+            // Find matching closing paren
+            parenCount := 1
+            j := macroEnd
+            argStart := macroEnd
+
+            for j < len(result) && parenCount > 0 {
+                if result[j] == '(' {
+                    parenCount++
+                } else if result[j] == ')' {
+                    parenCount--
+                }
+                j++
+            }
+
+            if parenCount != 0 {
+                continue // Unmatched parens, skip
+            }
+
+            // Extract arguments
+            argText := strings.TrimSpace(result[argStart : j-1])
+
+            // Look up macro definition in moduleTypedefs or moduleMacros
+            moduleTypedefsLock.RLock()
+            macroBody, exists := moduleTypedefs[alias][macroName]
+            moduleTypedefsLock.RUnlock()
+
+            // If not in moduleTypedefs, try moduleMacros (function-like macros)
+            if !exists {
+                moduleMacrosLock.RLock()
+                macroBody, exists = moduleMacros[alias][macroName]
+                moduleMacrosLock.RUnlock()
+            }
+
+            if debugAuto && macroName == "BGD_DECLARE" && iteration == 1 {
+                fmt.Fprintf(os.Stderr, "[AUTO] Processing BGD_DECLARE: argText=%q, exists=%v, body=%q\n",
+                    argText, exists, macroBody)
+            }
+
+            if !exists || macroBody == "" {
+                continue // Not a known macro or empty, skip
+            }
+
+            // Extract the body part from the macro definition
+            // For function-like macros stored as "name(params) body"
+            // For object-like macros stored as just "body"
+            expanded := macroBody
+
+            // Check if this is a function-like macro by looking for the macro name
+            if strings.Contains(macroBody, macroName+"(") {
+                // Function-like macro: extract the body after the parameter list
+                // Pattern: name(params) body
+                reStart := regexp.MustCompile(regexp.QuoteMeta(macroName) + `\s*\([^)]*\)\s*`)
+                matches := reStart.FindStringIndex(macroBody)
+                if matches != nil {
+                    expanded = macroBody[matches[1]:]
+                }
+            }
+
+            // Try to identify parameter names in macro body
+            // Common patterns: rt, type, x, n, etc.
+            // For BGD_DECLARE: the parameter is "rt" (return type)
+            // Simple approach: replace bare word-boundary matches
+            tokens := strings.FieldsFunc(expanded, func(r rune) bool {
+                return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_'
+            })
+
+            // Replace parameter-like tokens in macro body
+            // Check for single-letter parameters or common names
+            for _, token := range tokens {
+                if len(token) == 1 && unicode.IsLetter(rune(token[0])) && token != "r" && token != "d" && token != "i" && token != "f" && token != "s" && token != "p" && token != "v" && token != "t" && token != "m" {
+                    // Single letter parameter like 'x' but avoid common letters in words
+                    // Replace as whole word
+                    repl := regexp.MustCompile(`\b` + regexp.QuoteMeta(token) + `\b`)
+                    expanded = repl.ReplaceAllString(expanded, argText)
+                } else if token == "rt" || token == "type" || token == "x" || token == "n" {
+                    // Common parameter names
+                    repl := regexp.MustCompile(`\b` + regexp.QuoteMeta(token) + `\b`)
+                    expanded = repl.ReplaceAllString(expanded, argText)
+                }
+            }
+
+            if debugAuto {
+                fmt.Fprintf(os.Stderr, "[AUTO] Expanding macro %s(%s) from %q to: %q\n", macroName, argText, macroBody, expanded)
+            }
+
+            // Replace macro call with expanded result
+            result = result[:macroStart] + expanded + result[j:]
+            changed = true
+            break // Restart from beginning due to index changes
+        }
+
+        if !changed {
+            break
+        }
+    }
+
+    return result
+}
+
 // parseFunctionSignatures extracts function signatures from header text
 // and auto-generates LIB declarations using the existing C parser
 func parseFunctionSignatures(text string, alias string) error {
+    // Preprocess: expand declaration macros
+    // This handles macros like BGD_DECLARE(type), resolves to actual type names
+    text = expandDeclarationMacros(text, alias)
+
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto && strings.Contains(text, "gdImageCreateTrueColor") {
+        idx := strings.Index(text, "gdImageCreateTrueColor")
+        start := idx - 100
+        if start < 0 {
+            start = 0
+        }
+        end := idx + 50
+        if end > len(text) {
+            end = len(text)
+        }
+        fmt.Fprintf(os.Stderr, "[AUTO] After macro expansion, gdImageCreateTrueColor context: %q\n",
+            text[start:end])
+    }
+
     // Pattern to match function declarations with simple regex:
     // Find return type + function name + opening paren
     // Then use character-by-character parser to handle nested parentheses in function pointers
@@ -4003,7 +4267,6 @@ func parseFunctionSignatures(text string, alias string) error {
         return nil
     }
 
-    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     warnAuto := os.Getenv("ZA_WARN_AUTO") != ""
 
     if debugAuto {

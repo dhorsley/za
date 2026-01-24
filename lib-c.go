@@ -1555,6 +1555,10 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         "int8_t", "int16_t", "int32_t", "int64_t",
         "ssize_t", "off_t", "pid_t", "time_t",
         "intptr_t", "ptrdiff_t":
+        // If it's a pointer, return as generic pointer
+        if isPointer {
+            return CPointer, baseType, nil // int*, long*, etc. → pointer
+        }
         // 8-bit signed integers
         if baseType == "int8_t" {
             return CInt8, baseType + " mapped to int8", nil
@@ -1590,6 +1594,10 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         "uint8_t", "uint16_t", "uint32_t", "uint64_t",
         "size_t", "uid_t", "gid_t", "mode_t",
         "uintptr_t":
+        // If it's a pointer, return as generic pointer
+        if isPointer {
+            return CPointer, baseType, nil // unsigned int*, size_t*, etc. → pointer
+        }
         // 8-bit unsigned integers
         if baseType == "uint8_t" {
             return CUInt8, baseType + " mapped to uint8", nil
@@ -1615,15 +1623,27 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         return CUInt, "", nil
 
     case "float":
+        if isPointer {
+            return CPointer, "float*", nil
+        }
         return CFloat, "", nil
 
     case "double":
+        if isPointer {
+            return CPointer, "double*", nil
+        }
         return CDouble, "", nil
 
     case "long double":
+        if isPointer {
+            return CPointer, "long double*", nil
+        }
         return CLongDouble, "", nil
 
     case "bool", "_Bool":
+        if isPointer {
+            return CPointer, "bool*", nil
+        }
         return CBool, "", nil
 
     case "wchar_t":
@@ -1645,11 +1665,17 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         if strings.HasPrefix(baseType, "enum ") ||
            strings.HasPrefix(baseType, "enum{") ||
            baseType == "enum" {
+            if isPointer {
+                return CPointer, baseType + "*", nil
+            }
             return CInt, "", nil
         }
 
         // Heuristic: types containing "uint" are likely unsigned integers
         if strings.Contains(strings.ToLower(baseType), "uint") {
+            if isPointer {
+                return CPointer, baseType + "*", nil
+            }
             return CUInt, baseType, nil
         }
 
