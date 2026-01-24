@@ -3879,12 +3879,16 @@ declarations):</p>
 <div class="sourceCode" id="cb174"><pre
 class="sourceCode c"><code class="sourceCode c"><span id="cb174-1"><a href="#cb174-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
 <span id="cb174-2"><a href="#cb174-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
-<span id="cb174-3"><a href="#cb174-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span></code></pre></div>
+<span id="cb174-3"><a href="#cb174-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span>
+<span id="cb174-4"><a href="#cb174-4" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span>
+<span id="cb174-5"><a href="#cb174-5" aria-hidden="true" tabindex="-1"></a>__declspec<span class="op">(</span>dllexport<span class="op">)</span> <span class="dt">void</span> exported_function<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span></code></pre></div>
 <ul>
 <li>Supports simple and pointer return types</li>
 <li>Supports multiline declarations</li>
 <li>Supports variadic functions (…)</li>
 <li>Supports extern and const qualifiers</li>
+<li>Supports declaration macros (export, visibility, calling
+conventions)</li>
 <li>Skips static inline, typedef, and private functions (_prefix)</li>
 </ul></li>
 <li><p><strong>Constants referencing earlier constants</strong>:</p>
@@ -4140,14 +4144,16 @@ lib c::free(ptr:pointer) -&gt; void
 
 len = strlen(&quot;hello&quot;)  # Requires manual LIB declaration above</code></pre>
 <p><strong>With AUTO:</strong></p>
-<pre class="za"><code>module &quot;libc.so.6&quot; as c auto
-use +c
+<pre class="za"><code>module &quot;libgd.so&quot; as gd auto
+use +gd
 
 # Functions automatically discovered from headers - no LIB needed!
-len = strlen(&quot;hello&quot;)       # Works automatically
-cmp = strcmp(&quot;a&quot;, &quot;b&quot;)      # Works automatically
-ptr = malloc(100)           # Works automatically
-free(ptr)                   # Works automatically</code></pre>
+image = gdImageCreateTrueColor(400, 300)  # Works automatically
+if not c_ptr_is_null(image)
+    gdImageDestroy(image)                  # Works automatically
+endif</code></pre>
+<p>(Note: Explicit header paths may be needed for libraries where the
+header filename doesn’t match the alias. See F.3.4 for details.)</p>
 <p><strong>What gets auto-discovered:</strong></p>
 <ul>
 <li>Simple functions: <code>int foo(int x);</code></li>
@@ -4157,11 +4163,22 @@ free(ptr)                   # Works automatically</code></pre>
 <li>Variadic functions:
 <code>int printf(const char *fmt, ...);</code></li>
 <li>Const/extern qualifiers: <code>extern size_t fread(...);</code></li>
+<li><strong>Declaration macros in function signatures</strong> (e.g.,
+<code>BGD_DECLARE(type) function(...);</code>,
+<code>__declspec(dllexport) void func(...);</code>)
+<ul>
+<li>Macros are expanded before parsing to correctly identify return
+types</li>
+<li>Supports export/calling-convention macros from libraries like libgd
+and Windows DLLs</li>
+<li>Enables proper type inference for wrapped return types</li>
+</ul></li>
 </ul>
 <p><strong>What gets skipped:</strong></p>
 <ul>
 <li><code>typedef</code> statements</li>
-<li><code>#define</code> macros</li>
+<li>Object-like <code>#define</code> constants (handled separately in
+constants section)</li>
 <li><code>static inline</code> functions</li>
 <li>Functions starting with <code>_</code> (considered private)</li>
 </ul>
@@ -4174,7 +4191,95 @@ use +c
 lib c::strlen(s:string) -&gt; int   # Override: use int instead of int64
 
 len = strlen(&quot;hello&quot;)  # Uses our override signature</code></pre>
-<h3 id="f.3.7-error-handling">F.3.7 Error Handling</h3>
+<h3 id="f.3.7-declaration-macros">F.3.7 Declaration Macros</h3>
+<p>Many C libraries use declaration macros to wrap function signatures
+with platform-specific attributes (calling conventions, visibility,
+export decorators, etc.). Za’s AUTO clause automatically expands these
+macros to correctly identify the actual return types.</p>
+<p><strong>Examples of declaration macros:</strong></p>
+<table>
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 18%" />
+<col style="width: 31%" />
+<col style="width: 26%" />
+</colgroup>
+<thead>
+<tr>
+<th>Library</th>
+<th>Macro</th>
+<th>Definition</th>
+<th>Used For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>libgd</td>
+<td><code>BGD_DECLARE(type)</code></td>
+<td>Expands to platform-specific export qualifiers</td>
+<td>Export control on different platforms</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td><code>__declspec(dllexport)</code></td>
+<td>Windows DLL export decorator</td>
+<td>DLL symbol visibility</td>
+</tr>
+<tr>
+<td>GCC/POSIX</td>
+<td><code>__attribute__((visibility(...)))</code></td>
+<td>Visibility control</td>
+<td>Symbol visibility management</td>
+</tr>
+<tr>
+<td>POSIX</td>
+<td><code>WINAPI</code>, <code>__stdcall</code></td>
+<td>Calling conventions</td>
+<td>Function calling convention specifiers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Problem without macro expansion:</strong></p>
+<div class="sourceCode" id="cb187"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb187-1"><a href="#cb187-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
+<span id="cb187-2"><a href="#cb187-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
+<span id="cb187-3"><a href="#cb187-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
+<p>Without expansion, Za would see this as:</p>
+<pre><code>gdImageCreateTrueColor(...) -&gt; void    # WRONG: No visible return type!</code></pre>
+<p><strong>Solution with AUTO (macro expansion enabled):</strong></p>
+<p>Za automatically expands the <code>BGD_DECLARE</code> macro, then
+correctly parses:</p>
+<pre><code>gdImageCreateTrueColor(...) -&gt; void*&lt;gdImagePtr*&gt;   # CORRECT: Pointer return type identified</code></pre>
+<p><strong>How it works:</strong></p>
+<ol type="1">
+<li>AUTO scans for macro calls in function declarations (e.g.,
+<code>MACRO_NAME(...) function_name(...)</code>)</li>
+<li>Looks up the macro definition from the parsed header</li>
+<li>Substitutes parameters (e.g., <code>type</code> →
+<code>gdImagePtr</code>)</li>
+<li>Recursively expands any nested macros</li>
+<li>Parses the expanded declaration to extract the real return type</li>
+</ol>
+<p><strong>Real-world example:</strong></p>
+<pre class="za"><code>module &quot;libgd.so&quot; as gd auto
+use +gd
+
+# AUTO automatically handles BGD_DECLARE(gdImagePtr) expansion
+# No manual LIB declaration needed - return type is correctly identified as pointer
+image = gdImageCreateTrueColor(400, 300)
+
+if c_ptr_is_null(image)
+    panic(&quot;Failed to create image&quot;)
+endif</code></pre>
+<p><strong>Limitations:</strong></p>
+<ul>
+<li>Macro expansion is limited to function-like macros in function
+declarations</li>
+<li>Forward references in macro definitions are not supported</li>
+<li>Circular macro references are prevented (max 500 expansion
+iterations)</li>
+</ul>
+<h3 id="f.3.8-error-handling">F.3.8 Error Handling</h3>
 <p>If AUTO cannot find or parse headers:</p>
 <ul>
 <li>A <strong>warning</strong> is printed to stderr</li>
@@ -4184,61 +4289,64 @@ len = strlen(&quot;hello&quot;)  # Uses our override signature</code></pre>
 <pre><code>Warning: failed to parse headers for png: header file not found
   Searched: /usr/include/png.h, /usr/local/include/png.h, ...
   Hint: Specify explicit path: module &quot;libpng.so&quot; as png auto &quot;/path/to/png.h&quot;</code></pre>
-<h3 id="f.3.8-complete-example">F.3.8 Complete Example</h3>
-<pre class="za"><code># Load libpng with automatic header parsing
-module &quot;libpng.so.16&quot; as png auto
-use +png
+<h3 id="f.3.9-complete-example">F.3.9 Complete Example</h3>
+<pre class="za"><code># Load libgd with automatic header parsing
+# Header auto-discovery finds /usr/include/gd.h
+module &quot;libgd.so&quot; as gd auto
+use +gd
 
 # No LIB declarations needed - AUTO discovers function signatures!
-# Constants and functions automatically available from png.h
+# Constants and functions automatically available from gd.h
 
-def create_png_reader()
-    # PNG_LIBPNG_VER_STRING, PNG_COLOR_TYPE_RGB, etc. are auto-discovered constants
-    # png_create_read_struct is auto-discovered function (no LIB needed)
-    ver = PNG_LIBPNG_VER_STRING
-    rs = png_create_read_struct(ver, c_null(), c_null(), c_null())
+def create_image(width:int, height:int)
+    # gdImageCreateTrueColor is auto-discovered function (no LIB needed)
+    # Return type correctly identified as gdImagePtr despite BGD_DECLARE wrapper
+    image = gdImageCreateTrueColor(width, height)
 
-    if c_ptr_is_null(rs)
-        panic(&quot;Failed to create PNG read struct&quot;)
+    if c_ptr_is_null(image)
+        panic(&quot;Failed to create image&quot;)
     endif
 
-    return rs
+    return image
 end
 
-def cleanup_png_reader(rs, ps, is)
-    # png_destroy_read_struct is also auto-discovered
-    png_destroy_read_struct(rs, ps, is)
-end</code></pre>
-<h3 id="f.3.9-benefits-over-manual-constants-and-lib-declarations">F.3.9
+def cleanup_image(image)
+    # gdImageDestroy is also auto-discovered
+    gdImageDestroy(image)
+end
+
+# Usage
+img = create_image(640, 480)
+println &quot;Image created: 640x480&quot;
+cleanup_image(img)
+println &quot;Image destroyed&quot;</code></pre>
+<h3
+id="f.3.10-benefits-over-manual-constants-and-lib-declarations">F.3.10
 Benefits Over Manual Constants and LIB Declarations</h3>
 <p><strong>Before AUTO (manual constants and LIB
 declarations):</strong></p>
-<pre class="za"><code>module &quot;libpng.so.16&quot; as png
-use +png
+<pre class="za"><code>module &quot;libgd.so&quot; as gd
+use +gd
 
 # Must manually declare every constant
-PNG_COLOR_TYPE_GRAY = 0
-PNG_COLOR_TYPE_RGB = 2
-PNG_COLOR_TYPE_RGBA = 6
-PNG_INTERLACE_NONE = 0
-PNG_INTERLACE_ADAM7 = 1
-# ... dozens more ...
+GD_TRUE = 1
+GD_FALSE = 0
 
 # Must manually declare every function signature
-lib png::png_create_read_struct(ver:string, err:ptr, warn:ptr, user:ptr) -&gt; ptr
-lib png::png_create_info_struct(png:ptr) -&gt; ptr
-lib png::png_destroy_read_struct(png:ptr, info:ptr, end:ptr) -&gt; void
-lib png::png_read_info(png:ptr, info:ptr) -&gt; void
-lib png::png_read_image(png:ptr, rows:ptr) -&gt; void
+lib gd::gdImageCreateTrueColor(sx:int, sy:int) -&gt; pointer
+lib gd::gdImageDestroy(im:pointer) -&gt; void
+lib gd::gdImageColorAllocate(im:pointer, r:int, g:int, b:int) -&gt; int
+lib gd::gdImageFill(im:pointer, x:int, y:int, col:int) -&gt; void
 # ... dozens more ...</code></pre>
 <p><strong>After AUTO (everything automatic):</strong></p>
-<pre class="za"><code>module &quot;libpng.so.16&quot; as png auto
-use +png
+<pre class="za"><code>module &quot;libgd.so&quot; as gd auto
+use +gd
 
 # All constants and functions automatically available!
-color = PNG_COLOR_TYPE_RGB
-rs = png_create_read_struct(PNG_LIBPNG_VER_STRING, c_null(), c_null(), c_null())
-info = png_create_info_struct(rs)
+# GD_TRUE, GD_FALSE, etc. auto-discovered
+# gdImageCreateTrueColor, gdImageDestroy, etc. auto-discovered
+image = gdImageCreateTrueColor(400, 300)
+gdImageDestroy(image)
 # ... etc - no manual declarations needed!</code></pre>
 <p><strong>Summary of benefits:</strong></p>
 <ul>
@@ -7022,8 +7130,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb292"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb292-1"><a href="#cb292-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb296"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb296-1"><a href="#cb296-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
