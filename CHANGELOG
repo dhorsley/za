@@ -61,6 +61,36 @@ library changes
       - c_new_string(string)
       - c_set_string(ptr,string)
 
+  * added complete set of memory write functions for C buffers (21 new functions)
+      - integer setters for standard pointers:
+          * c_set_uint16(ptr, offset, value) - writes 16-bit unsigned integer to buffer
+          * c_set_int16(ptr, offset, value) - writes 16-bit signed integer to buffer
+          * c_set_uint32(ptr, offset, value) - writes 32-bit unsigned integer to buffer
+          * c_set_int32(ptr, offset, value) - writes 32-bit signed integer to buffer
+          * c_set_uint64(ptr, offset, value) - writes 64-bit unsigned integer to buffer
+          * c_set_int64(ptr, offset, value) - writes 64-bit signed integer to buffer
+      - integer setters for opaque pointers (int64 addresses):
+          * c_set_byte_at_addr(address, offset, value) - writes byte at int64 address + offset
+          * c_set_uint16_at_addr(address, offset, value) - writes 16-bit unsigned int at int64 address + offset
+          * c_set_int16_at_addr(address, offset, value) - writes 16-bit signed int at int64 address + offset
+          * c_set_uint32_at_addr(address, offset, value) - writes 32-bit unsigned int at int64 address + offset
+          * c_set_int32_at_addr(address, offset, value) - writes 32-bit signed int at int64 address + offset
+          * c_set_uint64_at_addr(address, offset, value) - writes 64-bit unsigned int at int64 address + offset
+          * c_set_int64_at_addr(address, offset, value) - writes 64-bit signed int at int64 address + offset
+      - floating-point access for standard pointers:
+          * c_get_float(ptr, offset) - reads 32-bit float from buffer
+          * c_set_float(ptr, offset, value) - writes 32-bit float to buffer
+          * c_get_double(ptr, offset) - reads 64-bit double from buffer
+          * c_set_double(ptr, offset, value) - writes 64-bit double to buffer
+      - floating-point access for opaque pointers (int64 addresses):
+          * c_get_float_at_addr(address, offset) - reads 32-bit float at int64 address + offset
+          * c_set_float_at_addr(address, offset, value) - writes 32-bit float at int64 address + offset
+          * c_get_double_at_addr(address, offset) - reads 64-bit double at int64 address + offset
+          * c_set_double_at_addr(address, offset, value) - writes 64-bit double at int64 address + offset
+      - provides complete symmetric read/write access to all primitive C types in memory buffers
+      - essential for struct field manipulation, data marshaling, and direct memory operations
+      - fully compatible with C shared libraries (glibc, OpenGL, SDL, PNG, FreeType, etc.)
+
 language changes
 ----------------
 

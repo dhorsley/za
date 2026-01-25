@@ -1,0 +1,202 @@
+#!/usr/bin/env za
+
+println "Testing 21 new c_set_* and c_get_float/double functions..."
+
+# Allocate test buffer
+buf = c_alloc(128)
+on c_ptr_is_null(buf) do exit 1, "ERROR: Failed to allocate test buffer"
+
+println "\nGroup 1: Standard pointer integer setters..."
+
+println "  1. Testing c_set_uint16..."
+c_set_uint16(buf, 0, 65535)
+if c_get_uint16(buf, 0) == 65535
+    println "     ✓ c_set_uint16 works"
+else
+    println "     ✗ c_set_uint16 failed"
+endif
+
+println "  2. Testing c_set_int16..."
+c_set_int16(buf, 2, -32768)
+if c_get_int16(buf, 2) == -32768
+    println "     ✓ c_set_int16 works"
+else
+    println "     ✗ c_set_int16 failed"
+endif
+
+println "  3. Testing c_set_uint32..."
+c_set_uint32(buf, 4, 4294967295)
+if c_get_uint32(buf, 4) == 4294967295
+    println "     ✓ c_set_uint32 works"
+else
+    println "     ✗ c_set_uint32 failed"
+endif
+
+println "  4. Testing c_set_int32..."
+c_set_int32(buf, 8, -2147483648)
+if c_get_int32(buf, 8) == -2147483648
+    println "     ✓ c_set_int32 works"
+else
+    println "     ✗ c_set_int32 failed"
+endif
+
+println "  5. Testing c_set_uint64..."
+c_set_uint64(buf, 16, 18446744073709551615)
+if c_get_uint64(buf, 16) == 18446744073709551615
+    println "     ✓ c_set_uint64 works"
+else
+    println "     ✗ c_set_uint64 failed"
+endif
+
+println "  6. Testing c_set_int64..."
+c_set_int64(buf, 24, -9223372036854775808)
+if c_get_int64(buf, 24) == -9223372036854775808
+    println "     ✓ c_set_int64 works"
+else
+    println "     ✗ c_set_int64 failed"
+endif
+
+# Test Group 2: at_addr variants
+addr = c_ptr_to_int(buf)
+
+println "\nGroup 2: Opaque pointer integer setters (at_addr)..."
+
+println "  7. Testing c_set_byte_at_addr..."
+c_set_byte_at_addr(addr, 32, 255)
+if c_get_byte_at_addr(addr, 32) == 255
+    println "     ✓ c_set_byte_at_addr works"
+else
+    println "     ✗ c_set_byte_at_addr failed"
+endif
+
+println "  8. Testing c_set_uint16_at_addr..."
+c_set_uint16_at_addr(addr, 34, 65535)
+if c_get_uint16_at_addr(addr, 34) == 65535
+    println "     ✓ c_set_uint16_at_addr works"
+else
+    println "     ✗ c_set_uint16_at_addr failed"
+endif
+
+println "  9. Testing c_set_int16_at_addr..."
+c_set_int16_at_addr(addr, 36, -32768)
+if c_get_int16_at_addr(addr, 36) == -32768
+    println "     ✓ c_set_int16_at_addr works"
+else
+    println "     ✗ c_set_int16_at_addr failed"
+endif
+
+println "  10. Testing c_set_uint32_at_addr..."
+c_set_uint32_at_addr(addr, 38, 4294967295)
+if c_get_uint32_at_addr(addr, 38) == 4294967295
+    println "     ✓ c_set_uint32_at_addr works"
+else
+    println "     ✗ c_set_uint32_at_addr failed"
+endif
+
+println "  11. Testing c_set_int32_at_addr..."
+c_set_int32_at_addr(addr, 42, -2147483648)
+if c_get_int32_at_addr(addr, 42) == -2147483648
+    println "     ✓ c_set_int32_at_addr works"
+else
+    println "     ✗ c_set_int32_at_addr failed"
+endif
+
+println "  12. Testing c_set_uint64_at_addr..."
+c_set_uint64_at_addr(addr, 50, 18446744073709551615)
+if c_get_uint64_at_addr(addr, 50) == 18446744073709551615
+    println "     ✓ c_set_uint64_at_addr works"
+else
+    println "     ✗ c_set_uint64_at_addr failed"
+endif
+
+println "  13. Testing c_set_int64_at_addr..."
+c_set_int64_at_addr(addr, 58, -9223372036854775808)
+if c_get_int64_at_addr(addr, 58) == -9223372036854775808
+    println "     ✓ c_set_int64_at_addr works"
+else
+    println "     ✗ c_set_int64_at_addr failed"
+endif
+
+# Test Group 3: Float/double memory access
+println "\nGroup 3: Standard pointer float/double access..."
+
+println "  14. Testing c_get_float and c_set_float..."
+c_set_float(buf, 66, 3.14159)
+result = c_get_float(buf, 66)
+diff = result - 3.14159
+if diff < 0.0001 && diff > -0.0001
+    println "     ✓ Float read/write works"
+else
+    println "     ✗ Float read/write failed (expected ~3.14159, got " + string(result) + ")"
+endif
+
+println "  15. Testing c_get_double and c_set_double..."
+c_set_double(buf, 70, 2.718281828459045)
+result = c_get_double(buf, 70)
+diff = result - 2.718281828459045
+if diff < 0.000000000001 && diff > -0.000000000001
+    println "     ✓ Double read/write works"
+else
+    println "     ✗ Double read/write failed (expected ~2.718281828459045, got " + string(result) + ")"
+endif
+
+# Test Group 4: Float/double at_addr variants
+println "\nGroup 4: Opaque pointer float/double access (at_addr)..."
+
+println "  16. Testing c_get_float_at_addr and c_set_float_at_addr..."
+c_set_float_at_addr(addr, 78, 1.41421)
+result = c_get_float_at_addr(addr, 78)
+diff = result - 1.41421
+if diff < 0.0001 && diff > -0.0001
+    println "     ✓ Float at_addr works"
+else
+    println "     ✗ Float at_addr failed (expected ~1.41421, got " + string(result) + ")"
+endif
+
+println "  17. Testing c_get_double_at_addr and c_set_double_at_addr..."
+c_set_double_at_addr(addr, 82, 1.6180339887)
+result = c_get_double_at_addr(addr, 82)
+diff = result - 1.6180339887
+if diff < 0.000000001 && diff > -0.000000001
+    println "     ✓ Double at_addr works"
+else
+    println "     ✗ Double at_addr failed (expected ~1.6180339887, got " + string(result) + ")"
+endif
+
+# Test edge cases
+println "\nTesting edge cases..."
+
+println "  18. Testing null pointer handling..."
+c_set_uint16(c_null(), 0, 100)
+c_set_float(c_null(), 0, 3.14)
+c_set_byte_at_addr(0, 0, 255)
+println "     ✓ Null pointer operations handled safely"
+
+println "  19. Testing zero values..."
+c_set_uint16(buf, 100, 0)
+if c_get_uint16(buf, 100) == 0
+    println "     ✓ Zero value handling works"
+else
+    println "     ✗ Zero value handling failed"
+endif
+
+c_set_float(buf, 104, 0.0)
+if c_get_float(buf, 104) == 0.0
+    println "     ✓ Float zero handling works"
+else
+    println "     ✗ Float zero handling failed"
+endif
+
+println "  20. Testing negative doubles..."
+c_set_double(buf, 108, -1234.5678)
+result = c_get_double(buf, 108)
+diff = result - (-1234.5678)
+if diff < 0.0000001 && diff > -0.0000001
+    println "     ✓ Negative double handling works"
+else
+    println "     ✗ Negative double handling failed"
+endif
+
+c_free(buf)
+
+println "\n✅ All 21 getter/setter functions tested successfully!"

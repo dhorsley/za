@@ -637,6 +637,54 @@ func CSetByte(p *CPointerValue, offset int, value byte) {
     }
 }
 
+// CSetUint16 writes a uint16 at an offset in a buffer
+func CSetUint16(p *CPointerValue, offset int, value uint16) {
+    if p != nil && p.Ptr != nil {
+        uint16Ptr := (*uint16)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *uint16Ptr = value
+    }
+}
+
+// CSetInt16 writes an int16 at an offset in a buffer
+func CSetInt16(p *CPointerValue, offset int, value int16) {
+    if p != nil && p.Ptr != nil {
+        int16Ptr := (*int16)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *int16Ptr = value
+    }
+}
+
+// CSetUint32 writes a uint32 at an offset in a buffer
+func CSetUint32(p *CPointerValue, offset int, value uint32) {
+    if p != nil && p.Ptr != nil {
+        uint32Ptr := (*uint32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *uint32Ptr = value
+    }
+}
+
+// CSetInt32 writes an int32 at an offset in a buffer
+func CSetInt32(p *CPointerValue, offset int, value int32) {
+    if p != nil && p.Ptr != nil {
+        int32Ptr := (*int32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *int32Ptr = value
+    }
+}
+
+// CSetUint64 writes a uint64 at an offset in a buffer
+func CSetUint64(p *CPointerValue, offset int, value uint64) {
+    if p != nil && p.Ptr != nil {
+        uint64Ptr := (*uint64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *uint64Ptr = value
+    }
+}
+
+// CSetInt64 writes an int64 at an offset in a buffer
+func CSetInt64(p *CPointerValue, offset int, value int64) {
+    if p != nil && p.Ptr != nil {
+        int64Ptr := (*int64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *int64Ptr = value
+    }
+}
+
 // CGetByte reads a byte at an offset in a buffer
 func CGetByte(p *CPointerValue, offset int) byte {
     if p != nil && p.Ptr != nil {
@@ -762,6 +810,130 @@ func CGetInt64AtAddr(addr int64, offset int) int64 {
         return *int64Ptr
     }
     return 0
+}
+
+// CSetByteAtAddr writes a byte at an int64 address + offset
+func CSetByteAtAddr(addr int64, offset int, value byte) {
+    if addr != 0 {
+        bytePtr := (*byte)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *bytePtr = value
+    }
+}
+
+// CSetUint16AtAddr writes a uint16 at an int64 address + offset
+func CSetUint16AtAddr(addr int64, offset int, value uint16) {
+    if addr != 0 {
+        uint16Ptr := (*uint16)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *uint16Ptr = value
+    }
+}
+
+// CSetInt16AtAddr writes an int16 at an int64 address + offset
+func CSetInt16AtAddr(addr int64, offset int, value int16) {
+    if addr != 0 {
+        int16Ptr := (*int16)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *int16Ptr = value
+    }
+}
+
+// CSetUint32AtAddr writes a uint32 at an int64 address + offset
+func CSetUint32AtAddr(addr int64, offset int, value uint32) {
+    if addr != 0 {
+        uint32Ptr := (*uint32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *uint32Ptr = value
+    }
+}
+
+// CSetInt32AtAddr writes an int32 at an int64 address + offset
+func CSetInt32AtAddr(addr int64, offset int, value int32) {
+    if addr != 0 {
+        int32Ptr := (*int32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *int32Ptr = value
+    }
+}
+
+// CSetUint64AtAddr writes a uint64 at an int64 address + offset
+func CSetUint64AtAddr(addr int64, offset int, value uint64) {
+    if addr != 0 {
+        uint64Ptr := (*uint64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *uint64Ptr = value
+    }
+}
+
+// CSetInt64AtAddr writes an int64 at an int64 address + offset
+func CSetInt64AtAddr(addr int64, offset int, value int64) {
+    if addr != 0 {
+        int64Ptr := (*int64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *int64Ptr = value
+    }
+}
+
+// CGetFloat reads a float32 at an offset in a buffer and returns as float64
+func CGetFloat(p *CPointerValue, offset int) float64 {
+    if p != nil && p.Ptr != nil {
+        floatPtr := (*float32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return float64(*floatPtr)
+    }
+    return 0.0
+}
+
+// CSetFloat writes a float64 as float32 at an offset in a buffer
+func CSetFloat(p *CPointerValue, offset int, value float64) {
+    if p != nil && p.Ptr != nil {
+        floatPtr := (*float32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *floatPtr = float32(value)
+    }
+}
+
+// CGetDouble reads a float64 at an offset in a buffer
+func CGetDouble(p *CPointerValue, offset int) float64 {
+    if p != nil && p.Ptr != nil {
+        doublePtr := (*float64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        return *doublePtr
+    }
+    return 0.0
+}
+
+// CSetDouble writes a float64 at an offset in a buffer
+func CSetDouble(p *CPointerValue, offset int, value float64) {
+    if p != nil && p.Ptr != nil {
+        doublePtr := (*float64)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+        *doublePtr = value
+    }
+}
+
+// CGetFloatAtAddr reads a float32 at an int64 address + offset and returns as float64
+func CGetFloatAtAddr(addr int64, offset int) float64 {
+    if addr != 0 {
+        floatPtr := (*float32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return float64(*floatPtr)
+    }
+    return 0.0
+}
+
+// CSetFloatAtAddr writes a float64 as float32 at an int64 address + offset
+func CSetFloatAtAddr(addr int64, offset int, value float64) {
+    if addr != 0 {
+        floatPtr := (*float32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *floatPtr = float32(value)
+    }
+}
+
+// CGetDoubleAtAddr reads a float64 at an int64 address + offset
+func CGetDoubleAtAddr(addr int64, offset int) float64 {
+    if addr != 0 {
+        doublePtr := (*float64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        return *doublePtr
+    }
+    return 0.0
+}
+
+// CSetDoubleAtAddr writes a float64 at an int64 address + offset
+func CSetDoubleAtAddr(addr int64, offset int, value float64) {
+    if addr != 0 {
+        doublePtr := (*float64)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+        *doublePtr = value
+    }
 }
 
 // CGetDataSymbol reads a data symbol value from a loaded C library

@@ -76,6 +76,24 @@ func CFreePtr(p *CPointerValue) {
 func CSetByte(p *CPointerValue, offset int, value byte) {
 }
 
+func CSetUint16(p *CPointerValue, offset int, value uint16) {
+}
+
+func CSetInt16(p *CPointerValue, offset int, value int16) {
+}
+
+func CSetUint32(p *CPointerValue, offset int, value uint32) {
+}
+
+func CSetInt32(p *CPointerValue, offset int, value int32) {
+}
+
+func CSetUint64(p *CPointerValue, offset int, value uint64) {
+}
+
+func CSetInt64(p *CPointerValue, offset int, value int64) {
+}
+
 func CGetByte(p *CPointerValue, offset int) byte {
     return 0
 }
@@ -130,6 +148,55 @@ func CGetUint64AtAddr(addr int64, offset int) uint64 {
 
 func CGetInt64AtAddr(addr int64, offset int) int64 {
     return 0
+}
+
+func CSetByteAtAddr(addr int64, offset int, value byte) {
+}
+
+func CSetUint16AtAddr(addr int64, offset int, value uint16) {
+}
+
+func CSetInt16AtAddr(addr int64, offset int, value int16) {
+}
+
+func CSetUint32AtAddr(addr int64, offset int, value uint32) {
+}
+
+func CSetInt32AtAddr(addr int64, offset int, value int32) {
+}
+
+func CSetUint64AtAddr(addr int64, offset int, value uint64) {
+}
+
+func CSetInt64AtAddr(addr int64, offset int, value int64) {
+}
+
+func CGetFloat(p *CPointerValue, offset int) float64 {
+    return 0.0
+}
+
+func CSetFloat(p *CPointerValue, offset int, value float64) {
+}
+
+func CGetDouble(p *CPointerValue, offset int) float64 {
+    return 0.0
+}
+
+func CSetDouble(p *CPointerValue, offset int, value float64) {
+}
+
+func CGetFloatAtAddr(addr int64, offset int) float64 {
+    return 0.0
+}
+
+func CSetFloatAtAddr(addr int64, offset int, value float64) {
+}
+
+func CGetDoubleAtAddr(addr int64, offset int) float64 {
+    return 0.0
+}
+
+func CSetDoubleAtAddr(addr int64, offset int, value float64) {
 }
 
 func CGetDataSymbol(libName, symbolName string) (any, error) {

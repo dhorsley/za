@@ -5033,9 +5033,186 @@ path = c::getenv(&quot;PATH&quot;)</code></pre>
 Za types and C types. Strings become <code>char*</code>, integers map to
 appropriate C integer types, and floats/doubles are preserved. Pointers
 remain opaque.</p>
+<h2 id="f.5.2-working-with-opaque-pointers-as-int64-addresses">F.5.2
+Working with Opaque Pointers as int64 Addresses</h2>
+<p>When FFI functions return opaque pointers (like
+<code>FT_Library</code> from FreeType or <code>png_structp</code> from
+libpng), Za represents them as <code>int64</code> values rather than
+<code>CPointerValue</code> objects. This is necessary because opaque
+types cannot be materialized as concrete Za objects.</p>
+<p>The memory access functions (<code>c_get_uint32</code>,
+<code>c_get_int32</code>, etc.) require a <code>CPointerValue</code> as
+the first parameter, which means you cannot directly use them with these
+opaque pointer values. To solve this, Za provides a parallel set of
+memory access functions that work directly with <code>int64</code>
+addresses.</p>
+<h3 id="the-problem-and-solution">The Problem and Solution</h3>
+<p><strong>The Problem:</strong></p>
+<pre class="za"><code># Opaque pointer returned as int64 (from FreeType library)
+library_handle = FT_Init_FreeType(mut ft_library)  # Returns int64
+face_handle = FT_New_Face(library_handle, font_path, 0, mut face)  # Returns int64
+
+# Calculate struct field offset
+glyph_slot_ptr = face_handle + 16  # Valid arithmetic, still int64
+
+# But this fails - c_get_uint32 expects a CPointerValue, not int64:
+bitmap_width = c_get_uint32(glyph_slot_ptr, 4)  # ERROR!</code></pre>
+<p><strong>The Solution:</strong> Use the <code>*_at_addr</code>
+functions that accept <code>int64</code> addresses directly:</p>
+<pre class="za"><code># Same calculation as above
+glyph_slot_ptr = face_handle + 16
+
+# Now this works - c_get_uint32_at_addr accepts int64:
+bitmap_width = c_get_uint32_at_addr(glyph_slot_ptr, 4)  # OK!</code></pre>
+<h3 id="available-_at_addr-functions">Available <code>*_at_addr</code>
+Functions</h3>
+<p>All 21 <code>*_at_addr</code> functions follow the same pattern and
+work with opaque pointers (int64 addresses):</p>
+<p><strong>Read functions</strong> - signature:
+<code>function_name(address:int64, offset:int) -&gt; type</code> -
+<code>c_get_byte_at_addr(address, offset)</code> → int -
+<code>c_get_uint16_at_addr(address, offset)</code> → int -
+<code>c_get_int16_at_addr(address, offset)</code> → int -
+<code>c_get_uint32_at_addr(address, offset)</code> → int -
+<code>c_get_int32_at_addr(address, offset)</code> → int -
+<code>c_get_uint64_at_addr(address, offset)</code> → uint -
+<code>c_get_int64_at_addr(address, offset)</code> → int -
+<code>c_get_float_at_addr(address, offset)</code> → float -
+<code>c_get_double_at_addr(address, offset)</code> → float</p>
+<p><strong>Write functions</strong> - signature:
+<code>function_name(address:int64, offset:int, value:type)</code> -
+<code>c_set_byte_at_addr(address, offset, value)</code> - writes byte -
+<code>c_set_uint16_at_addr(address, offset, value)</code> - writes
+uint16 - <code>c_set_int16_at_addr(address, offset, value)</code> -
+writes int16 - <code>c_set_uint32_at_addr(address, offset, value)</code>
+- writes uint32 -
+<code>c_set_int32_at_addr(address, offset, value)</code> - writes int32
+- <code>c_set_uint64_at_addr(address, offset, value)</code> - writes
+uint64 - <code>c_set_int64_at_addr(address, offset, value)</code> -
+writes int64 - <code>c_set_float_at_addr(address, offset, value)</code>
+- writes 32-bit float -
+<code>c_set_double_at_addr(address, offset, value)</code> - writes
+64-bit double</p>
+<p>All functions: - Accept an <code>int64</code> address (from opaque
+pointers) - Accept an <code>int</code> offset (byte offset within the
+structure) - Return the same types as their <code>CPointerValue</code>
+counterparts (see F.6) - Perform address validation (return 0 or no-op
+if address is null) - Are fully compatible with C shared libraries
+(glibc, OpenGL, SDL, FreeType, libpng, etc.)</p>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li><strong>Use <code>*_at_addr</code> functions</strong>: When working
+with opaque pointers (int64) returned from FFI calls</li>
+<li><strong>Use regular <code>c_get_*</code> / <code>c_set_*</code>
+functions</strong>: When working with pointers from
+<code>c_alloc()</code> or other <code>CPointerValue</code> sources (see
+F.6)</li>
+<li><strong>Use <code>mut</code> keyword</strong>: For AUTO-registered
+structs that C functions will modify</li>
+</ul>
+<h3 id="real-world-example-accessing-nested-struct-fields">Real-World
+Example: Accessing Nested Struct Fields</h3>
+<p>This example demonstrates reading nested struct fields through opaque
+pointers in FreeType:</p>
+<pre class="za"><code>module &quot;libfreetype.so.6&quot; as ft auto
+use +ft
+
+# Initialize FreeType (returns opaque FT_Library handle as int64)
+library_ptr = c_alloc(8)
+ft_error = FT_Init_FreeType(library_ptr)
+ft_library = c_get_int64(library_ptr, 0)  # Extract int64 from buffer
+c_free(library_ptr)
+
+# Load font (returns opaque FT_Face handle as int64)
+face_ptr = c_alloc(8)
+ft_error = FT_New_Face(ft_library, &quot;/usr/share/fonts/TTF/font.ttf&quot;, 0, face_ptr)
+ft_face = c_get_int64(face_ptr, 0)
+c_free(face_ptr)
+
+# Load a glyph for character &#39;A&#39;
+FT_Load_Char(ft_face, 65, 4)  # 4 = FT_LOAD_RENDER
+
+# Navigate opaque struct to get bitmap dimensions
+# FT_Face-&gt;glyph offset is 16 bytes
+glyph_slot_ptr = ft_face + 16
+
+# FT_GlyphSlot-&gt;bitmap is at offset 216 bytes
+bitmap_ptr = glyph_slot_ptr + 216
+
+# Read bitmap metadata using *_at_addr functions
+bitmap_height = c_get_uint32_at_addr(bitmap_ptr, 0)      # rows field
+bitmap_width = c_get_uint32_at_addr(bitmap_ptr, 4)       # width field
+bitmap_pitch = c_get_int32_at_addr(bitmap_ptr, 8)        # pitch field
+bitmap_buffer = c_get_int64_at_addr(bitmap_ptr, 16)      # buffer field (void*)
+
+# Read pixel data from the bitmap buffer
+for row = 0 to bitmap_height - 1
+    for col = 0 to bitmap_width - 1
+        offset = row * bitmap_pitch + col
+        pixel = c_get_byte_at_addr(bitmap_buffer, offset)
+        if pixel &gt; 0
+            println &quot;Pixel ({col}, {row}): {pixel}&quot;
+        endif
+    endfor
+endfor</code></pre>
+<h3 id="why-this-is-necessary">Why This Is Necessary</h3>
+<ol type="1">
+<li><p><strong>Opaque Types</strong>: Many C libraries use opaque
+pointers that have no C definition available. Za cannot create
+<code>CPointerValue</code> wrappers for types it doesn’t know.</p></li>
+<li><p><strong>Void Pointers</strong>: Return types like
+<code>void*</code> or library-specific types like
+<code>png_structp</code> are represented as <code>int64</code> for
+safety and consistency.</p></li>
+<li><p><strong>Memory Navigation</strong>: Once you have an opaque
+pointer, you need to perform arithmetic to navigate to nested struct
+fields, read values at known byte offsets, and pass calculated addresses
+to other functions.</p></li>
+<li><p><strong>Direct Field Access</strong>: C libraries provide
+accessor macros or documentation specifying byte offsets. The
+<code>*_at_addr</code> functions let you use this information directly
+without creating intermediate C structures.</p></li>
+</ol>
+<h3 id="common-access-patterns">Common Access Patterns</h3>
+<p><strong>Pattern 1: Nested struct access</strong></p>
+<pre class="za"><code># Get address of nested struct field
+nested_address = opaque_ptr + offset_to_nested_struct
+
+# Read field from nested struct
+value = c_get_uint32_at_addr(nested_address, field_offset)</code></pre>
+<p><strong>Pattern 2: Array element access</strong></p>
+<pre class="za"><code># Array of int32 at opaque_address, get element 5
+element_5 = c_get_int32_at_addr(opaque_address, 5 * 4)  # 4 bytes per int32</code></pre>
+<p><strong>Pattern 3: Chain of pointers</strong></p>
+<pre class="za"><code># Read pointer field from opaque struct
+pointer_field = c_get_int64_at_addr(opaque_address, pointer_offset)
+
+# Use the pointer field as a new address
+value = c_get_uint32_at_addr(pointer_field, value_offset)</code></pre>
+<h3 id="see-also">See Also</h3>
+<ul>
+<li><strong>F.6 “Helper Functions for FFI”</strong> - Contains the
+standard <code>c_get_*</code> and <code>c_set_*</code> functions for
+working with <code>CPointerValue</code> objects. Use these when working
+with pointers from <code>c_alloc()</code> instead of opaque int64
+addresses.</li>
+<li><strong>F.2 “Automatic Type Marshaling with
+<code>mut</code>”</strong> - For simpler handling of C structs that need
+to be modified by C functions, use the <code>mut</code> keyword with
+AUTO-registered types instead of manual marshaling.</li>
+</ul>
 <h2 id="f.6-helper-functions-for-ffi">F.6 Helper Functions for FFI</h2>
 <p>Za provides built-in helper functions to work with C pointers and
-memory:</p>
+memory. This section covers functions that work with
+<code>CPointerValue</code> objects (returned from <code>c_alloc()</code>
+and other standard operations).</p>
+<p><strong>Note:</strong> If you’re working with opaque pointers
+(represented as <code>int64</code> values from C library calls like
+FreeType or libpng), see <strong>F.5.2 “Working with Opaque Pointers as
+int64 Addresses”</strong> for the parallel <code>*_at_addr</code>
+functions (<code>c_get_uint32_at_addr</code>,
+<code>c_set_int32_at_addr</code>, etc.) that work with int64 addresses
+instead.</p>
 <h3 id="c_ptr_is_nullptr---bool">c_ptr_is_null(ptr) -&gt; bool</h3>
 <p>Checks if a C pointer is null.</p>
 <pre class="za"><code>fp = c::fopen(&quot;/nonexistent&quot;, &quot;r&quot;)
@@ -5098,200 +5275,146 @@ println value  # 65</code></pre>
 <h3
 id="c_get_uint16ptrpointer-offsetint---int">c_get_uint16(ptr:pointer,
 offset:int) -&gt; int</h3>
-<p>Reads a 16-bit unsigned integer at a specific byte offset.</p>
+<p>Reads a 16-bit unsigned integer at a specific byte offset. Useful for
+reading 16-bit integers from serialized data or C structures.</p>
 <pre class="za"><code>buf = c_alloc(256)
-# Read uint16 at offset 0
-value = c_get_uint16(buf, 0)</code></pre>
+c_set_uint16(buf, 10, 40000)
+val = c_get_uint16(buf, 10)  # 40000</code></pre>
 <h3
 id="c_get_uint32ptrpointer-offsetint---int">c_get_uint32(ptr:pointer,
 offset:int) -&gt; int</h3>
 <p>Reads a 32-bit unsigned integer at a specific byte offset.</p>
-<pre class="za"><code>buf = c_alloc(256)
-# Read uint32 at offset 0
-value = c_get_uint32(buf, 0)</code></pre>
+<pre class="za"><code># Pack multiple values into buffer
+header = c_alloc(16)
+c_set_uint32(header, 0, 0x12345678)    # Magic number
+c_set_uint16(header, 4, 2)             # Version
+c_set_uint16(header, 6, 1024)          # Size
+
+magic = c_get_uint32(header, 0)  # 0x12345678
+size = c_get_uint16(header, 6)   # 1024</code></pre>
 <h3 id="c_get_int16ptrpointer-offsetint---int">c_get_int16(ptr:pointer,
 offset:int) -&gt; int</h3>
 <p>Reads a 16-bit signed integer at a specific byte offset.</p>
-<pre class="za"><code>buf = c_alloc(256)
-# Read int16 at offset 4
-value = c_get_int16(buf, 4)</code></pre>
+<pre class="za"><code>buf = c_alloc(32)
+c_set_int16(buf, 0, -1000)
+val = c_get_int16(buf, 0)  # -1000</code></pre>
 <h3 id="c_get_int32ptrpointer-offsetint---int">c_get_int32(ptr:pointer,
 offset:int) -&gt; int</h3>
 <p>Reads a 32-bit signed integer at a specific byte offset.</p>
-<pre class="za"><code>buf = c_alloc(256)
-# Read int32 at offset 8
-value = c_get_int32(buf, 8)</code></pre>
-<p><strong>Example: Reading wchar_t array values</strong></p>
-<pre class="za"><code># On Linux, wchar_t is 4 bytes
-detected_size = get_wchar_size()  # Returns 4
-arr_ptr = c_alloc(detected_size * 5)
-wchar_fill_array(arr_ptr, 5)
+<pre class="za"><code>coords = c_alloc(12)  # 3 x 4-byte integers
+c_set_int32(coords, 0, -500)
+c_set_int32(coords, 4, 1000)
+c_set_int32(coords, 8, 250)
 
-# Read back array elements
-for i = 0 to 4
-    if detected_size == 2
-        val = c_get_uint16(arr_ptr, i * 2)
-    else
-        val = c_get_uint32(arr_ptr, i * 4)
-    endif
-    println &quot;Value {i}: {val}&quot;
-endfor
-c_free(arr_ptr)</code></pre>
-<h2 id="f.5.2-working-with-opaque-pointers-as-int64-addresses">F.5.2
-Working with Opaque Pointers as int64 Addresses</h2>
-<p>When FFI functions return opaque pointers (like
-<code>FT_Library</code> from FreeType or <code>png_structp</code> from
-libpng), Za represents them as <code>int64</code> values rather than
-<code>CPointerValue</code> objects. This is necessary because opaque
-types cannot be materialized as concrete Za objects.</p>
-<p>The memory access functions (<code>c_get_uint32</code>,
-<code>c_get_int32</code>, etc.) require a <code>CPointerValue</code> as
-the first parameter, which means you cannot directly use them with these
-opaque pointer values. To solve this, Za provides a parallel set of
-memory access functions that work directly with <code>int64</code>
-addresses.</p>
-<h3 id="the-problem-and-solution">The Problem and Solution</h3>
-<p><strong>The Problem:</strong></p>
-<pre class="za"><code># Opaque pointer returned as int64 (from FreeType library)
-library_handle = FT_Init_FreeType(mut ft_library)  # Returns int64
-face_handle = FT_New_Face(library_handle, font_path, 0, mut face)  # Returns int64
-
-# Calculate struct field offset
-glyph_slot_ptr = face_handle + 16  # Valid arithmetic, still int64
-
-# But this fails - c_get_uint32 expects a CPointerValue, not int64:
-bitmap_width = c_get_uint32(glyph_slot_ptr, 4)  # ERROR!</code></pre>
-<p><strong>The Solution:</strong> Use the new <code>*_at_addr</code>
-functions that accept <code>int64</code> addresses directly:</p>
-<pre class="za"><code># Same calculation as above
-glyph_slot_ptr = face_handle + 16
-
-# Now this works - c_get_uint32_at_addr accepts int64:
-bitmap_width = c_get_uint32_at_addr(glyph_slot_ptr, 4)  # OK!</code></pre>
-<h3 id="available-functions">Available Functions</h3>
-<p>These functions all have the same signature pattern:
-<code>function_name(address:int, offset:int) -&gt; type</code></p>
-<ul>
-<li><code>c_get_byte_at_addr(address, offset)</code> → int</li>
-<li><code>c_get_uint16_at_addr(address, offset)</code> → int</li>
-<li><code>c_get_int16_at_addr(address, offset)</code> → int</li>
-<li><code>c_get_uint32_at_addr(address, offset)</code> → int</li>
-<li><code>c_get_int32_at_addr(address, offset)</code> → int</li>
-<li><code>c_get_uint64_at_addr(address, offset)</code> → uint</li>
-<li><code>c_get_int64_at_addr(address, offset)</code> → int</li>
-</ul>
-<p>All functions: - Accept an <code>int64</code> address (from opaque
-pointers) - Accept an <code>int</code> offset (byte offset within the
-structure) - Return the same types as their <code>CPointerValue</code>
-counterparts - Perform address validation (return 0 if address is
-null)</p>
-<h3 id="real-world-example-freetype-font-rendering">Real-World Example:
-FreeType Font Rendering</h3>
-<p>This example demonstrates accessing nested struct fields through
-opaque pointers:</p>
-<pre class="za"><code>module &quot;libfreetype.so.6&quot; as ft auto
-use +ft
-
-# Initialize FreeType (returns opaque FT_Library handle as int64)
-library_ptr = c_alloc(8)
-ft_error = FT_Init_FreeType(library_ptr)
-ft_library = c_get_int64(library_ptr, 0)  # Extract int64 from buffer
-c_free(library_ptr)
-
-# Load font (returns opaque FT_Face handle as int64)
-face_ptr = c_alloc(8)
-ft_error = FT_New_Face(ft_library, &quot;/usr/share/fonts/TTF/font.ttf&quot;, 0, face_ptr)
-ft_face = c_get_int64(face_ptr, 0)  # Extract int64 from buffer
-c_free(face_ptr)
-
-# Load a glyph for character &#39;A&#39;
-load_flags = 4  # FT_LOAD_RENDER
-FT_Load_Char(ft_face, 65, load_flags)
-
-# Navigate opaque struct to get bitmap dimensions
-# FT_Face-&gt;glyph offset is 16 bytes (64-bit pointer)
-FT_FACE_GLYPH_OFFSET = 16
-glyph_slot_ptr = ft_face + FT_FACE_GLYPH_OFFSET
-
-# FT_GlyphSlot-&gt;bitmap offset is 216 bytes
-FT_GLYPHSLOT_BITMAP_OFFSET = 216
-bitmap_ptr = glyph_slot_ptr + FT_GLYPHSLOT_BITMAP_OFFSET
-
-# FT_Bitmap fields (within glyph slot)
-FT_BITMAP_ROWS_OFFSET = 0      # rows: unsigned int
-FT_BITMAP_WIDTH_OFFSET = 4     # width: unsigned int
-FT_BITMAP_PITCH_OFFSET = 8     # pitch: int
-FT_BITMAP_BUFFER_OFFSET = 16   # buffer: void*
-
-# Read bitmap metadata using new *_at_addr functions
-bitmap_height = c_get_uint32_at_addr(bitmap_ptr, FT_BITMAP_ROWS_OFFSET)
-bitmap_width = c_get_uint32_at_addr(bitmap_ptr, FT_BITMAP_WIDTH_OFFSET)
-bitmap_pitch = c_get_int32_at_addr(bitmap_ptr, FT_BITMAP_PITCH_OFFSET)
-bitmap_buffer = c_get_int64_at_addr(bitmap_ptr, FT_BITMAP_BUFFER_OFFSET)
-
-# Now you can read pixel data from the bitmap buffer
-for row = 0 to bitmap_height - 1
-    for col = 0 to bitmap_width - 1
-        offset = row * bitmap_pitch + col
-        # Read individual pixel (byte)
-        pixel = c_get_byte_at_addr(bitmap_buffer, offset)
-        if pixel &gt; 0
-            println &quot;Pixel ({col}, {row}): {pixel}&quot;
-        endif
-    endfor
-endfor</code></pre>
-<h3 id="why-this-is-necessary">Why This Is Necessary</h3>
-<ol type="1">
-<li><p><strong>Opaque Types</strong>: Many C libraries use opaque
-pointers (pointer to incomplete types) that have no C definition
-available. Za cannot create <code>CPointerValue</code> wrappers for
-types it doesn’t know.</p></li>
-<li><p><strong>Void Pointers</strong>: Return types like
-<code>void*</code> or library-specific types like
-<code>png_structp</code> are represented as <code>int64</code> for
-safety and consistency.</p></li>
-<li><p><strong>Memory Navigation</strong>: Once you have an opaque
-pointer, you often need to:</p>
-<ul>
-<li>Perform arithmetic to navigate to nested struct fields</li>
-<li>Read field values at known byte offsets</li>
-<li>Pass calculated addresses to other functions</li>
-</ul></li>
-<li><p><strong>Struct Field Discovery</strong>: C libraries often
-provide accessor macros or documentation that specify byte offsets for
-struct fields. The <code>*_at_addr</code> functions let you use this
-documented information directly.</p></li>
-</ol>
-<h3 id="common-patterns">Common Patterns</h3>
-<p><strong>Pattern 1: Nested struct access</strong></p>
-<pre class="za"><code># Get address of nested struct field
-base_address = opaque_ptr
-nested_address = base_address + offset_to_nested_struct
-
-# Read field from nested struct
-value = c_get_uint32_at_addr(nested_address, field_offset)</code></pre>
-<p><strong>Pattern 2: Array element access</strong></p>
-<pre class="za"><code># Array of int32 at opaque_address, get element 5
-element_5 = c_get_int32_at_addr(opaque_address, 5 * 4)  # 4 bytes per int32</code></pre>
-<p><strong>Pattern 3: Chain of pointers</strong></p>
-<pre class="za"><code># Read pointer field from opaque struct
-pointer_field = c_get_int64_at_addr(opaque_address, pointer_offset)
-
-# Use the pointer field as a new address
-value = c_get_uint32_at_addr(pointer_field, value_offset)</code></pre>
-<h3 id="when-to-use">When to Use</h3>
-<ul>
-<li><strong>Use <code>*_at_addr</code> functions</strong>: When working
-with opaque pointers (int64) from FFI calls</li>
-<li><strong>Use regular <code>c_get_*</code> functions</strong>: When
-working with pointers from <code>c_alloc()</code> or other
-<code>CPointerValue</code> sources</li>
-<li><strong>Use <code>mut</code> keyword</strong>: For AUTO-registered
-structs that C functions will modify</li>
-</ul>
+x = c_get_int32(coords, 0)   # -500
+y = c_get_int32(coords, 4)   # 1000
+z = c_get_int32(coords, 8)   # 250</code></pre>
 <h3
+id="c_get_uint64ptrpointer-offsetint---uint">c_get_uint64(ptr:pointer,
+offset:int) -&gt; uint</h3>
+<p>Reads a 64-bit unsigned integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(16)
+c_set_uint64(buf, 0, 9223372036854775807)
+val = c_get_uint64(buf, 0)  # Large number</code></pre>
+<h3 id="c_get_int64ptrpointer-offsetint---int">c_get_int64(ptr:pointer,
+offset:int) -&gt; int</h3>
+<p>Reads a 64-bit signed integer at a specific byte offset.</p>
+<pre class="za"><code>buf = c_alloc(16)
+c_set_int64(buf, 0, -9223372036854775808)
+val = c_get_int64(buf, 0)  # Minimum int64</code></pre>
+<h3
+id="c_set_uint16ptrpointer-offsetint-valueint">c_set_uint16(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 16-bit unsigned integer at a specific offset in a
+buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_uint16(buf, 0, 65535)   # Write max uint16
+value = c_get_uint16(buf, 0)  # Read back: 65535</code></pre>
+<h3
+id="c_set_int16ptrpointer-offsetint-valueint">c_set_int16(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 16-bit signed integer at a specific offset in a buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_int16(buf, 0, -32768)  # Write min int16
+value = c_get_int16(buf, 0)  # Read back: -32768</code></pre>
+<h3
+id="c_set_uint32ptrpointer-offsetint-valueint">c_set_uint32(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 32-bit unsigned integer at a specific offset in a
+buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_uint32(buf, 4, 4294967295)   # Write max uint32
+value = c_get_uint32(buf, 4)       # Read back</code></pre>
+<h3
+id="c_set_int32ptrpointer-offsetint-valueint">c_set_int32(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 32-bit signed integer at a specific offset in a buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_int32(buf, 4, -2147483648)  # Write min int32
+value = c_get_int32(buf, 4)       # Read back</code></pre>
+<h3
+id="c_set_uint64ptrpointer-offsetint-valueint">c_set_uint64(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 64-bit unsigned integer at a specific offset in a
+buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_uint64(buf, 8, 18446744073709551615)  # Write max uint64
+value = c_get_uint64(buf, 8)                # Read back</code></pre>
+<h3
+id="c_set_int64ptrpointer-offsetint-valueint">c_set_int64(ptr:pointer,
+offset:int, value:int)</h3>
+<p>Writes a 64-bit signed integer at a specific offset in a buffer.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_int64(buf, 8, -9223372036854775808)  # Write min int64
+value = c_get_int64(buf, 8)                # Read back</code></pre>
+<h3
+id="c_get_floatptrpointer-offsetint---float">c_get_float(ptr:pointer,
+offset:int) -&gt; float</h3>
+<p>Reads a 32-bit floating-point number at a specific byte offset. Float
+values are stored in IEEE 754 format and are limited to about 6-7
+significant digits.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_float(buf, 0, 3.14159)      # Write float
+value = c_get_float(buf, 0)       # Read back: ~3.14159</code></pre>
+<h3
+id="c_set_floatptrpointer-offsetint-valuefloat">c_set_float(ptr:pointer,
+offset:int, value:float)</h3>
+<p>Writes a 32-bit floating-point number at a specific offset in a
+buffer.</p>
+<pre class="za"><code># Store physics constants
+constants = c_alloc(12)
+c_set_float(constants, 0, 9.81)    # Gravity
+c_set_float(constants, 4, 299792458.0)  # Speed of light
+c_set_float(constants, 8, 6.626e-34)    # Planck&#39;s constant
+
+g = c_get_float(constants, 0)</code></pre>
+<h3
+id="c_get_doubleptrpointer-offsetint---float">c_get_double(ptr:pointer,
+offset:int) -&gt; float</h3>
+<p>Reads a 64-bit floating-point number (double) at a specific byte
+offset. Doubles provide higher precision (about 15-16 significant
+digits) than floats and should be used for scientific calculations.</p>
+<pre class="za"><code>buf = c_alloc(256)
+c_set_double(buf, 0, 3.141592653589793)
+value = c_get_double(buf, 0)  # Read back with full precision</code></pre>
+<h3
+id="c_set_doubleptrpointer-offsetint-valuefloat">c_set_double(ptr:pointer,
+offset:int, value:float)</h3>
+<p>Writes a 64-bit floating-point number (double) at a specific offset
+in a buffer.</p>
+<pre class="za"><code># Store high-precision coordinates
+matrix = c_alloc(32)  # 4 doubles
+c_set_double(matrix, 0, 1.0000000000000001)
+c_set_double(matrix, 8, 2.7182818284590452)
+c_set_double(matrix, 16, 3.1415926535897932)
+c_set_double(matrix, 24, 1.4142135623730951)
+
+val = c_get_double(matrix, 8)  # Read back with precision</code></pre>
+<h3 id="struct-allocation-and-marshaling-functions">Struct Allocation
+and Marshaling Functions</h3>
+<h4
 id="c_alloc_structstruct_type_namestring---pointer">c_alloc_struct(struct_type_name:string)
--&gt; pointer</h3>
+-&gt; pointer</h4>
 <p>Allocates C memory for a struct type defined in Za. Returns a pointer
 to the allocated memory.</p>
 <pre class="za"><code>struct Point
@@ -5303,17 +5426,17 @@ ptr = c_alloc_struct(&quot;Point&quot;)
 # ptr now points to C memory sized for the Point struct</code></pre>
 <p><strong>Important:</strong> The struct must be defined with the
 <code>struct</code> keyword before calling this function.</p>
-<h3 id="c_free_structptrpointer">c_free_struct(ptr:pointer)</h3>
+<h4 id="c_free_structptrpointer">c_free_struct(ptr:pointer)</h4>
 <p>Frees C struct memory allocated by <code>c_alloc_struct()</code>.</p>
 <pre class="za"><code>ptr = c_alloc_struct(&quot;Point&quot;)
 # ... use the pointer ...
 c_free_struct(ptr)</code></pre>
-<h3
+<h4
 id="c_unmarshal_structptrpointer-struct_type_namestring---struct">c_unmarshal_struct(ptr:pointer,
-struct_type_name:string) -&gt; struct</h3>
+struct_type_name:string) -&gt; struct</h4>
 <p>Reads C memory and converts it to a Za struct. <strong>Note:</strong>
 For AUTO-registered structs, use the <code>mut</code> keyword approach
-instead (see above), which is simpler and automatic.</p>
+instead (see F.2), which is simpler and automatic.</p>
 <p><strong>Legacy usage</strong> (for manually-defined structs without
 AUTO):</p>
 <pre class="za"><code>struct FileStat
@@ -5333,6 +5456,31 @@ stats = c_unmarshal_struct(statbuf, &quot;FileStat&quot;)
 println &quot;File size:&quot;, stats.st_size
 
 c_free_struct(statbuf)</code></pre>
+<h2 id="opaque-pointer-functions-int64-addresses">Opaque Pointer
+Functions (int64 Addresses)</h2>
+<p>The functions described in <strong>F.5.2 “Working with Opaque
+Pointers as int64 Addresses”</strong> (<code>*_at_addr</code> variants)
+provide parallel access patterns for the basic functions above, but work
+with opaque pointers (represented as int64) instead of
+<code>CPointerValue</code> objects. See F.5.2 for detailed examples and
+guidance on when to use <code>*_at_addr</code> versus the standard
+<code>c_get_*</code> / <code>c_set_*</code> functions.</p>
+<p><strong>Example: Reading wchar_t array values</strong></p>
+<pre class="za"><code># On Linux, wchar_t is 4 bytes
+detected_size = get_wchar_size()  # Returns 4
+arr_ptr = c_alloc(detected_size * 5)
+wchar_fill_array(arr_ptr, 5)
+
+# Read back array elements
+for i = 0 to 4
+    if detected_size == 2
+        val = c_get_uint16(arr_ptr, i * 2)
+    else
+        val = c_get_uint32(arr_ptr, i * 4)
+    endif
+    println &quot;Value {i}: {val}&quot;
+endfor
+c_free(arr_ptr)</code></pre>
 <h2 id="f.7-discovering-functions-with-help-plugin">F.7 Discovering
 Functions with help plugin</h2>
 <p>Za’s help system provides runtime introspection of loaded C
@@ -7130,8 +7278,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb296"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb296-1"><a href="#cb296-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb308"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb308-1"><a href="#cb308-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

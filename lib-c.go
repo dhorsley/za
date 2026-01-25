@@ -947,7 +947,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_get_uint16_at_addr", "c_get_int16_at_addr", "c_get_uint32_at_addr", "c_get_int32_at_addr", "c_get_uint64_at_addr", "c_get_int64_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1011,6 +1011,72 @@ func buildFfiLib() {
         }
         if p, ok := args[0].(*CPointerValue); ok {
             CSetByte(p, args[1].(int), byte(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_uint16"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets a uint16 at the given offset in a buffer."}
+    stdlib["c_set_uint16"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint16", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetUint16(p, args[1].(int), uint16(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_int16"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets an int16 at the given offset in a buffer."}
+    stdlib["c_set_int16"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int16", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetInt16(p, args[1].(int), int16(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_uint32"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets a uint32 at the given offset in a buffer."}
+    stdlib["c_set_uint32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint32", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetUint32(p, args[1].(int), uint32(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_int32"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets an int32 at the given offset in a buffer."}
+    stdlib["c_set_int32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int32", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetInt32(p, args[1].(int), int32(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_uint64"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets a uint64 at the given offset in a buffer."}
+    stdlib["c_set_uint64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint64", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetUint64(p, args[1].(int), uint64(args[2].(int)))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_set_int64"] = LibHelp{in: "ptr,offset,value", out: "", action: "Sets an int64 at the given offset in a buffer."}
+    stdlib["c_set_int64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int64", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetInt64(p, args[1].(int), int64(args[2].(int)))
         }
         return nil, nil
     }
@@ -1109,7 +1175,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_byte_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return int(CGetByteAtAddr(args[0].(int64), args[1].(int))), nil
+        return int(CGetByteAtAddr(int64(args[0].(int)), args[1].(int))), nil
     }
 
     slhelp["c_get_uint16_at_addr"] = LibHelp{in: "address,offset", out: "int", action: "Reads a uint16 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1117,7 +1183,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_uint16_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return int(CGetUint16AtAddr(args[0].(int64), args[1].(int))), nil
+        return int(CGetUint16AtAddr(int64(args[0].(int)), args[1].(int))), nil
     }
 
     slhelp["c_get_int16_at_addr"] = LibHelp{in: "address,offset", out: "int", action: "Reads an int16 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1125,7 +1191,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_int16_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return int(CGetInt16AtAddr(args[0].(int64), args[1].(int))), nil
+        return int(CGetInt16AtAddr(int64(args[0].(int)), args[1].(int))), nil
     }
 
     slhelp["c_get_uint32_at_addr"] = LibHelp{in: "address,offset", out: "int", action: "Reads a uint32 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1133,7 +1199,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_uint32_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return int(CGetUint32AtAddr(args[0].(int64), args[1].(int))), nil
+        return int(CGetUint32AtAddr(int64(args[0].(int)), args[1].(int))), nil
     }
 
     slhelp["c_get_int32_at_addr"] = LibHelp{in: "address,offset", out: "int", action: "Reads an int32 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1141,7 +1207,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_int32_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return int(CGetInt32AtAddr(args[0].(int64), args[1].(int))), nil
+        return int(CGetInt32AtAddr(int64(args[0].(int)), args[1].(int))), nil
     }
 
     slhelp["c_get_uint64_at_addr"] = LibHelp{in: "address,offset", out: "uint", action: "Reads a uint64 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1149,7 +1215,7 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_uint64_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return CGetUint64AtAddr(args[0].(int64), args[1].(int)), nil
+        return CGetUint64AtAddr(int64(args[0].(int)), args[1].(int)), nil
     }
 
     slhelp["c_get_int64_at_addr"] = LibHelp{in: "address,offset", out: "int", action: "Reads an int64 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
@@ -1157,7 +1223,148 @@ func buildFfiLib() {
         if ok, err := expect_args("c_get_int64_at_addr", args, 1, "2", "int", "int"); !ok {
             return nil, err
         }
-        return CGetInt64AtAddr(args[0].(int64), args[1].(int)), nil
+        return CGetInt64AtAddr(int64(args[0].(int)), args[1].(int)), nil
+    }
+
+    slhelp["c_set_byte_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets a byte at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_byte_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_byte_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetByteAtAddr(int64(args[0].(int)), args[1].(int), byte(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_uint16_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets a uint16 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_uint16_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint16_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetUint16AtAddr(int64(args[0].(int)), args[1].(int), uint16(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_int16_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets an int16 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_int16_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int16_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetInt16AtAddr(int64(args[0].(int)), args[1].(int), int16(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_uint32_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets a uint32 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_uint32_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint32_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetUint32AtAddr(int64(args[0].(int)), args[1].(int), uint32(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_int32_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets an int32 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_int32_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int32_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetInt32AtAddr(int64(args[0].(int)), args[1].(int), int32(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_uint64_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets a uint64 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_uint64_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_uint64_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetUint64AtAddr(int64(args[0].(int)), args[1].(int), uint64(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_set_int64_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Sets an int64 at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_int64_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_int64_at_addr", args, 1, "3", "int", "int", "int"); !ok {
+            return nil, err
+        }
+        CSetInt64AtAddr(int64(args[0].(int)), args[1].(int), int64(args[2].(int)))
+        return nil, nil
+    }
+
+    slhelp["c_get_float"] = LibHelp{in: "ptr,offset", out: "float", action: "Reads a float (32-bit) at the given offset in a buffer."}
+    stdlib["c_get_float"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_float", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetFloat(p, args[1].(int)), nil
+        }
+        return 0.0, nil
+    }
+
+    slhelp["c_set_float"] = LibHelp{in: "ptr,offset,value", out: "", action: "Writes a float (32-bit) at the given offset in a buffer."}
+    stdlib["c_set_float"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_float", args, 1, "3", "any", "int", "float"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetFloat(p, args[1].(int), args[2].(float64))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_get_double"] = LibHelp{in: "ptr,offset", out: "float", action: "Reads a double (64-bit) at the given offset in a buffer."}
+    stdlib["c_get_double"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_double", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetDouble(p, args[1].(int)), nil
+        }
+        return 0.0, nil
+    }
+
+    slhelp["c_set_double"] = LibHelp{in: "ptr,offset,value", out: "", action: "Writes a double (64-bit) at the given offset in a buffer."}
+    stdlib["c_set_double"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_double", args, 1, "3", "any", "int", "float"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetDouble(p, args[1].(int), args[2].(float64))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_get_float_at_addr"] = LibHelp{in: "address,offset", out: "float", action: "Reads a float (32-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_get_float_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_float_at_addr", args, 1, "2", "int", "int"); !ok {
+            return nil, err
+        }
+        return CGetFloatAtAddr(int64(args[0].(int)), args[1].(int)), nil
+    }
+
+    slhelp["c_set_float_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Writes a float (32-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_float_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_float_at_addr", args, 1, "3", "int", "int", "float"); !ok {
+            return nil, err
+        }
+        CSetFloatAtAddr(int64(args[0].(int)), args[1].(int), args[2].(float64))
+        return nil, nil
+    }
+
+    slhelp["c_get_double_at_addr"] = LibHelp{in: "address,offset", out: "float", action: "Reads a double (64-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_get_double_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_double_at_addr", args, 1, "2", "int", "int"); !ok {
+            return nil, err
+        }
+        return CGetDoubleAtAddr(int64(args[0].(int)), args[1].(int)), nil
+    }
+
+    slhelp["c_set_double_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Writes a double (64-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_double_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_double_at_addr", args, 1, "3", "int", "int", "float"); !ok {
+            return nil, err
+        }
+        CSetDoubleAtAddr(int64(args[0].(int)), args[1].(int), args[2].(float64))
+        return nil, nil
     }
 
     slhelp["c_get_symbol"] = LibHelp{in: "library_alias,symbol_name", out: "any", action: "Reads a data symbol (constant/variable) from a loaded C library. Note: C preprocessor #defines are NOT symbols and cannot be read this way."}
