@@ -564,7 +564,143 @@ Za provides the scalar types used most often in operational scripting:
 
 ## 9. Arrays and multi-dimensional data
 
-Arrays may be dynamic or fixed-size. Nested arrays represent multi-dimensional data. Matrix-style helpers exist in the array library (e.g., identity/trace/determinant/inverse), operating on nested arrays with consistent dimensions.
+Arrays may be dynamic or fixed-size. Nested arrays represent multi-dimensional data. The array library provides 23 functions for creation, manipulation, searching, and analysis.
+
+### 9.1 Array Creation Functions
+
+Create arrays with specific patterns and dimensions:
+
+```za
+# zeros - create zero-filled arrays
+z1d = zeros(5)              # [0, 0, 0, 0, 0]
+z2d = zeros(2, 3)           # [[0,0,0], [0,0,0]]
+z3d = zeros(2, 2, 2)        # 2x2x2 cube of zeros
+
+# ones - create one-filled arrays
+o1d = ones(4)               # [1, 1, 1, 1]
+o2d = ones(3, 2)            # [[1,1], [1,1], [1,1]]
+
+# identity - create identity matrix
+i3 = identity(3)            # [[1,0,0], [0,1,0], [0,0,1]]
+
+# reshape - change array dimensions
+flat = [1, 2, 3, 4, 5, 6]
+mat = reshape(flat, [2, 3]) # [[1,2,3], [4,5,6]]
+
+# flatten - convert multi-dim to 1D
+nested = [[1, 2], [3, 4], [5, 6]]
+flat = flatten(nested)      # [1, 2, 3, 4, 5, 6]
+```
+
+### 9.2 Array Search and Selection
+
+Find elements and extract values based on conditions:
+
+```za
+# argmax/argmin - find index of max/min value
+arr = [1, 5, 3, 9, 2]
+max_idx = argmax(arr)       # 3 (index of value 9)
+min_idx = argmin(arr)       # 0 (index of value 1)
+
+# find - locate indices of elements matching a condition
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+find(nums, "#>5")           # [5, 6, 7, 8, 9] - indices where value > 5
+find(nums, "#%2==0")        # [1, 3, 5, 7, 9] - indices of even values
+find(nums, 5)               # [4] - index where value equals 5
+
+# find with map data
+people = [
+    map(.name "Alice", .age 25, .salary 50000),
+    map(.name "Bob", .age 30, .salary 60000)
+]
+find(people, "#.age>28")    # [1] - indices where age > 28
+
+# where - conditional selection (returns values, not indices)
+where(nums, "#>5")          # [6, 7, 8, 9, 10] - values > 5
+where(nums, "#%2==0", 99, 0) # Replace even with 99, odd with 0
+```
+
+### 9.3 Array Combination Functions
+
+Join and stack arrays together:
+
+```za
+# concatenate - join arrays along existing axis
+a = [1, 2, 3]
+b = [4, 5, 6]
+concatenate(a, b)           # [1, 2, 3, 4, 5, 6] - default
+
+mat1 = [[1, 2], [3, 4]]
+mat2 = [[5, 6], [7, 8]]
+concatenate(mat1, mat2, 1)  # [[1,2,5,6], [3,4,7,8]] - horizontal
+
+# stack - create new axis
+stack(a, b)                 # [[1,2,3], [4,5,6]] - vertical
+stack(a, b, 1)              # [[1,4], [2,5], [3,6]] - horizontal
+
+# squeeze - remove singleton dimensions
+single_row = [[1, 2, 3]]    # 1x3 matrix
+squeeze(single_row)         # [1, 2, 3] - becomes 1D
+```
+
+### 9.4 Statistical Operations
+
+Compute aggregates and statistics across arrays:
+
+```za
+# Basic statistics (flatten all dimensions)
+data = [1, 2, 3, 4, 5]
+mean(data)                  # 3.0
+std(data)                   # ~1.414
+variance(data)              # 2.0
+median(data)                # 3
+prod(data)                  # 120
+
+# Axis-aware operations
+matrix = [[1, 2, 3],
+          [4, 5, 6],
+          [7, 8, 9]]
+
+mean(matrix, 0)             # [4, 5, 6] - column means
+mean(matrix, 1)             # [2, 5, 8] - row means
+sum(matrix, 0)              # [12, 15, 18] - column sums
+sum(matrix, 1)              # [6, 15, 24] - row sums
+
+# keepdims parameter preserves dimensions
+mean(matrix, 0, true)       # [[4, 5, 6]] - keeps 2D shape
+```
+
+### 9.5 Linear Algebra Operations
+
+Matrix decomposition and analysis:
+
+```za
+# Matrix properties
+mat = [[1, 2], [3, 4]]
+trace(mat)                  # 5 (sum of diagonal: 1 + 4)
+det(mat)                    # -2.0 (determinant)
+rank(mat)                   # 2 (number of independent rows/cols)
+
+# identity - create identity matrix
+i3 = identity(3)            # [[1,0,0], [0,1,0], [0,0,1]]
+
+# inverse - compute matrix inverse
+inv = inverse(mat)          # [[-2, 1], [1.5, -0.5]]
+
+# Use det_big and inverse_big for higher precision
+det_big(mat)                # -2 (arbitrary precision)
+inv_big = inverse_big(mat)  # High precision inverse
+
+# Example with 3x3 matrix
+mat3 = [[2, 0, 0],
+        [0, 3, 0],
+        [0, 0, 4]]
+det(mat3)                   # 24 (2 * 3 * 4)
+trace(mat3)                 # 9 (2 + 3 + 4)
+```
+
+See Section 22 for detailed condition syntax in `find()` and `where()`.
+See Appendix A for the complete list of all array functions.
 
 ## 10. Maps
 
@@ -1191,12 +1327,58 @@ names = users -> `#.name`
 
 ## 22. Searching arrays (`find`, `where`)
 
-Because the same expression engine is re-used, you can write consistent predicates:
+Both functions use the same expression engine for consistent condition syntax. `find()` returns indices matching a condition, while `where()` returns the matching values.
+
+**Basic usage:**
 
 ```za
-idx = rows.find(`#.MountedOn=="/"`)
-sel = rows.where(`#.Filesystem~"^/dev"`)
+# find - returns indices of matching elements
+nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+find(nums, "#>5")           # [5, 6, 7, 8, 9] - indices where value > 5
+find(nums, "#%2==0")        # [1, 3, 5, 7, 9] - indices of even values
+
+# where - returns the values themselves
+where(nums, "#>5")          # [6, 7, 8, 9, 10] - values > 5
+where(nums, "#%2==0")       # [2, 4, 6, 8, 10] - even values
 ```
+
+**Condition syntax:**
+
+- `#` = current element value
+- `$idx` = current index position
+- `.field` = map/struct field (e.g., `#.age > 28`)
+- `.nested.field` = nested access (e.g., `#.dept.budget`)
+- Operators: `>`, `<`, `==`, `!=`, `>=`, `<=`, `and`, `or`, `%` (modulo)
+- String patterns: `~` regex match
+
+**Advanced examples:**
+
+```za
+# Numeric comparisons
+find(nums, "#>5")              # Greater than
+find(nums, "#>=5 and #<=8")    # Range
+
+# Index-based conditions
+find(nums, "$idx>5")           # Elements at index > 5
+find(nums, "$idx%2==0")        # Elements at even indices
+
+# With map data
+rows = [map(.MountedOn "/"), map(.MountedOn "/boot")]
+idx = rows.find(`#.MountedOn=="/"`)     # [0]
+sel = rows.where(`#.MountedOn~"^/b"`)   # [map(...)] - /boot match
+
+# Nested map field access
+employees = [
+    map(.name "Alice", .dept map(.name "Eng", .budget 100000)),
+    map(.name "Bob", .dept map(.name "Sales", .budget 75000))
+]
+find(employees, "#.dept.budget>80000")  # [0]
+
+# Replacement with where
+where(nums, "#>5", 99, 0)    # Replace >5 with 99, else 0
+```
+
+See Section 9 for comprehensive array library function examples.
 
 ---
 
