@@ -1623,6 +1623,15 @@ func evaluateAllMacros(alias string, fs uint32) error {
                 continue
             }
 
+            // Skip if already marked as failed (don't waste time re-evaluating)
+            macroEvalStatusLock.RLock()
+            status, hasStatus := macroEvalStatus[alias][name]
+            macroEvalStatusLock.RUnlock()
+
+            if hasStatus && status == "failed" {
+                continue
+            }
+
             // Check if user pressed Ctrl-C BEFORE this evaluation
             lastlock.Lock()
             wasInterrupted := sig_int
@@ -1794,6 +1803,30 @@ func addCPrefixToIdentifiers(expr string) string {
 
         // Check if we have the start of an identifier
         if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' {
+            // Check if this is a hex/binary literal prefix (0x, 0X, 0b, 0B)
+            // These should NOT be treated as identifiers
+            if (ch == 'x' || ch == 'X' || ch == 'b' || ch == 'B') && i > 0 && expr[i-1] == '0' {
+                result.WriteByte(ch)
+                i++
+                // Continue copying hex/binary digits
+                for i < len(expr) {
+                    c := expr[i]
+                    // Always accept decimal digits and underscores
+                    if (c >= '0' && c <= '9') || c == '_' {
+                        result.WriteByte(c)
+                        i++
+                    } else if (ch == 'x' || ch == 'X') && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+                        // Accept hex letters for hex literals only
+                        result.WriteByte(c)
+                        i++
+                    } else {
+                        // Stop when we hit a non-digit character
+                        break
+                    }
+                }
+                continue
+            }
+
             // Extract the full identifier
             start := i
             for i < len(expr) && ((expr[i] >= 'a' && expr[i] <= 'z') ||
