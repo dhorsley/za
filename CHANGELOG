@@ -94,8 +94,8 @@ library changes
 language changes
 ----------------
 
-    PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE, 
-        YOU MAY HAVE ISSUES WITH OLDER OS VERSIONS. 
+    PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE,
+        YOU MAY HAVE ISSUES WITH OLDER OS VERSIONS.
             For example: Ubuntu 20.04 include/library path calculations
 
   * FFI callback system enhancements
@@ -115,7 +115,13 @@ language changes
 
   * MODULE statement library path detection
 
-  * added AUTO clause for MODULE statements - automatic C header parsing
+
+    NB: *******************************************
+          DO NOT USE AUTO IMPORTS FOR NOW.
+          TOO MANY ISSUES STILL WITH THE PARSING.
+        *******************************************
+
+  * (experimental) added AUTO clause for MODULE statements - automatic C header parsing
       - syntax: module "libfoo.so" as foo auto
       - automatically discovers and parses C header files
       - constants now accessible from headers

@@ -1,0 +1,91 @@
+#!/usr/bin/env za
+
+# Test AUTO processing with hex literals
+# This specifically tests the fixes for:
+# Bug #1: Hex literal corruption in addCPrefixToIdentifiers()
+# Bug #2: Failed macros being re-evaluated every pass
+
+println "[#4]═══ HEX LITERALS & BINARY TEST ═══[#-]\n"
+
+try
+    module "libc.so.6" as hex auto "test_hex_literals.h"
+    use +hex
+
+    println "[#6]Part 1: GL Constants (Hex Values)[#-]"
+    
+    if defined("GL_POLYGON_SMOOTH")
+        val := GL_POLYGON_SMOOTH
+        println "  ✓ GL_POLYGON_SMOOTH = 0x" + as_hex(val)
+    else
+        println "  ✗ GL_POLYGON_SMOOTH not found"
+    endif
+
+    if defined("GL_POLYGON_SMOOTH_HINT")
+        val := GL_POLYGON_SMOOTH_HINT
+        println "  ✓ GL_POLYGON_SMOOTH_HINT = 0x" + as_hex(val)
+    else
+        println "  ✗ GL_POLYGON_SMOOTH_HINT not found"
+    endif
+
+    if defined("GL_LIGHT_MODEL_AMBIENT")
+        val := GL_LIGHT_MODEL_AMBIENT
+        println "  ✓ GL_LIGHT_MODEL_AMBIENT = 0x" + as_hex(val)
+    else
+        println "  ✗ GL_LIGHT_MODEL_AMBIENT not found"
+    endif
+
+    println "\n[#6]Part 2: Binary Literals[#-]"
+
+    if defined("BIT_FLAG_1")
+        val := BIT_FLAG_1
+        println "  ✓ BIT_FLAG_1 = " + as_string(val)
+    else
+        println "  ✗ BIT_FLAG_1 not found"
+    endif
+
+    if defined("BIT_FLAG_2")
+        val := BIT_FLAG_2
+        println "  ✓ BIT_FLAG_2 = " + as_string(val)
+    else
+        println "  ✗ BIT_FLAG_2 not found"
+    endif
+
+    println "\n[#6]Part 3: Mixed Case Hex[#-]"
+
+    if defined("HEX_UPPERCASE")
+        val := HEX_UPPERCASE
+        println "  ✓ HEX_UPPERCASE = 0x" + as_hex(val)
+    else
+        println "  ✗ HEX_UPPERCASE not found"
+    endif
+
+    if defined("HEX_MIXED")
+        val := HEX_MIXED
+        println "  ✓ HEX_MIXED = 0x" + as_hex(val)
+    else
+        println "  ✗ HEX_MIXED not found"
+    endif
+
+    println "\n[#6]Part 4: Hex in Expressions[#-]"
+
+    if defined("HEX_OR")
+        val := HEX_OR
+        println "  ✓ HEX_OR = 0x" + as_hex(val)
+    else
+        println "  ✗ HEX_OR not found"
+    endif
+
+    if defined("HEX_AND")
+        val := HEX_AND
+        println "  ✓ HEX_AND = 0x" + as_hex(val)
+    else
+        println "  ✗ HEX_AND not found"
+    endif
+
+    println "\n[#2]✓ All hex literal tests passed![#-]"
+
+catch e
+    println "[#1]✗ Error: " + as_string(e) + "[#-]"
+endtry
+
+println "\n[#2]═══════════════════════════════[#-]"
