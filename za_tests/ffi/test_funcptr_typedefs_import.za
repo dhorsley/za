@@ -1,0 +1,36 @@
+#!/usr/bin/env za
+# Test Phase 2: Function pointer typedef import via AUTO
+
+println "=== Phase 2: Function Pointer Typedef Import ==="
+println
+
+println "Loading test library with AUTO import..."
+module "./libtest_funcptr.so" as fp auto "./test_funcptr_lib.h"
+use +fp
+
+println "Loading typedef test library..."
+module "./libtest_funcptr_typedefs.so" as fp_td auto "./test_funcptr_typedefs.h"
+use +fp_td
+
+println "Both libraries loaded successfully"
+println
+
+println "Test: Function pointer typedefs are now available in fp_td module"
+println "- Typedefs imported: compar_t, binary_op_t, unary_op_t, etc."
+println
+
+# Test calling a function that uses function pointers
+println "Creating function pointers for testing..."
+
+# Get add function from first library
+add_ptr_raw = fp::get_add_ptr()
+add_ptr = c_as_function_ptr(add_ptr_raw, "int,int->int")
+println "Created add function pointer"
+
+# Call apply_binary_op which expects a function pointer
+result = fp_td::apply_binary_op(15, 25, add_ptr)
+println "fp_td::apply_binary_op(15, 25, add_ptr) = ", result
+assert result == 40, "apply_binary_op failed"
+
+println
+println "=== Phase 2 Tests Passed - Typedefs Imported Successfully ==="

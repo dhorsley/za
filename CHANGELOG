@@ -91,8 +91,22 @@ library changes
       - essential for struct field manipulation, data marshaling, and direct memory operations
       - fully compatible with C shared libraries (glibc, OpenGL, SDL, PNG, FreeType, etc.)
 
+  * added function pointer support for C FFI
+      - c_as_function_ptr(pointer, signature) - converts C function pointer to callable type
+          * signature format: "param1,param2->return" (e.g., "int,int->int")
+          * validates function pointer signature at creation time
+          * returns CFunctionPointer object for use with c_call_function_ptr
+      - c_call_function_ptr(func_ptr, ...args) - calls C function pointer with arguments
+          * validates argument count against signature
+          * supports all standard C types (int, float, double, pointer, etc.)
+          * proper type marshaling through libffi
+          * example: add_ptr = c_as_function_ptr(ptr, "int,int->int"); result = c_call_function_ptr(add_ptr, 10, 20)
+      - enables callbacks from C libraries (qsort comparators, signal handlers, etc.)
+
 language changes
 ----------------
+
+  * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
 
     PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE,
         YOU MAY HAVE ISSUES WITH OLDER OS VERSIONS.
@@ -106,7 +120,7 @@ language changes
       - test coverage in za_tests/test_callback_dynamic.za
       - BSD compatibility improvements: FreeBSD, OpenBSD, NetBSD paths and symbol versioning
       - runtime ABI detection for x86-64, ARM64, x86-32, ARM-32, RISC-V 64, PPC64
-      - platform-aware help plugin with BSD-specific man page URLs
+      - platform-aware help plugin statement
 
   * added C pointer type (pointer) as a VAR declarable type.
       - this does not allocate memory, you must still do this either
@@ -114,12 +128,6 @@ language changes
       - declaration allows the variable to be auto-converted during FFI operations.
 
   * MODULE statement library path detection
-
-
-    NB: *******************************************
-          DO NOT USE AUTO IMPORTS FOR NOW.
-          TOO MANY ISSUES STILL WITH THE PARSING.
-        *******************************************
 
   * (experimental) added AUTO clause for MODULE statements - automatic C header parsing
       - syntax: module "libfoo.so" as foo auto
@@ -154,10 +162,10 @@ language changes
           * replaced custom parsers with Za's ev() expression evaluator
           * parses float constants: 3.14159, scientific notation (6.02e23)
           * parses string constants: "version 1.0", escape sequences (\n, \t, \", \\)
-          * transforms C string concatenation: "part1" "part2" → Za syntax
+          * transforms C string concatenation: "part1" "part2" -> Za syntax
           * evaluates complex expressions ((100+50)*2, 0xFF00|0x00FF)
           * constants can now reference earlier constants: #define BUFFER (BASE * 2)
-          * supports chained references: A → B → C
+          * supports chained references: A -> B -> C
           * limitation: forward references not supported (must be defined in order)
           * limitation: circular references fail gracefully (silently skipped)
           * resolves typedef declarations from C headers for accurate type mapping
@@ -165,9 +173,14 @@ language changes
           * typedef chains: typedef int A; typedef A B; typedef B C; (recursive)
           * struct typedefs: typedef struct Point { int x; } Point;
           * pointer typedefs: typedef void* VoidPtr;
+          * function pointer typedefs: typedef int (*compare_t)(const void*, const void*);
+              - parses function pointer signatures from typedef declarations
+              - stores signature metadata (parameter types, return type)
+              - enables type-safe function pointer usage in FFI calls
+              - supports complex signatures with struct pointers and multiple parameters
           * recursive resolution up to 10 levels with cycle detection
           * module-scoped typedefs (isolated per library alias)
-          * limitation: function pointer typedefs, array typedefs deferred
+          * limitation: array typedefs deferred
           * processes C preprocessor directives before parsing header content
           * supported directives: #ifdef, #ifndef, #if, #elif, #else, #endif, #define, #include
           * #if and #elif with full expression evaluation:
@@ -189,6 +202,11 @@ language changes
               - structs can be received from C functions (by value or pointer)
               - structs can be passed to C functions
               - array fields in structs fully supported
+              - function pointer fields in structs fully supported
+                  * parses field declarations like: int (*callback)(void*)
+                  * stores signature metadata for type-safe access
+                  * accessible as CPointer values in Za code
+                  * can be used with c_as_function_ptr and c_call_function_ptr
           * numeric type coercion for comparisons:
               - uint8, uint16, uint32, uint64 can be compared with int/int64
               - automatic value range checking and promotion
@@ -202,9 +220,16 @@ language changes
               - transparent to Za code - pass/receive as integers
               - compatible with typedef chains (typedef wchar_t WCHAR)
               - enables ncursesw, readline, ICU, POSIX wcs* functions
+          * progress indication during AUTO imports:
+              - shows current operation (discovering headers, processing files, evaluating macros, parsing enums/functions)
+              - buffers warning messages and displays them after import completes
+              - shows total elapsed time on completion
+                    - REMINDER: this can be slow with larger header file sets!
+              - environment variables:
+                  * ZA_NO_PROGRESS=1 - disables progress bar display
+                  * ZA_DEBUG_AUTO=1 - enables detailed debug output during import
+                  * ZA_WARN_AUTO=1 - shows warning messages for skipped/failed parsing
 
-  * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
-  *
       - MODULE extension: module "libfoo.so" as foo
       - automatic function discovery via ELF symbol table parsing
       - GNU IFUNC and symbol versioning (@@GLIBC) support
@@ -215,6 +240,10 @@ language changes
           - supports typed parameters: LIB c::strlen(s:string) -> int
           - variadic function support: LIB c::printf(fmt:string, ...args) -> int
           - optional return types: LIB c::exit(code:int) -> void
+          - C-style struct syntax: "struct TypeName *" automatically converted to struct<TypeName> pointer
+              - enables direct use of C function signatures without manual rewriting
+              - example: "struct Point *get_point()" → parsed as struct<Point> pointer return
+              - works in both LIB declarations and AUTO-parsed function signatures
 
       - help plugin enhancements
           - find command: automatic signature discovery from man pages
@@ -244,6 +273,8 @@ language changes
               * exactly one active field required (validation enforces single-field maps)
               * unions from C unmarshaled as Za maps with all fields accessible
               * nested structs within unions fully supported
+              * nested unions within structs fully supported
+              * function pointer fields in unions fully supported
               * bidirectional marshaling: Za → C → Za with proper field selection
               * test scripts at za_tests/test_union*.za, za_tests/ffi/test_union*.za
           - out parameter support for C functions that fill structs

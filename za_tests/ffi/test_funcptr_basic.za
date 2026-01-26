@@ -1,0 +1,38 @@
+#!/usr/bin/env za
+# Test function pointer import support - Phase 1
+
+# Load the test library with AUTO
+module "./libtest_funcptr.so" as fp auto "./test_funcptr_lib.h"
+use +fp
+
+def main()
+    # Test 1: Get function pointer and call it directly
+    println("Test 1: Get function pointer and call it")
+    add_ptr_raw = fp::get_add_ptr()
+
+    # Convert to a callable function pointer using c_as_function_ptr
+    add_ptr = c_as_function_ptr(add_ptr_raw, "int,int->int")
+
+    # Call the function pointer with c_call_function_ptr
+    result = c_call_function_ptr(add_ptr, 10, 20)
+    println("10 + 20 = " + result)
+    assert result == 30, "add failed"
+
+    # Test 2: Multiply operation
+    println("Test 2: Multiply function pointer")
+    mul_ptr_raw = fp::get_multiply_ptr()
+    mul_ptr = c_as_function_ptr(mul_ptr_raw, "int,int->int")
+    result = c_call_function_ptr(mul_ptr, 5, 6)
+    println("5 * 6 = " + result)
+    assert result == 30, "multiply failed"
+
+    # Test 3: Subtract operation
+    println("Test 3: Subtract function pointer")
+    sub_ptr_raw = fp::get_subtract_ptr()
+    sub_ptr = c_as_function_ptr(sub_ptr_raw, "int,int->int")
+    result = c_call_function_ptr(sub_ptr, 100, 25)
+    println("100 - 25 = " + result)
+    assert result == 75, "subtract failed"
+
+    println("All tests passed!")
+end

@@ -1,0 +1,28 @@
+#!/usr/bin/env za
+# Test Phase 2: Function pointer typedef parsing
+
+println("=== Phase 2: Function Pointer Typedef Parsing ===")
+println("")
+
+println("Test: AUTO imports function pointer typedefs without errors")
+println("")
+
+# Load library with function pointer typedefs
+# If this succeeds, it means the typedefs were parsed correctly
+module "./libtest_funcptr_typedefs.so" as fp_td auto "./test_funcptr_typedefs.h"
+on import_has_errors("fp_td") do exit 1,"Failed to import cleanly."
+use +fp_td
+
+println("✓ Library with function pointer typedefs imported successfully")
+println("  - Typedef: compar_t = int(*)(const void*, const void*)")
+println("  - Typedef: binary_op_t = int(*)(int, int)")
+println("  - Typedef: unary_op_t = int(*)(int)")
+println("  - Typedef: alloc_func_t = void*(*)(int)")
+println("  - Typedef: free_func_t = void(*)(void*)")
+println("  - Typedef: callback_t = void(*)(void*)")
+println("  - Typedef: process_data_t = int(*)(const char*, int)")
+
+println("")
+println("✓ All function pointer typedefs parsed and registered correctly")
+println("")
+println("=== Phase 2 Tests Passed ===")

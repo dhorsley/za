@@ -1,0 +1,52 @@
+#!/usr/bin/env za
+# Comprehensive Phase 1 function pointer test
+
+println "=== Phase 1: Core Function Pointer Support ==="
+println
+
+module "./libtest_funcptr.so" as fp auto "./test_funcptr_lib.h"
+use +fp
+
+# Test 1: Addition function pointer
+println "Test 1: Addition via function pointer"
+add_ptr = fp::get_add_ptr()
+add_fp = c_as_function_ptr(add_ptr, "int,int->int")
+r1 = c_call_function_ptr(add_fp, 10, 20)
+println "  10 + 20 = " + r1
+assert r1 == 30, "addition failed"
+
+# Test 2: Multiplication function pointer
+println "Test 2: Multiplication via function pointer"
+mul_ptr = fp::get_multiply_ptr()
+mul_fp = c_as_function_ptr(mul_ptr, "int,int->int")
+r2 = c_call_function_ptr(mul_fp, 5, 6)
+println "  5 * 6 = " + r2
+assert r2 == 30, "multiplication failed"
+
+# Test 3: Subtraction function pointer
+println "Test 3: Subtraction via function pointer"
+sub_ptr = fp::get_subtract_ptr()
+sub_fp = c_as_function_ptr(sub_ptr, "int,int->int")
+r3 = c_call_function_ptr(sub_fp, 100, 25)
+println "  100 - 25 = " + r3
+assert r3 == 75, "subtraction failed"
+
+# Test 4: Multiple calls on same function pointer
+println "Test 4: Multiple calls on same function pointer"
+r4a = c_call_function_ptr(add_fp, 1, 2)
+r4b = c_call_function_ptr(add_fp, 10, 30)
+r4c = c_call_function_ptr(add_fp, 100, 200)
+println "  1 + 2 = " + r4a
+println "  10 + 30 = " + r4b
+println "  100 + 200 = " + r4c
+assert r4a == 3 and r4b == 40 and r4c == 300, "multiple calls failed"
+
+# Test 5: Pointer comparison function
+println "Test 5: Pointer comparison function"
+cmp_ptr = fp::get_ptr_compare()
+cmp_fp = c_as_function_ptr(cmp_ptr, "ptr,ptr->int")
+# For now, we'll just verify the conversion works - calling it requires allocating int arrays
+println "  Pointer comparison function loaded"
+
+println
+println "=== All Phase 1 Tests Passed ==="

@@ -12,6 +12,7 @@ import (
     "strconv"
     "strings"
     "sync"
+    "time"
     "unicode"
     "unicode/utf8"
     "unsafe"
@@ -23,6 +24,12 @@ import (
 //          "c" → "size_t" → "unsigned long"
 var moduleTypedefs = make(map[string]map[string]string)
 var moduleTypedefsLock sync.RWMutex
+
+// moduleFunctionPointerSignatures stores function pointer type signatures
+// Structure: libraryAlias → typedefName → CFunctionSignature
+// Example: "c" → "qsort_compar_t" → CFunctionSignature for int (*)(const void*, const void*)
+var moduleFunctionPointerSignatures = make(map[string]map[string]CFunctionSignature)
+var moduleFunctionPointerSignaturesLock sync.RWMutex
 
 // cModuleIdents stores ident arrays for C module macros, keyed by function space id
 // These are kept separate from Za's normal ident/bindings system
@@ -55,6 +62,11 @@ var macroEvalStatusLock sync.RWMutex
 var autoImportErrors = make(map[string][]string)
 var autoImportErrorsLock sync.RWMutex
 
+// currentProgressTracker holds the active progress tracker for the current AUTO import
+// This allows functions deep in the call stack to access it without passing it everywhere
+var currentProgressTracker *AutoProgressTracker
+var currentProgressTrackerLock sync.Mutex
+
 // PreprocessorState tracks conditional compilation state while parsing a header
 type PreprocessorState struct {
     definedMacros  map[string]string  // NAME → VALUE from #define
@@ -63,6 +75,155 @@ type PreprocessorState struct {
     includeDepth   int                 // Current #ifdef nesting level
     visitedHeaders map[string]bool     // Tracks visited headers for cycle detection
     alias          string               // Library alias for context
+}
+
+// AutoProgressTracker tracks progress for AUTO import process
+type AutoProgressTracker struct {
+    startTime     time.Time
+    totalWeight   float64   // Always 100.0
+    currentWeight float64   // Accumulated progress (0-100)
+    currentPhase  string    // Current operation description
+    subPhaseInfo  string    // Additional context (e.g., "Pass 3/10")
+    enabled       bool      // Whether to show progress
+    lastDisplayed float64   // Last displayed percentage
+    messages      []string  // Buffered warning/info messages
+}
+
+// newAutoProgressTracker creates and initializes a progress tracker
+func newAutoProgressTracker() *AutoProgressTracker {
+    enabled := os.Getenv("ZA_NO_PROGRESS") == ""
+    return &AutoProgressTracker{
+        startTime:     time.Now(),
+        totalWeight:   100.0,
+        currentWeight: 0.0,
+        enabled:        enabled,
+        lastDisplayed:  -1.0,
+    }
+}
+
+// update accumulates progress and displays the bar if significant change
+func (pt *AutoProgressTracker) update(weight float64, phase string, subPhase string) {
+    if !pt.enabled {
+        return
+    }
+
+    // Accumulate weight
+    pt.currentWeight += weight
+
+    // Clamp to 100
+    if pt.currentWeight > 100.0 {
+        pt.currentWeight = 100.0
+    }
+
+    // Update phase info
+    if phase != "" {
+        pt.currentPhase = phase
+    }
+    pt.subPhaseInfo = subPhase
+
+    // Display if significant change (>0.5%) or near completion
+    percentage := pt.currentWeight
+    if math.Abs(percentage-pt.lastDisplayed) > 0.5 || percentage >= 99.9 {
+        pt.display()
+    }
+}
+
+// addMessage buffers a warning or info message to display after progress completes
+func (pt *AutoProgressTracker) addMessage(msg string) {
+    if !pt.enabled {
+        return
+    }
+
+    pt.messages = append(pt.messages, msg)
+}
+
+// addMessageToCurrentProgress adds a message to the current progress tracker (if any)
+// This is used by functions deep in the call stack that don't have access to the tracker
+func addMessageToCurrentProgress(msg string) {
+    currentProgressTrackerLock.Lock()
+    defer currentProgressTrackerLock.Unlock()
+
+    if currentProgressTracker != nil {
+        currentProgressTracker.addMessage(msg)
+    } else {
+        // If no progress tracker is active, just print to stderr
+        fmt.Fprintf(os.Stderr, "%s\n", msg)
+    }
+}
+
+// setCurrentProgressTracker sets the active progress tracker for the current AUTO import
+func setCurrentProgressTracker(pt *AutoProgressTracker) {
+    currentProgressTrackerLock.Lock()
+    defer currentProgressTrackerLock.Unlock()
+
+    currentProgressTracker = pt
+}
+
+// display renders the progress bar at current percentage
+func (pt *AutoProgressTracker) display() {
+    percentage := pt.currentWeight
+    if percentage > 100.0 {
+        percentage = 100.0
+    }
+
+    // Build the progress bar (30 characters)
+    barLen := 30
+    filled := int(percentage / 100.0 * float64(barLen))
+    if filled > barLen {
+        filled = barLen
+    }
+
+    var bar strings.Builder
+    bar.WriteString("[")
+    for i := 0; i < barLen; i++ {
+        if i < filled && i < barLen-1 {
+            bar.WriteString("=")
+        } else if i == filled && filled < barLen {
+            bar.WriteString(">")
+        } else {
+            bar.WriteString(" ")
+        }
+    }
+    bar.WriteString("]")
+
+    // Build the info string
+    info := ""
+    if pt.currentPhase != "" {
+        info = pt.currentPhase
+        if pt.subPhaseInfo != "" {
+            info += " " + pt.subPhaseInfo
+        }
+    }
+
+    // Print progress bar update using [#SOL] to return to start of line
+    if info != "" {
+        pf("[#SOL][#6][AUTO] Processing: %s %3.0f%%[#-] [#1]- %s[#CTE]", bar.String(), percentage, info)
+    } else {
+        pf("[#SOL][#6][AUTO] Processing: %s %3.0f%%[#CTE]", bar.String(), percentage)
+    }
+
+    pt.lastDisplayed = percentage
+}
+
+// finish displays buffered messages and completion time
+func (pt *AutoProgressTracker) finish() {
+    if !pt.enabled {
+        return
+    }
+
+    // Print newline after the progress bar (which was using [#SOL] without \n)
+    if pt.lastDisplayed >= 0 {
+        pf("\n")
+    }
+
+    // Display all buffered warning/info messages
+    for _, msg := range pt.messages {
+        pln(msg)
+    }
+
+    // Calculate elapsed time and print completion message
+    elapsed := time.Since(pt.startTime)
+    pf("[#4][AUTO] Import completed in %.3fs[#CTE]\n", elapsed.Seconds())
 }
 
 // newPreprocessorState creates a new preprocessor state with platform macros
@@ -492,6 +653,14 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
         fmt.Printf("[AUTO] parseModuleHeaders START: lib=%s, alias=%s, fs=%d\n", libraryPath, alias, fs)
     }
 
+    // Initialize progress tracker and set it as current
+    progress := newAutoProgressTracker()
+    setCurrentProgressTracker(progress)
+    defer func() {
+        setCurrentProgressTracker(nil)
+        progress.finish()
+    }()
+
     // Check if ident table already allocated for this namespace and reuse if exists
     cModuleIdentsLock.Lock()
     if cModuleIdents[fs] == nil {
@@ -535,11 +704,20 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
             alias, strings.Join(searched, ", "))
     }
 
+    // Update progress: header discovery
+    progress.update(2.0, "Found headers", fmt.Sprintf("(%d files)", len(headerPaths)))
+
     // Collect processed text from all files for enum/function parsing after macro evaluation
     allProcessedText := make([]string, 0)
 
-    for _, hpath := range headerPaths {
-        processedText, err := parseHeaderFile(hpath, alias, fs)
+    // Per-file processing: allocate 60% across all files
+    perFileWeight := 60.0 / float64(len(headerPaths))
+    for fileIdx, hpath := range headerPaths {
+        fileName := filepath.Base(hpath)
+        progress.update(0, "Processing file",
+            fmt.Sprintf("(%d/%d) %s", fileIdx+1, len(headerPaths), fileName))
+
+        processedText, err := parseHeaderFile(hpath, alias, fs, progress, perFileWeight)
         if err != nil {
             return fmt.Errorf("failed to parse %s: %w", hpath, err)
         }
@@ -547,7 +725,8 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
     }
 
     // After all files are processed, evaluate all collected macros
-    if err := evaluateAllMacros(alias, fs); err != nil {
+    progress.update(0, "Evaluating macros", "")
+    if err := evaluateAllMacros(alias, fs, progress); err != nil {
         return fmt.Errorf("failed to evaluate macros: %w", err)
     }
 
@@ -555,13 +734,17 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
     // This ensures enum values that reference macros can be evaluated correctly
     combinedText := strings.Join(allProcessedText, "\n")
 
+    progress.update(0, "Parsing enums", "")
     if err := parseEnums(combinedText, alias, fs); err != nil {
         return fmt.Errorf("failed to parse enums: %w", err)
     }
+    progress.update(4.0, "Parsed enums", "")
 
+    progress.update(0, "Parsing functions", "")
     if err := parseFunctionSignatures(combinedText, alias); err != nil {
         return fmt.Errorf("failed to parse functions: %w", err)
     }
+    progress.update(4.0, "Completed", "")
 
     return nil
 }
@@ -610,7 +793,7 @@ func discoverHeaders(libraryPath string) []string {
 // parseHeaderFile parses a single C header file
 // parseHeaderFile parses a single C header file and returns the processed text
 // Enums and functions are not parsed here - they're parsed later after macro evaluation
-func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
+func parseHeaderFile(path string, alias string, fs uint32, progress *AutoProgressTracker, allocatedWeight float64) (string, error) {
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     if debugAuto {
         fmt.Printf("[AUTO] parseHeaderFile START: path=%s, alias=%s\n", path, alias)
@@ -629,34 +812,47 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     // Step 0: Strip comments FIRST (before preprocessor parsing)
     // Otherwise, preprocessor directives inside comments will be processed
     text = stripCComments(text)
+    progress.update(allocatedWeight*0.05, "", "stripping comments")
 
     // Step 0.1a: Parse included headers for typedefs and struct definitions
     // This MUST happen on the ORIGINAL text before preprocessing, because
     // parsePreprocessor may remove or modify #include directives
     parseIncludedHeaders(text, alias, path)
+    progress.update(allocatedWeight*0.10, "", "parsing includes")
 
     // Step 0.1b: Parse preprocessor conditionals
     // This resolves #ifdef blocks so that typedef and struct definitions are clean
     text = parsePreprocessor(text, alias, path, fs)
+    progress.update(allocatedWeight*0.20, "", "preprocessing")
 
     // Step 0.3: Parse typedefs from main file before structs
     // Typedefs must be registered before parsing structs that use them
     if err := parseTypedefs(text, alias); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: early typedef parsing failed for %s: %v\n",
-                path, err)
+            msg := fmt.Sprintf("[AUTO] Warning: early typedef parsing failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
         }
     }
+    progress.update(allocatedWeight*0.15, "", "parsing typedefs")
 
     // Step 0.4: Parse plain structs AFTER typedefs and preprocessing
     // Now typedef-based types can be resolved
     if err := parsePlainStructs(text, alias); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: plain struct parsing failed for %s: %v\n",
-                path, err)
+            msg := fmt.Sprintf("[AUTO] Warning: plain struct parsing failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
         }
         // Don't fail - continue with other parsing
     }
+    progress.update(allocatedWeight*0.25, "", "parsing structs")
 
     // Step 0.5: Remove known empty marker macros that interfere with parsing
     // These are typically defined as empty and used for C++ compatibility
@@ -672,10 +868,29 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     // Step 1.6: Parse #define macros for simple constants
     if err := parseDefines(text, alias, fs); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: define parsing failed for %s: %v\n",
-                path, err)
+            msg := fmt.Sprintf("[AUTO] Warning: define parsing failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
         }
         // Don't fail on define parsing errors - continue with other parsing
+    }
+
+    // Step 1.6.5: Evaluate macros early so struct/union parsing can resolve array sizes
+    // This allows parseStructTypedefs and parseUnionTypedefs to resolve __SIZEOF_* macros
+    // Pass nil for progress since this is early evaluation not tracked in main progress
+    if err := evaluateAllMacros(alias, fs, nil); err != nil {
+        if os.Getenv("ZA_WARN_AUTO") != "" {
+            msg := fmt.Sprintf("[AUTO] Warning: early macro evaluation failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
+        }
+        // Don't fail on macro evaluation errors - continue with other parsing
     }
 
     // Step 1.7: Skip duplicate typedef parsing (already done in step 0.3)
@@ -684,8 +899,12 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     // Step 1.8: Parse struct typedefs (before unions so they can reference structs)
     if err := parseStructTypedefs(text, alias); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: struct parsing failed for %s: %v\n",
-                path, err)
+            msg := fmt.Sprintf("[AUTO] Warning: struct parsing failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
         }
         // Don't fail on struct parsing errors - continue with other parsing
     }
@@ -695,16 +914,22 @@ func parseHeaderFile(path string, alias string, fs uint32) (string, error) {
     // Step 1.9: Parse union typedefs (after structs so they can use struct-typed fields)
     if err := parseUnionTypedefs(text, alias); err != nil {
         if os.Getenv("ZA_WARN_AUTO") != "" {
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: union parsing failed for %s: %v\n",
-                path, err)
+            msg := fmt.Sprintf("[AUTO] Warning: union parsing failed for %s: %v", path, err)
+            if progress != nil {
+                progress.addMessage(msg)
+            } else {
+                fmt.Fprintf(os.Stderr, "%s\n", msg)
+            }
         }
         // Don't fail on union parsing errors - continue with other parsing
     }
+    progress.update(allocatedWeight*0.15, "", "parsing unions")
 
     // Step 2: Parse #define constants (just collect them, evaluation happens later)
     if err := parseDefines(text, alias, fs); err != nil {
         return "", err
     }
+    progress.update(allocatedWeight*0.10, "", "collecting macros")
 
     // Step 2.5: Remove #define lines now that they've been processed
     // This prevents them from being mistaken for function signatures
@@ -1154,18 +1379,45 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                             hasCast := regexp.MustCompile(`\([a-zA-Z_][a-zA-Z0-9_]*\)\s*\(`).MatchString(body)
 
                             isSimpleAlias := regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`).MatchString(body)
+
+                            // Allow __SIZEOF_* and __WORDSIZE macros (common size constants)
+                            allowedSystemMacro := false
+                            if strings.HasPrefix(name, "__SIZEOF_") || name == "__WORDSIZE" {
+                                // These are numeric constants, not system references
+                                if _, err := strconv.Atoi(body); err == nil {
+                                    allowedSystemMacro = true
+                                }
+                            }
+
+                            // Allow sizeof expressions in specific common system macros
+                            // These are evaluated by replacing sizeof() with actual sizes
+                            allowedSizeofMacro := false
+                            if name == "_SIGSET_NWORDS" || name == "__NFDBITS" ||
+                               name == "__FD_SETSIZE" || (strings.HasPrefix(name, "__") &&
+                               strings.Contains(name, "SIZE")) {
+                                // Check if this is a simple arithmetic expression with sizeof
+                                // Examples: (1024 / (8 * sizeof(...))), (8 * sizeof(...))
+                                if strings.Contains(body, "sizeof") &&
+                                   !strings.Contains(body, "typedef") &&
+                                   !strings.Contains(body, "struct") &&
+                                   !strings.Contains(body, "union") &&
+                                   !strings.Contains(body, "enum") {
+                                    allowedSizeofMacro = true
+                                }
+                            }
+
                             shouldEvaluate := !isFunctionLike &&
-                                              !strings.HasPrefix(name, "__") &&
-                                              !strings.Contains(body, "__") &&
-                                              !strings.Contains(body, "sizeof") &&
+                                              (!strings.HasPrefix(name, "__") || allowedSystemMacro || allowedSizeofMacro) &&
+                                              (!strings.Contains(body, "__") || allowedSizeofMacro) &&
+                                              (!strings.Contains(body, "sizeof") || allowedSizeofMacro) &&
                                               !strings.Contains(body, "typedef") &&
                                               !strings.Contains(body, "extern") &&
                                               !strings.Contains(body, "?") &&
                                               !strings.Contains(body, "~") &&
                                               !hasStructInit &&
-                                              !hasFunctionCall &&
+                                              (!hasFunctionCall || allowedSizeofMacro) &&
                                               !hasKeyword &&
-                                              !hasTypeKeyword &&
+                                              (!hasTypeKeyword || allowedSizeofMacro) &&
                                               !hasCast &&
                                               !isSimpleAlias &&
                                               body != name
@@ -1568,7 +1820,8 @@ func parseDefines(text string, alias string, fs uint32) error {
 
 // evaluateAllMacros evaluates all macros in moduleMacros after all files have been processed
 // Uses multiple passes to handle dependencies between macros
-func evaluateAllMacros(alias string, fs uint32) error {
+// progress can be nil for early evaluations or in contexts without progress tracking
+func evaluateAllMacros(alias string, fs uint32, progress *AutoProgressTracker) error {
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
 
     if debugAuto {
@@ -1610,6 +1863,7 @@ func evaluateAllMacros(alias string, fs uint32) error {
     }()
 
     maxPasses := 10
+    macroWeight := 30.0
     for pass := 0; pass < maxPasses; pass++ {
         evaluated := 0
 
@@ -1617,9 +1871,16 @@ func evaluateAllMacros(alias string, fs uint32) error {
             fmt.Printf("[AUTO] evaluateAllMacros: Pass %d\n", pass+1)
         }
 
+        // Update progress at start of pass
+        passInfo := fmt.Sprintf("(Pass %d/%d)", pass+1, maxPasses)
+        if progress != nil {
+            progress.update(0, "Evaluating macros", passInfo)
+        }
+
         // Iterate in definition order
         for _, name := range orderedMacros {
             valueStr := allMacros[name]
+
             // Skip if already evaluated
             moduleConstantsLock.RLock()
             _, alreadyEvaluated := moduleConstants[alias][name]
@@ -1696,8 +1957,22 @@ func evaluateAllMacros(alias string, fs uint32) error {
             fmt.Printf("[AUTO] evaluateAllMacros: Pass %d evaluated %d macros\n", pass+1, evaluated)
         }
 
+        // Update progress after this pass
+        if evaluated > 0 && progress != nil {
+            passWeight := macroWeight / float64(maxPasses)
+            progress.update(passWeight, "", passInfo)
+        }
+
         // If no macros were evaluated in this pass, we're done (or stuck on cycles)
         if evaluated == 0 {
+            // Allocate remaining weight from skipped passes (including current pass)
+            if progress != nil {
+                remainingPasses := maxPasses - pass  // Include current pass
+                if remainingPasses > 0 {
+                    skipWeight := macroWeight * float64(remainingPasses) / float64(maxPasses)
+                    progress.update(skipWeight, "", "")
+                }
+            }
             break
         }
     }
@@ -2323,6 +2598,12 @@ func evaluateConstant(valueStr string, state *PreprocessorState, alias string, f
 
     // Handle sizeof(type) by replacing with actual size EARLY
     // This must be done BEFORE type keyword checking to avoid skipping expressions like "sizeof(int)"
+
+    // First, strip C-style casts before sizeof: (int) sizeof(...) → sizeof(...)
+    // This handles cases like (int) sizeof(__fd_mask) or (unsigned) sizeof(long int)
+    castBeforeSizeof := regexp.MustCompile(`\([a-zA-Z_][a-zA-Z0-9_\s]*\)\s*sizeof`)
+    valueStr = castBeforeSizeof.ReplaceAllString(valueStr, "sizeof")
+
     re := regexp.MustCompile(`sizeof\s*\(\s*([^)]+)\s*\)`)
     valueStr = re.ReplaceAllStringFunc(valueStr, func(match string) string {
         // Extract type name
@@ -2742,18 +3023,53 @@ func parseTypedefs(text string, alias string) error {
         moduleTypedefs[alias] = make(map[string]string)
     }
 
-    // Pattern 1: Simple typedef
+    if os.Getenv("ZA_DEBUG_AUTO") != "" {
+        fmt.Printf("[AUTO] parseTypedefs START for alias=%s (text length=%d)\n", alias, len(text))
+    }
+
+    // Pattern 1: Function pointer typedefs FIRST
+    // typedef int (*callback_t)(void*);
+    // typedef int (*binary_op_t)(int, int);
+    reFuncPtr := regexp.MustCompile(`typedef\s+(\S+\s+\(\*\s*(\w+)\s*\)[^;]*);`)
+
+    funcPtrMatches := reFuncPtr.FindAllStringSubmatch(text, -1)
+
+    for _, match := range funcPtrMatches {
+        baseType := strings.TrimSpace(match[1])
+        newName := match[2]
+
+        // Parse the function pointer signature
+        _, sig, err := parseFunctionPointerSignature(baseType)
+        if err != nil {
+            if os.Getenv("ZA_WARN_AUTO") != "" {
+                msg := fmt.Sprintf("[AUTO] Warning: Failed to parse function pointer typedef %s: %v", newName, err)
+                addMessageToCurrentProgress(msg)
+            }
+            continue
+        }
+        // Store in function pointer registry
+        moduleFunctionPointerSignaturesLock.Lock()
+        if moduleFunctionPointerSignatures[alias] == nil {
+            moduleFunctionPointerSignatures[alias] = make(map[string]CFunctionSignature)
+        }
+        moduleFunctionPointerSignatures[alias][newName] = sig
+        moduleFunctionPointerSignaturesLock.Unlock()
+    }
+
+    // Pattern 2: Simple typedef
     // typedef unsigned int uint32_t;
     // typedef const char* string_t;
     reSimple := regexp.MustCompile(`typedef\s+([^;]+?)\s+(\w+)\s*;`)
 
+    matches := reSimple.FindAllStringSubmatch(text, -1)
+
     // Match and store
-    for _, match := range reSimple.FindAllStringSubmatch(text, -1) {
+    for _, match := range matches {
         baseType := strings.TrimSpace(match[1])
         newName := match[2]
 
-        // Skip function pointer typedefs (have (* in them)
-        // typedef int (*callback_t)(void*);
+        // Skip function pointer typedefs - they were already handled above
+        // These have (* in them
         if strings.Contains(baseType, "(*") {
             continue
         }
@@ -2824,6 +3140,103 @@ func resolveTypedef(typeName string, alias string, depth int) string {
     }
 
     return ""
+}
+
+// parseFunctionPointerSignature parses a function pointer typedef
+// Format: "returnType (*name)(param1, param2, ...)"
+// Example: "int (*compare_t)(const void*, const void*)"
+// Returns: (name, signature, error)
+func parseFunctionPointerSignature(decl string) (string, CFunctionSignature, error) {
+    // Trim whitespace
+    decl = strings.TrimSpace(decl)
+
+    // Find the opening paren containing the *
+    startIdx := strings.Index(decl, "(*")
+    if startIdx == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("invalid function pointer format")
+    }
+
+    // Extract return type (everything before "(*")
+    returnTypeStr := strings.TrimSpace(decl[:startIdx])
+
+    // Find the closing paren of the name
+    endIdx := strings.Index(decl[startIdx:], ")")
+    if endIdx == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("unclosed parenthesis in function pointer name")
+    }
+    endIdx += startIdx
+
+    // Extract name (between * and the closing paren)
+    name := strings.TrimSpace(decl[startIdx+2 : endIdx])
+
+    // Find the parameter list (opening paren after the name paren)
+    paramStart := strings.Index(decl[endIdx:], "(")
+    if paramStart == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("no parameter list in function pointer")
+    }
+    paramStart += endIdx
+
+    paramEnd := strings.LastIndex(decl, ")")
+    if paramEnd <= paramStart {
+        return "", CFunctionSignature{}, fmt.Errorf("unclosed parameter list in function pointer")
+    }
+
+    // Extract parameter string
+    paramStr := strings.TrimSpace(decl[paramStart+1 : paramEnd])
+
+    // Parse return type
+    returnType, returnStructName, err := StringToCType(returnTypeStr)
+    if err != nil {
+        return "", CFunctionSignature{}, fmt.Errorf("invalid return type in function pointer: %w", err)
+    }
+
+    // Parse parameters
+    var paramTypes []CType
+    var paramStructNames []string
+
+    if paramStr != "" && paramStr != "void" {
+        // Split parameters by comma (but be careful about nested types)
+        params := strings.Split(paramStr, ",")
+        for _, param := range params {
+            param = strings.TrimSpace(param)
+            // Remove type qualifiers
+            param = strings.TrimPrefix(param, "const ")
+            param = strings.TrimPrefix(param, "volatile ")
+            param = strings.TrimPrefix(param, "restrict ")
+            param = strings.TrimSpace(param)
+
+            // Handle "..." for variadic parameters
+            if param == "..." {
+                // For now, we don't support variadic function pointers fully
+                continue
+            }
+
+            // Remove parameter names (if present)
+            // E.g., "int a" -> "int", "const char *str" -> "const char *"
+            parts := strings.Fields(param)
+            if len(parts) > 1 {
+                param = strings.Join(parts[:len(parts)-1], " ")
+            }
+
+            ptype, pstruct, err := StringToCType(param)
+            if err != nil {
+                return "", CFunctionSignature{}, fmt.Errorf("invalid parameter type '%s': %w", param, err)
+            }
+            paramTypes = append(paramTypes, ptype)
+            paramStructNames = append(paramStructNames, pstruct)
+        }
+    }
+
+    sig := CFunctionSignature{
+        ParamTypes:       paramTypes,
+        ParamStructNames: paramStructNames,
+        ReturnType:       returnType,
+        ReturnStructName: returnStructName,
+        HasVarargs:       false,
+        FixedArgCount:    len(paramTypes),
+    }
+
+    return name, sig, nil
 }
 
 // extractUnionTypedefMatches extracts union typedef declarations using brace-counting
@@ -2902,7 +3315,8 @@ func parseUnionTypedefs(text string, alias string) error {
         if err != nil {
             // Production warning - always visible
             errMsg := fmt.Sprintf("skipped union %s: %v", unionName, err)
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+            addMessageToCurrentProgress(msg)
 
             // Track error for programmatic access
             autoImportErrorsLock.Lock()
@@ -2963,9 +3377,33 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
             continue
         }
 
-        // Fail if field contains function pointers
+        // Handle function pointer fields
         if isFunctionPointerField(decl) {
-            return nil, 0, fmt.Errorf("contains function pointer field (not supported): %s", decl)
+            fieldName, sig, err := parseFunctionPointerField(decl)
+            if err != nil {
+                return nil, 0, fmt.Errorf("failed to parse function pointer field: %w", err)
+            }
+
+            // Create function pointer field (all union fields at offset 0)
+            field := StructField{
+                Name:              fieldName,
+                Type:              CPointer, // Function pointers are pointers
+                Offset:            0,  // All union fields at offset 0
+                IsFunctionPtr:     true,
+                FunctionSignature: &sig,
+            }
+
+            fields = append(fields, field)
+            // Function pointers are sizeof(void*) on all platforms
+            ptrSize := unsafe.Sizeof(unsafe.Pointer(nil))
+            if ptrSize > maxSize {
+                maxSize = ptrSize
+            }
+
+            if debug && os.Getenv("ZA_DEBUG_AUTO") != "" {
+                fmt.Printf("[AUTO] Function pointer field: %s at offset %d\n", fieldName, field.Offset)
+            }
+            continue
         }
 
         // Check for inline struct/union definitions
@@ -2987,7 +3425,7 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
 
             fields = append(fields, field)
 
-            // Update max size
+            // Update max size (for unions, all fields are the same size at offset 0)
             if inlineSize > maxSize {
                 maxSize = inlineSize
             }
@@ -3032,11 +3470,52 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
             if openBracket > 0 && closeBracket > openBracket {
                 // Extract size
                 arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
-                size, err := strconv.Atoi(arraySizeStr)
-                if err != nil {
-                    return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
+
+                // Try to resolve as a constant macro first
+                resolved := false
+                moduleConstantsLock.RLock()
+                if constants, exists := moduleConstants[alias]; exists {
+                    if val, found := constants[arraySizeStr]; found {
+                        switch v := val.(type) {
+                        case int:
+                            arraySize = v
+                            resolved = true
+                        case int64:
+                            arraySize = int(v)
+                            resolved = true
+                        case float64:
+                            arraySize = int(v)
+                            resolved = true
+                        }
+                    }
                 }
-                arraySize = size
+                moduleConstantsLock.RUnlock()
+
+                // Fallback to literal integer or expression evaluation
+                if !resolved {
+                    size, err := strconv.Atoi(arraySizeStr)
+                    if err != nil {
+                        // Try to evaluate as an expression (e.g., "1024 / 64" or "__FD_SETSIZE / __NFDBITS")
+                        if val, ok := evaluateConstant(arraySizeStr, nil, alias, 0, false); ok {
+                            switch v := val.(type) {
+                            case int:
+                                arraySize = v
+                                resolved = true
+                            case int64:
+                                arraySize = int(v)
+                                resolved = true
+                            case float64:
+                                arraySize = int(v)
+                                resolved = true
+                            }
+                        }
+                        if !resolved {
+                            return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
+                        }
+                    } else {
+                        arraySize = size
+                    }
+                }
 
                 // Extract type and name before [
                 beforeBracket := strings.TrimSpace(decl[:openBracket])
@@ -3244,7 +3723,8 @@ func parseStructTypedefs(text string, alias string) error {
         if err != nil {
             // Production warning - always visible
             errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+            addMessageToCurrentProgress(msg)
 
             // Track error for programmatic access
             autoImportErrorsLock.Lock()
@@ -3660,7 +4140,8 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
         if err != nil {
             // Production warning - always visible
             errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
-            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+            addMessageToCurrentProgress(msg)
 
             // Track error for programmatic access
             autoImportErrorsLock.Lock()
@@ -3754,7 +4235,108 @@ func splitFieldDeclarations(fieldBlock string) []string {
 
 // isFunctionPointerField detects function pointer fields like "int (*callback)(void*)"
 func isFunctionPointerField(decl string) bool {
-    return strings.Contains(decl, "(*")
+    // Quick check first
+    if !strings.Contains(decl, "(*") {
+        return false
+    }
+
+    // If declaration contains braces, it's likely an inline struct/union
+    // containing function pointers, not a direct function pointer field
+    if strings.Contains(decl, "{") || strings.Contains(decl, "}") {
+        return false
+    }
+
+    return true
+}
+
+// parseFunctionPointerField parses a function pointer field declaration
+// Example: "int (*compare)(int, int)" -> fieldName="compare", signature for "int,int->int"
+func parseFunctionPointerField(decl string) (fieldName string, sig CFunctionSignature, err error) {
+    decl = strings.TrimSpace(decl)
+
+    // Find the opening paren containing the *
+    startIdx := strings.Index(decl, "(*")
+    if startIdx == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("invalid function pointer field format")
+    }
+
+    // Extract return type (everything before "(*")
+    returnTypeStr := strings.TrimSpace(decl[:startIdx])
+
+    // Find the closing paren of the name
+    endIdx := strings.Index(decl[startIdx:], ")")
+    if endIdx == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("unclosed parenthesis in function pointer field name")
+    }
+    endIdx += startIdx
+
+    // Extract name (between * and the closing paren)
+    fieldName = strings.TrimSpace(decl[startIdx+2 : endIdx])
+
+    // Find the parameter list (opening paren after the name paren)
+    paramStart := strings.Index(decl[endIdx:], "(")
+    if paramStart == -1 {
+        return "", CFunctionSignature{}, fmt.Errorf("no parameter list in function pointer field")
+    }
+    paramStart += endIdx
+
+    paramEnd := strings.LastIndex(decl, ")")
+    if paramEnd <= paramStart {
+        return "", CFunctionSignature{}, fmt.Errorf("unclosed parameter list in function pointer field")
+    }
+
+    // Extract parameter string
+    paramStr := strings.TrimSpace(decl[paramStart+1 : paramEnd])
+
+    // Parse return type
+    returnType, returnStructName, err := StringToCType(returnTypeStr)
+    if err != nil {
+        return "", CFunctionSignature{}, fmt.Errorf("invalid return type in function pointer field: %w", err)
+    }
+
+    // Parse parameters
+    var paramTypes []CType
+    var paramStructNames []string
+
+    if paramStr != "" && paramStr != "void" {
+        params := strings.Split(paramStr, ",")
+        for _, param := range params {
+            param = strings.TrimSpace(param)
+            // Remove type qualifiers
+            param = strings.TrimPrefix(param, "const ")
+            param = strings.TrimPrefix(param, "volatile ")
+            param = strings.TrimPrefix(param, "restrict ")
+            param = strings.TrimSpace(param)
+
+            if param == "..." {
+                continue
+            }
+
+            // Remove parameter names (if present)
+            parts := strings.Fields(param)
+            if len(parts) > 1 {
+                param = strings.Join(parts[:len(parts)-1], " ")
+            }
+
+            ptype, pstruct, err := StringToCType(param)
+            if err != nil {
+                return "", CFunctionSignature{}, fmt.Errorf("invalid parameter type '%s': %w", param, err)
+            }
+            paramTypes = append(paramTypes, ptype)
+            paramStructNames = append(paramStructNames, pstruct)
+        }
+    }
+
+    sig = CFunctionSignature{
+        ParamTypes:       paramTypes,
+        ParamStructNames: paramStructNames,
+        ReturnType:       returnType,
+        ReturnStructName: returnStructName,
+        HasVarargs:       false,
+        FixedArgCount:    len(paramTypes),
+    }
+
+    return fieldName, sig, nil
 }
 
 // isNestedStructOrUnion detects inline struct/union definitions like "struct { int x; } nested;"
@@ -3915,8 +4497,9 @@ func isValidFieldDeclaration(decl string) bool {
 // warnStructField outputs a production warning for skipped struct/union fields
 // Does not require debug flags - always outputs to stderr
 func warnStructField(structName, fieldDecl, reason string) {
-    fmt.Fprintf(os.Stderr, "[AUTO] Warning: skipping field in struct %s: %s (reason: %s)\n",
+    msg := fmt.Sprintf("[AUTO] Warning: skipping field in struct %s: %s (reason: %s)",
         structName, strings.TrimSpace(fieldDecl), reason)
+    addMessageToCurrentProgress(msg)
 }
 
 // parseStructFields parses the field declarations inside a struct definition
@@ -3936,9 +4519,34 @@ func parseStructFields(fieldBlock string, alias string, structName string, debug
             continue
         }
 
-        // Fail if field contains function pointers
+        // Handle function pointer fields
         if isFunctionPointerField(decl) {
-            return nil, 0, fmt.Errorf("contains function pointer field (not supported): %s", decl)
+            fieldName, sig, err := parseFunctionPointerField(decl)
+            if err != nil {
+                return nil, 0, fmt.Errorf("failed to parse function pointer field: %w", err)
+            }
+
+            // Create function pointer field
+            field := StructField{
+                Name:              fieldName,
+                Type:              CPointer, // Function pointers are pointers
+                Offset:            currentOffset,
+                IsFunctionPtr:     true,
+                FunctionSignature: &sig,
+            }
+
+            fields = append(fields, field)
+            // Function pointers are sizeof(void*) on all platforms
+            ptrSize := unsafe.Sizeof(unsafe.Pointer(nil))
+            currentOffset += ptrSize
+            if ptrSize > maxAlignment {
+                maxAlignment = ptrSize
+            }
+
+            if debug && os.Getenv("ZA_DEBUG_AUTO") != "" {
+                fmt.Printf("[AUTO] Function pointer field: %s at offset %d\n", fieldName, field.Offset)
+            }
+            continue
         }
 
         // Check for inline struct/union definitions
@@ -4025,11 +4633,52 @@ func parseStructFields(fieldBlock string, alias string, structName string, debug
             if openBracket > 0 && closeBracket > openBracket {
                 // Extract size
                 arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
-                size, err := strconv.Atoi(arraySizeStr)
-                if err != nil {
-                    return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
+
+                // Try to resolve as a constant macro first
+                resolved := false
+                moduleConstantsLock.RLock()
+                if constants, exists := moduleConstants[alias]; exists {
+                    if val, found := constants[arraySizeStr]; found {
+                        switch v := val.(type) {
+                        case int:
+                            arraySize = v
+                            resolved = true
+                        case int64:
+                            arraySize = int(v)
+                            resolved = true
+                        case float64:
+                            arraySize = int(v)
+                            resolved = true
+                        }
+                    }
                 }
-                arraySize = size
+                moduleConstantsLock.RUnlock()
+
+                // Fallback to literal integer or expression evaluation
+                if !resolved {
+                    size, err := strconv.Atoi(arraySizeStr)
+                    if err != nil {
+                        // Try to evaluate as an expression (e.g., "1024 / 64" or "__FD_SETSIZE / __NFDBITS")
+                        if val, ok := evaluateConstant(arraySizeStr, nil, alias, 0, false); ok {
+                            switch v := val.(type) {
+                            case int:
+                                arraySize = v
+                                resolved = true
+                            case int64:
+                                arraySize = int(v)
+                                resolved = true
+                            case float64:
+                                arraySize = int(v)
+                                resolved = true
+                            }
+                        }
+                        if !resolved {
+                            return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
+                        }
+                    } else {
+                        arraySize = size
+                    }
+                }
 
                 // Extract type and name before [
                 beforeBracket := strings.TrimSpace(decl[:openBracket])
@@ -4352,6 +5001,29 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     }
     moduleTypedefsLock.RUnlock()
 
+    // Debug logging for unresolved int64_t and similar types
+    if os.Getenv("ZA_DEBUG_AUTO") != "" && (typeStr == "int64_t" || typeStr == "uint64_t" || typeStr == "int32_t" || typeStr == "uint32_t") {
+        fmt.Printf("[AUTO] [DEBUG] Typedef not found for %s (alias=%s)\n", typeStr, alias)
+        moduleTypedefsLock.RLock()
+        if aliasMap, hasAlias := moduleTypedefs[alias]; hasAlias {
+            fmt.Printf("[AUTO] [DEBUG] Available typedefs for %s: %d entries\n", alias, len(aliasMap))
+            // Show a sample of available typedefs
+            count := 0
+            for k := range aliasMap {
+                if count < 5 {
+                    fmt.Printf("[AUTO] [DEBUG]   - %s\n", k)
+                    count++
+                }
+            }
+            if len(aliasMap) > 5 {
+                fmt.Printf("[AUTO] [DEBUG]   ... and %d more\n", len(aliasMap)-5)
+            }
+        } else {
+            fmt.Printf("[AUTO] [DEBUG] No typedefs registered for alias %s\n", alias)
+        }
+        moduleTypedefsLock.RUnlock()
+    }
+
     // Handle glibc-specific types before lowercasing
     // These are special types used in glibc headers that may not resolve via typedefs
     // On 64-bit Linux, these are typically 8-byte or 4-byte integer types
@@ -4371,6 +5043,14 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     case "__syscall_ulong_t", "__syscall_slong_t":
         // Syscall long types - 8 bytes on 64-bit
         return CInt64, 8
+    case "__int64_t", "__int_fast64_t", "__int_least64_t":
+        // 64-bit signed integer types from stdint.h
+        // Fix #9: Support __int64_t and variants from system headers
+        return CInt64, 8
+    case "__uint64_t", "__uint_fast64_t", "__uint_least64_t":
+        // 64-bit unsigned integer types from stdint.h
+        // Fix #9: Support __uint64_t and variants from system headers
+        return CUInt64, 8
     }
 
     typeStr = strings.ToLower(typeStr)
@@ -4379,6 +5059,7 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     typeStr = strings.ReplaceAll(typeStr, "const ", "")
     typeStr = strings.ReplaceAll(typeStr, "volatile ", "")
     typeStr = strings.ReplaceAll(typeStr, "restrict ", "")
+    typeStr = strings.ReplaceAll(typeStr, "__extension__ ", "")
     typeStr = strings.TrimSpace(typeStr)
 
     // Map C types to CType and size
@@ -4405,7 +5086,7 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
         return CInt64, 8
     case "unsigned long", "unsigned long int":
         return CUInt64, 8
-    case "long long", "long long int", "signed long long":
+    case "long long", "long long int", "signed long long", "signed long long int":
         return CInt64, 8
     case "unsigned long long", "unsigned long long int":
         return CUInt64, 8
@@ -4861,7 +5542,8 @@ func parseFunctionSignatures(text string, alias string) error {
         if err != nil {
             // Skip unparseable signatures (function pointers, complex types)
             if warnAuto {
-                fmt.Fprintf(os.Stderr, "Warning: skipped unparseable signature: %s (error: %v)\n", signature, err)
+                msg := fmt.Sprintf("Warning: skipped unparseable signature: %s (error: %v)", signature, err)
+                addMessageToCurrentProgress(msg)
             }
             continue
         }
