@@ -825,9 +825,17 @@ func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
             // Regular field
             var fieldType *C.ffi_type
 
-            // Handle nested structs
-            if field.Type == CStruct && field.StructDef != nil {
-                // Recursively create ffi_type for nested struct
+            // Handle inline union/struct fields (both use UnionDef)
+            if field.UnionDef != nil {
+                // Recursively create ffi_type for inline union or struct
+                nestedFFIType, err := createFFITypeForStruct(field.UnionDef)
+                if err != nil {
+                    C.free(unsafe.Pointer(fieldTypesArray))
+                    return nil, fmt.Errorf("field %s: %w", field.Name, err)
+                }
+                fieldType = (*C.ffi_type)(nestedFFIType)
+            } else if field.Type == CStruct && field.StructDef != nil {
+                // Handle regular nested structs (non-inline)
                 nestedFFIType, err := createFFITypeForStruct(field.StructDef)
                 if err != nil {
                     C.free(unsafe.Pointer(fieldTypesArray))

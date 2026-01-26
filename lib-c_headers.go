@@ -49,6 +49,12 @@ var moduleMacrosOrderLock = &sync.RWMutex{}
 var macroEvalStatus = make(map[string]map[string]string) // alias → macroName → status
 var macroEvalStatusLock sync.RWMutex
 
+// autoImportErrors tracks errors from AUTO module imports
+// Structure: libraryAlias → list of error messages from skipped structs/unions
+// Allows Za code to programmatically check for import failures
+var autoImportErrors = make(map[string][]string)
+var autoImportErrorsLock sync.RWMutex
+
 // PreprocessorState tracks conditional compilation state while parsing a header
 type PreprocessorState struct {
     definedMacros  map[string]string  // NAME → VALUE from #define
@@ -2820,31 +2826,91 @@ func resolveTypedef(typeName string, alias string, depth int) string {
     return ""
 }
 
+// extractUnionTypedefMatches extracts union typedef declarations using brace-counting
+// to handle nested braces (like inline unions) correctly
+// Returns: (fieldBlock, unionName) pairs
+func extractUnionTypedefMatches(text string) []struct{ fieldBlock, unionName string } {
+    var matches []struct{ fieldBlock, unionName string }
+
+    // Find all "typedef union" occurrences
+    pattern := regexp.MustCompile(`typedef\s+union\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{`)
+    positions := pattern.FindAllStringIndex(text, -1)
+
+    for _, pos := range positions {
+        braceStart := pos[1] - 1 // Position of the opening brace
+
+        // Find matching closing brace using brace counting
+        braceCount := 0
+        braceEnd := -1
+        for i := braceStart; i < len(text); i++ {
+            if text[i] == '{' {
+                braceCount++
+            } else if text[i] == '}' {
+                braceCount--
+                if braceCount == 0 {
+                    braceEnd = i
+                    break
+                }
+            }
+        }
+
+        if braceEnd == -1 {
+            // No matching brace found
+            continue
+        }
+
+        // Extract field block content (between braces)
+        fieldBlock := text[braceStart+1 : braceEnd]
+
+        // Find union name after the closing brace
+        afterBrace := text[braceEnd+1:]
+        unionNameMatch := regexp.MustCompile(`^\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`).FindStringSubmatch(afterBrace)
+        if len(unionNameMatch) < 2 {
+            continue
+        }
+        unionName := unionNameMatch[1]
+
+        matches = append(matches, struct{ fieldBlock, unionName string }{fieldBlock, unionName})
+    }
+
+    return matches
+}
+
 // parseUnionTypedefs extracts union typedef declarations from header text
 // and stores them in the FFI struct registry with IsUnion=true
 func parseUnionTypedefs(text string, alias string) error {
     // Pattern to match: typedef union { fields } name;
     // Also handles: typedef union name { fields } name;
     // Matches both multiline and single-line declarations
-
-    re := regexp.MustCompile(`(?s)typedef\s+union\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{([^}]+)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`)
-    matches := re.FindAllStringSubmatch(text, -1)
+    // Uses brace-counting to handle nested braces (inline unions)
 
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
 
+    // Use brace-counting extraction instead of regex
+    matches := extractUnionTypedefMatches(text)
+
     for _, match := range matches {
-        fieldBlock := match[1]  // Content between { }
-        unionName := match[2]   // Type name after }
+        fieldBlock := match.fieldBlock
+        unionName := match.unionName
 
         if debugAuto {
             fmt.Printf("[AUTO] Found union typedef: %s\n", unionName)
         }
 
         // Parse fields from the field block
-        fields, maxSize, err := parseUnionFields(fieldBlock, alias, debugAuto)
+        fields, maxSize, err := parseUnionFields(fieldBlock, alias, unionName, debugAuto)
         if err != nil {
+            // Production warning - always visible
+            errMsg := fmt.Sprintf("skipped union %s: %v", unionName, err)
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+
+            // Track error for programmatic access
+            autoImportErrorsLock.Lock()
+            autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
+            autoImportErrorsLock.Unlock()
+
             if debugAuto {
-                fmt.Printf("[AUTO] Warning: failed to parse union %s: %v\n", unionName, err)
+                fmt.Printf("[AUTO] Debug: union %s parse error details: %v\n", unionName, err)
             }
             continue // Skip this union but continue parsing others
         }
@@ -2884,17 +2950,68 @@ func parseUnionTypedefs(text string, alias string) error {
 
 // parseUnionFields parses the field declarations inside a union definition
 // Returns the fields, the max size, and any error
-func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructField, uintptr, error) {
+func parseUnionFields(fieldBlock string, alias string, unionName string, debug bool) ([]StructField, uintptr, error) {
     var fields []StructField
     var maxSize uintptr = 0
 
     // Split by semicolons to get individual field declarations
-    declarations := strings.Split(fieldBlock, ";")
+    declarations := splitFieldDeclarations(fieldBlock)
 
     for _, decl := range declarations {
         decl = strings.TrimSpace(decl)
         if decl == "" {
             continue
+        }
+
+        // Fail if field contains function pointers
+        if isFunctionPointerField(decl) {
+            return nil, 0, fmt.Errorf("contains function pointer field (not supported): %s", decl)
+        }
+
+        // Check for inline struct/union definitions
+        if isNestedStructOrUnion(decl) {
+            // Parse the inline union/struct
+            fieldName, inlineUnionDef, inlineSize, err := parseInlineUnion(decl, alias, debug)
+            if err != nil {
+                return nil, 0, fmt.Errorf("failed to parse inline union in field: %v", err)
+            }
+
+            // Create field with inline union (all union fields have offset 0)
+            field := StructField{
+                Name:     fieldName,
+                Type:     CStruct, // Treat as struct type for now
+                Offset:   0,  // All union fields at offset 0
+                IsUnion:  inlineUnionDef.IsUnion,    // ← POPULATE THIS FIELD!
+                UnionDef: inlineUnionDef,             // ← POPULATE THIS FIELD!
+            }
+
+            fields = append(fields, field)
+
+            // Update max size
+            if inlineSize > maxSize {
+                maxSize = inlineSize
+            }
+
+            if debug {
+                unionOrStruct := "struct"
+                if inlineUnionDef.IsUnion {
+                    unionOrStruct = "union"
+                }
+                fmt.Printf("[AUTO]   Inline %s field: %s (size: %d bytes, offset: 0)\n",
+                    unionOrStruct, fieldName, inlineSize)
+            }
+
+            continue  // Move to next field declaration
+        }
+
+        // Fail if field is a bitfield
+        if isBitfieldDeclaration(decl) {
+            return nil, 0, fmt.Errorf("contains bitfield (not supported): %s", decl)
+        }
+
+        // Fail if field declaration is malformed
+        if !isValidFieldDeclaration(decl) {
+            return nil, 0, fmt.Errorf("contains malformed field declaration: %s", decl)
         }
 
         // Parse field declaration: type field_name or type field_name[size]
@@ -2917,10 +3034,7 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
                 arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
                 size, err := strconv.Atoi(arraySizeStr)
                 if err != nil {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: invalid array size in union field: %s\n", decl)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
                 }
                 arraySize = size
 
@@ -2928,10 +3042,7 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
                 beforeBracket := strings.TrimSpace(decl[:openBracket])
                 parts := strings.Fields(beforeBracket)
                 if len(parts) < 2 {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: invalid array field declaration: %s\n", decl)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains invalid array field declaration: %s", decl)
                 }
 
                 // Last part is field name, everything else is type
@@ -2941,10 +3052,7 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
                 // Parse element type
                 elemType, elemSize := parseCTypeString(typeStr, alias)
                 if elemType == CVoid {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: unsupported array element type: %s\n", typeStr)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains array field with unsupported element type '%s': %s", typeStr, decl)
                 }
 
                 elementType = elemType
@@ -2955,10 +3063,7 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
             // Regular field (non-array)
             parts := strings.Fields(decl)
             if len(parts) < 2 {
-                if debug {
-                    fmt.Printf("[AUTO] Warning: invalid field declaration: %s\n", decl)
-                }
-                continue
+                return nil, 0, fmt.Errorf("contains invalid field declaration: %s", decl)
             }
 
             // Last part is field name, everything else is type
@@ -3004,11 +3109,17 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
                     }
                     continue  // Skip the normal field append below
                 } else {
-                    // Truly unsupported type
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: unsupported field type: %s\n", typeStr)
+                    // Try heuristic: is it likely an opaque pointer?
+                    if isLikelyOpaquePointer(typeStr) {
+                        fieldType = CPointer
+                        fieldSize = 8  // Pointer size on x86-64
+                        if debug {
+                            fmt.Printf("[AUTO] Treating unknown type %s as opaque pointer\n", typeStr)
+                        }
+                    } else {
+                        // Cannot resolve type - fail union parsing
+                        return nil, 0, fmt.Errorf("contains unresolved type '%s' in field: %s", typeStr, decl)
                     }
-                    continue
                 }
             }
 
@@ -3051,12 +3162,63 @@ func parseUnionFields(fieldBlock string, alias string, debug bool) ([]StructFiel
     return fields, maxSize, nil
 }
 
+// extractStructTypedefMatches extracts struct typedef declarations using brace-counting
+// to handle nested braces (like inline unions) correctly
+// Returns: (fieldBlock, structName) pairs
+func extractStructTypedefMatches(text string) []struct{ fieldBlock, structName string } {
+    var matches []struct{ fieldBlock, structName string }
+
+    // Find all "typedef struct" occurrences
+    pattern := regexp.MustCompile(`typedef\s+struct\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{`)
+    positions := pattern.FindAllStringIndex(text, -1)
+
+    for _, pos := range positions {
+        braceStart := pos[1] - 1 // Position of the opening brace
+
+        // Find matching closing brace using brace counting
+        braceCount := 0
+        braceEnd := -1
+        for i := braceStart; i < len(text); i++ {
+            if text[i] == '{' {
+                braceCount++
+            } else if text[i] == '}' {
+                braceCount--
+                if braceCount == 0 {
+                    braceEnd = i
+                    break
+                }
+            }
+        }
+
+        if braceEnd == -1 {
+            // No matching brace found
+            continue
+        }
+
+        // Extract field block content (between braces)
+        fieldBlock := text[braceStart+1 : braceEnd]
+
+        // Find struct name after the closing brace
+        afterBrace := text[braceEnd+1:]
+        structNameMatch := regexp.MustCompile(`^\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`).FindStringSubmatch(afterBrace)
+        if len(structNameMatch) < 2 {
+            continue
+        }
+        structName := structNameMatch[1]
+
+        matches = append(matches, struct{ fieldBlock, structName string }{fieldBlock, structName})
+    }
+
+    return matches
+}
+
 // parseStructTypedefs extracts struct typedef declarations from header text
 // and stores them in the FFI struct registry with IsUnion=false
 func parseStructTypedefs(text string, alias string) error {
     // Pattern to match: typedef struct { fields } name;
     // Also handles: typedef struct name { fields } name;
     // Matches both multiline and single-line declarations
+    // Uses brace-counting to handle nested braces (inline unions)
 
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     if debugAuto {
@@ -3066,22 +3228,31 @@ func parseStructTypedefs(text string, alias string) error {
         }
     }
 
-    re := regexp.MustCompile(`(?s)typedef\s+struct\s+(?:[A-Za-z_][A-Za-z0-9_]*)?\s*\{([^}]+)\}\s*([A-Za-z_][A-Za-z0-9_]*)\s*;`)
-    matches := re.FindAllStringSubmatch(text, -1)
+    // Use brace-counting extraction instead of regex
+    matches := extractStructTypedefMatches(text)
 
     for _, match := range matches {
-        fieldBlock := match[1]  // Content between { }
-        structName := match[2]  // Type name after }
+        fieldBlock := match.fieldBlock
+        structName := match.structName
 
         if debugAuto {
             fmt.Printf("[AUTO] Found struct typedef: %s\n", structName)
         }
 
         // Parse fields from the field block
-        fields, totalSize, err := parseStructFields(fieldBlock, alias, debugAuto)
+        fields, totalSize, err := parseStructFields(fieldBlock, alias, structName, debugAuto)
         if err != nil {
+            // Production warning - always visible
+            errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+
+            // Track error for programmatic access
+            autoImportErrorsLock.Lock()
+            autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
+            autoImportErrorsLock.Unlock()
+
             if debugAuto {
-                fmt.Printf("[AUTO] Warning: failed to parse struct %s: %v\n", structName, err)
+                fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
             }
             continue // Skip this struct but continue parsing others
         }
@@ -3485,10 +3656,19 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
         }
 
         // Parse fields from the cleaned field block
-        fields, totalSize, err := parseStructFields(cleanedFieldBlock, alias, debugAuto)
+        fields, totalSize, err := parseStructFields(cleanedFieldBlock, alias, structName, debugAuto)
         if err != nil {
+            // Production warning - always visible
+            errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
+            fmt.Fprintf(os.Stderr, "[AUTO] Warning: %s\n", errMsg)
+
+            // Track error for programmatic access
+            autoImportErrorsLock.Lock()
+            autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
+            autoImportErrorsLock.Unlock()
+
             if debugAuto {
-                fmt.Printf("[AUTO] Warning: failed to parse plain struct %s: %v\n", structName, err)
+                fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
             }
             continue // Skip this struct but continue parsing others
         }
@@ -3529,21 +3709,300 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
     return structs, nil
 }
 
+// splitFieldDeclarations splits field declarations by semicolon while respecting brace/paren nesting
+// This prevents splitting inside function pointers or nested structs
+func splitFieldDeclarations(fieldBlock string) []string {
+    var declarations []string
+    var current strings.Builder
+    var parenDepth, braceDepth int
+
+    for _, ch := range fieldBlock {
+        switch ch {
+        case '(':
+            parenDepth++
+            current.WriteRune(ch)
+        case ')':
+            parenDepth--
+            current.WriteRune(ch)
+        case '{':
+            braceDepth++
+            current.WriteRune(ch)
+        case '}':
+            braceDepth--
+            current.WriteRune(ch)
+        case ';':
+            if parenDepth == 0 && braceDepth == 0 {
+                // This is a declaration boundary
+                declarations = append(declarations, current.String())
+                current.Reset()
+            } else {
+                // Inside parens or braces, treat as part of declaration
+                current.WriteRune(ch)
+            }
+        default:
+            current.WriteRune(ch)
+        }
+    }
+
+    // Add any remaining declaration
+    if current.Len() > 0 {
+        declarations = append(declarations, current.String())
+    }
+
+    return declarations
+}
+
+// isFunctionPointerField detects function pointer fields like "int (*callback)(void*)"
+func isFunctionPointerField(decl string) bool {
+    return strings.Contains(decl, "(*")
+}
+
+// isNestedStructOrUnion detects inline struct/union definitions like "struct { int x; } nested;"
+func isNestedStructOrUnion(decl string) bool {
+    hasStruct := strings.Contains(decl, "struct")
+    hasUnion := strings.Contains(decl, "union")
+    hasBrace := strings.Contains(decl, "{")
+    return (hasStruct || hasUnion) && hasBrace
+}
+
+// parseInlineUnion extracts and parses an inline union/struct definition from a field declaration
+// Example input: "union { char *a; wchar_t *b; } field_name"
+// Returns: field name, union definition, size, or error
+func parseInlineUnion(decl string, alias string, debug bool) (fieldName string, unionDef *CLibraryStruct, size uintptr, err error) {
+    decl = strings.TrimSpace(decl)
+
+    // 1. Find the opening brace position
+    openBrace := strings.Index(decl, "{")
+    if openBrace == -1 {
+        return "", nil, 0, fmt.Errorf("no opening brace found in inline union/struct: %s", decl)
+    }
+
+    // 2. Find matching closing brace using brace counting
+    braceCount := 0
+    closeBrace := -1
+    for i := openBrace; i < len(decl); i++ {
+        if decl[i] == '{' {
+            braceCount++
+        } else if decl[i] == '}' {
+            braceCount--
+            if braceCount == 0 {
+                closeBrace = i
+                break
+            }
+        }
+    }
+
+    if closeBrace == -1 {
+        return "", nil, 0, fmt.Errorf("no matching closing brace in inline union/struct (found %d braces): %s", braceCount, decl)
+    }
+
+    // 3. Extract field block (between braces)
+    fieldBlock := decl[openBrace+1 : closeBrace]
+
+    // 4. Extract field name (after closing brace)
+    afterBrace := strings.TrimSpace(decl[closeBrace+1:])
+    parts := strings.Fields(afterBrace)
+    if len(parts) == 0 {
+        return "", nil, 0, fmt.Errorf("no field name after inline union definition")
+    }
+    fieldName = parts[0]
+
+    // 5. Determine if it's a union or struct
+    isUnion := strings.Contains(decl[:openBrace], "union")
+
+    // 6. Parse the fields
+    var fields []StructField
+    var fieldSize uintptr
+
+    if isUnion {
+        // Generate a unique name for the anonymous union
+        anonName := fmt.Sprintf("__anon_union_%s", fieldName)
+        fields, fieldSize, err = parseUnionFields(fieldBlock, alias, anonName, debug)
+    } else {
+        // It's an inline struct
+        anonName := fmt.Sprintf("__anon_struct_%s", fieldName)
+        fields, fieldSize, err = parseStructFields(fieldBlock, alias, anonName, debug)
+    }
+
+    if err != nil {
+        return "", nil, 0, fmt.Errorf("failed to parse inline union/struct: %v", err)
+    }
+
+    // 7. Create CLibraryStruct for the inline union/struct
+    unionDef = &CLibraryStruct{
+        Name:    fieldName, // Use field name as union name
+        Fields:  fields,
+        Size:    fieldSize,
+        IsUnion: isUnion,
+    }
+
+    return fieldName, unionDef, fieldSize, nil
+}
+
+// isBitfieldDeclaration detects bitfield syntax like "unsigned int flags : 8;"
+func isBitfieldDeclaration(decl string) bool {
+    return strings.Contains(decl, ":")
+}
+
+// isLikelyOpaquePointer returns true if a type name looks like an opaque pointer typedef
+// Examples: GC, Display, Window, Visual, Screen, etc.
+// Heuristic: Single word, uppercase first letter, no spaces, looks like a typedef'd handle
+func isLikelyOpaquePointer(typeName string) bool {
+    // Reject multi-word types
+    if strings.Contains(typeName, " ") {
+        return false
+    }
+    if len(typeName) == 0 {
+        return false
+    }
+    // Check if it starts with uppercase (suggests typedef'd opaque type)
+    firstChar := typeName[0]
+    if firstChar >= 'A' && firstChar <= 'Z' {
+        return true // Uppercase start suggests typedef'd opaque handle
+    }
+    return false
+}
+
+// isValidFieldDeclaration validates that a declaration looks like an actual field
+// Rejects lone punctuation, bare keywords, and requires valid identifier as field name
+func isValidFieldDeclaration(decl string) bool {
+    // Trim and check if empty
+    decl = strings.TrimSpace(decl)
+    if decl == "" {
+        return false
+    }
+
+    // Check for lone punctuation
+    if decl == "(" || decl == ")" || decl == "{" || decl == "}" {
+        return false
+    }
+
+    // Split by whitespace and check parts
+    parts := strings.Fields(decl)
+    if len(parts) < 2 {
+        return false
+    }
+
+    // Last part should be valid identifier (field name)
+    // A valid identifier starts with letter or underscore
+    fieldName := parts[len(parts)-1]
+
+    // Strip leading * for pointer declarations like "Type *field"
+    fieldName = strings.TrimLeft(fieldName, "*")
+
+    if len(fieldName) == 0 {
+        return false
+    }
+
+    firstChar := fieldName[0]
+    if !((firstChar >= 'a' && firstChar <= 'z') ||
+        (firstChar >= 'A' && firstChar <= 'Z') ||
+        firstChar == '_') {
+        return false
+    }
+
+    // Reject if last part is a bare keyword (type without field)
+    bareKeywords := []string{"unsigned", "signed", "struct", "union", "int", "char", "short", "long", "double", "float", "void"}
+    for _, kw := range bareKeywords {
+        if fieldName == kw {
+            return false
+        }
+    }
+
+    return true
+}
+
+// warnStructField outputs a production warning for skipped struct/union fields
+// Does not require debug flags - always outputs to stderr
+func warnStructField(structName, fieldDecl, reason string) {
+    fmt.Fprintf(os.Stderr, "[AUTO] Warning: skipping field in struct %s: %s (reason: %s)\n",
+        structName, strings.TrimSpace(fieldDecl), reason)
+}
+
 // parseStructFields parses the field declarations inside a struct definition
 // Returns the fields, the total size, and any error
 // Unlike unions, struct fields have sequential offsets
-func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructField, uintptr, error) {
+func parseStructFields(fieldBlock string, alias string, structName string, debug bool) ([]StructField, uintptr, error) {
     var fields []StructField
     var currentOffset uintptr = 0
     var maxAlignment uintptr = 1  // Track maximum alignment requirement
 
     // Split by semicolons to get individual field declarations
-    declarations := strings.Split(fieldBlock, ";")
+    declarations := splitFieldDeclarations(fieldBlock)
 
     for _, decl := range declarations {
         decl = strings.TrimSpace(decl)
         if decl == "" {
             continue
+        }
+
+        // Fail if field contains function pointers
+        if isFunctionPointerField(decl) {
+            return nil, 0, fmt.Errorf("contains function pointer field (not supported): %s", decl)
+        }
+
+        // Check for inline struct/union definitions
+        if isNestedStructOrUnion(decl) {
+            if debug {
+                fmt.Printf("[AUTO]   parseStructFields: Detected inline union/struct in field declaration: %q\n", decl)
+            }
+            // Parse the inline union/struct
+            fieldName, inlineUnionDef, inlineSize, err := parseInlineUnion(decl, alias, debug)
+            if err != nil {
+                if debug {
+                    fmt.Printf("[AUTO]   parseStructFields: ERROR parsing inline union: %v\n", err)
+                }
+                return nil, 0, fmt.Errorf("failed to parse inline union in field: %v", err)
+            }
+
+            // Calculate alignment
+            fieldAlignment := inlineSize
+            if fieldAlignment > 8 {
+                fieldAlignment = 8 // Cap at 8 bytes
+            }
+            if fieldAlignment > 1 && currentOffset%fieldAlignment != 0 {
+                currentOffset = ((currentOffset + fieldAlignment - 1) / fieldAlignment) * fieldAlignment
+            }
+
+            // Create field with inline union
+            field := StructField{
+                Name:     fieldName,
+                Type:     CStruct, // Treat as struct type for now
+                Offset:   currentOffset,
+                IsUnion:  inlineUnionDef.IsUnion,    // ← POPULATE THIS FIELD!
+                UnionDef: inlineUnionDef,             // ← POPULATE THIS FIELD!
+            }
+
+            fields = append(fields, field)
+
+            // Track maximum alignment
+            if fieldAlignment > maxAlignment {
+                maxAlignment = fieldAlignment
+            }
+
+            // Update offset for next field
+            currentOffset += inlineSize
+
+            if debug {
+                unionOrStruct := "struct"
+                if inlineUnionDef.IsUnion {
+                    unionOrStruct = "union"
+                }
+                fmt.Printf("[AUTO]   Inline %s field: %s (size: %d bytes, offset: %d)\n",
+                    unionOrStruct, fieldName, inlineSize, field.Offset)
+            }
+
+            continue  // Move to next field declaration
+        }
+
+        // Fail if field is a bitfield
+        if isBitfieldDeclaration(decl) {
+            return nil, 0, fmt.Errorf("contains bitfield (not supported): %s", decl)
+        }
+
+        // Fail if field declaration is malformed
+        if !isValidFieldDeclaration(decl) {
+            return nil, 0, fmt.Errorf("contains malformed field declaration: %s", decl)
         }
 
         // Parse field declaration: type field_name or type field_name[size]
@@ -3568,10 +4027,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                 arraySizeStr := strings.TrimSpace(decl[openBracket+1 : closeBracket])
                 size, err := strconv.Atoi(arraySizeStr)
                 if err != nil {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: invalid array size in struct field: %s\n", decl)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains array field with invalid size: %s", decl)
                 }
                 arraySize = size
 
@@ -3579,10 +4035,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                 beforeBracket := strings.TrimSpace(decl[:openBracket])
                 parts := strings.Fields(beforeBracket)
                 if len(parts) < 2 {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: invalid array field declaration: %s\n", decl)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains invalid array field declaration: %s", decl)
                 }
 
                 // Last part is field name, everything else is type
@@ -3592,10 +4045,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                 // Parse element type
                 elemType, elemSize := parseCTypeString(typeStr, alias)
                 if elemType == CVoid {
-                    if debug {
-                        fmt.Printf("[AUTO] Warning: unsupported array element type: %s\n", typeStr)
-                    }
-                    continue
+                    return nil, 0, fmt.Errorf("contains array field with unsupported element type '%s': %s", typeStr, decl)
                 }
 
                 elementType = elemType
@@ -3607,10 +4057,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
             // Handle multi-declaration like "int x, y;" or "int x_root, y_root;"
             parts := strings.Fields(decl)
             if len(parts) < 2 {
-                if debug {
-                    fmt.Printf("[AUTO] Warning: invalid field declaration: %s\n", decl)
-                }
-                continue
+                return nil, 0, fmt.Errorf("contains invalid field declaration: %s", decl)
             }
 
             // Check for comma-separated field names (multi-declaration)
@@ -3636,10 +4083,7 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
             }
 
             if typeEndIndex < 0 || len(fieldNames) == 0 {
-                if debug {
-                    fmt.Printf("[AUTO] Warning: could not parse field declaration: %s\n", decl)
-                }
-                continue
+                return nil, 0, fmt.Errorf("contains field declaration that could not be parsed: %s", decl)
             }
 
             // Type is everything before the field names
@@ -3677,10 +4121,18 @@ func parseStructFields(fieldBlock string, alias string, debug bool) ([]StructFie
                         fieldSize = foundStruct.Size
                         nestedStruct = foundStruct
                     } else {
-                        if debug {
-                            fmt.Printf("[AUTO] Warning: unsupported field type: %s (in field: %s)\n", typeStr, decl)
+                        // Try heuristic: is it likely an opaque pointer (like GC, Display, Window)?
+                        if isLikelyOpaquePointer(typeStr) {
+                            fieldType = CPointer
+                            fieldSize = 8  // Pointer size on x86-64
+                            nestedStruct = nil
+                            if debug {
+                                fmt.Printf("[AUTO] Treating unknown type %s as opaque pointer\n", typeStr)
+                            }
+                        } else {
+                            // Cannot resolve type - fail struct parsing
+                            return nil, 0, fmt.Errorf("contains unresolved type '%s' in field: %s", typeStr, decl)
                         }
-                        continue
                     }
                 } else {
                     fieldType = fType

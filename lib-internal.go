@@ -383,6 +383,7 @@ func buildInternalLib() {
         "ast", "varbind", "sizeof", "dup", "defined", "log_queue_status",
         "set_depth",
         "logging_stats", "exreg", "format_stack_trace", "panic", "array_format", "array_colours",
+        "import_errors", "import_has_errors",
         // "suppress_prompt", "conread","conwrite","conset","conclear", : for future use.
     }
 
@@ -2234,6 +2235,45 @@ func buildInternalLib() {
 
         depthColours = colours
         return previous, nil
+    }
+
+    slhelp["import_errors"] = LibHelp{in: "module_alias_string", out: "[]string", action: "Returns a list of import errors for an AUTO module. Each error message describes a struct/union that was skipped due to unresolvable fields. Returns empty list if no errors."}
+    stdlib["import_errors"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("import_errors", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        aliasVal := args[0].(string)
+
+        autoImportErrorsLock.RLock()
+        errors, hasErrors := autoImportErrors[aliasVal]
+        autoImportErrorsLock.RUnlock()
+
+        if !hasErrors {
+            return []any{}, nil  // Return empty list if no errors
+        }
+
+        // Convert []string to []any for Za list
+        result := make([]any, len(errors))
+        for i, e := range errors {
+            result[i] = e
+        }
+        return result, nil
+    }
+
+    slhelp["import_has_errors"] = LibHelp{in: "module_alias_string", out: "bool", action: "Returns true if an AUTO module import had any errors (structs skipped). Useful for quick checks before using optional structs."}
+    stdlib["import_has_errors"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("import_has_errors", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        aliasVal := args[0].(string)
+
+        autoImportErrorsLock.RLock()
+        _, hasErrors := autoImportErrors[aliasVal]
+        autoImportErrorsLock.RUnlock()
+
+        return hasErrors, nil
     }
 
 }
