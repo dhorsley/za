@@ -4401,6 +4401,8 @@ use +gd
 
 The `AUTO` clause enables automatic discovery and parsing of C header files to extract constants, enums, and function signatures, eliminating the need to manually declare `#define` values and LIB function signatures.
 
+> **Performance Note:** AUTO imports can be slow on large header file sets (10-30+ seconds for complex libraries like OpenGL or X11). A progress bar displays import progress. Use explicit header paths and specify only needed headers to minimize parsing time. For scripts where startup speed is critical, **manual LIB declarations are much faster** than AUTO, though you lose automatic constant extraction, function discovery, and typedef resolution—requiring you to manually declare each function signature and constant needed. Set `ZA_NO_PROGRESS=1` to disable progress display.
+
 ### F.3.1 Basic Usage
 
 **Auto-discovery** (searches standard include paths):
@@ -4512,10 +4514,11 @@ The AUTO clause parses C headers and extracts:
    - Simple type aliases
    - Typedef chains (multi-level resolution)
    - Struct and pointer typedefs
+   - Function pointer typedefs (see item 13 below)
    - Recursive resolution up to 10 levels with cycle detection
    - Module-scoped (isolated per library alias)
    - Eliminates reliance on heuristics for type guessing
-   - **Not parsed**: Function pointer typedefs, array typedefs (future enhancement)
+   - **Not parsed**: Array typedefs (future enhancement)
 
 9. **Preprocessor conditionals** (platform-aware parsing):
 
@@ -4639,13 +4642,47 @@ The AUTO clause parses C headers and extracts:
     - POSIX wcs* functions (wcslen, wcscpy, etc.)
     - Windows wide character APIs (if Za supported Windows)
 
+13. **Function pointer typedefs** (v1.2.2+):
+
+   ```c
+   typedef int (*compare_t)(const void*, const void*);
+   typedef void (*callback_t)(int signal);
+   typedef double (*math_func_t)(double);
+   ```
+
+   - Parses function pointer signatures from typedef declarations
+   - Stores signature metadata (parameter types, return type)
+   - Enables type-safe function pointer usage with `c_as_function_ptr()` and `c_call_function_ptr()`
+   - Supports complex signatures with struct pointers and multiple parameters
+   - Module-scoped (isolated per library alias)
+   - See F.12 "Calling Function Pointers" for usage examples
+
+14. **Function pointer fields in structs and unions** (v1.2.2+):
+
+   ```c
+   typedef struct {
+       int (*callback)(void*);
+       void (*cleanup)(void);
+   } Handler;
+
+   typedef union {
+       int (*compare)(int, int);
+       void (*action)(void);
+   } FuncUnion;
+   ```
+
+   - Parses function pointer field declarations like `int (*callback)(void*)`
+   - Stores signature metadata for type-safe access
+   - Accessible as CPointer values in Za code
+   - Can be used with `c_as_function_ptr()` and `c_call_function_ptr()`
+   - Works in both struct and union definitions
+
 **Not parsed** (automatically skipped - not errors):
 
 - **Function-like macros**: `#define MAX(a,b) ((a)>(b)?(a):(b))`
 - **Function-like macro aliases**: `#define __REDIRECT_FORTIFY __REDIRECT` (identifiers starting with `__` in macro values)
 - **Type declarations**: `#define __U_CHAR unsigned char` (contains C type keywords)
 - **Forward references**: `#define B (A * 2)` where A is defined later
-- **Function pointer typedefs**: `typedef int (*callback_t)(void*);`
 - **Array typedefs**: `typedef int IntArray[10];`
 
 ### F.3.3 Accessing Constants
@@ -4949,6 +4986,9 @@ lib namespace::function_name(param1:type1, param2:type2, ...) -> return_type
 - `pointer` - Generic pointer (void*, struct pointers)
 - `void` - Return type only (function returns nothing)
 - `bool` - C boolean type
+- `struct<TypeName>` - Struct passed by value
+- `struct TypeName` (v1.2.2+) - C-style syntax, auto-converted to `struct<TypeName>`
+- `struct TypeName *` (v1.2.2+) - C-style pointer, auto-converted to `pointer`
 
 **Array types (v1.2.2+):**
 
@@ -6059,6 +6099,71 @@ println "File size:", stats.st_size
 c_free_struct(statbuf)
 ```
 
+## Function Pointer Operations (v1.2.2+)
+
+Za provides functions for working with C function pointers, enabling callbacks from C libraries like qsort comparators, signal handlers, and event-driven libraries.
+
+### c_as_function_ptr(pointer, signature:string) -> CFunctionPointer
+
+Converts a C function pointer to a callable CFunctionPointer object.
+
+**Signature format:** `"param1,param2,...->return_type"`
+
+```za
+# Get function pointer from C library
+add_ptr_raw = mylib::get_add_function()  # Returns CPointer
+
+# Convert to callable function pointer
+add_ptr = c_as_function_ptr(add_ptr_raw, "int,int->int")
+
+# Now callable with c_call_function_ptr
+```
+
+**Supported types:** All standard C types (int, float, double, pointer, string, struct types, etc.)
+
+### c_call_function_ptr(func_ptr:CFunctionPointer, ...args) -> any
+
+Calls a C function pointer with the provided arguments.
+
+```za
+# Create function pointer
+add_ptr = c_as_function_ptr(raw_ptr, "int,int->int")
+
+# Call it
+result = c_call_function_ptr(add_ptr, 10, 20)
+println result  # 30
+```
+
+**Complete example:**
+
+```za
+module "./libtest.so" as test auto "./test.h"
+use +test
+
+def main()
+    # Get function pointer from C library
+    add_ptr_raw = test::get_add_ptr()
+
+    # Convert to callable function pointer
+    add_ptr = c_as_function_ptr(add_ptr_raw, "int,int->int")
+
+    # Call the function pointer
+    result = c_call_function_ptr(add_ptr, 10, 20)
+    println "10 + 20 = " + result  # 30
+
+    # Works with different signatures
+    compare_ptr = c_as_function_ptr(test::get_compare_ptr(), "int,int->int")
+    cmp_result = c_call_function_ptr(compare_ptr, 5, 10)  # -1, 0, or 1
+end
+```
+
+**Error handling:**
+- Returns error if pointer is null
+- Validates argument count against signature
+- Checks type compatibility through libffi
+
+**Use with AUTO-parsed function pointer typedefs:** When AUTO parses typedef declarations like `typedef int (*compare_t)(const void*, const void*)`, the type information is registered and can be used with these functions.
+
 ## Opaque Pointer Functions (int64 Addresses)
 
 The functions described in **F.5.2 "Working with Opaque Pointers as int64 Addresses"** (`*_at_addr` variants) provide parallel access patterns for the basic functions above, but work with opaque pointers (represented as int64) instead of `CPointerValue` objects. See F.5.2 for detailed examples and guidance on when to use `*_at_addr` versus the standard `c_get_*` / `c_set_*` functions.
@@ -6725,7 +6830,7 @@ endif
 | `pointer` | `void*` | Raw pointer value |
 | `[int]` | `int[N]` | Fixed-size arrays (v1.2.2+) |
 
-**Supported (v1.2.2+)**: Fixed-size arrays in structs, union types, struct-by-value parameters/returns, nested structs
+**Supported (v1.2.2+)**: Fixed-size arrays in structs, union types, struct-by-value parameters/returns, nested structs/unions, function pointer fields
 
 #### Struct-by-Value Support (v1.2.2+)
 
@@ -6828,7 +6933,9 @@ println "Alpha: {color["alpha"]}"
 - Unions returned from C are unmarshaled as Za maps
 - All union fields are accessible via map keys (C memory is reinterpreted)
 - Only the active field (set in C) contains valid data
-- Nested structs within unions work correctly
+- Nested structs within unions work correctly (v1.2.2+)
+- Nested unions within structs work correctly (v1.2.2+)
+- Function pointer fields in unions work correctly (v1.2.2+)
 - Field validation ensures type safety
 
 See working examples in:

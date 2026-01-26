@@ -58,15 +58,17 @@ type CParameter struct {
 
 // StructField represents a field in a C struct
 type StructField struct {
-    Name        string
-    Type        CType
-    Offset      uintptr
-    ArraySize   int   // 0 for non-arrays, >0 for fixed-size arrays
-    ElementType CType // For arrays, the type of array elements
-    IsUnion     bool  // true if this field is a union type
-    UnionDef    *CLibraryStruct // Union definition if IsUnion=true
-    StructName  string // For nested struct fields (Type==CStruct), the struct type name
-    StructDef   *CLibraryStruct // For nested struct fields, the struct definition
+    Name              string
+    Type              CType
+    Offset            uintptr
+    ArraySize         int                 // 0 for non-arrays, >0 for fixed-size arrays
+    ElementType       CType               // For arrays, the type of array elements
+    IsUnion           bool                // true if this field is a union type
+    UnionDef          *CLibraryStruct     // Union definition if IsUnion=true
+    StructName        string              // For nested struct fields (Type==CStruct), the struct type name
+    StructDef         *CLibraryStruct     // For nested struct fields, the struct definition
+    IsFunctionPtr     bool                // true if this field is a function pointer
+    FunctionSignature *CFunctionSignature // Function pointer signature if IsFunctionPtr=true
 }
 
 // CLibraryStruct represents a C struct or union definition
@@ -183,6 +185,37 @@ func NewCPointer(ptr unsafe.Pointer, typeTag string) *CPointerValue {
     return &CPointerValue{Ptr: ptr, TypeTag: typeTag}
 }
 
+// CFunctionPointer represents a function pointer from C that can be called
+type CFunctionPointer struct {
+    Ptr       unsafe.Pointer          // The actual function pointer
+    Signature CFunctionSignature      // Function signature for validation and calling
+    TypeTag   string                  // Optional type hint (e.g., "qsort_compar_t")
+    Library   string                  // Library this function pointer came from
+}
+
+// IsNull returns true if the function pointer is null
+func (fp *CFunctionPointer) IsNull() bool {
+    return fp == nil || fp.Ptr == nil
+}
+
+// String representation for debugging
+func (fp *CFunctionPointer) String() string {
+    if fp == nil || fp.Ptr == nil {
+        return "CFunctionPointer(null)"
+    }
+    return fmt.Sprintf("CFunctionPointer(%s:%p)", fp.TypeTag, fp.Ptr)
+}
+
+// NewCFunctionPointer creates a new CFunctionPointer
+func NewCFunctionPointer(ptr unsafe.Pointer, sig CFunctionSignature, typeTag, library string) *CFunctionPointer {
+    return &CFunctionPointer{
+        Ptr:       ptr,
+        Signature: sig,
+        TypeTag:   typeTag,
+        Library:   library,
+    }
+}
+
 // ConvertZaToCType maps Za types to C types
 func ConvertZaToCType(zaType uint8) (CType, []string) {
     switch zaType {
@@ -206,7 +239,30 @@ func ConvertZaToCType(zaType uint8) (CType, []string) {
 // StringToCType converts type name strings to CType enum (for LIB declarations)
 // Returns: CType, struct name (if applicable), error
 func StringToCType(typeName string) (CType, string, error) {
-    // Remove all spaces for parsing
+    // Trim whitespace first
+    typeName = strings.TrimSpace(typeName)
+
+    // Handle C-style struct pointer syntax: "struct TypeName *"
+    // Must be done BEFORE removing spaces
+    if strings.HasPrefix(typeName, "struct ") {
+        cleaned := strings.TrimPrefix(typeName, "struct ")
+        cleaned = strings.TrimSpace(cleaned)
+
+        // Check if it's a pointer type
+        if strings.HasSuffix(cleaned, "*") {
+            // Strip * for struct name, but note it's a pointer
+            structName := strings.TrimRight(cleaned, "*")
+            structName = strings.TrimSpace(structName)
+            // Return as CPointer with struct name preserved
+            return CPointer, structName+"*", nil
+        }
+
+        // Non-pointer struct: "struct TypeName"
+        // Fall through to existing struct<typename> handling
+        typeName = "struct<" + cleaned + ">"
+    }
+
+    // NOW remove all spaces for remaining parsing
     typeName = strings.ReplaceAll(typeName, " ", "")
 
     // Handle struct<typename> syntax
@@ -218,22 +274,26 @@ func StringToCType(typeName string) (CType, string, error) {
     switch strings.ToLower(typeName) {
     case "void":
         return CVoid, "", nil
-    case "int":
+    case "int", "signed":
         return CInt, "", nil
-    case "uint":
+    case "uint", "unsigned":
         return CUInt, "", nil
-    case "int16":
+    case "int16", "short", "shortint", "int16_t":
         return CInt16, "", nil
-    case "uint16":
+    case "uint16", "uint16_t":
         return CUInt16, "", nil
-    case "int64":
+    case "int64", "long", "longint", "int64_t":
         return CInt64, "", nil
-    case "uint64":
+    case "uint64", "unsignedlong", "unsignedlongint", "uint64_t":
         return CUInt64, "", nil
-    case "int8":
+    case "int8", "int8_t":
         return CInt8, "", nil
-    case "uint8", "byte":
+    case "uint8", "byte", "uint8_t":
         return CUInt8, "", nil
+    case "int32", "int32_t":
+        return CInt, "", nil
+    case "uint32", "uint32_t":
+        return CUInt, "", nil
     case "intptr":
         return CInt64, "", nil
     case "uintptr":
@@ -254,9 +314,20 @@ func StringToCType(typeName string) (CType, string, error) {
         return CPointer, "", nil
     case "struct":
         return CStruct, "", nil // Generic opaque struct pointer
-    default:
-        return CVoid, "", fmt.Errorf("unknown type name: %s", typeName)
     }
+
+    // Fallback: Check if this is an unknown pointer type (TypeName*)
+    // This handles typedef'd pointers from included headers (Visual*, Display*, etc.)
+    // Fix #8: Unknown typedef pointers now supported
+    if strings.HasSuffix(typeName, "*") {
+        // Unknown typedef or type followed by pointer
+        // Treat as opaque pointer (CPointer)
+        // Preserve the full type name for debugging/metadata
+        return CPointer, typeName, nil
+    }
+
+    // Default case: unknown type
+    return CVoid, "", fmt.Errorf("unknown type name: %s", typeName)
 }
 
 // ConvertZaToCTypes converts Za values to C values based on expected types
@@ -1667,6 +1738,29 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             }
         }
         ffiStructLock.RUnlock()
+    }
+
+    // Check if this is a function pointer typedef
+    if alias != "" {
+        // Compute cleanType matching the logic in resolveTypedef()
+        cleanType := strings.TrimSpace(cTypeStr)
+        cleanType = strings.TrimPrefix(cleanType, "const ")
+        cleanType = strings.TrimPrefix(cleanType, "volatile ")
+        cleanType = strings.TrimPrefix(cleanType, "restrict ")
+        cleanType = strings.TrimPrefix(cleanType, "struct ")
+        cleanType = strings.TrimPrefix(cleanType, "union ")
+        cleanType = strings.TrimPrefix(cleanType, "enum ")
+        cleanType = strings.TrimSpace(cleanType)
+
+        moduleFunctionPointerSignaturesLock.RLock()
+        _, isFuncPtrTypedef := moduleFunctionPointerSignatures[alias][cleanType]
+        moduleFunctionPointerSignaturesLock.RUnlock()
+
+        if isFuncPtrTypedef {
+            // This is a function pointer typedef - treat as CPointer
+            // Return empty struct name (second return value) since function pointers are not structs
+            return CPointer, "", nil
+        }
     }
 
     // Try typedef resolution for other types

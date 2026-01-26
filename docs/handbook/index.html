@@ -3967,6 +3967,17 @@ Parsing with AUTO</h2>
 of C header files to extract constants, enums, and function signatures,
 eliminating the need to manually declare <code>#define</code> values and
 LIB function signatures.</p>
+<blockquote>
+<p><strong>Performance Note:</strong> AUTO imports can be slow on large
+header file sets (10-30+ seconds for complex libraries like OpenGL or
+X11). A progress bar displays import progress. Use explicit header paths
+and specify only needed headers to minimize parsing time. For scripts
+where startup speed is critical, <strong>manual LIB declarations are
+much faster</strong> than AUTO, though you lose automatic constant
+extraction, function discovery, and typedef resolution—requiring you to
+manually declare each function signature and constant needed. Set
+<code>ZA_NO_PROGRESS=1</code> to disable progress display.</p>
+</blockquote>
 <h3 id="f.3.1-basic-usage">F.3.1 Basic Usage</h3>
 <p><strong>Auto-discovery</strong> (searches standard include
 paths):</p>
@@ -4068,11 +4079,12 @@ class="sourceCode c"><code class="sourceCode c"><span id="cb182-1"><a href="#cb1
 <li>Simple type aliases</li>
 <li>Typedef chains (multi-level resolution)</li>
 <li>Struct and pointer typedefs</li>
+<li>Function pointer typedefs (see item 13 below)</li>
 <li>Recursive resolution up to 10 levels with cycle detection</li>
 <li>Module-scoped (isolated per library alias)</li>
 <li>Eliminates reliance on heuristics for type guessing</li>
-<li><strong>Not parsed</strong>: Function pointer typedefs, array
-typedefs (future enhancement)</li>
+<li><strong>Not parsed</strong>: Array typedefs (future
+enhancement)</li>
 </ul></li>
 <li><p><strong>Preprocessor conditionals</strong> (platform-aware
 parsing):</p>
@@ -4223,7 +4235,46 @@ class="sourceCode c"><code class="sourceCode c"><span id="cb187-1"><a href="#cb1
 <li>POSIX wcs* functions (wcslen, wcscpy, etc.)</li>
 <li>Windows wide character APIs (if Za supported Windows)</li>
 </ul></li>
+<li><p><strong>Function pointer typedefs</strong> (v1.2.2+):</p></li>
 </ol>
+<div class="sourceCode" id="cb188"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb188-1"><a href="#cb188-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">int</span> <span class="op">(*</span>compare_t<span class="op">)(</span><span class="dt">const</span> <span class="dt">void</span><span class="op">*,</span> <span class="dt">const</span> <span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb188-2"><a href="#cb188-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>callback_t<span class="op">)(</span><span class="dt">int</span> signal<span class="op">);</span></span>
+<span id="cb188-3"><a href="#cb188-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">double</span> <span class="op">(*</span>math_func_t<span class="op">)(</span><span class="dt">double</span><span class="op">);</span></span></code></pre></div>
+<ul>
+<li>Parses function pointer signatures from typedef declarations</li>
+<li>Stores signature metadata (parameter types, return type)</li>
+<li>Enables type-safe function pointer usage with
+<code>c_as_function_ptr()</code> and
+<code>c_call_function_ptr()</code></li>
+<li>Supports complex signatures with struct pointers and multiple
+parameters</li>
+<li>Module-scoped (isolated per library alias)</li>
+<li>See F.12 “Calling Function Pointers” for usage examples</li>
+</ul>
+<ol start="14" type="1">
+<li><strong>Function pointer fields in structs and unions</strong>
+(v1.2.2+):</li>
+</ol>
+<div class="sourceCode" id="cb189"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb189-1"><a href="#cb189-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb189-2"><a href="#cb189-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>callback<span class="op">)(</span><span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb189-3"><a href="#cb189-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>cleanup<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb189-4"><a href="#cb189-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Handler<span class="op">;</span></span>
+<span id="cb189-5"><a href="#cb189-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb189-6"><a href="#cb189-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">union</span> <span class="op">{</span></span>
+<span id="cb189-7"><a href="#cb189-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>compare<span class="op">)(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb189-8"><a href="#cb189-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>action<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb189-9"><a href="#cb189-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> FuncUnion<span class="op">;</span></span></code></pre></div>
+<ul>
+<li>Parses function pointer field declarations like
+<code>int (*callback)(void*)</code></li>
+<li>Stores signature metadata for type-safe access</li>
+<li>Accessible as CPointer values in Za code</li>
+<li>Can be used with <code>c_as_function_ptr()</code> and
+<code>c_call_function_ptr()</code></li>
+<li>Works in both struct and union definitions</li>
+</ul>
 <p><strong>Not parsed</strong> (automatically skipped - not errors):</p>
 <ul>
 <li><strong>Function-like macros</strong>:
@@ -4236,8 +4287,6 @@ with <code>__</code> in macro values)</li>
 keywords)</li>
 <li><strong>Forward references</strong>: <code>#define B (A * 2)</code>
 where A is defined later</li>
-<li><strong>Function pointer typedefs</strong>:
-<code>typedef int (*callback_t)(void*);</code></li>
 <li><strong>Array typedefs</strong>:
 <code>typedef int IntArray[10];</code></li>
 </ul>
@@ -4396,10 +4445,10 @@ macros to correctly identify the actual return types.</p>
 </tbody>
 </table>
 <p><strong>Problem without macro expansion:</strong></p>
-<div class="sourceCode" id="cb193"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb193-1"><a href="#cb193-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
-<span id="cb193-2"><a href="#cb193-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
-<span id="cb193-3"><a href="#cb193-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb195"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb195-1"><a href="#cb195-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
+<span id="cb195-2"><a href="#cb195-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
+<span id="cb195-3"><a href="#cb195-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
 <p>Without expansion, Za would see this as:</p>
 <pre><code>gdImageCreateTrueColor(...) -&gt; void    # WRONG: No visible return type!</code></pre>
 <p><strong>Solution with AUTO (macro expansion enabled):</strong></p>
@@ -4556,6 +4605,11 @@ for floating-point)</li>
 <li><code>pointer</code> - Generic pointer (void*, struct pointers)</li>
 <li><code>void</code> - Return type only (function returns nothing)</li>
 <li><code>bool</code> - C boolean type</li>
+<li><code>struct&lt;TypeName&gt;</code> - Struct passed by value</li>
+<li><code>struct TypeName</code> (v1.2.2+) - C-style syntax,
+auto-converted to <code>struct&lt;TypeName&gt;</code></li>
+<li><code>struct TypeName *</code> (v1.2.2+) - C-style pointer,
+auto-converted to <code>pointer</code></li>
 </ul>
 <p><strong>Array types (v1.2.2+):</strong></p>
 <ul>
@@ -5612,6 +5666,63 @@ stats = c_unmarshal_struct(statbuf, &quot;FileStat&quot;)
 println &quot;File size:&quot;, stats.st_size
 
 c_free_struct(statbuf)</code></pre>
+<h2 id="function-pointer-operations-v1.2.2">Function Pointer Operations
+(v1.2.2+)</h2>
+<p>Za provides functions for working with C function pointers, enabling
+callbacks from C libraries like qsort comparators, signal handlers, and
+event-driven libraries.</p>
+<h3
+id="c_as_function_ptrpointer-signaturestring---cfunctionpointer">c_as_function_ptr(pointer,
+signature:string) -&gt; CFunctionPointer</h3>
+<p>Converts a C function pointer to a callable CFunctionPointer
+object.</p>
+<p><strong>Signature format:</strong>
+<code>"param1,param2,...-&gt;return_type"</code></p>
+<pre class="za"><code># Get function pointer from C library
+add_ptr_raw = mylib::get_add_function()  # Returns CPointer
+
+# Convert to callable function pointer
+add_ptr = c_as_function_ptr(add_ptr_raw, &quot;int,int-&gt;int&quot;)
+
+# Now callable with c_call_function_ptr</code></pre>
+<p><strong>Supported types:</strong> All standard C types (int, float,
+double, pointer, string, struct types, etc.)</p>
+<h3
+id="c_call_function_ptrfunc_ptrcfunctionpointer-args---any">c_call_function_ptr(func_ptr:CFunctionPointer,
+…args) -&gt; any</h3>
+<p>Calls a C function pointer with the provided arguments.</p>
+<pre class="za"><code># Create function pointer
+add_ptr = c_as_function_ptr(raw_ptr, &quot;int,int-&gt;int&quot;)
+
+# Call it
+result = c_call_function_ptr(add_ptr, 10, 20)
+println result  # 30</code></pre>
+<p><strong>Complete example:</strong></p>
+<pre class="za"><code>module &quot;./libtest.so&quot; as test auto &quot;./test.h&quot;
+use +test
+
+def main()
+    # Get function pointer from C library
+    add_ptr_raw = test::get_add_ptr()
+
+    # Convert to callable function pointer
+    add_ptr = c_as_function_ptr(add_ptr_raw, &quot;int,int-&gt;int&quot;)
+
+    # Call the function pointer
+    result = c_call_function_ptr(add_ptr, 10, 20)
+    println &quot;10 + 20 = &quot; + result  # 30
+
+    # Works with different signatures
+    compare_ptr = c_as_function_ptr(test::get_compare_ptr(), &quot;int,int-&gt;int&quot;)
+    cmp_result = c_call_function_ptr(compare_ptr, 5, 10)  # -1, 0, or 1
+end</code></pre>
+<p><strong>Error handling:</strong> - Returns error if pointer is null -
+Validates argument count against signature - Checks type compatibility
+through libffi</p>
+<p><strong>Use with AUTO-parsed function pointer typedefs:</strong> When
+AUTO parses typedef declarations like
+<code>typedef int (*compare_t)(const void*, const void*)</code>, the
+type information is registered and can be used with these functions.</p>
 <h2 id="opaque-pointer-functions-int64-addresses">Opaque Pointer
 Functions (int64 Addresses)</h2>
 <p>The functions described in <strong>F.5.2 “Working with Opaque
@@ -6490,7 +6601,8 @@ automatically</li>
 </tbody>
 </table>
 <p><strong>Supported (v1.2.2+)</strong>: Fixed-size arrays in structs,
-union types, struct-by-value parameters/returns, nested structs</p>
+union types, struct-by-value parameters/returns, nested structs/unions,
+function pointer fields</p>
 <h4 id="struct-by-value-support-v1.2.2">Struct-by-Value Support
 (v1.2.2+)</h4>
 <p>Za fully supports C functions that pass or return structs by value
@@ -6592,7 +6704,9 @@ member defined in C header</li>
 <li>All union fields are accessible via map keys (C memory is
 reinterpreted)</li>
 <li>Only the active field (set in C) contains valid data</li>
-<li>Nested structs within unions work correctly</li>
+<li>Nested structs within unions work correctly (v1.2.2+)</li>
+<li>Nested unions within structs work correctly (v1.2.2+)</li>
+<li>Function pointer fields in unions work correctly (v1.2.2+)</li>
 <li>Field validation ensures type safety</li>
 </ul>
 <p>See working examples in:</p>
@@ -7434,8 +7548,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb314"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb314-1"><a href="#cb314-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb319"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb319-1"><a href="#cb319-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

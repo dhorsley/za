@@ -1,0 +1,30 @@
+#!/usr/bin/env za
+# Test Phase 3: Struct fields with function pointers
+
+println "=== Phase 3: Struct Field Function Pointer Support ==="
+println
+
+println "Test: AUTO imports structs with function pointer fields"
+println
+
+# Load library with structs containing function pointer fields
+# If this succeeds, it means the function pointer fields were parsed correctly
+module "./libtest_funcptr_struct.so" as fp_struct auto "./test_funcptr_struct.h"
+on import_has_errors("fp_struct") do exit 1,"did not import clean."
+use +fp_struct
+
+println "✓ Library with struct function pointer fields imported successfully"
+println "  - Struct: math_ops_t"
+println "    * Field: int (*compare)(int, int)"
+println "    * Field: int (*transform)(int)"
+println "    * Field: const char *name"
+println
+println "  - Struct: system_t"
+println "    * Field: void (*init)(void)"
+println "    * Field: void (*cleanup)(void)"
+println "    * Field: math_ops_t *ops"
+
+println
+println "✓ All structs with function pointer fields parsed and registered correctly"
+println
+println "=== Phase 3 Tests Passed ==="

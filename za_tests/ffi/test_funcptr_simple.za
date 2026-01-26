@@ -1,0 +1,18 @@
+#!/usr/bin/env za
+# Simple function pointer test
+
+println("Starting test")
+
+module "./libtest_funcptr.so" as fp auto "./test_funcptr_lib.h"
+use +fp
+
+println("Library loaded")
+
+ptr = fp::get_add_ptr()
+println("Got pointer")
+
+fp_obj = c_as_function_ptr(ptr, "int,int->int")
+println("Created function pointer object")
+
+result = c_call_function_ptr(fp_obj, 10, 20)
+println("Result: " + result)

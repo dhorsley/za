@@ -1032,6 +1032,106 @@ func init() {
         return nil, nil
     }
 
+    stdlib["c_as_function_ptr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
+        if len(args) < 2 {
+            return nil, fmt.Errorf("c_as_function_ptr requires 2 arguments: pointer, signature")
+        }
+
+        // First argument should be a CPointerValue
+        ptr, ok := args[0].(*CPointerValue)
+        if !ok {
+            // Try to accept raw unsafe.Pointer (though unlikely in Za)
+            return nil, fmt.Errorf("first argument to c_as_function_ptr must be a pointer, got %T", args[0])
+        }
+
+        if ptr.IsNull() {
+            return nil, fmt.Errorf("cannot create function pointer from null pointer")
+        }
+
+        // Second argument is the signature string (e.g., "int,int->int")
+        sigStr := GetAsString(args[1])
+        if sigStr == "" {
+            return nil, fmt.Errorf("signature string cannot be empty")
+        }
+
+        // Parse the signature string into CFunctionSignature
+        paramTypeStrs, returnTypeStr, err := parseCallbackSignature(sigStr)
+        if err != nil {
+            return nil, fmt.Errorf("invalid function pointer signature '%s': %w", sigStr, err)
+        }
+
+        // Convert parameter type strings to CType
+        paramTypes := make([]CType, len(paramTypeStrs))
+        paramStructNames := make([]string, len(paramTypeStrs))
+        for i, typeStr := range paramTypeStrs {
+            ctype, structName, err := StringToCType(typeStr)
+            if err != nil {
+                return nil, fmt.Errorf("parameter %d: invalid type '%s': %w", i, typeStr, err)
+            }
+            paramTypes[i] = ctype
+            paramStructNames[i] = structName
+        }
+
+        // Convert return type string to CType
+        returnType, returnStructName, err := StringToCType(returnTypeStr)
+        if err != nil {
+            return nil, fmt.Errorf("invalid return type '%s': %w", returnTypeStr, err)
+        }
+
+        // Create CFunctionSignature
+        sig := CFunctionSignature{
+            ParamTypes:       paramTypes,
+            ParamStructNames: paramStructNames,
+            ReturnType:       returnType,
+            ReturnStructName: returnStructName,
+            HasVarargs:       false,
+            FixedArgCount:    len(paramTypes),
+        }
+
+        // Create and return CFunctionPointer
+        fp := NewCFunctionPointer(ptr.Ptr, sig, ptr.TypeTag+"_funcptr", "")
+        return fp, nil
+    }
+
+    stdlib["c_call_function_ptr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
+        if len(args) < 1 {
+            return nil, fmt.Errorf("c_call_function_ptr requires at least 1 argument: function_pointer")
+        }
+
+        // First argument must be a CFunctionPointer
+        fp, ok := args[0].(*CFunctionPointer)
+        if !ok {
+            return nil, fmt.Errorf("first argument to c_call_function_ptr must be a CFunctionPointer, got %T", args[0])
+        }
+
+        if fp.IsNull() {
+            return nil, fmt.Errorf("cannot call null function pointer")
+        }
+
+        // Rest of the arguments are the function parameters
+        funcArgs := args[1:]
+
+        // Validate argument count against signature
+        expectedArgCount := len(fp.Signature.ParamTypes)
+        if fp.Signature.HasVarargs {
+            if len(funcArgs) < expectedArgCount {
+                return nil, fmt.Errorf("function expects at least %d arguments, got %d", expectedArgCount, len(funcArgs))
+            }
+        } else {
+            if len(funcArgs) != expectedArgCount {
+                return nil, fmt.Errorf("function expects %d arguments, got %d", expectedArgCount, len(funcArgs))
+            }
+        }
+
+        // Call the function pointer via libffi
+        result, err := CallCFunctionViaLibFFI(fp.Ptr, fp.TypeTag, funcArgs, fp.Signature)
+        if err != nil {
+            return nil, fmt.Errorf("error calling function pointer %s: %w", fp.TypeTag, err)
+        }
+
+        return result, nil
+    }
+
 }
 
 // getTrampolineForSignature returns the appropriate trampoline function pointer for a signature

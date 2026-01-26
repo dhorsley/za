@@ -1859,6 +1859,30 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 ffidebug("[FFI DEBUG] Regular: allocated ptrPtr=%p, storing v.Ptr=%p into it\n", ptrPtr, v.Ptr)
             }
 
+        case *CFunctionPointer:
+            // Function pointer parameter
+            argTypesSlice[i] = 7 // CPointer
+
+            if v.IsNull() {
+                // Null function pointer
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                if ptrPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate memory for function pointer", i)
+                }
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+            } else {
+                // Non-null function pointer
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                if ptrPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate memory for function pointer", i)
+                }
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = v.Ptr
+                argValuesSlice[i] = ptrPtr
+            }
+
         default:
             // Check if this is a struct/union type that needs marshaling
             // Get the struct type name from signature if available
