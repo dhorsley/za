@@ -274,6 +274,50 @@ func MarshalStructToC(zaStruct any, structDef *CLibraryStruct) (unsafe.Pointer, 
             }
 
         case CStruct:
+            // First check if this is an inline union field
+            if field.IsUnion && field.UnionDef != nil {
+                // This is an inline union field
+                // Value should be a map with ONE active field
+                unionMap, ok := zaField.Interface().(map[string]any)
+                if !ok {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("expected map for inline union field %s, got %T", field.Name, zaField.Interface())
+                }
+
+                // Marshal using existing marshalUnion function
+                // Note: marshalUnion expects ptr, not ptr+offset, since all union fields are at offset 0
+                err := marshalUnion(unionMap, field.UnionDef, fieldPtr, &allocatedStrings)
+                if err != nil {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("failed to marshal inline union field %s: %v", field.Name, err)
+                }
+                continue  // Move to next field
+            }
+
+            // Check if this is an inline struct field (UnionDef used for both unions and structs)
+            if !field.IsUnion && field.UnionDef != nil {
+                // This is an inline struct field
+                zaStruct, ok := zaField.Interface().(map[string]any)
+                if !ok {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("expected map for inline struct field %s, got %T", field.Name, zaField.Interface())
+                }
+
+                // Recursively marshal the nested struct
+                nestedPtr, nestedCleanup, err := MarshalStructToC(zaStruct, field.UnionDef)
+                if err != nil {
+                    cleanup()
+                    return nil, nil, fmt.Errorf("failed to marshal inline struct field %s: %w", field.Name, err)
+                }
+
+                // Copy the marshaled nested struct into the parent struct's memory
+                C.memcpy(fieldPtr, nestedPtr, C.size_t(field.UnionDef.Size))
+
+                // Clean up the temporary nested struct
+                nestedCleanup()
+                continue  // Move to next field
+            }
+
             // Handle nested struct by value (recursive marshaling)
             if field.StructDef == nil {
                 // No struct definition available - treat as opaque bytes
@@ -412,8 +456,29 @@ func UnmarshalStructFromC(cPtr unsafe.Pointer, structDef *CLibraryStruct, zaStru
             ptr := *(*unsafe.Pointer)(fieldPtr)
             fieldVal = &CPointerValue{Ptr: ptr, TypeTag: field.Name}
         case CStruct:
-            // Handle nested struct by value (recursive unmarshaling)
-            if field.StructDef != nil && field.StructName != "" {
+            // First check if this is an inline union field
+            if field.IsUnion && field.UnionDef != nil {
+                // This is an inline union field
+                // Unmarshal union - returns map with ALL field interpretations
+                unionMap, err := unmarshalUnion(fieldPtr, field.UnionDef)
+                if err != nil {
+                    // If unmarshal fails, fall back to nil
+                    fieldVal = nil
+                } else {
+                    fieldVal = unionMap
+                }
+            } else if !field.IsUnion && field.UnionDef != nil {
+                // This is an inline struct field (UnionDef is used for both inline unions and structs)
+                // Recursively unmarshal the nested struct
+                nestedStruct, err := UnmarshalStructFromC(fieldPtr, field.UnionDef, field.Name)
+                if err != nil {
+                    // If recursive unmarshal fails, fall back to pointer
+                    fieldVal = &CPointerValue{Ptr: fieldPtr, TypeTag: field.Name}
+                } else {
+                    fieldVal = nestedStruct
+                }
+            } else if field.StructDef != nil && field.StructName != "" {
+                // Handle nested struct by value (recursive unmarshaling)
                 // Recursively unmarshal the nested struct
                 nestedStruct, err := UnmarshalStructFromC(fieldPtr, field.StructDef, field.StructName)
                 if err != nil {

@@ -235,9 +235,9 @@ func StringToCType(typeName string) (CType, string, error) {
     case "uint8", "byte":
         return CUInt8, "", nil
     case "intptr":
-        return CInt64, "intptr mapped to int64", nil
+        return CInt64, "", nil
     case "uintptr":
-        return CUInt64, "uintptr mapped to uint64", nil
+        return CUInt64, "", nil
     case "float":
         return CFloat, "", nil
     case "double":
@@ -1768,13 +1768,13 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         }
         // 8-bit signed integers
         if baseType == "int8_t" {
-            return CInt8, baseType + " mapped to int8", nil
+            return CInt8, "", nil
         }
         // 16-bit signed integers
         if baseType == "short" || baseType == "short int" ||
            baseType == "signed short" || baseType == "signed short int" ||
            baseType == "int16_t" {
-            return CInt16, baseType + " mapped to int16", nil
+            return CInt16, "", nil
         }
         // 64-bit signed integers
         // Note: On LP64 systems (Linux, macOS, BSD), "long" is 64-bit
@@ -1784,11 +1784,11 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
            baseType == "signed long" || baseType == "signed long int" ||
            baseType == "int64_t" || baseType == "off_t" ||
            baseType == "intptr_t" || baseType == "ptrdiff_t" {
-            return CInt64, baseType + " mapped to int64", nil
+            return CInt64, "", nil
         }
         // Default to 32-bit for int, signed, signed int, pid_t, time_t
         if baseType == "ssize_t" {
-            return CInt64, baseType + " mapped to int64", nil
+            return CInt64, "", nil
         }
         return CInt, "", nil
 
@@ -1807,24 +1807,24 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         }
         // 8-bit unsigned integers
         if baseType == "uint8_t" {
-            return CUInt8, baseType + " mapped to uint8", nil
+            return CUInt8, "", nil
         }
         // 16-bit unsigned integers
         if baseType == "unsigned short" || baseType == "unsigned short int" ||
            baseType == "uint16_t" {
-            return CUInt16, baseType + " mapped to uint16", nil
+            return CUInt16, "", nil
         }
         // 64-bit unsigned integers
         // Note: On LP64 systems (Linux, macOS, BSD), "unsigned long" is 64-bit
         if baseType == "unsigned long long" || baseType == "unsigned long long int" ||
            baseType == "unsigned long" || baseType == "unsigned long int" ||
            baseType == "uint64_t" || baseType == "uintptr_t" {
-            return CUInt64, baseType + " mapped to uint64", nil
+            return CUInt64, "", nil
         }
         // size_t handling: typically 64-bit on 64-bit systems, 32-bit on 32-bit systems
         // For simplicity, map to uint64 to avoid truncation issues
         if baseType == "size_t" {
-            return CUInt64, baseType + " mapped to uint64", nil
+            return CUInt64, "", nil
         }
         // Default to 32-bit for unsigned, unsigned int, uid_t, gid_t, mode_t
         return CUInt, "", nil
@@ -1856,16 +1856,16 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
     case "wchar_t":
         // wchar_t* is a pointer (wide character string)
         if isPointer {
-            return CPointer, "wchar_t* mapped to pointer", nil
+            return CPointer, "", nil
         }
         // Platform-dependent size detected at init
         if wcharSize == 2 {
-            return CUInt16, "wchar_t mapped to uint16", nil
+            return CUInt16, "", nil
         } else if wcharSize == 4 {
-            return CUInt, "wchar_t mapped to uint32", nil
+            return CUInt, "", nil
         }
         // Fallback if size unknown
-        return CPointer, "wchar_t (unknown size) mapped to pointer", nil
+        return CPointer, "", nil
 
     default:
         // Check for enum types (should map to int)

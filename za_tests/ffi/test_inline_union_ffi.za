@@ -1,0 +1,264 @@
+#!/usr/bin/env za
+
+println "\n[#4]═══ Inline Union FFI Support Test ═══[#-]\n"
+
+# Load test library - functions are auto-discovered from headers
+module "./libtest_inline_union.so" as tu auto "./test_inline_union_lib.h"
+use +tu
+
+test_count = 0
+pass_count = 0
+fail_count = 0
+
+# =============================================================================
+# TEST 1: Marshal Za struct with inline union to C (Za → C)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Marshal Za → C (get_union_int_val)[#-]"
+
+try uses pass_count,fail_count
+    # Create BasicInlineUnion in Za
+    test_struct = map()
+    test_struct.type = 42
+    data_union = map()
+    data_union.int_val = 100
+    test_struct.data = data_union
+
+    # Pass to C function
+    result_int = tu::get_union_int_val(test_struct)
+
+    if result_int == 100
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Successfully marshaled struct to C[#-]"
+    else
+        fail_count = fail_count + 1
+        println "  [#1]✗ FAIL: Expected int_val to be 100, got {result_int}[#-]"
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 2: Unmarshal C struct with inline union to Za (C → Za)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Unmarshal C → Za (make_union_with_int)[#-]"
+
+try uses pass_count,fail_count
+    # Call C function that returns BasicInlineUnion
+    result = tu::make_union_with_int(5, 200)
+
+    # Verify unmarshaled fields
+    type_ok = result["type"] == 5
+    val_ok = result["data"]["int_val"] == 200
+
+    if type_ok and val_ok
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Successfully unmarshaled struct from C[#-]"
+    else
+        fail_count = fail_count + 1
+        if not type_ok
+            println "  [#1]✗ FAIL: Expected type to be 5, got {result["type"]}[#-]"
+        endif
+        if not val_ok
+            println "  [#1]✗ FAIL: Expected int_val to be 200, got {result["data"]["int_val"]}[#-]"
+        endif
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 3: Round-trip with modification (Za → C → Za)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Round-trip with modification[#-]"
+
+try uses pass_count,fail_count
+    # Create struct
+    input_struct = map()
+    input_struct.type = 10
+    input_data = map()
+    input_data.int_val = 50
+    input_struct.data = input_data
+
+    # Pass to C, get modified version back
+    result = tu::process_basic_union(input_struct)
+
+    # Verify modifications
+    type_ok = result["type"] == 11
+    val_ok = result["data"]["int_val"] == 100
+
+    if type_ok and val_ok
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Round-trip successful with correct modifications[#-]"
+    else
+        fail_count = fail_count + 1
+        if not type_ok
+            println "  [#1]✗ FAIL: Expected type to be 11 (incremented), got {result["type"]}[#-]"
+        endif
+        if not val_ok
+            println "  [#1]✗ FAIL: Expected int_val to be 100 (doubled), got {result["data"]["int_val"]}[#-]"
+        endif
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 4: Union field interpretation (int and float)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Union field interpretation[#-]"
+
+try uses pass_count,fail_count
+    # Create with int value and read the result
+    struct_int = tu::make_union_with_int(1, 0x42434445)
+    int_val = struct_int["data"]["int_val"]
+    int_ok = int_val == 0x42434445
+
+    # Create with float value
+    struct_float = tu::make_union_with_float(2, 3.14)
+
+    # Verify float is set correctly by reading int interpretation
+    # (since we can't pass unmarshaled union back to C without issue)
+    float_val = struct_float["data"]["float_val"]
+    float_ok = float_val > 3.13 and float_val < 3.15
+
+    if int_ok and float_ok
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Union field interpretation works correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        if not int_ok
+            println "  [#1]✗ FAIL: Expected int_val to be 0x42434445, got {int_val}[#-]"
+        endif
+        if not float_ok
+            println "  [#1]✗ FAIL: Expected float_val to be ~3.14, got {float_val}[#-]"
+        endif
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 5: Multiple inline unions in same struct
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Multiple inline unions[#-]"
+
+try uses pass_count,fail_count
+    # Create MultipleInlineUnions struct
+    multi = map()
+    first_union = map()
+    first_union.x = 10
+    multi.first = first_union
+    multi.middle = 20
+    second_union = map()
+    second_union.y = 30
+    multi.second = second_union
+
+    result = tu::process_multiple_unions(multi)
+
+    # Verify all three parts were modified correctly
+    first_ok = result["first"]["x"] == 11
+    middle_ok = result["middle"] == 40
+    second_ok = result["second"]["y"] == 40
+
+    if first_ok and middle_ok and second_ok
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Multiple unions handled correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        if not first_ok
+            println "  [#1]✗ FAIL: Expected first.x to be 11, got {result["first"]["x"]}[#-]"
+        endif
+        if not middle_ok
+            println "  [#1]✗ FAIL: Expected middle to be 40, got {result["middle"]}[#-]"
+        endif
+        if not second_ok
+            println "  [#1]✗ FAIL: Expected second.y to be 40, got {result["second"]["y"]}[#-]"
+        endif
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# TEST 6: Inline struct (non-union)
+# =============================================================================
+test_count = test_count + 1
+println "[#6]Test {test_count}: Inline struct (non-union)[#-]"
+
+try uses pass_count,fail_count
+    # Create InlineStructTest struct
+    inline_struct = map()
+    point = map()
+    point.x = 5
+    point.y = 10
+    inline_struct.point = point
+    inline_struct.z = 15
+
+    result = tu::process_inline_struct(inline_struct)
+
+    # Verify modifications (point.x += 5, point.y += 10, z += 15)
+    point_x_ok = result["point"]["x"] == 10
+    point_y_ok = result["point"]["y"] == 20
+    z_ok = result["z"] == 30
+
+    if point_x_ok and point_y_ok and z_ok
+        pass_count = pass_count + 1
+        println "  [#2]✓ PASS - Inline struct handled correctly[#-]"
+    else
+        fail_count = fail_count + 1
+        if not point_x_ok
+            println "  [#1]✗ FAIL: Expected point.x to be 10, got {result["point"]["x"]}[#-]"
+        endif
+        if not point_y_ok
+            println "  [#1]✗ FAIL: Expected point.y to be 20, got {result["point"]["y"]}[#-]"
+        endif
+        if not z_ok
+            println "  [#1]✗ FAIL: Expected z to be 30, got {result["z"]}[#-]"
+        endif
+    endif
+catch e
+    fail_count = fail_count + 1
+    println "  [#1]✗ FAIL: {e}[#-]"
+endtry
+
+println
+
+# =============================================================================
+# Summary
+# =============================================================================
+println "[#4]═══════════════════════════════════════[#-]"
+println "[#6]Tests Run: {test_count}[#-]"
+println "[#2]Passed: {pass_count}[#-]"
+if fail_count > 0
+    println "[#1]Failed: {fail_count}[#-]"
+else
+    println "[#2]Failed: {fail_count}[#-]"
+endif
+println "[#4]═══════════════════════════════════════[#-]\n"
+
+if fail_count == 0
+    println "[#2]All FFI tests passed![#-]\n"
+else
+    println "[#1]Some tests failed.[#-]\n"
+    exit(1)
+endif
