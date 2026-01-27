@@ -2,6 +2,7 @@ package main
 
 import (
     "slices"
+    "strings"
     "sync"
 )
 
@@ -159,12 +160,21 @@ func uc_match_struct(s string) string {
     defer globlock.RUnlock()
     defer chainlock.RUnlock()
     for p := 0; p < len(uchain); p += 1 {
+        // Check Za-defined structs
         structmapslock.RLock()
         if _, exists := structmaps[uchain[p]+"::"+s]; exists {
             structmapslock.RUnlock()
             return uchain[p]
         }
         structmapslock.RUnlock()
+
+        // Check FFI structs from AUTO imports
+        ffiStructLock.RLock()
+        if _, exists := ffiStructDefinitions[uchain[p]+"::"+s]; exists {
+            ffiStructLock.RUnlock()
+            return uchain[p]
+        }
+        ffiStructLock.RUnlock()
     }
     return ""
 }
@@ -181,4 +191,19 @@ func uc_match_c_func(s string) string {
         }
     }
     return ""
+}
+
+// uc_match_ffi_struct resolves a bare struct name through the use chain
+// and returns the fully qualified name (namespace::structName).
+// Returns empty string if not found in any namespace.
+func uc_match_ffi_struct(s string) string {
+    if strings.Contains(s, "::") {
+        return s  // Already qualified
+    }
+
+    if namespace := uc_match_struct(s); namespace != "" {
+        return namespace + "::" + s
+    }
+
+    return ""  // Not found in any namespace
 }

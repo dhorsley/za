@@ -1291,8 +1291,19 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     structvalues := []any{}
     found := false
     if !isCLibFunction {
+        // Resolve struct name through use_chain
+        resolvedName := uc_match_struct(name)
+        lookupName := name
+        if resolvedName != "" {
+            lookupName = resolvedName + "::" + name
+        }
+
         structmapslock.RLock()
-        if structvalues, found = structmaps[name]; found || name == "anon" {
+        if structvalues, found = structmaps[lookupName]; !found {
+            // Fallback to exact lookup
+            structvalues, found = structmaps[name]
+        }
+        if found || name == "anon" {
             isStruct = true
         }
         structmapslock.RUnlock()
@@ -2357,8 +2368,18 @@ func (p *leparser) identifier(token *Token) (any, error) {
             }
         }
     }
+    // Resolve struct name through use_chain
+    resolvedName := uc_match_struct(sname)
+    lookupName := sname
+    if resolvedName != "" {
+        lookupName = resolvedName + "::" + sname
+    }
+
     structmapslock.RLock()
-    _, found := structmaps[sname]
+    _, found := structmaps[lookupName]
+    if !found {
+        _, found = structmaps[sname]  // Fallback to exact lookup
+    }
     structmapslock.RUnlock()
 
     if found || sname == "anon" {

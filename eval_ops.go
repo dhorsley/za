@@ -3027,8 +3027,20 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
 
             // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
             par_struct_fields := make(map[string]string, 4)
+
+            // Resolve struct name through use_chain
+            resolvedName := uc_match_struct(fm.parent)
+            lookupName := fm.parent
+            if resolvedName != "" {
+                lookupName = resolvedName + "::" + fm.parent
+            }
+
             structmapslock.RLock()
-            if structvalues, exists := structmaps[fm.parent]; exists {
+            structvalues, exists := structmaps[lookupName]
+            if !exists {
+                structvalues, exists = structmaps[fm.parent]  // Fallback to exact lookup
+            }
+            if exists {
                 for svpos := 0; svpos < len(structvalues); svpos += 4 {
                     pfieldtype := structvalues[svpos+1].(string)
                     if pfieldtype == "float" {

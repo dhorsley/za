@@ -2267,12 +2267,24 @@ tco_reentry:
 
                     // structmap has list of field_name,field_type,... for each struct
                     // structvalues: [0] name [1] type [2] boolhasdefault [3] default_value
+
+                    // First try to resolve through use_chain
+                    resolvedName := uc_match_struct(sname)
+                    lookupName := sname
+                    if resolvedName != "" {
+                        lookupName = resolvedName + "::" + sname
+                    }
+
                     structmapslock.RLock()
-                    if vals, found := structmaps[sname]; found {
+                    if vals, found := structmaps[lookupName]; found {
+                        isStruct = true
+                        structvalues = vals
+                    } else if vals, found := structmaps[sname]; found {
+                        // Fallback: try exact lookup (already qualified names)
                         isStruct = true
                         structvalues = vals
                     } else {
-                        // Fallback: loop through structmaps for a match (handles unqualified lookups)
+                        // Fallback: loop through structmaps for a match (handles remaining edge cases)
                         for sn, _ := range structmaps {
                             if sn == sname {
                                 isStruct = true
@@ -2283,32 +2295,28 @@ tco_reentry:
                     }
                     structmapslock.RUnlock()
 
-                    // For C library types, check ffiStructDefinitions as a fallback
+                    // For C library types, check ffiStructDefinitions as fallback
                     // In VAR context, we want to use struct types even if a function shares the name
                     // (e.g., c::stat is both a function and a struct in libc)
-                    // This handles the case where AUTO parsing created the FFI struct but
-                    // the Za struct registration might have had issues
-                    if !isStruct && str.Contains(sname, "::") {
-                        parts := str.SplitN(sname, "::", 2)
-                        if len(parts) == 2 {
-                            namespace := parts[0]
-                            structName := parts[1]
-
-                            ffiStructLock.RLock()
-                            if structDef, exists := ffiStructDefinitions[sname]; exists {
-                                // Verify it's actually a struct, not a union
-                                if !structDef.IsUnion {
-                                    // Register it in structmaps now for future use
-                                    registerStructInZa(namespace, structName, structDef)
-                                    // Now retrieve from structmaps
-                                    structmapslock.RLock()
-                                    if vals, found := structmaps[sname]; found {
-                                        isStruct = true
-                                        structvalues = vals
-                                    }
-                                    structmapslock.RUnlock()
+                    if !isStruct && lookupName != "" {
+                        ffiStructLock.RLock()
+                        if structDef, exists := ffiStructDefinitions[lookupName]; exists && !structDef.IsUnion {
+                            // Found FFI struct - register it in structmaps now for future use
+                            ffiStructLock.RUnlock()
+                            parts := str.SplitN(lookupName, "::", 2)
+                            if len(parts) == 2 {
+                                namespace := parts[0]
+                                structName := parts[1]
+                                registerStructInZa(namespace, structName, structDef)
+                                // Now retrieve from structmaps
+                                structmapslock.RLock()
+                                if vals, found := structmaps[lookupName]; found {
+                                    isStruct = true
+                                    structvalues = vals
                                 }
+                                structmapslock.RUnlock()
                             }
+                        } else {
                             ffiStructLock.RUnlock()
                         }
                     }
@@ -9046,8 +9054,18 @@ func setupTypedParameter(fs uint32, ident *[]Variable, name string, typeStr stri
         sname = namespace + "::" + typeStr
     }
 
+    // Resolve struct name through use_chain
+    resolvedName := uc_match_struct(sname)
+    lookupName := sname
+    if resolvedName != "" {
+        lookupName = resolvedName + "::" + sname
+    }
+
     structmapslock.RLock()
-    _, isStruct := structmaps[sname]
+    _, isStruct := structmaps[lookupName]
+    if !isStruct {
+        _, isStruct = structmaps[sname]  // Fallback to exact lookup
+    }
     structmapslock.RUnlock()
 
     if isStruct {
@@ -9188,8 +9206,18 @@ func isCompatibleType(value any, expectedType string, namespace string) bool {
         sname = namespace + "::" + expectedType
     }
 
+    // Resolve struct name through use_chain
+    resolvedName := uc_match_struct(sname)
+    lookupName := sname
+    if resolvedName != "" {
+        lookupName = resolvedName + "::" + sname
+    }
+
     structmapslock.RLock()
-    _, isStructType := structmaps[sname]
+    _, isStructType := structmaps[lookupName]
+    if !isStructType {
+        _, isStructType = structmaps[sname]  // Fallback to exact lookup
+    }
     structmapslock.RUnlock()
 
     if isStructType {
