@@ -1907,24 +1907,15 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 var structDef *CLibraryStruct
                 var err error
 
-                // Check if it's a union from C headers
-                ffiStructLock.RLock()
-                if def, ok := ffiStructDefinitions[baseStructName]; ok {
-                    structDef = def
-                } else {
-                    // Extract library alias from funcName (format: "alias::funcname")
-                    // Only search for structs from the same library
-                    parts := strings.Split(funcName, "::")
-                    if len(parts) == 2 {
-                        libAlias := parts[0]
-                        // Try to find the struct with the library's namespace
-                        qualifiedName := libAlias + "::" + baseStructName
-                        if def, ok := ffiStructDefinitions[qualifiedName]; ok {
-                            structDef = def
-                        }
+                // Check if it's a union from C headers using use_chain resolution
+                qualifiedName := uc_match_ffi_struct(baseStructName)
+                if qualifiedName != "" {
+                    ffiStructLock.RLock()
+                    if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+                        structDef = def
                     }
+                    ffiStructLock.RUnlock()
                 }
-                ffiStructLock.RUnlock()
 
                 // If not found in FFI registry, try Za struct definition
                 if structDef == nil {
@@ -2130,9 +2121,10 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     // Prepare custom ffi_type for struct return (if needed)
     var customReturnType unsafe.Pointer
     if expectedRetType == CStruct && sig.ReturnStructName != "" {
-        // Look up struct definition
+        // Look up struct definition using use_chain resolution
+        qualifiedName := uc_match_ffi_struct(sig.ReturnStructName)
         ffiStructLock.RLock()
-        structDef, exists := ffiStructDefinitions[sig.ReturnStructName]
+        structDef, exists := ffiStructDefinitions[qualifiedName]
         ffiStructLock.RUnlock()
 
         if !exists || structDef == nil {
@@ -2256,7 +2248,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                         }
                     } else if argTypesSlice[i] == 12 { // CInt64
                         val := *(*C.longlong)(argPtr)
-                        ffidebug(" -> points to int64 value: %lld", val)
+                        ffidebug(" -> points to int64 value: %d", val)
                     } else if argTypesSlice[i] == 7 { // CPointer
                         ptrVal := *(*unsafe.Pointer)(argPtr)
                         ffidebug(" -> points to pointer value: %p", ptrVal)
@@ -2563,13 +2555,16 @@ func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (
             baseStructName := strings.TrimSuffix(sig.ReturnStructName, "*")
             baseStructName = strings.TrimSpace(baseStructName)
 
-            // Look up the struct definition
+            // Look up the struct definition using use_chain resolution
             var structDef *CLibraryStruct
-            ffiStructLock.RLock()
-            if def, ok := ffiStructDefinitions[baseStructName]; ok {
-                structDef = def
+            qualifiedName := uc_match_ffi_struct(baseStructName)
+            if qualifiedName != "" {
+                ffiStructLock.RLock()
+                if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+                    structDef = def
+                }
+                ffiStructLock.RUnlock()
             }
-            ffiStructLock.RUnlock()
 
             // If struct definition exists, auto-unmarshal the pointed-to struct
             if structDef != nil {
@@ -2593,12 +2588,15 @@ func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (
             var structDef *CLibraryStruct
             var err error
 
-            // Check if it's a union from C headers
-            ffiStructLock.RLock()
-            if def, ok := ffiStructDefinitions[baseStructName]; ok {
-                structDef = def
+            // Check if it's a union from C headers using use_chain resolution
+            qualifiedName := uc_match_ffi_struct(baseStructName)
+            if qualifiedName != "" {
+                ffiStructLock.RLock()
+                if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+                    structDef = def
+                }
+                ffiStructLock.RUnlock()
             }
-            ffiStructLock.RUnlock()
 
             // If not found in FFI registry, try Za struct definition
             if structDef == nil {

@@ -64,7 +64,7 @@ type FFICacheData struct {
     CreatedAt time.Time
 }
 
-const FFICacheVersion = 1
+const FFICacheVersion = 2
 const FFICacheDir = ".cache/za/ffi"
 
 // registerGobTypes registers types for gob encoding

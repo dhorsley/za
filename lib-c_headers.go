@@ -3365,8 +3365,6 @@ func parseUnionTypedefs(text string, alias string) error {
         ffiStructLock.Lock()
         fullName := alias + "::" + unionName
         ffiStructDefinitions[fullName] = unionStruct
-        // Also store without namespace for easier lookup
-        ffiStructDefinitions[unionName] = unionStruct
         ffiStructLock.Unlock()
 
         // ALSO register as typed Za struct (makes AUTO unions available in Za code)
@@ -3773,8 +3771,6 @@ func parseStructTypedefs(text string, alias string) error {
         ffiStructLock.Lock()
         fullName := alias + "::" + structName
         ffiStructDefinitions[fullName] = structDef
-        // Also store without namespace for easier lookup
-        ffiStructDefinitions[structName] = structDef
         if debugAuto {
             fmt.Printf("[AUTO] Stored struct typedef in ffiStructDefinitions: fullName=%s, size=%d\n", fullName, totalSize)
         }
@@ -4193,8 +4189,6 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
         // Store in FFI struct registry (from lib-c.go)
         ffiStructLock.Lock()
         ffiStructDefinitions[fullName] = structDef
-        // Also store without namespace for easier lookup
-        ffiStructDefinitions[structName] = structDef
         ffiStructLock.Unlock()
 
         // ALSO register as typed Za struct (makes AUTO structs available in Za code)
@@ -4992,8 +4986,6 @@ func registerStructInZa(alias string, structName string, structDef *CLibraryStru
     structmapslock.Lock()
     fullName := alias + "::" + structName
     structmaps[fullName] = fields
-    // Also register without namespace for backward compatibility
-    structmaps[structName] = fields
     structmapslock.Unlock()
 
     if os.Getenv("ZA_DEBUG_AUTO") != "" {

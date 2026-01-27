@@ -1722,22 +1722,26 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             lookupName = strings.TrimSpace(lookupName)
         }
 
-        // Check if it's a known struct/union from AUTO parsing
-        ffiStructLock.RLock()
-        if _, exists := ffiStructDefinitions[lookupName]; exists {
-            ffiStructLock.RUnlock()
+        // Check if it's a known struct/union from AUTO parsing using use_chain resolution
+        qualifiedName := uc_match_ffi_struct(lookupName)
+        if qualifiedName != "" {
+            ffiStructLock.RLock()
+            if _, exists := ffiStructDefinitions[qualifiedName]; exists {
+                ffiStructLock.RUnlock()
 
-            // For pointer-to-struct types, return as CPointer with the struct name preserved
-            // This allows auto-unmarshalling in convertReturnValue
-            // For value struct types, return as CStruct
-            if isPointerType {
-                // Return CPointer but preserve the struct name (with * suffix) for later unmarshalling
-                return CPointer, cleanType, nil
+                // For pointer-to-struct types, return as CPointer with the struct name preserved
+                // This allows auto-unmarshalling in convertReturnValue
+                // For value struct types, return as CStruct
+                if isPointerType {
+                    // Return CPointer but preserve the struct name (with * suffix) for later unmarshalling
+                    return CPointer, cleanType, nil
+                } else {
+                    return CStruct, lookupName, nil
+                }
             } else {
-                return CStruct, lookupName, nil
+                ffiStructLock.RUnlock()
             }
         }
-        ffiStructLock.RUnlock()
     }
 
     // Check if this is a function pointer typedef
@@ -2537,26 +2541,40 @@ func lookupStructDefinition(name string) *CLibraryStruct {
 // getStructLayoutFromZa converts a Za struct definition to a C struct layout
 // It queries the global structmaps and calculates C-style field offsets
 func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
-    // Check if already cached
+    // Check if already cached in FFI definitions
     if cached := lookupStructDefinition(structName); cached != nil {
         return cached, nil
     }
 
-    // Look up struct definition in Za's structmaps
-    // Try with and without namespace prefixes
-    structmapslock.RLock()
-    structDef, found := structmaps[structName]
+    // Look up struct definition in Za's structmaps using use_chain resolution
+    var structDef []any
+    var found bool
 
-    if !found {
-                qualifiedName := "main::" + structName
+    // First try use_chain resolution for both Za and FFI structs
+    namespace := uc_match_struct(structName)
+    if namespace != "" {
+        // Build fully qualified name from namespace
+        qualifiedName := namespace + "::" + structName
+
+        // Try both FFI and Za definitions with the resolved namespace
+        ffiStructLock.RLock()
+        if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+            ffiStructLock.RUnlock()
+            return def, nil
+        }
+        ffiStructLock.RUnlock()
+
+        structmapslock.RLock()
         if def, ok := structmaps[qualifiedName]; ok {
             structDef = def
             found = true
         }
+        structmapslock.RUnlock()
     }
 
+    // Fallback: Search all keys for a match (handle cases where user provides full name or just base name)
     if !found {
-        // Search all keys for a match (handle cases where user provides full name or just base name)
+        structmapslock.RLock()
         for k, v := range structmaps {
             // If structName has ::, do exact match; otherwise match the suffix
             if strings.Contains(structName, "::") {
@@ -2574,8 +2592,8 @@ func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
                 }
             }
         }
+        structmapslock.RUnlock()
     }
-    structmapslock.RUnlock()
 
     if !found {
         return nil, fmt.Errorf("struct %s not defined", structName)
@@ -2703,7 +2721,17 @@ func getStructLayoutFromZa(structName string) (*CLibraryStruct, error) {
             fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
         default:
             // Check if it's a struct type
-            if strings.HasPrefix(fieldTypeStr, "struct<") || structmaps[fieldTypeStr] != nil {
+            isStruct := strings.HasPrefix(fieldTypeStr, "struct<")
+            if !isStruct {
+                // Check through use_chain resolution
+                qualifiedName := uc_match_struct(fieldTypeStr)
+                if qualifiedName != "" {
+                    structmapslock.RLock()
+                    isStruct = structmaps[qualifiedName] != nil
+                    structmapslock.RUnlock()
+                }
+            }
+            if isStruct {
                 fieldCType = CStruct // Nested struct as pointer
                 fieldSize = uintptr(unsafe.Sizeof(uintptr(0)))
             } else {
