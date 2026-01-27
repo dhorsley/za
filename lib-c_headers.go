@@ -669,6 +669,22 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
     // If it exists, we reuse it - allowing namespace merging
     cModuleIdentsLock.Unlock()
 
+    // CACHE: Try to load from cache first
+    cacheStartTime := time.Now()
+    if cachedData, ok := tryLoadFFICache(libraryPath, alias, explicitPaths); ok {
+        if err := populateGlobalMapsFromCache(cachedData, alias, fs); err != nil {
+            // Cache load failed, continue with normal parsing
+            if debugAuto {
+                fmt.Printf("[AUTO] Cache load failed: %v, will parse headers\n", err)
+            }
+        } else {
+            // Cache loaded successfully
+            cacheDuration := time.Since(cacheStartTime).Milliseconds()
+            progress.update(100.0, "Loaded from cache", fmt.Sprintf("(%dms)", cacheDuration))
+            return nil
+        }
+    }
+
     var headerPaths []string
 
     if len(explicitPaths) > 0 {
@@ -745,6 +761,14 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
         return fmt.Errorf("failed to parse functions: %w", err)
     }
     progress.update(4.0, "Completed", "")
+
+    // CACHE: Save parsed data to cache for future runs (synchronously to ensure it completes)
+    if err := saveFFICache(libraryPath, alias, explicitPaths); err != nil {
+        // Log but don't fail compilation on cache save errors
+        if debugAuto {
+            fmt.Printf("[AUTO] Warning: cache save failed: %v\n", err)
+        }
+    }
 
     return nil
 }

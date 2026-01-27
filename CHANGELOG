@@ -127,6 +127,8 @@ language changes
          with c_alloc()+c_free() or assign a *value returned by a C call to it.
       - declaration allows the variable to be auto-converted during FFI operations.
 
+  * added ffi caching layer for auto imports
+
   * MODULE statement library path detection
 
   * (experimental) added AUTO clause for MODULE statements - automatic C header parsing
