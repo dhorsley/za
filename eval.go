@@ -2202,10 +2202,12 @@ func (p *leparser) identifier(token *Token) (any, error) {
             // pf("  -- checking for c function name %s::%s in:\n%#v\n", useName, token.tokText, fnlookup.lmshow())
             //
             // Check C functions as fallback (highest overhead, lowest priority)
-            namespaceName := FindCFunction(token.tokText)
-            // fmt.Printf("[DEBUG] FindCFunction('%s') returned namespace: '%s'\n", token.tokText, namespaceName)
+            // Use uc_match_c_func to respect use chain order instead of random map iteration
+            namespaceName := uc_match_c_func(token.tokText)
             if namespaceName != "" {
-                // fmt.Printf("[DEBUG] C function found: %s::%s - setting subtypeUser\n", namespaceName, token.tokText)
+                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                    fmt.Fprintf(os.Stderr, "[PARSE] Found C function via use chain: %s::%s\n", namespaceName, token.tokText)
+                }
                 p.tokens[p.pos].subtype = subtypeUser
                 return token.tokText, nil
             } else {
@@ -3242,6 +3244,9 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
             autoProcessingLock.RUnlock()
 
             if !inAuto {
+                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                    fmt.Fprintf(os.Stderr, "[FFI-EVAL] Error for '%s': %v\n", ws, err)
+                }
                 parser.report(-1, sf("Error evaluating '%s'", ws))
                 finish(false, ERR_EVAL)
             }

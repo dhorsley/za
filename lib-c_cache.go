@@ -6,7 +6,6 @@ import (
     "encoding/hex"
     "encoding/json"
     "fmt"
-    "io"
     "os"
     "path/filepath"
     "reflect"
@@ -99,20 +98,14 @@ func getCachePath() (string, error) {
     return cachePath, nil
 }
 
-// hashFile computes SHA256 of a file
+// hashFile computes a fast hash based on file mtime and size
+// This is much faster than SHA256 and sufficient for cache invalidation
 func hashFile(filePath string) (string, error) {
-    f, err := os.Open(filePath)
+    info, err := os.Stat(filePath)
     if err != nil {
         return "", err
     }
-    defer f.Close()
-
-    h := sha256.New()
-    if _, err := io.Copy(h, f); err != nil {
-        return "", err
-    }
-
-    return hex.EncodeToString(h.Sum(nil)), nil
+    return fmt.Sprintf("%d-%d", info.ModTime().Unix(), info.Size()), nil
 }
 
 // hashString computes SHA256 of a string
@@ -132,8 +125,6 @@ func hashObject(obj interface{}) (string, error) {
 
 // computeCacheKey builds the complete cache key
 func computeCacheKey(libraryPath, alias string, explicitPaths []string) (FFICacheKey, error) {
-    debugCache := os.Getenv("ZA_FFI_CACHE_DEBUG") != ""
-
     key := FFICacheKey{
         OS:          runtime.GOOS,
         Arch:        runtime.GOARCH,
@@ -145,16 +136,9 @@ func computeCacheKey(libraryPath, alias string, explicitPaths []string) (FFICach
     // Hash the library file
     libHash, err := hashFile(libraryPath)
     if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to hash library %s: %v\n", libraryPath, err)
-        }
         return key, err
     }
     key.LibraryHash = libHash
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Library hash: %s\n", libHash)
-    }
 
     // Discover header paths if not explicit
     var headerPaths []string
@@ -182,9 +166,6 @@ func computeCacheKey(libraryPath, alias string, explicitPaths []string) (FFICach
     for _, hpath := range sortedHeaders {
         hHash, err := hashFile(hpath)
         if err != nil {
-            if debugCache {
-                fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to hash header %s: %v\n", hpath, err)
-            }
             // Continue with other headers - don't fail entire cache on one missing header
             hHash = "error"
         }
@@ -193,10 +174,6 @@ func computeCacheKey(libraryPath, alias string, explicitPaths []string) (FFICach
 
     key.HeaderPaths = sortedHeaders
     key.HeaderHashes = headerHashes
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Scanning %d headers\n", len(sortedHeaders))
-    }
 
     return key, nil
 }
@@ -258,25 +235,12 @@ func getCacheFileName(cacheKey FFICacheKey) (string, error) {
 }
 
 // tryLoadFFICache attempts to load cached data
-func tryLoadFFICache(libraryPath, alias string, explicitPaths []string) (*FFICacheData, bool) {
+func tryLoadFFICache(cacheKey FFICacheKey) (*FFICacheData, bool) {
     registerGobTypes()
 
-    debugCache := os.Getenv("ZA_FFI_CACHE_DEBUG") != ""
     noCache := os.Getenv("ZA_FFI_NOCACHE") != ""
 
     if noCache {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache disabled via ZA_FFI_NOCACHE\n")
-        }
-        return nil, false
-    }
-
-    // Compute cache key
-    cacheKey, err := computeCacheKey(libraryPath, alias, explicitPaths)
-    if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to compute cache key: %v\n", err)
-        }
         return nil, false
     }
 
@@ -296,9 +260,6 @@ func tryLoadFFICache(libraryPath, alias string, explicitPaths []string) (*FFICac
     // Check if cache file exists
     f, err := os.Open(fullPath)
     if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache miss: %s\n", fileName)
-        }
         return nil, false
     }
     defer f.Close()
@@ -307,9 +268,6 @@ func tryLoadFFICache(libraryPath, alias string, explicitPaths []string) (*FFICac
     decoder := gob.NewDecoder(f)
     var data FFICacheData
     if err := decoder.Decode(&data); err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache decode failed: %v (will regenerate)\n", err)
-        }
         // Delete corrupted cache
         os.Remove(fullPath)
         return nil, false
@@ -317,19 +275,7 @@ func tryLoadFFICache(libraryPath, alias string, explicitPaths []string) (*FFICac
 
     // Validate cache key matches
     if !cacheKeysEqual(data.CacheKey, cacheKey) {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache key mismatch (will regenerate)\n")
-        }
         return nil, false
-    }
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache hit: %s\n", fileName)
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Loaded: %d constants, %d macros, %d structs, %d functions\n",
-            len(moduleConstants[alias]),
-            len(moduleMacros[alias]),
-            len(ffiStructDefinitions),
-            len(declaredSignatures[alias]))
     }
 
     return &data, true
@@ -359,8 +305,6 @@ func cacheKeysEqual(a, b FFICacheKey) bool {
 
 // populateGlobalMapsFromCache restores global state from cached data
 func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) error {
-    debugCache := os.Getenv("ZA_FFI_CACHE_DEBUG") != ""
-
     // Lock all global map locks
     moduleConstantsLock.Lock()
     moduleMacrosLock.Lock()
@@ -402,9 +346,6 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         for name, enumData := range data.EnumsData {
             reconstructed, err := reconstructEnum(enumData)
             if err != nil {
-                if debugCache {
-                    fmt.Fprintf(os.Stderr, "[FFI-CACHE] Warning: failed to reconstruct enum %s: %v\n", name, err)
-                }
                 continue
             }
             enum[name] = reconstructed
@@ -437,38 +378,17 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         }
     }
 
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Populated global maps from cache\n")
-    }
-
     return nil
 }
 
 // saveFFICache collects parsed data and saves to cache
-func saveFFICache(libraryPath, alias string, explicitPaths []string) error {
+func saveFFICache(cacheKey FFICacheKey, alias string) error {
     registerGobTypes()
 
-    debugCache := os.Getenv("ZA_FFI_CACHE_DEBUG") != ""
     noCache := os.Getenv("ZA_FFI_NOCACHE") != ""
 
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] saveFFICache called for %s/%s\n", alias, libraryPath)
-    }
-
     if noCache {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache save skipped (noCache=true)\n")
-        }
         return nil
-    }
-
-    // Compute cache key
-    cacheKey, err := computeCacheKey(libraryPath, alias, explicitPaths)
-    if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to compute cache key for save: %v\n", err)
-        }
-        return nil // Don't fail compilation if cache save fails
     }
 
     // Collect current global state
@@ -486,15 +406,11 @@ func saveFFICache(libraryPath, alias string, explicitPaths []string) error {
         if e != nil {
             enumData, err := extractEnumData(e)
             if err != nil {
-                if debugCache {
-                    fmt.Fprintf(os.Stderr, "[FFI-CACHE] Warning: failed to extract enum %s: %v\n", name, err)
-                }
                 continue
             }
             enumsData[name] = enumData
         }
     }
-
     data := &FFICacheData{
         Version:             FFICacheVersion,
         ModuleConstants:     copyMapMapAny(moduleConstants),
@@ -521,25 +437,11 @@ func saveFFICache(libraryPath, alias string, explicitPaths []string) error {
     // Get cache path and ensure directory exists
     cachePath, err := getCachePath()
     if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to get cache path: %v\n", err)
-        }
         return nil
-    }
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache path: %s\n", cachePath)
     }
 
     if err := os.MkdirAll(cachePath, 0755); err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to create cache directory %s: %v\n", cachePath, err)
-        }
         return nil
-    }
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Cache directory created/exists\n")
     }
 
     // Get cache filename
@@ -554,9 +456,6 @@ func saveFFICache(libraryPath, alias string, explicitPaths []string) error {
     // Write to temporary file
     f, err := os.Create(tempPath)
     if err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to create temp cache file: %v\n", err)
-        }
         return nil
     }
 
@@ -564,24 +463,14 @@ func saveFFICache(libraryPath, alias string, explicitPaths []string) error {
     if err := encoder.Encode(data); err != nil {
         f.Close()
         os.Remove(tempPath)
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to encode cache: %v\n", err)
-        }
         return nil
     }
     f.Close()
 
     // Atomic rename
     if err := os.Rename(tempPath, fullPath); err != nil {
-        if debugCache {
-            fmt.Fprintf(os.Stderr, "[FFI-CACHE] Failed to rename cache file: %v\n", err)
-        }
         os.Remove(tempPath)
         return nil
-    }
-
-    if debugCache {
-        fmt.Fprintf(os.Stderr, "[FFI-CACHE] Saved cache: %s\n", fileName)
     }
 
     return nil

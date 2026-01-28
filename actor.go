@@ -5626,9 +5626,6 @@ tco_reentry:
                     RegisterCSymbol(symbol)
                 }
 
-                // Add C library to use chain for namespace resolution
-                uc_add(currentModule)
-
                 // Parse header files if AUTO clause was specified
                 if hasAuto {
                     // Check if we already have a function space for this C module alias
@@ -5971,8 +5968,47 @@ tco_reentry:
                 }
             }
 
-            // Store the function signature
-            DeclareCFunction(libAlias, funcName, paramTypes, paramStructNames, returnType, returnStructName, hasVarargs)
+            // Store the function signature (manual declaration has priority over AUTO)
+            DeclareCFunctionWithSource(libAlias, funcName, paramTypes, paramStructNames, returnType, returnStructName, hasVarargs, SourceManual)
+
+            // Also update lib.Symbols so the function can be found at runtime
+            if lib, exists := loadedCLibraries[libAlias]; exists {
+                if lib.Symbols == nil {
+                    lib.Symbols = make(map[string]*CSymbol)
+                }
+
+                // Convert CTypes to CParameters for the symbol
+                var params []CParameter
+                for i, paramType := range paramTypes {
+                    param := CParameter{
+                        Name: sf("param%d", i), // Use generic names since we don't have original names from the LIB statement
+                        Type: paramType,
+                    }
+                    if i < len(paramStructNames) && paramStructNames[i] != "" {
+                        param.StructTypeName = paramStructNames[i]
+                    }
+                    params = append(params, param)
+                }
+
+                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                    oldSym, hadOld := lib.Symbols[funcName]
+                    if hadOld {
+                        fmt.Fprintf(os.Stderr, "[FFI-SYM] UPDATING lib.Symbols[%s][%s]: return %v → %v\n",
+                            libAlias, funcName, oldSym.ReturnType, returnType)
+                    } else {
+                        fmt.Fprintf(os.Stderr, "[FFI-SYM] ADDING lib.Symbols[%s][%s]: return %v\n",
+                            libAlias, funcName, returnType)
+                    }
+                }
+
+                lib.Symbols[funcName] = &CSymbol{
+                    Name:       funcName,
+                    ReturnType: returnType,
+                    Parameters: params,
+                    IsFunction: true,
+                    Library:    libAlias,
+                }
+            }
 
         case C_Case:
 

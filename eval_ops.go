@@ -6,6 +6,7 @@ import (
     "math"
     "math/big"
     "net/http"
+    "os"
     "reflect"
     "strconv"
     str "strings"
@@ -2481,9 +2482,13 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     return result, false, nil, nil
                 }
             } else {
-                // fmt.Printf("[DEBUG] Checking unqualified function name: '%s'\n", name)
+                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                    fmt.Printf("[DEBUG] Checking unqualified function name: '%s'\n", name)
+                }
                 if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
-                    // fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
+                    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                        fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
+                    }
                     result, notes := CallCFunction(foundNamespace, name, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
