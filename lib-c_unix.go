@@ -500,9 +500,16 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
     // Check if function signature was declared via LIB keyword
     sig, declared := GetDeclaredSignature(lib.Alias, functionName)
     if !declared {
+        if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+            fmt.Fprintf(os.Stderr, "[FFI-CALL] ERROR: Signature lookup failed for %s::%s\n", lib.Alias, functionName)
+        }
         return nil, []string{fmt.Sprintf(
             "ERROR: Function '%s' not declared. Use: LIB %s::%s(...) -> <return_type>",
             functionName, lib.Alias, functionName)}
+    }
+
+    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+        fmt.Fprintf(os.Stderr, "[FFI-CALL] Calling %s::%s with return type %v\n", lib.Alias, functionName, sig.ReturnType)
     }
 
     // Validate argument count matches declaration

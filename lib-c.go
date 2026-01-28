@@ -115,18 +115,69 @@ type CFunctionSignature struct {
     ReturnStructName string   // For CStruct return values, the Za struct type name
     HasVarargs       bool     // True if function is variadic (takes variable arguments)
     FixedArgCount    int      // Number of fixed arguments before varargs
+    Source           SignatureSource // Track where signature came from (AUTO vs manual)
 }
+
+// SignatureSource indicates where a function signature was declared
+type SignatureSource int
+
+const (
+    SourceAuto SignatureSource = iota
+    SourceManual
+)
 
 // Global registry of declared function signatures
 // Map structure: libraryAlias -> functionName -> signature
 var declaredSignatures = make(map[string]map[string]CFunctionSignature)
 
 // DeclareCFunction stores an explicit function signature declaration
+// source indicates whether this is from AUTO import or manual LIB statement
 func DeclareCFunction(libraryAlias, functionName string, paramTypes []CType, paramStructNames []string, returnType CType, returnStructName string, hasVarargs bool) {
+    DeclareCFunctionWithSource(libraryAlias, functionName, paramTypes, paramStructNames, returnType, returnStructName, hasVarargs, SourceAuto)
+}
+
+// DeclareCFunctionWithSource stores a function signature with explicit source tracking
+func DeclareCFunctionWithSource(libraryAlias, functionName string, paramTypes []CType, paramStructNames []string, returnType CType, returnStructName string, hasVarargs bool, source SignatureSource) {
     if declaredSignatures[libraryAlias] == nil {
         declaredSignatures[libraryAlias] = make(map[string]CFunctionSignature)
     }
     fixedArgCount := len(paramTypes)
+
+    // Debug logging
+    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+        existing, hadExisting := GetDeclaredSignature(libraryAlias, functionName)
+        sourceStr := "AUTO"
+        if source == SourceManual {
+            sourceStr = "MANUAL"
+        }
+        existingSourceStr := "AUTO"
+        if hadExisting && existing.Source == SourceManual {
+            existingSourceStr = "MANUAL"
+        }
+
+        if hadExisting {
+            fmt.Fprintf(os.Stderr, "[FFI-SIG] OVERWRITING %s::%s (%s overwrites %s)\n",
+                libraryAlias, functionName, sourceStr, existingSourceStr)
+            fmt.Fprintf(os.Stderr, "[FFI-SIG]   OLD: return=%v, params=%d\n", existing.ReturnType, len(existing.ParamTypes))
+            fmt.Fprintf(os.Stderr, "[FFI-SIG]   NEW: return=%v, params=%d\n", returnType, len(paramTypes))
+        } else {
+            fmt.Fprintf(os.Stderr, "[FFI-SIG] DECLARING %s::%s (%s, return=%v, params=%d)\n",
+                libraryAlias, functionName, sourceStr, returnType, len(paramTypes))
+        }
+    }
+
+    // Check if we're trying to overwrite a manual declaration with AUTO
+    if existing, ok := declaredSignatures[libraryAlias][functionName]; ok {
+        if existing.Source == SourceManual && source == SourceAuto {
+            // Don't overwrite manual declarations with AUTO
+            if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                fmt.Fprintf(os.Stderr, "[FFI-SIG] SKIPPING AUTO override of manual %s::%s\n",
+                    libraryAlias, functionName)
+            }
+            return
+        }
+    }
+
     declaredSignatures[libraryAlias][functionName] = CFunctionSignature{
         ParamTypes:       paramTypes,
         ParamStructNames: paramStructNames,
@@ -134,15 +185,33 @@ func DeclareCFunction(libraryAlias, functionName string, paramTypes []CType, par
         ReturnStructName: returnStructName,
         HasVarargs:       hasVarargs,
         FixedArgCount:    fixedArgCount,
+        Source:           source,
     }
 }
 
 // GetDeclaredSignature retrieves a previously declared function signature
 func GetDeclaredSignature(libraryAlias, functionName string) (CFunctionSignature, bool) {
     if declaredSignatures[libraryAlias] == nil {
+        if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+            fmt.Fprintf(os.Stderr, "[FFI-SIG] LOOKUP %s::%s → NOT FOUND (no alias '%s')\n",
+                libraryAlias, functionName, libraryAlias)
+        }
         return CFunctionSignature{}, false
     }
     sig, ok := declaredSignatures[libraryAlias][functionName]
+    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+        if ok {
+            sourceStr := "AUTO"
+            if sig.Source == SourceManual {
+                sourceStr = "MANUAL"
+            }
+            fmt.Fprintf(os.Stderr, "[FFI-SIG] LOOKUP %s::%s → FOUND (%s, return=%v)\n",
+                libraryAlias, functionName, sourceStr, sig.ReturnType)
+        } else {
+            fmt.Fprintf(os.Stderr, "[FFI-SIG] LOOKUP %s::%s → NOT FOUND (alias exists, function doesn't)\n",
+                libraryAlias, functionName)
+        }
+    }
     return sig, ok
 }
 
@@ -847,6 +916,9 @@ func RegisterCSymbol(symbol *CSymbol) {
 
 // CallCFunction executes a C function via FFI using dlsym
 func CallCFunction(library string, functionName string, args []any) (any, []string) {
+    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+        fmt.Fprintf(os.Stderr, "[FFI-CALL] CallCFunction(%s, %s, ...)\n", library, functionName)
+    }
     lib, exists := loadedCLibraries[library]
     if !exists {
         return nil, []string{fmt.Sprintf("[ERROR: C library '%s' not loaded]", library)}
@@ -885,6 +957,7 @@ func GetCLibrarySymbols(library string) ([]*CSymbol, error) {
 
 // FindCFunction finds the first C library that contains a function and returns the namespace name
 // Returns empty string if function not found in any C library
+// Prefers libraries with manual declarations over AUTO-discovered functions
 func FindCFunction(functionName string) string {
     // Strip namespace prefix if present (e.g., "png::func" -> "func")
     cleanName := functionName
@@ -895,10 +968,35 @@ func FindCFunction(functionName string) string {
         }
     }
 
-    // Search all loaded C libraries for this function
+    // First pass: look for manually declared functions (SourceManual)
+    // This ensures that manual LIB declarations take priority over AUTO-discovered ones
+    for libName := range loadedCLibraries {
+        if sig, exists := GetDeclaredSignature(libName, cleanName); exists && sig.Source == SourceManual {
+            if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                fmt.Fprintf(os.Stderr, "[FFI-FIND] Found MANUAL %s::%s\n", libName, cleanName)
+            }
+            return libName
+        }
+    }
+
+    // Second pass: look for any declared function (AUTO or MANUAL)
+    for libName := range loadedCLibraries {
+        if _, exists := GetDeclaredSignature(libName, cleanName); exists {
+            if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                fmt.Fprintf(os.Stderr, "[FFI-FIND] Found AUTO %s::%s\n", libName, cleanName)
+            }
+            return libName
+        }
+    }
+
+    // Fallback: search symbols if no declarations found
+    // This handles legacy code that doesn't use LIB declarations
     for libName, lib := range loadedCLibraries {
         if symbol, exists := lib.Symbols[cleanName]; exists {
             if symbol.IsFunction {
+                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
+                    fmt.Fprintf(os.Stderr, "[FFI-FIND] Found SYMBOL %s::%s\n", libName, cleanName)
+                }
                 return libName
             }
         }
