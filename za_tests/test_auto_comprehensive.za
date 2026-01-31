@@ -75,10 +75,6 @@ try
     println "  4. Extracted function signatures (strlen, strcmp, malloc, free, strcpy)"
     println "  5. Made them all available without manual declarations!"
     println "\n[#3]Zero manual LIB declarations needed - just 'module ... auto'![#-]"
-    println "\n[#5]Limitations:[#-]"
-    println "  • Complex macro-based headers (like math.h) not yet supported"
-    println "  • Simple, straightforward C declarations work best"
-    println "  • Forward references not supported (constants must be defined before use)"
 
 catch e
     println "[#1]  ✗ Error occurred: " + as_string(e) + "[#-]"
