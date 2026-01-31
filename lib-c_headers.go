@@ -3084,6 +3084,20 @@ func parseTypedefs(text string, alias string) error {
 
     if os.Getenv("ZA_DEBUG_AUTO") != "" {
         fmt.Printf("[AUTO] parseTypedefs START for alias=%s (text length=%d)\n", alias, len(text))
+        if strings.Contains(text, "GLFWframebuffersizefun") {
+            fmt.Printf("[AUTO] *** Text CONTAINS GLFWframebuffersizefun typedef\n")
+            // Find and show the context
+            idx := strings.Index(text, "GLFWframebuffersizefun")
+            start := idx - 50
+            if start < 0 {
+                start = 0
+            }
+            end := idx + 100
+            if end > len(text) {
+                end = len(text)
+            }
+            fmt.Printf("[AUTO] Context: %q\n", text[start:end])
+        }
     }
 
     // Pattern 1: Function pointer typedefs FIRST
@@ -3093,9 +3107,26 @@ func parseTypedefs(text string, alias string) error {
 
     funcPtrMatches := reFuncPtr.FindAllStringSubmatch(text, -1)
 
+    debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+    if debugAuto && strings.Contains(text, "GLFWframebuffersizefun") {
+        fmt.Printf("[AUTO] Found %d function pointer typedef matches (text contains GLFWframebuffersizefun)\n", len(funcPtrMatches))
+        // List the extracted typedef names
+        for i, match := range funcPtrMatches {
+            if i < 5 {
+                fmt.Printf("[AUTO]   Match %d: newName='%s'\n", i, match[2])
+            }
+        }
+    }
+
     for _, match := range funcPtrMatches {
         baseType := strings.TrimSpace(match[1])
         newName := match[2]
+
+        if os.Getenv("ZA_DEBUG_AUTO") != "" {
+            if strings.Contains(newName, "Framebuffer") {
+                fmt.Printf("[AUTO] *** Found Framebuffer typedef: newName='%s'\n", newName)
+            }
+        }
 
         // Parse the function pointer signature
         _, sig, err := parseFunctionPointerSignature(baseType)
@@ -3112,15 +3143,24 @@ func parseTypedefs(text string, alias string) error {
             moduleFunctionPointerSignatures[alias] = make(map[string]CFunctionSignature)
         }
         moduleFunctionPointerSignatures[alias][newName] = sig
+        if os.Getenv("ZA_DEBUG_AUTO") != "" && strings.Contains(newName, "Framebuffer") {
+            fmt.Printf("[AUTO] Stored function pointer typedef: alias='%s', newName='%s'\n", alias, newName)
+        }
         moduleFunctionPointerSignaturesLock.Unlock()
     }
 
     // Pattern 2: Simple typedef
     // typedef unsigned int uint32_t;
     // typedef const char* string_t;
-    reSimple := regexp.MustCompile(`typedef\s+([^;]+?)\s+(\w+)\s*;`)
+    // Handle multiline typedefs by collapsing newlines around *
+    // e.g., "typedef struct _XGC\n*GC;" becomes "typedef struct _XGC *GC;"
+    normalizedText := regexp.MustCompile(`\n\s*\*`).ReplaceAllString(text, " *")
 
-    matches := reSimple.FindAllStringSubmatch(text, -1)
+    // Match typedef patterns - use \s* instead of \s+ to handle cases where
+    // the pointer star is directly followed by identifier (e.g., "struct _XGC*GC")
+    reSimple := regexp.MustCompile(`typedef\s+([^;]+?)\s*(\w+)\s*;`)
+
+    matches := reSimple.FindAllStringSubmatch(normalizedText, -1)
 
     // Match and store
     for _, match := range matches {
@@ -3150,14 +3190,19 @@ func parseTypedefs(text string, alias string) error {
             closeBraces := strings.Count(baseType, "}")
             if openBraces != closeBraces || openBraces > 1 {
                 // Unmatched braces or nested struct/union - skip
+                if debugAuto && newName == "GC" {
+                    fmt.Printf("[AUTO] SKIPPING typedef %s (unmatched braces: %d open, %d close)\n", newName, openBraces, closeBraces)
+                }
                 continue
             }
         }
 
         moduleTypedefs[alias][newName] = baseType
 
-        if os.Getenv("ZA_DEBUG_AUTO") != "" {
-            fmt.Printf("[AUTO] Typedef: %s → %s\n", newName, baseType)
+        if debugAuto {
+            if newName == "GC" || strings.Contains(newName, "GLFW") || strings.Contains(newName, "GC") {
+                fmt.Printf("[AUTO] Typedef: %s → %s\n", newName, baseType)
+            }
         }
     }
 
@@ -3166,16 +3211,10 @@ func parseTypedefs(text string, alias string) error {
 
 // resolveTypedef recursively resolves a typedef name to its base type
 // Returns empty string if the type is not a typedef
+// Respects the use chain - if not found in the specified alias, searches through used libraries
 func resolveTypedef(typeName string, alias string, depth int) string {
     // Prevent infinite recursion
     if depth > 10 {
-        return ""
-    }
-
-    moduleTypedefsLock.RLock()
-    defer moduleTypedefsLock.RUnlock()
-
-    if moduleTypedefs[alias] == nil {
         return ""
     }
 
@@ -3189,13 +3228,34 @@ func resolveTypedef(typeName string, alias string, depth int) string {
     cleanType = strings.TrimPrefix(cleanType, "enum ")
     cleanType = strings.TrimSpace(cleanType)
 
-    // Check if this is a typedef
-    if baseType, exists := moduleTypedefs[alias][cleanType]; exists {
-        // Recursively resolve
-        if resolved := resolveTypedef(baseType, alias, depth+1); resolved != "" {
-            return resolved
+    // First, try the specified alias
+    moduleTypedefsLock.RLock()
+    if moduleTypedefs[alias] != nil {
+        if baseType, exists := moduleTypedefs[alias][cleanType]; exists {
+            moduleTypedefsLock.RUnlock()
+            // Recursively resolve
+            if resolved := resolveTypedef(baseType, alias, depth+1); resolved != "" {
+                return resolved
+            }
+            return baseType
         }
-        return baseType
+    }
+    moduleTypedefsLock.RUnlock()
+
+    // Not found in the specified alias - search through the use chain
+    // using uc_match_typedef to find which library has this typedef
+    if resolverAlias := uc_match_typedef(cleanType); resolverAlias != "" && resolverAlias != alias {
+        moduleTypedefsLock.RLock()
+        baseType, exists := moduleTypedefs[resolverAlias][cleanType]
+        moduleTypedefsLock.RUnlock()
+
+        if exists {
+            // Found it in a used library
+            if resolved := resolveTypedef(baseType, resolverAlias, depth+1); resolved != "" {
+                return resolved
+            }
+            return baseType
+        }
     }
 
     return ""
