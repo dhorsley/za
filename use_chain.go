@@ -221,3 +221,27 @@ func uc_match_ffi_struct(s string) string {
 
     return ""  // Not found in any namespace
 }
+
+// uc_match_typedef searches for a typedef through the use chain
+// Returns the library namespace where the typedef is defined, or empty string if not found
+func uc_match_typedef(typeName string) string {
+    chainlock.RLock()
+    // Make a copy of the chain so we can release the lock before checking typedefs
+    searchChain := make([]string, len(uchain))
+    copy(searchChain, uchain)
+    chainlock.RUnlock()
+
+    // Now check each library in the use chain order
+    for _, alias := range searchChain {
+        moduleTypedefsLock.RLock()
+        if moduleTypedefs[alias] != nil {
+            if _, exists := moduleTypedefs[alias][typeName]; exists {
+                moduleTypedefsLock.RUnlock()
+                return alias
+            }
+        }
+        moduleTypedefsLock.RUnlock()
+    }
+
+    return ""  // Not found in any namespace
+}

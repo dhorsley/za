@@ -1801,6 +1801,59 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
         cTypeStr = strings.TrimSpace(cTypeStr)
     }
 
+    // Check if this is a function pointer typedef FIRST (more specific than struct check)
+    // This must happen before struct/union checks to prevent function pointers from being
+    // misidentified as struct return types
+    if alias != "" {
+        // Compute cleanType matching the logic in resolveTypedef()
+        cleanType := strings.TrimSpace(cTypeStr)
+        cleanType = strings.TrimPrefix(cleanType, "const ")
+        cleanType = strings.TrimPrefix(cleanType, "volatile ")
+        cleanType = strings.TrimPrefix(cleanType, "restrict ")
+        cleanType = strings.TrimPrefix(cleanType, "struct ")
+        cleanType = strings.TrimPrefix(cleanType, "union ")
+        cleanType = strings.TrimPrefix(cleanType, "enum ")
+        cleanType = strings.TrimSpace(cleanType)
+
+        moduleFunctionPointerSignaturesLock.RLock()
+        funcPtrSigs, aliasExists := moduleFunctionPointerSignatures[alias]
+
+        // Try exact match first
+        _, isFuncPtrTypedef := funcPtrSigs[cleanType]
+
+        // If not found and cleanType might contain API macros, try stripping them
+        if !isFuncPtrTypedef && aliasExists {
+            strippedType := stripNonTypeTokens(cleanType)
+            if strippedType != cleanType {
+                // Only check again if stripping actually changed something
+                _, isFuncPtrTypedef = funcPtrSigs[strippedType]
+                // Update cleanType for debug output if stripped version matched
+                if isFuncPtrTypedef {
+                    cleanType = strippedType
+                }
+            }
+        }
+        moduleFunctionPointerSignaturesLock.RUnlock()
+
+        debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
+        if debugAuto && strings.Contains(cleanType, "Framebuffer") {
+            fmt.Printf("[AUTO] Checking for function pointer typedef: cleanType='%s' (from cTypeStr='%s')\n", cleanType, cTypeStr)
+        }
+
+        if debugAuto && strings.Contains(cleanType, "Framebuffer") {
+            fmt.Printf("[AUTO] aliasExists=%v, isFuncPtrTypedef=%v\n", aliasExists, isFuncPtrTypedef)
+        }
+
+        if isFuncPtrTypedef {
+            // This is a function pointer typedef - treat as CPointer
+            // Return empty struct name (second return value) since function pointers are not structs
+            if debugAuto {
+                fmt.Printf("[AUTO] Identified function pointer typedef: %s (alias: %s)\n", cleanType, alias)
+            }
+            return CPointer, "", nil
+        }
+    }
+
     // Check if this is a known struct/union typedef BEFORE resolution
     // This allows us to preserve the original type name for struct/union references
     if alias != "" {
@@ -1852,29 +1905,6 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             } else {
                 return CStruct, lookupName, nil
             }
-        }
-    }
-
-    // Check if this is a function pointer typedef
-    if alias != "" {
-        // Compute cleanType matching the logic in resolveTypedef()
-        cleanType := strings.TrimSpace(cTypeStr)
-        cleanType = strings.TrimPrefix(cleanType, "const ")
-        cleanType = strings.TrimPrefix(cleanType, "volatile ")
-        cleanType = strings.TrimPrefix(cleanType, "restrict ")
-        cleanType = strings.TrimPrefix(cleanType, "struct ")
-        cleanType = strings.TrimPrefix(cleanType, "union ")
-        cleanType = strings.TrimPrefix(cleanType, "enum ")
-        cleanType = strings.TrimSpace(cleanType)
-
-        moduleFunctionPointerSignaturesLock.RLock()
-        _, isFuncPtrTypedef := moduleFunctionPointerSignatures[alias][cleanType]
-        moduleFunctionPointerSignaturesLock.RUnlock()
-
-        if isFuncPtrTypedef {
-            // This is a function pointer typedef - treat as CPointer
-            // Return empty struct name (second return value) since function pointers are not structs
-            return CPointer, "", nil
         }
     }
 
@@ -2276,6 +2306,9 @@ func parseCFunctionSignature(sigStr string, functionName string, alias string) (
     returnType, returnStructName, err := mapCTypeStringToZa(returnTypeStr, alias)
     if err != nil {
         return nil, fmt.Errorf("failed to parse return type '%s': %w", returnTypeStr, err)
+    }
+    if os.Getenv("ZA_DEBUG_AUTO") != "" {
+        fmt.Printf("[AUTO] Parsed return type: typeStr='%s' -> returnType=%v, returnStructName='%s'\n", returnTypeStr, returnType, returnStructName)
     }
 
     // Parse parameters
