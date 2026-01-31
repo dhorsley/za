@@ -110,8 +110,9 @@ language changes
 
     PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE,
         YOU MAY HAVE ISSUES WITH OLDER OS VERSIONS.
-            For example: Ubuntu 20.04 include/library path calculations
             libffi v3.4.8+ is required.
+            if you have failing scripts it may also be worth clearing the cache:
+                ZA_FFI_NOCACHE=1 za <test_script_name>
 
   * FFI callback system enhancements
       - Dynamic closure support via libffi - callbacks now support unlimited signatures
