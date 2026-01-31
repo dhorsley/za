@@ -5141,10 +5141,52 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     // Normalize type string
     typeStr = strings.TrimSpace(typeStr)
 
+
     // Check for pointer types first (before lowercasing)
     // Handle both "Type*" and "Type *" formats
     if strings.Contains(typeStr, "*") {
         return CPointer, unsafe.Sizeof(uintptr(0))
+    }
+
+    // Check hardcoded stdint.h types BEFORE typedef resolution
+    // This prevents typedef chains from overriding these fundamental types
+    switch typeStr {
+    case "__int64_t", "__int_fast64_t", "__int_least64_t":
+        return CInt64, 8
+    case "__uint64_t", "__uint_fast64_t", "__uint_least64_t":
+        return CUInt64, 8
+    case "__int32_t", "__int_fast32_t", "__int_least32_t":
+        return CInt, 4
+    case "__uint32_t", "__uint_fast32_t", "__uint_least32_t":
+        return CUInt, 4
+    case "__int16_t", "__int_fast16_t", "__int_least16_t":
+        return CInt16, 2
+    case "__uint16_t", "__uint_fast16_t", "__uint_least16_t":
+        return CUInt16, 2
+    case "__int8_t", "__int_fast8_t", "__int_least8_t":
+        return CInt8, 1
+    case "__uint8_t", "__uint_fast8_t", "__uint_least8_t":
+        return CUInt8, 1
+    case "int8_t":
+        return CInt8, 1
+    case "uint8_t":
+        return CUInt8, 1
+    case "int16_t":
+        return CInt16, 2
+    case "uint16_t":
+        return CUInt16, 2
+    case "int32_t":
+        return CInt, 4
+    case "uint32_t":
+        return CUInt, 4
+    case "int64_t":
+        return CInt64, 8
+    case "uint64_t":
+        return CUInt64, 8
+    case "intptr_t":
+        return CInt64, 8
+    case "uintptr_t":
+        return CUInt64, 8
     }
 
     // Check typedef registry BEFORE lowercasing (typedefs are case-sensitive)
@@ -5237,18 +5279,9 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     case "__uint32_t", "__uint_fast32_t", "__uint_least32_t":
         // 32-bit unsigned integer types from stdint.h
         return CUInt, 4
-    case "__int16_t", "__int_fast16_t", "__int_least16_t":
-        // 16-bit signed integer types from stdint.h
-        return CInt16, 2
-    case "__uint16_t", "__uint_fast16_t", "__uint_least16_t":
-        // 16-bit unsigned integer types from stdint.h
-        return CUInt16, 2
-    case "__int8_t", "__int_fast8_t", "__int_least8_t":
-        // 8-bit signed integer types from stdint.h
-        return CInt8, 1
-    case "__uint8_t", "__uint_fast8_t", "__uint_least8_t":
-        // 8-bit unsigned integer types from stdint.h
-        return CUInt8, 1
+    // Note: __int*_t and standard int*_t cases are now handled BEFORE typedef resolution
+    // (see switch statement after pointer check, around line 5151)
+    // These cases remain unreachable but are kept for documentation
     case "size_t":
         // size_t is typically unsigned long on 64-bit, unsigned int on 32-bit
         // Assume 64-bit for modern systems
