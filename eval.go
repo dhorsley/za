@@ -2230,7 +2230,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
     // Check for module constants FIRST (from AUTO clause)
     // This must happen before local/global lookup for qualified names (namespace::constant)
-    if p.prev.tokType == SYM_DoubleColon {
+    if p.pos > 0 && p.prev.tokType == SYM_DoubleColon {
         // Qualified name: namespace provided explicitly
         // The namespace is in p.tokens[p.pos-2].tokText
         if p.pos >= 2 {
@@ -2284,8 +2284,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
         }
     } else {
         // Unqualified name: search USE chain
-        if _, val, found := uc_match_constant(token.tokText); found {
-            return val, nil
+        // BUT: skip if next token is :: (this is a namespace part, not a constant lookup)
+        if p.peek().tokType != SYM_DoubleColon {
+            if _, val, found := uc_match_constant(token.tokText); found {
+                return val, nil
+            }
         }
     }
 

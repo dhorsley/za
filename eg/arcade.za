@@ -10,7 +10,7 @@
 # - Full colour support
 
 # Import X11 library with auto header parsing
-module "libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h"
+module "libX11.so.6" as x11 auto "/usr/include/X11/Xlib.h" "/usr/include/X11/keysymdef.h"
 use +x11
 
 # Game area dimensions
@@ -217,18 +217,22 @@ while running
         event = c_unmarshal_struct(event_ptr, "XEvent")
         event_type = event["type"]
 
-        if event_type == KeyPress
+        if event_type == KeyPress or event_type == KeyRelease
             key_event = event["xkey"]
-            keycode = key_event["keycode"]
-            on keycode == 113 do keys_pressed["left"] = true
-            on keycode == 114 do keys_pressed["right"] = true
+            # Translate keycode to keysym (portable X11 key symbol)
+            keysym = XLookupKeysym(key_event, 0)
+        endif
+
+        on event_type == KeyPress and (keysym == XK_q or keysym == 0xff1b) do running=false
+
+        if event_type == KeyPress
+            on keysym == XK_Left do keys_pressed["left"] = true
+            on keysym == XK_Right do keys_pressed["right"] = true
         endif
 
         if event_type == KeyRelease
-            key_event = event["xkey"]
-            keycode = key_event["keycode"]
-            on keycode == 113 do keys_pressed["left"] = false
-            on keycode == 114 do keys_pressed["right"] = false
+            on keysym == XK_Left do keys_pressed["left"] = false
+            on keysym == XK_Right do keys_pressed["right"] = false
         endif
     endwhile
 
@@ -244,7 +248,7 @@ while running
     on ball_y - ball_radius < 0 do ball_vy = -ball_vy
 
     # Ball collision with paddle - smart angle calculation
-    if ( (ball_y + ball_radius >= paddle_y) && (ball_y - ball_radius <= paddle_y + paddle_height) && 
+    if ( (ball_y + ball_radius >= paddle_y) && (ball_y - ball_radius <= paddle_y + paddle_height) &&
          (ball_x >= paddle_x) && (ball_x <= paddle_x + paddle_width) )
 
         # Calculate hit position (0.0 = left edge, 1.0 = right edge)
