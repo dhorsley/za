@@ -1211,6 +1211,16 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
             case "ifdef":
                 // #ifdef NAME
                 condition := state.isDefined(arg)
+
+                // Auto-enable X11 keysym feature macros (XK_LATIN1, XK_MISCELLANY, etc.)
+                // These are feature test macros that applications define before including keysymdef.h
+                // For AUTO import, we want all keysym definitions available by default
+                if strings.HasPrefix(arg, "XK_") {
+                    condition = true
+                    // Also add to definedMacros so #if defined(XK_LATIN1) works too
+                    state.definedMacros[arg] = "1"
+                }
+
                 state.pushCondition(condition)
                 if debugAuto {
                     fmt.Printf("[AUTO] Line %d: #ifdef %s → %v (depth %d)\n",
@@ -3432,18 +3442,30 @@ func parseUnionTypedefs(text string, alias string) error {
         // Parse fields from the field block
         fields, maxSize, err := parseUnionFields(fieldBlock, alias, unionName, debugAuto)
         if err != nil {
-            // Production warning - always visible
             errMsg := fmt.Sprintf("skipped union %s: %v", unionName, err)
-            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
-            addMessageToCurrentProgress(msg)
 
-            // Track error for programmatic access
+            // Check if error is due to unresolvable array size (expected for opaque types)
+            // These failures don't need warnings as they're expected for internal/opaque types
+            isSilentError := strings.Contains(err.Error(), "contains array field with invalid size")
+
+            if !isSilentError {
+                // Production warning - only for unexpected errors
+                msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+                addMessageToCurrentProgress(msg)
+            }
+
+            // Always track errors for programmatic access (even silent ones)
             autoImportErrorsLock.Lock()
             autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
             autoImportErrorsLock.Unlock()
 
             if debugAuto {
-                fmt.Printf("[AUTO] Debug: union %s parse error details: %v\n", unionName, err)
+                // Debug mode shows all skips, even silent ones
+                if isSilentError {
+                    fmt.Printf("[AUTO] Debug: %s (silently skipped - array size resolution)\n", errMsg)
+                } else {
+                    fmt.Printf("[AUTO] Debug: union %s parse error details: %v\n", unionName, err)
+                }
             }
             continue // Skip this union but continue parsing others
         }
@@ -3838,18 +3860,30 @@ func parseStructTypedefs(text string, alias string) error {
         // Parse fields from the field block
         fields, totalSize, err := parseStructFields(fieldBlock, alias, structName, debugAuto)
         if err != nil {
-            // Production warning - always visible
             errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
-            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
-            addMessageToCurrentProgress(msg)
 
-            // Track error for programmatic access
+            // Check if error is due to unresolvable array size (expected for opaque types)
+            // These failures don't need warnings as they're expected for internal/opaque types
+            isSilentError := strings.Contains(err.Error(), "contains array field with invalid size")
+
+            if !isSilentError {
+                // Production warning - only for unexpected errors
+                msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+                addMessageToCurrentProgress(msg)
+            }
+
+            // Always track errors for programmatic access (even silent ones)
             autoImportErrorsLock.Lock()
             autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
             autoImportErrorsLock.Unlock()
 
             if debugAuto {
-                fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
+                // Debug mode shows all skips, even silent ones
+                if isSilentError {
+                    fmt.Printf("[AUTO] Debug: %s (silently skipped - array size resolution)\n", errMsg)
+                } else {
+                    fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
+                }
             }
             continue // Skip this struct but continue parsing others
         }
@@ -4253,18 +4287,30 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
         // Parse fields from the cleaned field block
         fields, totalSize, err := parseStructFields(cleanedFieldBlock, alias, structName, debugAuto)
         if err != nil {
-            // Production warning - always visible
             errMsg := fmt.Sprintf("skipped struct %s: %v", structName, err)
-            msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
-            addMessageToCurrentProgress(msg)
 
-            // Track error for programmatic access
+            // Check if error is due to unresolvable array size (expected for opaque types)
+            // These failures don't need warnings as they're expected for internal/opaque types
+            isSilentError := strings.Contains(err.Error(), "contains array field with invalid size")
+
+            if !isSilentError {
+                // Production warning - only for unexpected errors
+                msg := fmt.Sprintf("[AUTO] Warning: %s", errMsg)
+                addMessageToCurrentProgress(msg)
+            }
+
+            // Always track errors for programmatic access (even silent ones)
             autoImportErrorsLock.Lock()
             autoImportErrors[alias] = append(autoImportErrors[alias], errMsg)
             autoImportErrorsLock.Unlock()
 
             if debugAuto {
-                fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
+                // Debug mode shows all skips, even silent ones
+                if isSilentError {
+                    fmt.Printf("[AUTO] Debug: %s (silently skipped - array size resolution)\n", errMsg)
+                } else {
+                    fmt.Printf("[AUTO] Debug: struct %s parse error details: %v\n", structName, err)
+                }
             }
             continue // Skip this struct but continue parsing others
         }
