@@ -1845,6 +1845,29 @@ func buildConversionLib() {
             case *big.Float:
                 f := args[0].(*big.Float)
                 i = f.String()
+            case *CPointerValue:
+                ptr := args[0].(*CPointerValue)
+
+                // Handle null pointers
+                if ptr.IsNull() {
+                    return "<null>", nil
+                }
+
+                // Bounded scan for null terminator - prevents unbounded memory reads
+                const maxScan = 4096
+                bytePtr := (*[1 << 30]byte)(ptr.Ptr) // Go slice trick for raw memory access
+
+                length := 0
+                for length < maxScan {
+                    if bytePtr[length] == 0 {
+                        // Found null terminator within safe bounds - convert to string
+                        return string(bytePtr[:length]), nil
+                    }
+                    length++
+                }
+
+                // No null terminator found within safe bounds - likely binary data
+                return "<not_a_string>", nil
             default:
                 i = sf("%v", args[0])
             }
