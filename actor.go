@@ -5586,6 +5586,14 @@ tco_reentry:
                         }
                     }
 
+                    // Fallback: try versioned variants (e.g., libjson-c.so.5 when looking for libjson-c.so)
+                    if err != nil && runtime.GOOS != "windows" {
+                        if versionedPath := tryVersionedLibrary(modGivenPath, systemPaths); versionedPath != "" {
+                            libPath = versionedPath
+                            lib, err = LoadCLibraryWithAlias(versionedPath, currentModule)
+                        }
+                    }
+
                     // Final fallback: try with just the library name, letting dlopen use its own search
                     if err != nil && runtime.GOOS != "windows" {
                         libPath = modGivenPath
@@ -8656,6 +8664,54 @@ func tryLdconfigPath(libName string) string {
                     return path
                 }
             }
+        }
+    }
+
+    return ""
+}
+
+// tryVersionedLibrary attempts to find a versioned variant of a library
+// when the exact name doesn't exist. For example, if looking for "libjson-c.so"
+// but only "libjson-c.so.5" exists, this function will find it.
+// Returns the full path if found, empty string otherwise
+func tryVersionedLibrary(libName string, searchDirs []string) string {
+    // Only try versioned variants for .so or .dylib files
+    if !str.HasSuffix(libName, ".so") && !str.HasSuffix(libName, ".dylib") {
+        return ""
+    }
+
+    // For each search directory, look for versioned variants
+    for _, dirPath := range searchDirs {
+        // dirPath might be a full path like "/usr/lib/libjson-c.so"
+        // We need to extract just the directory part
+        dir := filepath.Dir(dirPath)
+
+        // Try to read the directory
+        entries, err := os.ReadDir(dir)
+        if err != nil {
+            continue
+        }
+
+        // Look for files matching the pattern: libname.X or libname.X.Y etc.
+        // E.g., "libjson-c.so" matches "libjson-c.so.5" or "libjson-c.so.5.3.0"
+        pattern := libName + "."
+
+        // Collect all matching versioned libraries
+        var matches []string
+        for _, entry := range entries {
+            if !entry.IsDir() && str.HasPrefix(entry.Name(), pattern) {
+                matches = append(matches, entry.Name())
+            }
+        }
+
+        // If we found matches, return the first one
+        // In practice, when sorted alphabetically, higher version numbers tend to come later
+        // For now, we return the first match found. A more sophisticated version could
+        // parse version numbers and prefer the highest version.
+        if len(matches) > 0 {
+            // Sort to get consistent ordering (e.g., .so.5 before .so.5.3.0)
+            sort.Strings(matches)
+            return filepath.Join(dir, matches[len(matches)-1]) // Return last (highest version)
         }
     }
 
