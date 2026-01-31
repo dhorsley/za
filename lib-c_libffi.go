@@ -392,6 +392,15 @@ static void free_struct_ffi_type(ffi_type* struct_type) {
     free(struct_type);
 }
 
+// Global to store the computed return type size from the last ffi_prep_cif
+// This allows Go code to retrieve the actual size libffi computed
+static size_t last_computed_return_size = 0;
+
+// Getter function for Go to retrieve the computed size
+static size_t get_last_computed_return_size(void) {
+    return last_computed_return_size;
+}
+
 // Generic FFI call wrapper
 static int call_via_libffi(
     void* fn_ptr,
@@ -486,6 +495,14 @@ static int call_via_libffi(
             free(cif);
             return -3; // prep_cif failed
         }
+    }
+
+    // Store the computed return type size for Go to retrieve later
+    // This is the actual size libffi computed, which may differ from the struct definition size
+    if (ffi_return_type != NULL && ffi_return_type->size > 0) {
+        last_computed_return_size = ffi_return_type->size;
+    } else {
+        last_computed_return_size = 0;
     }
 
     // Make the call
@@ -691,6 +708,12 @@ var (
 // Platform-detected wchar_t size (set during init)
 var wcharSize uintptr
 
+// getLastComputedReturnSize retrieves the actual size libffi computed for the return type
+// This is called AFTER the libffi call to get the size that was actually used
+func getLastComputedReturnSize() C.size_t {
+    return C.get_last_computed_return_size()
+}
+
 // createFFITypeForStruct creates a custom ffi_type for a struct definition
 // Returns the ffi_type* pointer and any error
 func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
@@ -752,6 +775,7 @@ func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
         if len(fieldTypes) == 0 {
             return nil, fmt.Errorf("union %s: could not create field types", structDef.Name)
         }
+
 
         // Create C array for field types
         numFields := len(fieldTypes)
@@ -2117,10 +2141,22 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     var returnPtr unsafe.Pointer
     var structReturnBuf unsafe.Pointer
+    var structReturnBufSize C.size_t
 
-    // Prepare custom ffi_type for struct return (if needed)
+    // Prepare custom ffi_type for struct/union return (if needed)
+    // This applies to both CStruct explicit returns AND CPointer returns with a struct/union name
     var customReturnType unsafe.Pointer
+    var initialStructSize int
+    shouldCreateCustomReturnType := false
+
     if expectedRetType == CStruct && sig.ReturnStructName != "" {
+        shouldCreateCustomReturnType = true
+    } else if expectedRetType == CPointer && sig.ReturnStructName != "" && !strings.HasSuffix(sig.ReturnStructName, "*") {
+        // CPointer return with a non-pointer struct name = struct/union returned by value
+        shouldCreateCustomReturnType = true
+    }
+
+    if shouldCreateCustomReturnType {
         // Look up struct definition using use_chain resolution
         qualifiedName := uc_match_ffi_struct(sig.ReturnStructName)
         ffiStructLock.RLock()
@@ -2141,15 +2177,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             return nil, fmt.Errorf("failed to create ffi_type for return struct %s: %v", sig.ReturnStructName, err)
         }
 
-        // Allocate buffer for struct return value
-        structReturnBuf = C.malloc(C.size_t(structDef.Size))
-        if structReturnBuf == nil {
-            return nil, fmt.Errorf("failed to allocate return buffer for struct (size: %d)", structDef.Size)
-        }
-        defer C.free(structReturnBuf)
-        C.memset(structReturnBuf, 0, C.size_t(structDef.Size))
+        initialStructSize = int(structDef.Size)
 
-        returnPtr = structReturnBuf
+        returnPtr = returnBuf // Will be reassigned below after computing size
     } else {
         returnPtr = returnBuf
     }
@@ -2268,7 +2298,35 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
     }
 
-    result := C.call_via_libffi(
+    // For struct/union returns, allocate a buffer with extra padding for libffi's computed size
+    // libffi may add padding to struct sizes due to ABI requirements
+    // This applies when we have a custom return type (which could be for CStruct or CPointer with struct/union name)
+    if customReturnType != nil && initialStructSize > 0 {
+        // Allocate buffer with 2x padding to ensure libffi has enough space for any ABI padding
+        // This is necessary because libffi may add padding based on x86-64 ABI rules
+        allocSize := C.size_t(initialStructSize * 2)
+        if allocSize < 128 {
+            allocSize = 128
+        }
+
+        // Allocate the struct return buffer with padding
+        structReturnBuf = C.malloc(allocSize)
+        if structReturnBuf == nil {
+            return nil, fmt.Errorf("failed to allocate return buffer for struct %s (size: %d)", sig.ReturnStructName, allocSize)
+        }
+        defer C.free(structReturnBuf)
+        structReturnBufSize = allocSize
+        C.memset(structReturnBuf, 0, structReturnBufSize)
+
+        ffidebug("[FFI DEBUG] Allocated return buffer for %s: initial=%d, allocated=%d\n",
+            sig.ReturnStructName, initialStructSize, allocSize)
+
+        returnPtr = structReturnBuf
+    }
+
+    // Call libffi
+    var status int
+    status = int(C.call_via_libffi(
         funcPtr,
         C.int(len(args)),
         argTypes,
@@ -2279,11 +2337,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         C.int(nFixedArgs),
         customArgTypesC,     // custom_arg_types
         (*C.ffi_type)(customReturnType), // custom_return_type
-    )
-    ffidebug("[FFI DEBUG] libffi returned with code %d for %s\n", result, funcName)
+    ))
 
-    if result != 0 {
-        return nil, fmt.Errorf("libffi call failed with code %d", result)
+    ffidebug("[FFI DEBUG] libffi returned with code %d for %s\n", status, funcName)
+
+    if status != 0 {
+        return nil, fmt.Errorf("libffi call failed with code %d", status)
     }
 
     // CRITICAL: Unmarshal mutable arguments BEFORE cleanup runs (defer cleanup below)
@@ -2478,9 +2537,50 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     // For struct returns, use the allocated buffer; otherwise use returnBuf
     if structReturnBuf != nil {
-        return convertReturnValue(structReturnBuf, sig)
+        // Get the actual computed size that libffi used
+        computedSize := getLastComputedReturnSize()
+        ffidebug("[FFI DEBUG] convertReturnValue: structReturnBuf set, computed size=%d\n", computedSize)
+        return convertReturnValueWithSize(structReturnBuf, sig, int(computedSize))
     }
     return convertReturnValue(returnBuf, sig)
+}
+
+// convertReturnValueWithSize is like convertReturnValue but knows the actual computed size from libffi
+// This is important for struct/union returns where libffi may compute a different size than the struct definition
+func convertReturnValueWithSize(returnValuePtr unsafe.Pointer, sig CFunctionSignature, computedSize int) (any, error) {
+    expectedRetType := sig.ReturnType
+
+    // For struct returns, pass the computed size to unmarshal
+    if expectedRetType == CStruct && sig.ReturnStructName != "" {
+        isPointerReturn := strings.HasSuffix(sig.ReturnStructName, "*")
+        baseStructName := strings.TrimSuffix(sig.ReturnStructName, "*")
+
+        qualifiedName := uc_match_ffi_struct(baseStructName)
+        var structDef *CLibraryStruct
+        if qualifiedName != "" {
+            ffiStructLock.RLock()
+            if def, ok := ffiStructDefinitions[qualifiedName]; ok {
+                structDef = def
+            }
+            ffiStructLock.RUnlock()
+        }
+
+        if structDef == nil {
+            structDef, _ = getStructLayoutFromZa(baseStructName)
+        }
+
+        if structDef != nil && !isPointerReturn {
+            // Value return - unmarshal with knowledge of computed size
+            resultMap, err := UnmarshalStructFromC(returnValuePtr, structDef, "")
+            if err != nil {
+                return nil, fmt.Errorf("failed to unmarshal struct %s: %v", baseStructName, err)
+            }
+            return resultMap, nil
+        }
+    }
+
+    // For non-struct returns, use the regular converter
+    return convertReturnValue(returnValuePtr, sig)
 }
 
 // convertReturnValue converts C return value to Za type

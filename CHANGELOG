@@ -111,6 +111,7 @@ language changes
     PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE,
         YOU MAY HAVE ISSUES WITH OLDER OS VERSIONS.
             For example: Ubuntu 20.04 include/library path calculations
+            libffi v3.4.8+ is required.
 
   * FFI callback system enhancements
       - Dynamic closure support via libffi - callbacks now support unlimited signatures

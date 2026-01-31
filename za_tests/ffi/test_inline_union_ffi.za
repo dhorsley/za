@@ -61,10 +61,10 @@ try uses pass_count,fail_count
     else
         fail_count = fail_count + 1
         if not type_ok
-            println "  [#1]✗ FAIL: Expected type to be 5, got {result["type"]}[#-]"
+            println "  [#1]✗ FAIL: Expected type to be 5, got {=result["type"]}[#-]"
         endif
         if not val_ok
-            println "  [#1]✗ FAIL: Expected int_val to be 200, got {result["data"]["int_val"]}[#-]"
+            println "  [#1]✗ FAIL: Expected int_val to be 200, got {=result["data"]["int_val"]}[#-]"
         endif
     endif
 catch e
@@ -101,10 +101,10 @@ try uses pass_count,fail_count
     else
         fail_count = fail_count + 1
         if not type_ok
-            println "  [#1]✗ FAIL: Expected type to be 11 (incremented), got {result["type"]}[#-]"
+            println "  [#1]✗ FAIL: Expected type to be 11 (incremented), got {=result["type"]}[#-]"
         endif
         if not val_ok
-            println "  [#1]✗ FAIL: Expected int_val to be 100 (doubled), got {result["data"]["int_val"]}[#-]"
+            println "  [#1]✗ FAIL: Expected int_val to be 100 (doubled), got {=result["data"]["int_val"]}[#-]"
         endif
     endif
 catch e
@@ -183,13 +183,13 @@ try uses pass_count,fail_count
     else
         fail_count = fail_count + 1
         if not first_ok
-            println "  [#1]✗ FAIL: Expected first.x to be 11, got {result["first"]["x"]}[#-]"
+            println "  [#1]✗ FAIL: Expected first.x to be 11, got {=result["first"]["x"]}[#-]"
         endif
         if not middle_ok
-            println "  [#1]✗ FAIL: Expected middle to be 40, got {result["middle"]}[#-]"
+            println "  [#1]✗ FAIL: Expected middle to be 40, got {=result["middle"]}[#-]"
         endif
         if not second_ok
-            println "  [#1]✗ FAIL: Expected second.y to be 40, got {result["second"]["y"]}[#-]"
+            println "  [#1]✗ FAIL: Expected second.y to be 40, got {=result["second"]["y"]}[#-]"
         endif
     endif
 catch e
@@ -227,13 +227,13 @@ try uses pass_count,fail_count
     else
         fail_count = fail_count + 1
         if not point_x_ok
-            println "  [#1]✗ FAIL: Expected point.x to be 10, got {result["point"]["x"]}[#-]"
+            println "  [#1]✗ FAIL: Expected point.x to be 10, got {=result["point"]["x"]}[#-]"
         endif
         if not point_y_ok
-            println "  [#1]✗ FAIL: Expected point.y to be 20, got {result["point"]["y"]}[#-]"
+            println "  [#1]✗ FAIL: Expected point.y to be 20, got {=result["point"]["y"]}[#-]"
         endif
         if not z_ok
-            println "  [#1]✗ FAIL: Expected z to be 30, got {result["z"]}[#-]"
+            println "  [#1]✗ FAIL: Expected z to be 30, got {=result["z"]}[#-]"
         endif
     endif
 catch e
