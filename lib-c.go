@@ -1820,24 +1820,37 @@ func mapCTypeStringToZa(cTypeStr string, alias string) (CType, string, error) {
             lookupName = strings.TrimSpace(lookupName)
         }
 
-        // Check if it's a known struct/union from AUTO parsing using use_chain resolution
-        qualifiedName := uc_match_ffi_struct(lookupName)
-        if qualifiedName != "" {
-            ffiStructLock.RLock()
-            if _, exists := ffiStructDefinitions[qualifiedName]; exists {
-                ffiStructLock.RUnlock()
-
-                // For pointer-to-struct types, return as CPointer with the struct name preserved
-                // This allows auto-unmarshalling in convertReturnValue
-                // For value struct types, return as CStruct
-                if isPointerType {
-                    // Return CPointer but preserve the struct name (with * suffix) for later unmarshalling
-                    return CPointer, cleanType, nil
-                } else {
-                    return CStruct, lookupName, nil
+        // Check if it's a known struct/union from AUTO parsing
+        // First, try direct lookup with the provided alias (for AUTO imports during parsing)
+        // Then fall back to use_chain resolution (for normal Za code after import)
+        qualifiedName := ""
+        ffiStructLock.RLock()
+        // Try direct lookup with alias first
+        if _, exists := ffiStructDefinitions[alias+"::"+lookupName]; exists {
+            ffiStructLock.RUnlock()
+            qualifiedName = alias + "::" + lookupName
+        } else {
+            ffiStructLock.RUnlock()
+            // Fall back to use chain resolution
+            qualifiedName = uc_match_ffi_struct(lookupName)
+            if qualifiedName != "" {
+                ffiStructLock.RLock()
+                if _, exists := ffiStructDefinitions[qualifiedName]; !exists {
+                    qualifiedName = ""
                 }
-            } else {
                 ffiStructLock.RUnlock()
+            }
+        }
+
+        if qualifiedName != "" {
+            // For pointer-to-struct types, return as CPointer with the struct name preserved
+            // This allows auto-unmarshalling in convertReturnValue
+            // For value struct types, return as CStruct
+            if isPointerType {
+                // Return CPointer but preserve the struct name (with * suffix) for later unmarshalling
+                return CPointer, cleanType, nil
+            } else {
+                return CStruct, lookupName, nil
             }
         }
     }
