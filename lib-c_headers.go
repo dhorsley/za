@@ -5102,15 +5102,38 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     }
 
     // Check typedef registry BEFORE lowercasing (typedefs are case-sensitive)
+    // First try the specific alias, then fall back to use chain
     moduleTypedefsLock.RLock()
+    resolved := false
+    var baseType string
+
     if aliasMap, hasAlias := moduleTypedefs[alias]; hasAlias {
-        if baseType, ok := aliasMap[typeStr]; ok {
-            moduleTypedefsLock.RUnlock()
-            // Recursively parse the base type
-            return parseCTypeString(baseType, alias)
+        if bt, ok := aliasMap[typeStr]; ok {
+            baseType = bt
+            resolved = true
         }
     }
+
+    // If not found in specific alias, search through use chain
+    if !resolved {
+        moduleTypedefsLock.RUnlock()
+        if resolverAlias := uc_match_typedef(typeStr); resolverAlias != "" {
+            moduleTypedefsLock.RLock()
+            if aliasMap, hasAlias := moduleTypedefs[resolverAlias]; hasAlias {
+                if bt, ok := aliasMap[typeStr]; ok {
+                    baseType = bt
+                    resolved = true
+                }
+            }
+        }
+        moduleTypedefsLock.RLock()
+    }
     moduleTypedefsLock.RUnlock()
+
+    if resolved {
+        // Recursively parse the base type
+        return parseCTypeString(baseType, alias)
+    }
 
     // Debug logging for unresolved int64_t and similar types
     if os.Getenv("ZA_DEBUG_AUTO") != "" && (typeStr == "int64_t" || typeStr == "uint64_t" || typeStr == "int32_t" || typeStr == "uint32_t") {
@@ -5162,6 +5185,28 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
         // 64-bit unsigned integer types from stdint.h
         // Fix #9: Support __uint64_t and variants from system headers
         return CUInt64, 8
+    case "__int32_t", "__int_fast32_t", "__int_least32_t":
+        // 32-bit signed integer types from stdint.h
+        return CInt, 4
+    case "__uint32_t", "__uint_fast32_t", "__uint_least32_t":
+        // 32-bit unsigned integer types from stdint.h
+        return CUInt, 4
+    case "__int16_t", "__int_fast16_t", "__int_least16_t":
+        // 16-bit signed integer types from stdint.h
+        return CInt16, 2
+    case "__uint16_t", "__uint_fast16_t", "__uint_least16_t":
+        // 16-bit unsigned integer types from stdint.h
+        return CUInt16, 2
+    case "__int8_t", "__int_fast8_t", "__int_least8_t":
+        // 8-bit signed integer types from stdint.h
+        return CInt8, 1
+    case "__uint8_t", "__uint_fast8_t", "__uint_least8_t":
+        // 8-bit unsigned integer types from stdint.h
+        return CUInt8, 1
+    case "size_t":
+        // size_t is typically unsigned long on 64-bit, unsigned int on 32-bit
+        // Assume 64-bit for modern systems
+        return CUInt64, 8
     }
 
     typeStr = strings.ToLower(typeStr)
@@ -5200,6 +5245,12 @@ func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     case "long long", "long long int", "signed long long", "signed long long int":
         return CInt64, 8
     case "unsigned long long", "unsigned long long int":
+        return CUInt64, 8
+    case "long unsigned int", "long unsigned":
+        // Alternative word order for "unsigned long"
+        return CUInt64, 8
+    case "long long unsigned int", "long long unsigned":
+        // Alternative word order for "unsigned long long"
         return CUInt64, 8
     case "int8_t":
         return CInt8, 1
