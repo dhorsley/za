@@ -934,7 +934,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 }
                 // Zero-initialize the allocated memory
                 C.memset(allocPtr, 0, C.size_t(allocSize))
-                ffidebug("[FFI DEBUG] Auto-allocated koutparam at index %d: ptr=%p, allocSize=%d (type=%d)\n", i, allocPtr, allocSize, sig.ParamTypes[i])
                 mutArg.CPtr = allocPtr
                 mutArg.IsAutoAllocated = true  // Mark for cleanup
                 // Store the pointer as CPointerValue for proper marshaling
@@ -1087,9 +1086,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         C.memset(argValuesPtr, 0, C.size_t(len(convertedArgs))*C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
     }
 
-    ffidebug("[FFI DEBUG] Marshaling %d arguments total\n", len(convertedArgs))
     for i, arg := range convertedArgs {
-        ffidebug("[FFI DEBUG] Processing argument %d: type=%T\n", i, arg)
         // Get expected parameter type to handle float vs double correctly
         var expectedParamType CType
         if i < len(sig.ParamTypes) {
@@ -1186,9 +1183,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, fltPtr)
                 *(*C.float)(fltPtr) = C.float(v)
                 argValuesSlice[i] = fltPtr
-                // DEBUG: Log the marshalling
-                float32val := C.float(v)
-                ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> float32 %v (CFloat)\n", i, v, float32val)
                 // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
                 if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                     mutArg.CPtr = fltPtr
@@ -1200,8 +1194,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, dblPtr)
                 *(*C.double)(dblPtr) = C.double(v)
                 argValuesSlice[i] = dblPtr
-                // DEBUG: Log the marshalling
-                ffidebug("[FFI DEBUG] Marshalling param[%d]: float64 %v -> double (CDouble)\n", i, v)
                 // Capture C pointer for mutable arguments (but not auto-allocated koutparam)
                 if mutArg, ok := mutableArgIndices[i]; ok && !mutArg.IsAutoAllocated {
                     mutArg.CPtr = dblPtr
@@ -1838,13 +1830,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
         case *CPointerValue:
             argTypesSlice[i] = 7 // CPointer
-            var expectedType string
-            if i < len(sig.ParamTypes) {
-                expectedType = fmt.Sprintf("%d", sig.ParamTypes[i])
-            } else {
-                expectedType = "unknown"
-            }
-            ffidebug("[FFI DEBUG] Marshaling CPointerValue at index %d: v.Ptr=%p, expectedParamType=%s\n", i, v.Ptr, expectedType)
+            //var expectedType string
+            //if i < len(sig.ParamTypes) {
+            //    expectedType = fmt.Sprintf("%d", sig.ParamTypes[i])
+            //} else {
+            //    expectedType = "unknown"
+            //}
 
             // Check if this is a koutparam auto-allocated pointer
             isKoutparamPtr := false
@@ -1854,8 +1845,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                     isKoutparamPtr = true
                 }
             }
-
-            ffidebug("[FFI DEBUG] CPointerValue at index %d: isKoutparamPtr=%v\n", i, isKoutparamPtr)
 
             if isKoutparamPtr {
                 // For koutparam pointers, pass the pointer value directly (no extra indirection)
@@ -1868,8 +1857,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 *(*unsafe.Pointer)(ptrPtr) = v.Ptr
                 argValuesSlice[i] = ptrPtr
                 // Verify what we wrote
-                stored := *(*unsafe.Pointer)(ptrPtr)
-                ffidebug("[FFI DEBUG] Koutparam [func %s]: allocated ptrPtr=%p, storing v.Ptr=%p into it, verified: %p\n", funcName, ptrPtr, v.Ptr, stored)
+                // stored := *(*unsafe.Pointer)(ptrPtr)
             } else {
                 // For regular CPointerValue (struct output parameters), add extra indirection
                 // v.Ptr is the buffer address (like &db in the C test where db is the result variable)
@@ -1880,7 +1868,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
                 allocatedMem = append(allocatedMem, ptrPtr)
                 *(*unsafe.Pointer)(ptrPtr) = v.Ptr
                 argValuesSlice[i] = ptrPtr
-                ffidebug("[FFI DEBUG] Regular: allocated ptrPtr=%p, storing v.Ptr=%p into it\n", ptrPtr, v.Ptr)
             }
 
         case *CFunctionPointer:
@@ -2218,11 +2205,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     }
 
     // Call via libffi with custom types
-    ffidebug("[FFI DEBUG] About to call libffi for %s with %d arguments\n", funcName, len(args))
-    ffidebug("[FFI DEBUG] Function pointer: %p\n", funcPtr)
-    ffidebug("[FFI DEBUG] argTypes pointer: %p (array of %d ints)\n", argTypes, len(argTypesSlice))
-    ffidebug("[FFI DEBUG] argValuesPtr: %p (array of %d pointers)\n", argValuesPtr, len(argValuesSlice))
-    ffidebug("[FFI DEBUG] Return type: %d, returnPtr: %p\n", expectedRetType, returnPtr)
 
     // Verify all argValuesSlice entries are valid pointers
     for i := 0; i < len(argValuesSlice); i++ {
@@ -2231,6 +2213,7 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
     }
 
+/*
     // Debug: show argument types and values
     for i := 0; i < len(args); i++ {
         if i < len(argTypesSlice) {
@@ -2262,30 +2245,22 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             if i < len(argValuesSlice) {
                 argPtr := argValuesSlice[i]
                 if argPtr != nil {
-                    ffidebug("[FFI DEBUG]   arg[%d]: type=%s, argValuesSlice[%d]=%p", i, typeStr, i, argPtr)
 
                     // For pointer types, show what it points to (be careful not to dereference null)
                     if argTypesSlice[i] == 1 { // CInt
                         val := *(*C.int)(argPtr)
-                        ffidebug(" -> points to int value: %d", val)
                     } else if argTypesSlice[i] == 5 { // CString
                         ptrVal := *(*unsafe.Pointer)(argPtr)
                         if ptrVal != nil {
                             cstr := C.GoString((*C.char)(ptrVal))
-                            ffidebug(" -> points to string: \"%s\"", cstr)
                         } else {
-                            ffidebug(" -> points to NULL string")
                         }
                     } else if argTypesSlice[i] == 12 { // CInt64
                         val := *(*C.longlong)(argPtr)
-                        ffidebug(" -> points to int64 value: %d", val)
                     } else if argTypesSlice[i] == 7 { // CPointer
                         ptrVal := *(*unsafe.Pointer)(argPtr)
-                        ffidebug(" -> points to pointer value: %p", ptrVal)
                     }
-                    ffidebug("\n")
                 } else {
-                    ffidebug("[FFI DEBUG]   arg[%d]: type=%s, argValuesSlice[%d]=nil\n", i, typeStr, i)
                 }
             }
         }
@@ -2294,9 +2269,9 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     // Debug: show auto-allocated koutparam pointers
     for _, mutArg := range mutableArgs {
         if mutArg.IsAutoAllocated {
-            ffidebug("[FFI DEBUG] Auto-allocated koutparam: CPtr=%p (bound to variable at index %d)\n", mutArg.CPtr, mutArg.Binding)
         }
     }
+*/
 
     // For struct/union returns, allocate a buffer with extra padding for libffi's computed size
     // libffi may add padding to struct sizes due to ABI requirements
@@ -2318,9 +2293,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         structReturnBufSize = allocSize
         C.memset(structReturnBuf, 0, structReturnBufSize)
 
-        ffidebug("[FFI DEBUG] Allocated return buffer for %s: initial=%d, allocated=%d\n",
-            sig.ReturnStructName, initialStructSize, allocSize)
-
         returnPtr = structReturnBuf
     }
 
@@ -2338,8 +2310,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         customArgTypesC,     // custom_arg_types
         (*C.ffi_type)(customReturnType), // custom_return_type
     ))
-
-    ffidebug("[FFI DEBUG] libffi returned with code %d for %s\n", status, funcName)
 
     if status != 0 {
         return nil, fmt.Errorf("libffi call failed with code %d", status)
@@ -2539,7 +2509,6 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
     if structReturnBuf != nil {
         // Get the actual computed size that libffi used
         computedSize := getLastComputedReturnSize()
-        ffidebug("[FFI DEBUG] convertReturnValue: structReturnBuf set, computed size=%d\n", computedSize)
         return convertReturnValueWithSize(structReturnBuf, sig, int(computedSize))
     }
     return convertReturnValue(returnBuf, sig)
@@ -2628,12 +2597,10 @@ func convertReturnValue(returnValuePtr unsafe.Pointer, sig CFunctionSignature) (
 
     case CFloat:
         result := float64(*(*C.float)(unsafe.Pointer(&returnValue)))
-        ffidebug("[FFI DEBUG] Unmarshalling return value: float32 C value -> float64 %v (CFloat)\n", result)
         return result, nil
 
     case CDouble:
         result := float64(*(*C.double)(unsafe.Pointer(&returnValue)))
-        ffidebug("[FFI DEBUG] Unmarshalling return value: double C value -> float64 %v (CDouble)\n", result)
         return result, nil
 
     case CString:
