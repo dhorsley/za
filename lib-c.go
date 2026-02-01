@@ -100,13 +100,6 @@ func (lib *CLibrary) Close() error {
 // Global registry of loaded C libraries
 var loadedCLibraries = make(map[string]*CLibrary)
 
-// ffidebug prints debug output only if ZA_FFI_DEBUG environment variable is set
-func ffidebug(format string, args ...interface{}) {
-    if os.Getenv("ZA_FFI_DEBUG") != "" {
-        fmt.Fprintf(os.Stderr, format, args...)
-    }
-}
-
 // CFunctionSignature represents an explicitly declared C function signature
 type CFunctionSignature struct {
     ParamTypes       []CType  // Types of fixed parameters
@@ -474,24 +467,20 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
         switch v := zval.(type) {
         case int:
             result := float64(v)
-            ffidebug("[FFI DEBUG] ConvertZaToCValue: int %d -> float64 %v (type CFloat/CDouble)\n", v, result)
             return result, nil
         case float64:
-            ffidebug("[FFI DEBUG] ConvertZaToCValue: float64 literal %v (type CFloat/CDouble)\n", v)
             return v, nil
         case string:
             fval, err := strconv.ParseFloat(v, 64)
             if err != nil {
                 return nil, fmt.Errorf("cannot convert string '%s' to float", v)
             }
-            ffidebug("[FFI DEBUG] ConvertZaToCValue: string '%s' -> float64 %v (type CFloat/CDouble)\n", v, fval)
             return fval, nil
         case bool:
             result := 0.0
             if v {
                 result = 1.0
             }
-            ffidebug("[FFI DEBUG] ConvertZaToCValue: bool %v -> float64 %v (type CFloat/CDouble)\n", v, result)
             return result, nil
         default:
             return nil, fmt.Errorf("cannot convert %T to C float", zval)
