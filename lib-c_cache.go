@@ -324,7 +324,7 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         moduleConstantsLock.Unlock()
     }()
 
-    // Copy module-specific maps for THIS ALIAS ONLY (Problem B fix)
+    // Copy module-specific maps for THIS ALIAS ONLY
     if data.ModuleConstants != nil && data.ModuleConstants[alias] != nil {
         moduleConstants[alias] = data.ModuleConstants[alias]
     }
@@ -360,8 +360,8 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         }
     }
 
-    // Copy declared signatures for THIS ALIAS ONLY (Problem A & B fix)
-    // Check for existing manual declarations before overwriting (Problem A fix)
+    // Copy declared signatures for THIS ALIAS ONLY
+    // Check for existing manual declarations before overwriting
     if data.DeclaredSignatures != nil && data.DeclaredSignatures[alias] != nil {
         if declaredSignatures[alias] == nil {
             declaredSignatures[alias] = make(map[string]CFunctionSignature)
@@ -381,7 +381,7 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         }
     }
 
-    // Copy auto import errors for THIS ALIAS ONLY (Problem B fix)
+    // Copy auto import errors for THIS ALIAS ONLY
     if data.AutoImportErrors != nil && data.AutoImportErrors[alias] != nil {
         autoImportErrors[alias] = data.AutoImportErrors[alias]
     }
@@ -390,7 +390,7 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
 }
 
 // saveFFICache collects parsed data and saves to cache
-// IMPORTANT: Only saves data for the specific alias to prevent namespace pollution (Problem B fix)
+// IMPORTANT: Only saves data for the specific alias to prevent namespace pollution
 func saveFFICache(cacheKey FFICacheKey, alias string) error {
     registerGobTypes()
 
@@ -421,7 +421,7 @@ func saveFFICache(cacheKey FFICacheKey, alias string) error {
         }
     }
 
-    // Only save data for the current alias (Problem B fix)
+    // Only save data for the current alias
     aliasOnlyConstants := make(map[string]map[string]any)
     if moduleConstants[alias] != nil {
         aliasOnlyConstants[alias] = moduleConstants[alias]
