@@ -304,6 +304,7 @@ func cacheKeysEqual(a, b FFICacheKey) bool {
 }
 
 // populateGlobalMapsFromCache restores global state from cached data
+// IMPORTANT: Only restores data for the specific alias to prevent namespace pollution
 func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) error {
     // Lock all global map locks
     moduleConstantsLock.Lock()
@@ -323,20 +324,20 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         moduleConstantsLock.Unlock()
     }()
 
-    // Copy module-specific maps
-    if data.ModuleConstants != nil {
+    // Copy module-specific maps for THIS ALIAS ONLY (Problem B fix)
+    if data.ModuleConstants != nil && data.ModuleConstants[alias] != nil {
         moduleConstants[alias] = data.ModuleConstants[alias]
     }
-    if data.ModuleMacros != nil {
+    if data.ModuleMacros != nil && data.ModuleMacros[alias] != nil {
         moduleMacros[alias] = data.ModuleMacros[alias]
     }
-    if data.ModuleMacrosOriginal != nil {
+    if data.ModuleMacrosOriginal != nil && data.ModuleMacrosOriginal[alias] != nil {
         moduleMacrosOriginal[alias] = data.ModuleMacrosOriginal[alias]
     }
-    if data.ModuleTypedefs != nil {
+    if data.ModuleTypedefs != nil && data.ModuleTypedefs[alias] != nil {
         moduleTypedefs[alias] = data.ModuleTypedefs[alias]
     }
-    if data.ModuleFuncPtrSigs != nil {
+    if data.ModuleFuncPtrSigs != nil && data.ModuleFuncPtrSigs[alias] != nil {
         moduleFunctionPointerSignatures[alias] = data.ModuleFuncPtrSigs[alias]
     }
 
@@ -359,29 +360,37 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         }
     }
 
-    // Copy declared signatures
-    if data.DeclaredSignatures != nil {
-        for lib, sigs := range data.DeclaredSignatures {
-            if declaredSignatures[lib] == nil {
-                declaredSignatures[lib] = make(map[string]CFunctionSignature)
+    // Copy declared signatures for THIS ALIAS ONLY (Problem A & B fix)
+    // Check for existing manual declarations before overwriting (Problem A fix)
+    if data.DeclaredSignatures != nil && data.DeclaredSignatures[alias] != nil {
+        if declaredSignatures[alias] == nil {
+            declaredSignatures[alias] = make(map[string]CFunctionSignature)
+        }
+        for funcName, sig := range data.DeclaredSignatures[alias] {
+            // Only restore the signature if:
+            // 1. It doesn't exist yet, OR
+            // 2. The existing one is not manual (can overwrite AUTO with AUTO)
+            if existing, hasExisting := declaredSignatures[alias][funcName]; !hasExisting {
+                // New function, add it
+                declaredSignatures[alias][funcName] = sig
+            } else if existing.Source != SourceManual {
+                // Existing is AUTO, can be updated
+                declaredSignatures[alias][funcName] = sig
             }
-            for funcName, sig := range sigs {
-                declaredSignatures[lib][funcName] = sig
-            }
+            // If existing.Source == SourceManual, skip - don't overwrite manual with cached AUTO
         }
     }
 
-    // Copy auto import errors
-    if data.AutoImportErrors != nil {
-        for lib, errs := range data.AutoImportErrors {
-            autoImportErrors[lib] = errs
-        }
+    // Copy auto import errors for THIS ALIAS ONLY (Problem B fix)
+    if data.AutoImportErrors != nil && data.AutoImportErrors[alias] != nil {
+        autoImportErrors[alias] = data.AutoImportErrors[alias]
     }
 
     return nil
 }
 
 // saveFFICache collects parsed data and saves to cache
+// IMPORTANT: Only saves data for the specific alias to prevent namespace pollution (Problem B fix)
 func saveFFICache(cacheKey FFICacheKey, alias string) error {
     registerGobTypes()
 
@@ -391,7 +400,7 @@ func saveFFICache(cacheKey FFICacheKey, alias string) error {
         return nil
     }
 
-    // Collect current global state
+    // Collect current global state for THIS ALIAS ONLY
     moduleConstantsLock.RLock()
     moduleMacrosLock.RLock()
     moduleMacrosOriginalLock.RLock()
@@ -411,17 +420,54 @@ func saveFFICache(cacheKey FFICacheKey, alias string) error {
             enumsData[name] = enumData
         }
     }
+
+    // Only save data for the current alias (Problem B fix)
+    aliasOnlyConstants := make(map[string]map[string]any)
+    if moduleConstants[alias] != nil {
+        aliasOnlyConstants[alias] = moduleConstants[alias]
+    }
+
+    aliasOnlyMacros := make(map[string]map[string]string)
+    if moduleMacros[alias] != nil {
+        aliasOnlyMacros[alias] = moduleMacros[alias]
+    }
+
+    aliasOnlyMacrosOriginal := make(map[string]map[string]string)
+    if moduleMacrosOriginal[alias] != nil {
+        aliasOnlyMacrosOriginal[alias] = moduleMacrosOriginal[alias]
+    }
+
+    aliasOnlyTypedefs := make(map[string]map[string]string)
+    if moduleTypedefs[alias] != nil {
+        aliasOnlyTypedefs[alias] = moduleTypedefs[alias]
+    }
+
+    aliasOnlyFuncPtrSigs := make(map[string]map[string]CFunctionSignature)
+    if moduleFunctionPointerSignatures[alias] != nil {
+        aliasOnlyFuncPtrSigs[alias] = moduleFunctionPointerSignatures[alias]
+    }
+
+    aliasOnlyDeclaredSigs := make(map[string]map[string]CFunctionSignature)
+    if declaredSignatures[alias] != nil {
+        aliasOnlyDeclaredSigs[alias] = declaredSignatures[alias]
+    }
+
+    aliasOnlyErrors := make(map[string][]string)
+    if autoImportErrors[alias] != nil {
+        aliasOnlyErrors[alias] = autoImportErrors[alias]
+    }
+
     data := &FFICacheData{
         Version:             FFICacheVersion,
-        ModuleConstants:     copyMapMapAny(moduleConstants),
-        ModuleMacros:        copyMapMapString(moduleMacros),
-        ModuleMacrosOriginal: copyMapMapString(moduleMacrosOriginal),
-        ModuleTypedefs:      copyMapMapString(moduleTypedefs),
-        ModuleFuncPtrSigs:   copyMapMapSignature(moduleFunctionPointerSignatures),
+        ModuleConstants:     copyMapMapAny(aliasOnlyConstants),
+        ModuleMacros:        copyMapMapString(aliasOnlyMacros),
+        ModuleMacrosOriginal: copyMapMapString(aliasOnlyMacrosOriginal),
+        ModuleTypedefs:      copyMapMapString(aliasOnlyTypedefs),
+        ModuleFuncPtrSigs:   copyMapMapSignature(aliasOnlyFuncPtrSigs),
         FFIStructs:          copyMapStruct(ffiStructDefinitions),
         EnumsData:           enumsData,
-        DeclaredSignatures:  copyMapMapSignature(declaredSignatures),
-        AutoImportErrors:    copyMapSliceString(autoImportErrors),
+        DeclaredSignatures:  copyMapMapSignature(aliasOnlyDeclaredSigs),
+        AutoImportErrors:    copyMapSliceString(aliasOnlyErrors),
         CacheKey:            cacheKey,
         CreatedAt:           time.Now(),
     }
