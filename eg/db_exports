@@ -14,6 +14,7 @@ set_env("ZA_DB_USER","root")
 
 # Initialize database connection
 h=db_init("mysql")
+
 if h == nil
     println "Failed to connect to database. Please ensure:"
     println "1. MySQL server is running"

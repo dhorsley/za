@@ -78,11 +78,11 @@ var moduleConstantsLock = &sync.RWMutex{}
 
 // module macros storage (original source text from AUTO headers)
 var moduleMacros = make(map[string]map[string]string)
-var moduleMacrosLock = &sync.RWMutex{}
+var processedCMacrosLock = &sync.RWMutex{}
 
 // module macros original storage (preserves backslash line continuations for display)
 var moduleMacrosOriginal = make(map[string]map[string]string)
-var moduleMacrosOriginalLock = &sync.RWMutex{}
+var originalCMacrosLock = &sync.RWMutex{}
 
 // id of func space which points to the source which contains
 // the DEFINE..ENDDEF for a defined function
