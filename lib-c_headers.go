@@ -21,7 +21,8 @@ import (
 // Global typedef registry
 // Structure: libraryAlias → typedefName → baseTypeString
 // Example: "png" → "png_structp" → "struct png_struct*"
-//          "c" → "size_t" → "unsigned long"
+//
+//  "c" → "size_t" → "unsigned long"
 var moduleTypedefs = make(map[string]map[string]string)
 var moduleTypedefsLock sync.RWMutex
 
@@ -70,16 +71,16 @@ var (
     typeKeywordRe = regexp.MustCompile(`\b(char|short|int|long|float|double|void|unsigned|signed|struct|union|enum)\b`)
 
     // NEW - Regex patterns in helper functions called by evaluateConstant()
-    charLiteralRe      = regexp.MustCompile(`([LuU])?'((?:\\.|[^'\\])+)'`)              // convertCharacterLiterals
-    stringConcatRe     = regexp.MustCompile(`"([^"]*)"[ \t]+"`)                         // transformStringConcatenation
-    intSuffixRe        = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)([uU]?[lL]{0,2}|[lL]{0,2}[uU]?)\b`) // stripCIntegerSuffixes
-    floatSuffixRe      = regexp.MustCompile(`\b(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)[fFlLdD]\b`)               // stripCIntegerSuffixes
-    ternaryCondRe      = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)\s*\?`)          // convertTernaryConditions
-    boolContextIntRe   = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*(\d+|0[xX][0-9a-fA-F]+)\s*(\&\&|\|\||[?:]|$)`) // convertCBooleanOps
-    notIntRe           = regexp.MustCompile(`!\s*(\d+|0[xX][0-9a-fA-F]+)`)             // convertCBooleanOps
-    notVarRe           = regexp.MustCompile(`!\s*([A-Za-z_][A-Za-z0-9_]*)`)            // convertCBooleanOps
-    andVarRe           = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\&\&)`) // convertCBooleanOps
-    orVarRe            = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\|)`) // convertCBooleanOps
+    charLiteralRe    = regexp.MustCompile(`([LuU])?'((?:\\.|[^'\\])+)'`)                                     // convertCharacterLiterals
+    stringConcatRe   = regexp.MustCompile(`"([^"]*)"[ \t]+"`)                                                // transformStringConcatenation
+    intSuffixRe      = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)([uU]?[lL]{0,2}|[lL]{0,2}[uU]?)\b`)      // stripCIntegerSuffixes
+    floatSuffixRe    = regexp.MustCompile(`\b(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)[fFlLdD]\b`)                    // stripCIntegerSuffixes
+    ternaryCondRe    = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)\s*\?`)                                  // convertTernaryConditions
+    boolContextIntRe = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*(\d+|0[xX][0-9a-fA-F]+)\s*(\&\&|\|\||[?:]|$)`) // convertCBooleanOps
+    notIntRe         = regexp.MustCompile(`!\s*(\d+|0[xX][0-9a-fA-F]+)`)                                     // convertCBooleanOps
+    notVarRe         = regexp.MustCompile(`!\s*([A-Za-z_][A-Za-z0-9_]*)`)                                    // convertCBooleanOps
+    andVarRe         = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\&\&)`)            // convertCBooleanOps
+    orVarRe          = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\|)`)            // convertCBooleanOps
 )
 
 // autoImportErrors tracks errors from AUTO module imports
@@ -95,24 +96,24 @@ var currentProgressTrackerLock sync.Mutex
 
 // PreprocessorState tracks conditional compilation state while parsing a header
 type PreprocessorState struct {
-    definedMacros  map[string]string  // NAME → VALUE from #define
-    conditionStack []bool              // Stack: true=include, false=skip
-    chainSatisfied []bool              // Stack: true=any condition in if/elif chain was true
-    includeDepth   int                 // Current #ifdef nesting level
-    visitedHeaders map[string]bool     // Tracks visited headers for cycle detection
-    alias          string               // Library alias for context
+    definedMacros  map[string]string // NAME → VALUE from #define
+    conditionStack []bool            // Stack: true=include, false=skip
+    chainSatisfied []bool            // Stack: true=any condition in if/elif chain was true
+    includeDepth   int               // Current #ifdef nesting level
+    visitedHeaders map[string]bool   // Tracks visited headers for cycle detection
+    alias          string            // Library alias for context
 }
 
 // AutoProgressTracker tracks progress for AUTO import process
 type AutoProgressTracker struct {
     startTime     time.Time
-    totalWeight   float64   // Always 100.0
-    currentWeight float64   // Accumulated progress (0-100)
-    currentPhase  string    // Current operation description
-    subPhaseInfo  string    // Additional context (e.g., "Pass 3/10")
-    enabled       bool      // Whether to show progress
-    lastDisplayed float64   // Last displayed percentage
-    messages      []string  // Buffered warning/info messages
+    totalWeight   float64  // Always 100.0
+    currentWeight float64  // Accumulated progress (0-100)
+    currentPhase  string   // Current operation description
+    subPhaseInfo  string   // Additional context (e.g., "Pass 3/10")
+    enabled       bool     // Whether to show progress
+    lastDisplayed float64  // Last displayed percentage
+    messages      []string // Buffered warning/info messages
 }
 
 // newAutoProgressTracker creates and initializes a progress tracker
@@ -122,8 +123,8 @@ func newAutoProgressTracker() *AutoProgressTracker {
         startTime:     time.Now(),
         totalWeight:   100.0,
         currentWeight: 0.0,
-        enabled:        enabled,
-        lastDisplayed:  -1.0,
+        enabled:       enabled,
+        lastDisplayed: -1.0,
     }
 }
 
@@ -278,7 +279,7 @@ func newPreprocessorState(alias string) *PreprocessorState {
     state.definedMacros["__GNUC_MINOR__"] = "9" // GCC 4.9
 
     // glibc version macros
-    state.definedMacros["__GLIBC__"] = "2"       // glibc major version
+    state.definedMacros["__GLIBC__"] = "2"        // glibc major version
     state.definedMacros["__GLIBC_MINOR__"] = "31" // glibc minor version (conservative)
 
     // Word size and time size macros
@@ -327,8 +328,8 @@ func GetModuleConstants(alias string) map[string]any {
 // GetModuleMacros returns a copy of the macros (original source text) for a given module alias
 // Returns nil if the alias doesn't exist or has no macros
 func GetModuleMacros(alias string) map[string]string {
-    moduleMacrosLock.RLock()
-    defer moduleMacrosLock.RUnlock()
+    processedCMacrosLock.RLock()
+    defer processedCMacrosLock.RUnlock()
 
     if macros, exists := moduleMacros[alias]; exists {
         // Return a copy to avoid concurrent modification
@@ -1178,7 +1179,7 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
     if state.alias != "" {
         originalMacros := extractOriginalMacros(text)
         if len(originalMacros) > 0 {
-            moduleMacrosOriginalLock.Lock()
+            originalCMacrosLock.Lock()
             if moduleMacrosOriginal[state.alias] == nil {
                 moduleMacrosOriginal[state.alias] = make(map[string]string)
             }
@@ -1188,7 +1189,7 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                     moduleMacrosOriginal[state.alias][name] = originalText
                 }
             }
-            moduleMacrosOriginalLock.Unlock()
+            originalCMacrosLock.Unlock()
         }
     }
 
@@ -1337,9 +1338,9 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                     matches := defineRegex.FindStringSubmatch(arg)
 
                     if matches != nil && len(matches) >= 4 {
-                        name := matches[1]           // Macro name (e.g., "isless")
-                        params := matches[2]         // Parameter list with parens (e.g., "(x, y)") or empty
-                        body := matches[3]           // Macro body/value
+                        name := matches[1]   // Macro name (e.g., "isless")
+                        params := matches[2] // Parameter list with parens (e.g., "(x, y)") or empty
+                        body := matches[3]   // Macro body/value
                         isFunctionLike := params != ""
 
                         // Strip C integer/float suffixes from the body
@@ -1350,7 +1351,7 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
 
                         // For help plugin display, store with full parameter list if function-like
                         if state.alias != "" {
-                            moduleMacrosLock.Lock()
+                            processedCMacrosLock.Lock()
                             if moduleMacros[state.alias] == nil {
                                 moduleMacros[state.alias] = make(map[string]string)
                             }
@@ -1406,9 +1407,9 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                             for _, kw := range cKeywords {
                                 // Match as whole word: exact match, or with spaces around it
                                 if body == kw ||
-                                   strings.HasPrefix(body, kw+" ") ||
-                                   strings.HasSuffix(body, " "+kw) ||
-                                   strings.Contains(body, " "+kw+" ") {
+                                    strings.HasPrefix(body, kw+" ") ||
+                                    strings.HasSuffix(body, " "+kw) ||
+                                    strings.Contains(body, " "+kw+" ") {
                                     hasKeyword = true
                                     break
                                 }
@@ -1450,34 +1451,34 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                             // These are evaluated by replacing sizeof() with actual sizes
                             allowedSizeofMacro := false
                             if name == "_SIGSET_NWORDS" || name == "__NFDBITS" ||
-                               name == "__FD_SETSIZE" || (strings.HasPrefix(name, "__") &&
-                               strings.Contains(name, "SIZE")) {
+                                name == "__FD_SETSIZE" || (strings.HasPrefix(name, "__") &&
+                                strings.Contains(name, "SIZE")) {
                                 // Check if this is a simple arithmetic expression with sizeof
                                 // Examples: (1024 / (8 * sizeof(...))), (8 * sizeof(...))
                                 if strings.Contains(body, "sizeof") &&
-                                   !strings.Contains(body, "typedef") &&
-                                   !strings.Contains(body, "struct") &&
-                                   !strings.Contains(body, "union") &&
-                                   !strings.Contains(body, "enum") {
+                                    !strings.Contains(body, "typedef") &&
+                                    !strings.Contains(body, "struct") &&
+                                    !strings.Contains(body, "union") &&
+                                    !strings.Contains(body, "enum") {
                                     allowedSizeofMacro = true
                                 }
                             }
 
                             shouldEvaluate := !isFunctionLike &&
-                                              (!strings.HasPrefix(name, "__") || allowedSystemMacro || allowedSizeofMacro) &&
-                                              (!strings.Contains(body, "__") || allowedSizeofMacro) &&
-                                              (!strings.Contains(body, "sizeof") || allowedSizeofMacro) &&
-                                              !strings.Contains(body, "typedef") &&
-                                              !strings.Contains(body, "extern") &&
-                                              !strings.Contains(body, "?") &&
-                                              !strings.Contains(body, "~") &&
-                                              !hasStructInit &&
-                                              (!hasFunctionCall || allowedSizeofMacro) &&
-                                              !hasKeyword &&
-                                              (!hasTypeKeyword || allowedSizeofMacro) &&
-                                              !hasCast &&
-                                              !isSimpleAlias &&
-                                              body != name
+                                (!strings.HasPrefix(name, "__") || allowedSystemMacro || allowedSizeofMacro) &&
+                                (!strings.Contains(body, "__") || allowedSizeofMacro) &&
+                                (!strings.Contains(body, "sizeof") || allowedSizeofMacro) &&
+                                !strings.Contains(body, "typedef") &&
+                                !strings.Contains(body, "extern") &&
+                                !strings.Contains(body, "?") &&
+                                !strings.Contains(body, "~") &&
+                                !hasStructInit &&
+                                (!hasFunctionCall || allowedSizeofMacro) &&
+                                !hasKeyword &&
+                                (!hasTypeKeyword || allowedSizeofMacro) &&
+                                !hasCast &&
+                                !isSimpleAlias &&
+                                body != name
 
                             if shouldEvaluate {
                                 moduleMacrosOrder[state.alias] = append(moduleMacrosOrder[state.alias], name)
@@ -1493,7 +1494,7 @@ func parsePreprocessorWithState(text string, state *PreprocessorState, currentFi
                             }
                             moduleMacrosOrderLock.Unlock()
 
-                            moduleMacrosLock.Unlock()
+                            processedCMacrosLock.Unlock()
                         }
 
                         if debugAuto {
@@ -1827,7 +1828,7 @@ func parseDefines(text string, alias string, fs uint32) error {
         debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
 
         // Store macro in moduleMacros for display (always, even if filtered)
-        moduleMacrosLock.Lock()
+        processedCMacrosLock.Lock()
         if moduleMacros[alias] == nil {
             moduleMacros[alias] = make(map[string]string)
         }
@@ -1835,7 +1836,7 @@ func parseDefines(text string, alias string, fs uint32) error {
             // Only add if not already present from preprocessor
             moduleMacros[alias][name] = valueStr
         }
-        moduleMacrosLock.Unlock()
+        processedCMacrosLock.Unlock()
 
         if shouldSkip {
             if debugAuto {
@@ -1897,9 +1898,9 @@ func evaluateAllMacros(alias string, fs uint32, progress *AutoProgressTracker) e
     orderedMacros := moduleMacrosOrder[alias]
     moduleMacrosOrderLock.RUnlock()
 
-    moduleMacrosLock.RLock()
+    processedCMacrosLock.RLock()
     allMacros := moduleMacros[alias]
-    moduleMacrosLock.RUnlock()
+    processedCMacrosLock.RUnlock()
 
     if debugAuto {
         fmt.Printf("[AUTO] evaluateAllMacros: Found %d macros to evaluate in definition order\n", len(orderedMacros))
@@ -2037,7 +2038,7 @@ func evaluateAllMacros(alias string, fs uint32, progress *AutoProgressTracker) e
         if evaluated == 0 {
             // Allocate remaining weight from skipped passes (including current pass)
             if progress != nil {
-                remainingPasses := maxPasses - pass  // Include current pass
+                remainingPasses := maxPasses - pass // Include current pass
                 if remainingPasses > 0 {
                     skipWeight := macroWeight * float64(remainingPasses) / float64(maxPasses)
                     progress.update(skipWeight, "", "")
@@ -2238,47 +2239,47 @@ func getCTypeSize(typeName string, alias string) (int, bool) {
 
     // First, try to resolve as a macro from moduleMacros
     // This handles cases like #define __ss_aligntype unsigned long int
-    moduleMacrosLock.RLock()
+    processedCMacrosLock.RLock()
     if macros, exists := moduleMacros[alias]; exists {
         if macroValue, found := macros[typeName]; found {
-            moduleMacrosLock.RUnlock()
+            processedCMacrosLock.RUnlock()
             // Recursively resolve the macro value
             return getCTypeSize(macroValue, alias)
         }
     }
-    moduleMacrosLock.RUnlock()
+    processedCMacrosLock.RUnlock()
 
     // Base C types (64-bit architecture)
     baseTypes := map[string]int{
-        "char":                1,
-        "signed char":         1,
-        "unsigned char":       1,
-        "short":               2,
-        "short int":           2,
-        "signed short":        2,
-        "signed short int":    2,
-        "unsigned short":      2,
-        "unsigned short int":  2,
-        "int":                 4,
-        "signed":              4,
-        "signed int":          4,
-        "unsigned":            4,
-        "unsigned int":        4,
-        "long":                8,
-        "long int":            8,
-        "signed long":         8,
-        "signed long int":     8,
-        "unsigned long":       8,
-        "unsigned long int":   8,
-        "long long":           8,
-        "long long int":       8,
-        "signed long long":    8,
-        "unsigned long long":  8,
-        "float":               4,
-        "double":              8,
-        "long double":         16,
-        "void *":              8,
-        "_Bool":               1,
+        "char":               1,
+        "signed char":        1,
+        "unsigned char":      1,
+        "short":              2,
+        "short int":          2,
+        "signed short":       2,
+        "signed short int":   2,
+        "unsigned short":     2,
+        "unsigned short int": 2,
+        "int":                4,
+        "signed":             4,
+        "signed int":         4,
+        "unsigned":           4,
+        "unsigned int":       4,
+        "long":               8,
+        "long int":           8,
+        "signed long":        8,
+        "signed long int":    8,
+        "unsigned long":      8,
+        "unsigned long int":  8,
+        "long long":          8,
+        "long long int":      8,
+        "signed long long":   8,
+        "unsigned long long": 8,
+        "float":              4,
+        "double":             8,
+        "long double":        16,
+        "void *":             8,
+        "_Bool":              1,
     }
 
     // Check base types first
@@ -2582,9 +2583,9 @@ func evaluateMacroLazily(name string, alias string, fs uint32, debugAuto bool) (
     }()
 
     // Get raw macro value
-    moduleMacrosLock.RLock()
+    processedCMacrosLock.RLock()
     macroValue, exists := moduleMacros[alias][name]
-    moduleMacrosLock.RUnlock()
+    processedCMacrosLock.RUnlock()
 
     if !exists {
         return nil, false
@@ -2748,7 +2749,7 @@ func evaluateConstant(valueStr string, state *PreprocessorState, alias string, f
             if debugAuto {
                 fmt.Printf("[AUTO]     → Skipping ternary expression: %q, treating as false\n", valueStr)
             }
-            return false, true  // Treat as false instead of failing
+            return false, true // Treat as false instead of failing
         }
 
         // Convert ternary conditions from integers to booleans
@@ -2763,7 +2764,7 @@ func evaluateConstant(valueStr string, state *PreprocessorState, alias string, f
 
     // Create parser for ev()
     parser := &leparser{}
-    parser.fs = 0  // Use fs=0 for evaluation to avoid bind_int() conflicts
+    parser.fs = 0 // Use fs=0 for evaluation to avoid bind_int() conflicts
     parser.namespace = "auto_parse"
     parser.ctx = context.Background()
     parser.prectable = default_prectable
@@ -3048,9 +3049,9 @@ func normalizeFunctionDeclarations(text string) string {
                     normalized = append(normalized, line)
                 }
             } else if strings.HasPrefix(trimmed, "extern ") ||
-                       strings.HasPrefix(trimmed, "const ") ||
-                       (len(trimmed) > 0 && !strings.Contains(trimmed, "{") && !strings.Contains(trimmed, "}") &&
-                        !strings.HasPrefix(trimmed, "typedef ") && !strings.HasSuffix(trimmed, ";")) {
+                strings.HasPrefix(trimmed, "const ") ||
+                (len(trimmed) > 0 && !strings.Contains(trimmed, "{") && !strings.Contains(trimmed, "}") &&
+                    !strings.HasPrefix(trimmed, "typedef ") && !strings.HasSuffix(trimmed, ";")) {
                 // Might be a return type line for multiline declaration
                 // Start buffering tentatively (but exclude typedef and complete statements ending with ;)
                 inDeclaration = true
@@ -3527,7 +3528,7 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
             field := StructField{
                 Name:              fieldName,
                 Type:              CPointer, // Function pointers are pointers
-                Offset:            0,  // All union fields at offset 0
+                Offset:            0,        // All union fields at offset 0
                 IsFunctionPtr:     true,
                 FunctionSignature: &sig,
             }
@@ -3556,10 +3557,10 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
             // Create field with inline union (all union fields have offset 0)
             field := StructField{
                 Name:     fieldName,
-                Type:     CStruct, // Treat as struct type for now
-                Offset:   0,  // All union fields at offset 0
-                IsUnion:  inlineUnionDef.IsUnion,    // ← POPULATE THIS FIELD!
-                UnionDef: inlineUnionDef,             // ← POPULATE THIS FIELD!
+                Type:     CStruct,                // Treat as struct type for now
+                Offset:   0,                      // All union fields at offset 0
+                IsUnion:  inlineUnionDef.IsUnion, // ← POPULATE THIS FIELD!
+                UnionDef: inlineUnionDef,         // ← POPULATE THIS FIELD!
             }
 
             fields = append(fields, field)
@@ -3578,7 +3579,7 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
                     unionOrStruct, fieldName, inlineSize)
             }
 
-            continue  // Move to next field declaration
+            continue // Move to next field declaration
         }
 
         // Fail if field is a bitfield
@@ -3712,7 +3713,7 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
                     field := StructField{
                         Name:       fieldName,
                         Type:       CStruct,
-                        Offset:     0,  // All union fields at offset 0
+                        Offset:     0, // All union fields at offset 0
                         StructName: typeStr,
                         StructDef:  nestedStruct,
                     }
@@ -3725,12 +3726,12 @@ func parseUnionFields(fieldBlock string, alias string, unionName string, debug b
                         fmt.Printf("[AUTO]   Field: CStruct %s (nested %s, size: %d bytes, offset: 0)\n",
                             fieldName, typeStr, nestedStruct.Size)
                     }
-                    continue  // Skip the normal field append below
+                    continue // Skip the normal field append below
                 } else {
                     // Try heuristic: is it likely an opaque pointer?
                     if isLikelyOpaquePointer(typeStr) {
                         fieldType = CPointer
-                        fieldSize = 8  // Pointer size on x86-64
+                        fieldSize = 8 // Pointer size on x86-64
                         if debug {
                             fmt.Printf("[AUTO] Treating unknown type %s as opaque pointer\n", typeStr)
                         }
@@ -4128,7 +4129,10 @@ func parsePlainStructs(text string, alias string) error {
 
 // parsePlainStructsInternal does the actual struct parsing
 // isPreprocessed indicates whether the text has been preprocessed (affects how we handle field parsing)
-func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) ([]struct{ name string; fieldBlock string }, error) {
+func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) ([]struct {
+    name       string
+    fieldBlock string
+}, error) {
     debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
     if debugAuto {
         fmt.Printf("[AUTO] parsePlainStructs called for alias=%s, text length=%d\n", alias, len(text))
@@ -4156,7 +4160,7 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
     // Find struct definitions using proper brace matching (not regex)
     // This handles nested #ifdef blocks and other complexities
     var structs []struct {
-        name      string
+        name       string
         fieldBlock string
     }
 
@@ -4188,7 +4192,7 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
         // matchIdx format: [start0, end0, start1, end1]
         // Group 1: struct name
         structName := text[matchIdx[2]:matchIdx[3]]
-        openBracePos := matchIdx[1] - 1  // Position of the '{'
+        openBracePos := matchIdx[1] - 1 // Position of the '{'
 
         // Find matching closing brace using brace counting
         braceCount := 1
@@ -4221,7 +4225,7 @@ func parsePlainStructsInternal(text string, alias string, isPreprocessed bool) (
             // Extract field block (content between { and })
             fieldBlock := text[openBracePos+1 : closePos]
             structs = append(structs, struct {
-                name      string
+                name       string
                 fieldBlock string
             }{structName, fieldBlock})
 
@@ -4667,7 +4671,7 @@ func warnStructField(structName, fieldDecl, reason string) {
 func parseStructFields(fieldBlock string, alias string, structName string, debug bool) ([]StructField, uintptr, error) {
     var fields []StructField
     var currentOffset uintptr = 0
-    var maxAlignment uintptr = 1  // Track maximum alignment requirement
+    var maxAlignment uintptr = 1 // Track maximum alignment requirement
 
     // Split by semicolons to get individual field declarations
     declarations := splitFieldDeclarations(fieldBlock)
@@ -4736,8 +4740,8 @@ func parseStructFields(fieldBlock string, alias string, structName string, debug
                 Name:     fieldName,
                 Type:     CStruct, // Treat as struct type for now
                 Offset:   currentOffset,
-                IsUnion:  inlineUnionDef.IsUnion,    // ← POPULATE THIS FIELD!
-                UnionDef: inlineUnionDef,             // ← POPULATE THIS FIELD!
+                IsUnion:  inlineUnionDef.IsUnion, // ← POPULATE THIS FIELD!
+                UnionDef: inlineUnionDef,         // ← POPULATE THIS FIELD!
             }
 
             fields = append(fields, field)
@@ -4759,7 +4763,7 @@ func parseStructFields(fieldBlock string, alias string, structName string, debug
                     unionOrStruct, fieldName, inlineSize, field.Offset)
             }
 
-            continue  // Move to next field declaration
+            continue // Move to next field declaration
         }
 
         // Fail if field is a bitfield
@@ -4932,7 +4936,7 @@ func parseStructFields(fieldBlock string, alias string, structName string, debug
                         // Try heuristic: is it likely an opaque pointer (like GC, Display, Window)?
                         if isLikelyOpaquePointer(typeStr) {
                             fieldType = CPointer
-                            fieldSize = 8  // Pointer size on x86-64
+                            fieldSize = 8 // Pointer size on x86-64
                             nestedStruct = nil
                             if debug {
                                 fmt.Printf("[AUTO] Treating unknown type %s as opaque pointer\n", typeStr)
@@ -5140,7 +5144,6 @@ func registerStructInZa(alias string, structName string, structDef *CLibraryStru
 func parseCTypeString(typeStr string, alias string) (CType, uintptr) {
     // Normalize type string
     typeStr = strings.TrimSpace(typeStr)
-
 
     // Check for pointer types first (before lowercasing)
     // Handle both "Type*" and "Type *" formats
@@ -5406,9 +5409,9 @@ func expandDeclarationMacros(text string, alias string) string {
         typedefCount := len(moduleTypedefs[alias])
         moduleTypedefsLock.RUnlock()
 
-        moduleMacrosLock.RLock()
+        processedCMacrosLock.RLock()
         macroCount := len(moduleMacros[alias])
-        moduleMacrosLock.RUnlock()
+        processedCMacrosLock.RUnlock()
 
         fmt.Fprintf(os.Stderr, "[AUTO] expandDeclarationMacros: alias=%s, typedefs=%d, macros=%d\n",
             alias, typedefCount, macroCount)
@@ -5484,9 +5487,9 @@ func expandDeclarationMacros(text string, alias string) string {
 
                 // If not in moduleTypedefs, try moduleMacros
                 if !exists {
-                    moduleMacrosLock.RLock()
+                    processedCMacrosLock.RLock()
                     macroBody, exists = moduleMacros[alias][macroName]
-                    moduleMacrosLock.RUnlock()
+                    processedCMacrosLock.RUnlock()
                 }
 
                 if !exists || macroBody == "" {
@@ -5564,9 +5567,9 @@ func expandDeclarationMacros(text string, alias string) string {
 
             // If not in moduleTypedefs, try moduleMacros (function-like macros)
             if !exists {
-                moduleMacrosLock.RLock()
+                processedCMacrosLock.RLock()
                 macroBody, exists = moduleMacros[alias][macroName]
-                moduleMacrosLock.RUnlock()
+                processedCMacrosLock.RUnlock()
             }
 
             if debugAuto && macroName == "BGD_DECLARE" && iteration == 1 {
@@ -5801,9 +5804,9 @@ func parseFunctionSignatures(text string, alias string) error {
         returnStructName := sig.ReturnStructName
 
         /*
-        if warnAuto {
-            fmt.Fprintf(os.Stderr, "about to declare c function : %s -> %s\n",alias,funcName)
-        }
+           if warnAuto {
+               fmt.Fprintf(os.Stderr, "about to declare c function : %s -> %s\n",alias,funcName)
+           }
         */
 
         // Store in global function registry

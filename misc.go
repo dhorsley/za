@@ -2366,9 +2366,9 @@ func help_plugin(ns string, libraryName string) {
                 // Try to get the original multi-line format (preserves backslash continuations)
                 var displayValue string
 
-                moduleMacrosOriginalLock.RLock()
+                originalCMacrosLock.RLock()
                 originalText, hasOriginal := moduleMacrosOriginal[lib.Alias][name]
-                moduleMacrosOriginalLock.RUnlock()
+                originalCMacrosLock.RUnlock()
 
                 if hasOriginal {
                     // We have the original format - convert backslash continuations to newlines
@@ -2684,7 +2684,7 @@ func help_plugin_batch(functionNames []string) {
                     continue
                 }
                 if re.MatchString(symbolName) {
-                    expandedFunctions = append(expandedFunctions, targetLibrary + "::" + symbolName)
+                    expandedFunctions = append(expandedFunctions, targetLibrary+"::"+symbolName)
                     matched++
                 }
             }
@@ -2696,7 +2696,7 @@ func help_plugin_batch(functionNames []string) {
                         continue
                     }
                     if re.MatchString(symbolName) {
-                        expandedFunctions = append(expandedFunctions, libName + "::" + symbolName)
+                        expandedFunctions = append(expandedFunctions, libName+"::"+symbolName)
                         matched++
                     }
                 }
@@ -2748,7 +2748,7 @@ func help_plugin_batch(functionNames []string) {
             var allFunctions []string
             for symbolName, symbol := range lib.Symbols {
                 if symbol.IsFunction {
-                    allFunctions = append(allFunctions, libName + "::" + symbolName)
+                    allFunctions = append(allFunctions, libName+"::"+symbolName)
                 }
             }
 
@@ -2931,4 +2931,3 @@ func help_plugin_convert(cDeclaration string) {
 
 // matchWildcard matches a string against a wildcard pattern
 // Supports * as a wildcard for any sequence of characters
-

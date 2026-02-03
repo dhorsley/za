@@ -29,7 +29,7 @@ type FFICacheKey struct {
     LibraryHash string // SHA256 of .so file
 
     // Header identification (all recursively #included headers)
-    HeaderPaths []string // Sorted list of all headers
+    HeaderPaths  []string // Sorted list of all headers
     HeaderHashes []string // SHA256 of each header content
 
     // Za version (for format compatibility)
@@ -48,15 +48,15 @@ type FFICacheData struct {
     Version int // Cache format version (currently 1)
 
     // Global maps from parsing
-    ModuleConstants        map[string]map[string]any
-    ModuleMacros           map[string]map[string]string
-    ModuleMacrosOriginal   map[string]map[string]string
-    ModuleTypedefs         map[string]map[string]string
-    ModuleFuncPtrSigs      map[string]map[string]CFunctionSignature
-    FFIStructs             map[string]*CLibraryStruct
-    EnumsData              map[string]EnumData // Serializable version of Enums
-    DeclaredSignatures     map[string]map[string]CFunctionSignature
-    AutoImportErrors       map[string][]string
+    ModuleConstants      map[string]map[string]any
+    ModuleMacros         map[string]map[string]string
+    ModuleMacrosOriginal map[string]map[string]string
+    ModuleTypedefs       map[string]map[string]string
+    ModuleFuncPtrSigs    map[string]map[string]CFunctionSignature
+    FFIStructs           map[string]*CLibraryStruct
+    EnumsData            map[string]EnumData // Serializable version of Enums
+    DeclaredSignatures   map[string]map[string]CFunctionSignature
+    AutoImportErrors     map[string][]string
 
     // Metadata
     CacheKey  FFICacheKey
@@ -308,8 +308,8 @@ func cacheKeysEqual(a, b FFICacheKey) bool {
 func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) error {
     // Lock all global map locks
     moduleConstantsLock.Lock()
-    moduleMacrosLock.Lock()
-    moduleMacrosOriginalLock.Lock()
+    processedCMacrosLock.Lock()
+    originalCMacrosLock.Lock()
     moduleTypedefsLock.Lock()
     moduleFunctionPointerSignaturesLock.Lock()
     ffiStructLock.Lock()
@@ -319,8 +319,8 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
         ffiStructLock.Unlock()
         moduleFunctionPointerSignaturesLock.Unlock()
         moduleTypedefsLock.Unlock()
-        moduleMacrosOriginalLock.Unlock()
-        moduleMacrosLock.Unlock()
+        originalCMacrosLock.Unlock()
+        processedCMacrosLock.Unlock()
         moduleConstantsLock.Unlock()
     }()
 
@@ -402,8 +402,8 @@ func saveFFICache(cacheKey FFICacheKey, alias string) error {
 
     // Collect current global state for THIS ALIAS ONLY
     moduleConstantsLock.RLock()
-    moduleMacrosLock.RLock()
-    moduleMacrosOriginalLock.RLock()
+    processedCMacrosLock.RLock()
+    originalCMacrosLock.RLock()
     moduleTypedefsLock.RLock()
     moduleFunctionPointerSignaturesLock.RLock()
     ffiStructLock.RLock()
@@ -458,26 +458,26 @@ func saveFFICache(cacheKey FFICacheKey, alias string) error {
     }
 
     data := &FFICacheData{
-        Version:             FFICacheVersion,
-        ModuleConstants:     copyMapMapAny(aliasOnlyConstants),
-        ModuleMacros:        copyMapMapString(aliasOnlyMacros),
+        Version:              FFICacheVersion,
+        ModuleConstants:      copyMapMapAny(aliasOnlyConstants),
+        ModuleMacros:         copyMapMapString(aliasOnlyMacros),
         ModuleMacrosOriginal: copyMapMapString(aliasOnlyMacrosOriginal),
-        ModuleTypedefs:      copyMapMapString(aliasOnlyTypedefs),
-        ModuleFuncPtrSigs:   copyMapMapSignature(aliasOnlyFuncPtrSigs),
-        FFIStructs:          copyMapStruct(ffiStructDefinitions),
-        EnumsData:           enumsData,
-        DeclaredSignatures:  copyMapMapSignature(aliasOnlyDeclaredSigs),
-        AutoImportErrors:    copyMapSliceString(aliasOnlyErrors),
-        CacheKey:            cacheKey,
-        CreatedAt:           time.Now(),
+        ModuleTypedefs:       copyMapMapString(aliasOnlyTypedefs),
+        ModuleFuncPtrSigs:    copyMapMapSignature(aliasOnlyFuncPtrSigs),
+        FFIStructs:           copyMapStruct(ffiStructDefinitions),
+        EnumsData:            enumsData,
+        DeclaredSignatures:   copyMapMapSignature(aliasOnlyDeclaredSigs),
+        AutoImportErrors:     copyMapSliceString(aliasOnlyErrors),
+        CacheKey:             cacheKey,
+        CreatedAt:            time.Now(),
     }
 
     autoImportErrorsLock.RUnlock()
     ffiStructLock.RUnlock()
     moduleFunctionPointerSignaturesLock.RUnlock()
     moduleTypedefsLock.RUnlock()
-    moduleMacrosOriginalLock.RUnlock()
-    moduleMacrosLock.RUnlock()
+    originalCMacrosLock.RUnlock()
+    processedCMacrosLock.RUnlock()
     moduleConstantsLock.RUnlock()
 
     // Get cache path and ensure directory exists
