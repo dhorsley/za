@@ -2291,6 +2291,11 @@ func parseCFunctionSignature(sigStr string, functionName string, alias string) (
         returnTypeStr = strings.Join(leftWords[:len(leftWords)-1], " ")
     }
 
+    // Strip API macros and other non-type tokens from return type before typedef resolution
+    // This ensures typedefs like EGLDisplay are properly resolved even when preceded by
+    // API macros like KHRONOS_APICALL and KHRONOS_APIENTRY
+    returnTypeStr = stripNonTypeTokens(returnTypeStr)
+
     // Parse return type
     returnType, returnStructName, err := mapCTypeStringToZa(returnTypeStr, alias)
     if err != nil {
