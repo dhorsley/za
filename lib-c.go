@@ -2498,7 +2498,7 @@ func lookupFunctionSignature(functionName string, lib *CLibrary) (*FunctionSigna
 
     if err == nil {
         // Successfully got signature from man page, parse it
-        sig, parseErr := parseCFunctionSignature(sigStr, functionName, "")
+        sig, parseErr := parseCFunctionSignature(sigStr, functionName, libraryAlias)
         if parseErr == nil {
             return sig, nil
         }
@@ -2509,7 +2509,7 @@ func lookupFunctionSignature(functionName string, lib *CLibrary) (*FunctionSigna
     sigStr, err = parseManPageOnline(functionName)
     if err == nil {
         // Successfully got signature from online, parse it
-        sig, parseErr := parseCFunctionSignature(sigStr, functionName, "")
+        sig, parseErr := parseCFunctionSignature(sigStr, functionName, libraryAlias)
         if parseErr == nil {
             return sig, nil
         }
