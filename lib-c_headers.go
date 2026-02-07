@@ -794,7 +794,7 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
     if err := parseFunctionSignatures(combinedText, alias); err != nil {
         return fmt.Errorf("failed to parse functions: %w", err)
     }
-    progress.update(4.0, "Completed", "")
+    progress.update(4.0, fmt.Sprintf("%s completed", alias), "")
 
     // CACHE: Save parsed data to cache for future runs (reusing the key computed at load time)
     if cacheKeyErr != nil {
