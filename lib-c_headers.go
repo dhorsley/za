@@ -723,7 +723,7 @@ func parseModuleHeaders(libraryPath string, alias string, explicitPaths []string
                 }
             } else {
                 // Cache loaded successfully
-                progress.update(100.0, "Loaded from cache", "")
+                progress.update(100.0, fmt.Sprintf("%s loaded from cache", alias), "")
                 return nil
             }
         }

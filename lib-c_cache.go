@@ -238,7 +238,8 @@ func getCacheFileName(cacheKey FFICacheKey) (string, error) {
 func tryLoadFFICache(cacheKey FFICacheKey) (*FFICacheData, bool) {
     registerGobTypes()
 
-    noCache := os.Getenv("ZA_FFI_NOCACHE") != ""
+    noCacheEnv := strings.ToLower(os.Getenv("ZA_FFI_NOCACHE"))
+    noCache := noCacheEnv == "1" || noCacheEnv == "true"
 
     if noCache {
         return nil, false
@@ -394,7 +395,8 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
 func saveFFICache(cacheKey FFICacheKey, alias string) error {
     registerGobTypes()
 
-    noCache := os.Getenv("ZA_FFI_NOCACHE") != ""
+    noCacheEnv := strings.ToLower(os.Getenv("ZA_FFI_NOCACHE"))
+    noCache := noCacheEnv == "1" || noCacheEnv == "true"
 
     if noCache {
         return nil
