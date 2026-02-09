@@ -1124,7 +1124,7 @@ func init() {
         }
 
         // Call the function pointer via libffi
-        result, err := CallCFunctionViaLibFFI(fp.Ptr, fp.TypeTag, funcArgs, fp.Signature)
+        result, err := CallCFunctionViaLibFFI(context.Background(), fp.Ptr, fp.TypeTag, funcArgs, fp.Signature)
         if err != nil {
             return nil, fmt.Errorf("error calling function pointer %s: %w", fp.TypeTag, err)
         }

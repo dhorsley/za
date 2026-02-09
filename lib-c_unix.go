@@ -217,6 +217,7 @@ static const char* read_string_symbol(void* addr) {
 import "C"
 
 import (
+    "context"
     "debug/elf"
     "fmt"
     "os"
@@ -482,7 +483,7 @@ func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrar
 }
 
 // callCFunctionPlatform attempts to call a C function with given arguments
-func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any, []string) {
+func callCFunctionPlatform(ctx context.Context, lib *CLibrary, functionName string, args []any) (any, []string) {
     if lib.Handle == nil {
         return nil, []string{"ERROR: Library handle is nil - cannot call function"}
     }
@@ -532,7 +533,7 @@ func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any,
     // Use libffi if available
     if IsLibFFIAvailable() {
         // Call via libffi with declared signature
-        result, err := CallCFunctionViaLibFFI(funcPtr, functionName, args, sig)
+        result, err := CallCFunctionViaLibFFI(ctx, funcPtr, functionName, args, sig)
         if err != nil {
             return nil, []string{fmt.Sprintf("ERROR: libffi call failed: %v", err)}
         }

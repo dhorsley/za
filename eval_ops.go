@@ -2474,7 +2474,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     functionName := parts[1]
 
                     // fmt.Printf("[DEBUG] Calling C function: library='%s', function='%s'\n", libraryName, functionName)
-                    result, notes := CallCFunction(libraryName, functionName, args)
+                    result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
@@ -2489,7 +2489,7 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                     if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
                         fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
                     }
-                    result, notes := CallCFunction(foundNamespace, name, args)
+                    result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
                     // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))

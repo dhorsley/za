@@ -270,6 +270,8 @@ func dumpProfileSummary() {
             colour := "[#1]"
             if phase == "execution time" {
                 colour = "[#6]"
+            } else if str.HasPrefix(phase, "ffi:") {
+                colour = "[#2]"  // Red for FFI phases
             }
             pf("%s "+colour+"%s[#-]: %v\n", indent, phase, t)
         }
