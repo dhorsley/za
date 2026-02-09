@@ -1,6 +1,7 @@
 package main
 
 import (
+    "context"
     "fmt"
     "io/ioutil"
     "os"
@@ -904,7 +905,7 @@ func RegisterCSymbol(symbol *CSymbol) {
 }
 
 // CallCFunction executes a C function via FFI using dlsym
-func CallCFunction(library string, functionName string, args []any) (any, []string) {
+func CallCFunction(ctx context.Context, library string, functionName string, args []any) (any, []string) {
     if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
         fmt.Fprintf(os.Stderr, "[FFI-CALL] CallCFunction(%s, %s, ...)\n", library, functionName)
     }
@@ -927,7 +928,7 @@ func CallCFunction(library string, functionName string, args []any) (any, []stri
     }
 
     // Delegate to platform-specific implementation
-    return callCFunctionPlatform(lib, functionName, args)
+    return callCFunctionPlatform(ctx, lib, functionName, args)
 }
 
 // GetCLibrarySymbols returns all symbols from a loaded C library

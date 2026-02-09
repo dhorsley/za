@@ -19,6 +19,8 @@ fixes
       - added missing stub functions for struct/union operations in noffi builds
       - improved Alpine Linux compatibility
 
+  * added FFI call, marshalling and conversion timings to the profiler.
+
 
 library changes
 ---------------

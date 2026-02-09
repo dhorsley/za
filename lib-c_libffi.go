@@ -653,6 +653,7 @@ static void cleanup_ffi_closure(void* closure, void* cif, void** arg_types) {
 */
 import "C"
 import (
+    "context"
     "fmt"
     "math/big"
     "reflect"
@@ -660,6 +661,7 @@ import (
     "runtime/cgo"
     "strings"
     "sync"
+    "time"
     "unsafe"
 )
 
@@ -896,9 +898,39 @@ func createFFITypeForStruct(structDef *CLibraryStruct) (unsafe.Pointer, error) {
 }
 
 // CallCFunctionViaLibFFI calls a C function using libffi
-func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any, sig CFunctionSignature) (any, error) {
+func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcName string, args []any, sig CFunctionSignature) (any, error) {
     if !IsLibFFIAvailable() {
         return nil, fmt.Errorf("libffi not available")
+    }
+
+    // Build display name for profiling - use "ffi:funcName" format
+    var displayName string
+    if funcName != "" {
+        displayName = "ffi:" + funcName
+    }
+
+    // Track this FFI call in the call chain (like Za functions do)
+    if enableProfiling && displayName != "" {
+        pushToCallChain(ctx, displayName)
+        startProfile(displayName)
+        startTime := time.Now()
+
+        // Defer the profiling cleanup to ensure it always happens
+        defer func() {
+            chain := getCallChain(ctx)
+            if isRecursive(chain) {
+                pathKey := collapseCallPath(chain)
+                profileMu.Lock()
+                if _, exists := profiles[pathKey]; !exists {
+                    profiles[pathKey] = &ProfileContext{Times: make(map[string]time.Duration)}
+                }
+                profiles[pathKey].Times["recursive"] = 1
+                profileMu.Unlock()
+            } else {
+                recordExclusiveExecutionTime(ctx, chain, time.Since(startTime))
+            }
+            popCallChain(ctx)
+        }()
     }
 
     expectedRetType := sig.ReturnType
@@ -990,6 +1022,12 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         return convertReturnValue(returnBuf, sig)
     }
 
+    // Start timing for argument conversion phase
+    var startConvert time.Time
+    if enableProfiling {
+        startConvert = time.Now()
+    }
+
     // Convert Za arguments to C values with type checking and range validation
     convertedArgs := make([]any, len(args))
     for i, arg := range args {
@@ -1041,6 +1079,17 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
             return nil, fmt.Errorf("argument %d: %v", i, err)
         }
         convertedArgs[i] = converted
+    }
+
+    // Record arg_convert timing
+    if enableProfiling {
+        recordPhase(ctx, "ffi:arg_convert", time.Since(startConvert))
+    }
+
+    // Start timing for argument marshaling phase
+    var startMarshal time.Time
+    if enableProfiling {
+        startMarshal = time.Now()
     }
 
     // Build argument type and value arrays
@@ -2296,6 +2345,17 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         returnPtr = structReturnBuf
     }
 
+    // Record arg_marshal timing
+    if enableProfiling {
+        recordPhase(ctx, "ffi:arg_marshal", time.Since(startMarshal))
+    }
+
+    // Start timing for FFI call phase
+    var startCall time.Time
+    if enableProfiling {
+        startCall = time.Now()
+    }
+
     // Call libffi
     var status int
     status = int(C.call_via_libffi(
@@ -2313,6 +2373,17 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
 
     if status != 0 {
         return nil, fmt.Errorf("libffi call failed with code %d", status)
+    }
+
+    // Record ffi:call timing
+    if enableProfiling {
+        recordPhase(ctx, "ffi:call", time.Since(startCall))
+    }
+
+    // Start timing for result unmarshaling phase
+    var startUnmarshal time.Time
+    if enableProfiling {
+        startUnmarshal = time.Now()
     }
 
     // CRITICAL: Unmarshal mutable arguments BEFORE cleanup runs (defer cleanup below)
@@ -2496,6 +2567,11 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
     }
 
+    // Record ffi:result_unmarshal timing
+    if enableProfiling {
+        recordPhase(ctx, "ffi:result_unmarshal", time.Since(startUnmarshal))
+    }
+
     // Free allocated memory for koutparam variables (after unmarshaling is complete)
     // At this point, the variable has been updated with the dereferenced pointer value,
     // so the temporary buffer is no longer needed
@@ -2505,13 +2581,27 @@ func CallCFunctionViaLibFFI(funcPtr unsafe.Pointer, funcName string, args []any,
         }
     }
 
+    // Start timing for return value conversion phase
+    var startReturn time.Time
+    if enableProfiling {
+        startReturn = time.Now()
+    }
+
     // For struct returns, use the allocated buffer; otherwise use returnBuf
     if structReturnBuf != nil {
         // Get the actual computed size that libffi used
         computedSize := getLastComputedReturnSize()
-        return convertReturnValueWithSize(structReturnBuf, sig, int(computedSize))
+        result, err := convertReturnValueWithSize(structReturnBuf, sig, int(computedSize))
+        if enableProfiling {
+            recordPhase(ctx, "ffi:return_convert", time.Since(startReturn))
+        }
+        return result, err
     }
-    return convertReturnValue(returnBuf, sig)
+    result, err := convertReturnValue(returnBuf, sig)
+    if enableProfiling {
+        recordPhase(ctx, "ffi:return_convert", time.Since(startReturn))
+    }
+    return result, err
 }
 
 // convertReturnValueWithSize is like convertReturnValue but knows the actual computed size from libffi
