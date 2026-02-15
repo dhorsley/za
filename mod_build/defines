@@ -12,8 +12,6 @@ define progress(s); println "[#4]{s}[#-]"; end
 
 define buildDefault(build_version,build_date)
     print "[#4]Standard build (dynamic libffi, static PCRE)[#-]\n"
-    # Link libffi dynamically (system-provided) to avoid Ubuntu's broken static version
-    # Link PCRE statically for minimal runtime dependencies
     | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-Wl,-Bstatic -lpcre -Wl,-Bdynamic -lffi -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=cgo-static{=strStrip}"' -tags 'osusergo' za
     r=last()
     on r>0 do print last_err()
@@ -21,9 +19,8 @@ define buildDefault(build_version,build_date)
 end
 
 define buildArch(build_version,build_date)
-    print "[#4]Arch build (dynamic libffi, static PCRE)[#-]\n"
-    # Link libffi dynamically (system-provided), PCRE statically
-    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-Wl,-Bstatic -lpcre -Wl,-Bdynamic -lffi -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}"' -tags 'osusergo' za
+    print "[#4]Arch build (dynamic libffi and PCRE)[#-]\n"
+    | CGO_ENABLED=1 GODEBUG=netdns=cgo GOOS=linux GOARCH=amd64 {=GCLIMIT} {=gobin} build {=GCFLAGS} -ldflags '{=stripFlags} -X "main.BuildDate={build_date}" -extldflags "-Wl,-Bdynamic -lpcre -Wl,-Bdynamic -lffi -O3" -X "main.BuildVersion={build_version}" -X "main.BuildComment=arch{=strStrip}"' -tags 'osusergo' za
     r=last()
     on r>0 do print last_err()
     on r==0 do { cp za za.arch }
@@ -41,7 +38,6 @@ end
 
 define buildLibc(build_version,build_date)
     print "[#4]Libc build (glibc with dynamic libffi)[#-]\n"
-    # Link libffi dynamically, PCRE statically for minimal deps
     | {=GCLIMIT} {=gobin} build {=GCCGOFLAGS} {=GCFLAGS} -ldflags '{=stripFlags} -extldflags "-Wl,-Bstatic -lpcre -Wl,-Bdynamic -lffi -O2" -X "main.BuildDate={build_date}" -X "main.BuildVersion={build_version}" -X "main.BuildComment=glibc{=strStrip}"' za
     r=last()
     on r>0 do println last_err()

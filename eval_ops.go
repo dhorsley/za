@@ -6,7 +6,6 @@ import (
     "math"
     "math/big"
     "net/http"
-    "os"
     "reflect"
     "strconv"
     str "strings"
@@ -2465,42 +2464,29 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         } else {
 
             // Check for C library functions as final fallback
-            // fmt.Printf("[DEBUG] callFunctionExt received name: '%s'\n", name)
             if str.Contains(name, "::") {
-                // fmt.Printf("[DEBUG] Detected namespaced function name\n")
                 parts := str.SplitN(name, "::", 2)
                 if len(parts) == 2 {
                     libraryName := parts[0]
                     functionName := parts[1]
 
-                    // fmt.Printf("[DEBUG] Calling C function: library='%s', function='%s'\n", libraryName, functionName)
                     result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
-                    // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
                     }
                     return result, false, nil, nil
                 }
             } else {
-                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                    fmt.Printf("[DEBUG] Checking unqualified function name: '%s'\n", name)
-                }
                 if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
-                    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                        fmt.Printf("[DEBUG] Found C function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
-                    }
                     result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
-                    // fmt.Printf("[DEBUG] CallCFunction returned: result=%v, notes=%v\n", result, notes)
                     if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
                         return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
                     }
                     return result, false, nil, nil
                 }
                 if foundNamespace := uc_match_func(name); foundNamespace != "" {
-                    // fmt.Printf("[DEBUG] Found user function via use chain: namespace='%s', function='%s'\n", foundNamespace, name)
                 }
 
-                // fmt.Printf("[DEBUG] Returning function not found error for name: '%s'\n", name)
                 return nil, true, nil, nil
             }
         }

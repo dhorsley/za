@@ -1,8 +1,6 @@
 package main
 
 import (
-    "fmt"
-    "os"
     "slices"
     "strings"
     "sync"
@@ -185,24 +183,13 @@ func uc_match_c_func(s string) string {
     chainlock.RLock()
     defer chainlock.RUnlock()
 
-    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-        fmt.Fprintf(os.Stderr, "[UC-MATCH] Called for '%s', uchain=%v\n", s, uchain)
-    }
-
     // Single pass: iterate use chain in order
     // declaredSignatures is the single source of truth for both MANUAL and AUTO LIB declarations
     // This ensures use chain order is respected, not random map iteration
     for p := 0; p < len(uchain); p += 1 {
         if _, exists := GetDeclaredSignature(uchain[p], s); exists {
-            if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                fmt.Fprintf(os.Stderr, "[UC-MATCH] Found %s::%s\n", uchain[p], s)
-            }
             return uchain[p]
         }
-    }
-
-    if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-        fmt.Fprintf(os.Stderr, "[UC-MATCH] Not found: %s\n", s)
     }
     return ""
 }

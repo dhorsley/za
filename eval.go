@@ -8,7 +8,6 @@ import (
     "math"
     "math/big"
     "net/http"
-    "os"
     "path/filepath"
     "reflect"
     "regexp"
@@ -2172,7 +2171,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
         return token.tokVal, nil
     case subtypeStandard:
         return token.tokText, nil
-    case subtypeUser:
+    case subtypeUser,subtypeCUser:
         return token.tokText, nil
     }
     // pf("(identifier) reached past subtype check.\n")
@@ -2205,9 +2204,6 @@ func (p *leparser) identifier(token *Token) (any, error) {
             // Use uc_match_c_func to respect use chain order instead of random map iteration
             namespaceName := uc_match_c_func(token.tokText)
             if namespaceName != "" {
-                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                    fmt.Fprintf(os.Stderr, "[PARSE] Found C function via use chain: %s::%s\n", namespaceName, token.tokText)
-                }
                 p.tokens[p.pos].subtype = subtypeUser
                 return token.tokText, nil
             } else {
@@ -2235,28 +2231,11 @@ func (p *leparser) identifier(token *Token) (any, error) {
         // The namespace is in p.tokens[p.pos-2].tokText
         if p.pos >= 2 {
             namespaceName := p.tokens[p.pos-2].tokText
-            debugAuto := os.Getenv("ZA_DEBUG_AUTO") != ""
-            if debugAuto {
-                fmt.Printf("[AUTO] Looking up %s::%s in moduleConstants\n", namespaceName, token.tokText)
-            }
             moduleConstantsLock.RLock()
             if constMap, exists := moduleConstants[namespaceName]; exists {
-                if debugAuto {
-                    fmt.Printf("[AUTO]   Module '%s' has %d constants\n", namespaceName, len(constMap))
-                }
                 if val, found := constMap[token.tokText]; found {
-                    if debugAuto {
-                        fmt.Printf("[AUTO]   Found %s = %v\n", token.tokText, val)
-                    }
                     moduleConstantsLock.RUnlock()
                     return val, nil
-                }
-                if debugAuto {
-                    fmt.Printf("[AUTO]   Constant '%s' not found in module '%s'\n", token.tokText, namespaceName)
-                }
-            } else {
-                if debugAuto {
-                    fmt.Printf("[AUTO]   Module '%s' not found in moduleConstants\n", namespaceName)
                 }
             }
             moduleConstantsLock.RUnlock()
@@ -3247,9 +3226,6 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
             autoProcessingLock.RUnlock()
 
             if !inAuto {
-                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                    fmt.Fprintf(os.Stderr, "[FFI-EVAL] Error for '%s': %v\n", ws, err)
-                }
                 parser.report(-1, sf("Error evaluating '%s'", ws))
                 finish(false, ERR_EVAL)
             }
