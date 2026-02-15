@@ -5998,17 +5998,6 @@ tco_reentry:
                     params = append(params, param)
                 }
 
-                if os.Getenv("ZA_FFI_DEBUG_SIGS") != "" {
-                    oldSym, hadOld := lib.Symbols[funcName]
-                    if hadOld {
-                        fmt.Fprintf(os.Stderr, "[FFI-SYM] UPDATING lib.Symbols[%s][%s]: return %v → %v\n",
-                            libAlias, funcName, oldSym.ReturnType, returnType)
-                    } else {
-                        fmt.Fprintf(os.Stderr, "[FFI-SYM] ADDING lib.Symbols[%s][%s]: return %v\n",
-                            libAlias, funcName, returnType)
-                    }
-                }
-
                 lib.Symbols[funcName] = &CSymbol{
                     Name:       funcName,
                     ReturnType: returnType,

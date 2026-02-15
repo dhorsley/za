@@ -119,6 +119,7 @@ const (
     subtypeConst
     subtypeStandard
     subtypeUser
+    subtypeCUser
 )
 
 var subtypeNames = [...]string{"None", "Constant", "StdLib", "UserFunc"}
