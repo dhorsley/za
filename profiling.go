@@ -3,6 +3,7 @@ package main
 import (
     "bufio"
     "context"
+    "fmt"
     "os"
     "path/filepath"
     "regexp"
@@ -13,6 +14,8 @@ import (
     "sync"
     "sync/atomic"
     "time"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 type profilerKeyType struct{}
@@ -203,6 +206,13 @@ func recordPhase(ctx context.Context, phase string, elapsed time.Duration) {
     }
     profiles[pathKey].Times[phase] += elapsed
     profileMu.Unlock()
+
+    if enableMetrics {
+        metrics.GetOrCreateCounter(fmt.Sprintf(
+            `za_profile_phase_ms_total{call_path=%q,phase=%q}`,
+            pathKey, str.ReplaceAll(phase, ":", "_"),
+        )).Add(int(elapsed.Milliseconds()))
+    }
 }
 
 func recordExclusiveExecutionTime(ctx context.Context, callChain []string, elapsed time.Duration) {
@@ -218,6 +228,12 @@ func recordExclusiveExecutionTime(ctx context.Context, callChain []string, elaps
     }
     profiles[pathKey].Times["execution time"] += elapsed
     profileMu.Unlock()
+
+    if enableMetrics {
+        metrics.GetOrCreateCounter(fmt.Sprintf(
+            `za_profile_phase_ms_total{call_path=%q,phase="execution_time"}`, pathKey,
+        )).Add(int(elapsed.Milliseconds()))
+    }
 }
 
 // Print summary at program end

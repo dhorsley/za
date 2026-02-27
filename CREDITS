@@ -84,3 +84,21 @@ Author  : itchyny
 Licence : MIT License
 Home    : https://github.com/itchyny/timefmt-go
 Type    : Go Module (indirect dependency)
+
+Name    : metrics
+Author  : VictoriaMetrics
+Licence : MIT License
+Home    : https://github.com/VictoriaMetrics/metrics
+Type    : Go Module
+
+Name    : histogram
+Author  : Aliaksandr Valialkin (valyala)
+Licence : MIT License
+Home    : https://github.com/valyala/histogram
+Type    : Go Module (indirect dependency)
+
+Name    : fastrand
+Author  : Aliaksandr Valialkin (valyala)
+Licence : MIT License
+Home    : https://github.com/valyala/fastrand
+Type    : Go Module (indirect dependency)

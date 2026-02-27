@@ -22,6 +22,8 @@ import (
     "syscall"
     "time"
     "unicode/utf8"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 var completions = []string{"VAR", "SETGLOB", "PAUSE",
@@ -2613,12 +2615,30 @@ func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 var cmdlock = &sync.Mutex{}
 
 // submit a command for coprocess execution
-func Copper(line string, squashErr bool) struct {
+func Copper(line string, squashErr bool) (result struct {
     Out  string
     Err  string
     Code int
     Okay bool
-} {
+}) {
+    var start time.Time
+    if enableMetrics {
+        start = time.Now()
+    }
+
+    defer func() {
+        if !enableMetrics {
+            return
+        }
+        ms := float64(time.Since(start).Milliseconds())
+        metrics.GetOrCreateCounter(`za_shell_calls_total`).Inc()
+        if result.Code == 0 {
+            metrics.GetOrCreateCounter(`za_shell_success_total`).Inc()
+        } else {
+            metrics.GetOrCreateCounter(`za_shell_errors_total`).Inc()
+        }
+        metrics.GetOrCreateSummary(`za_shell_duration_ms`).Update(ms)
+    }()
 
     if !permit_shell {
         panic(fmt.Errorf("Shell calls not permitted!"))
@@ -2626,20 +2646,18 @@ func Copper(line string, squashErr bool) struct {
 
     // remove some bad conditions...
     if str.HasSuffix(str.TrimRight(line, " "), "|") {
-        return struct {
-            Out  string
-            Err  string
-            Code int
-            Okay bool
-        }{"", "", -1, false}
+        result.Out = ""
+        result.Err = ""
+        result.Code = -1
+        result.Okay = false
+        return
     }
     if tr(line, DELETE, "| ", "") == "" {
-        return struct {
-            Out  string
-            Err  string
-            Code int
-            Okay bool
-        }{"", "", -1, false}
+        result.Out = ""
+        result.Err = ""
+        result.Code = -1
+        result.Okay = false
+        return
     }
     line = str.TrimRight(line, "\n")
 
@@ -2744,12 +2762,11 @@ func Copper(line string, squashErr bool) struct {
             lastlock.Unlock()
             os.Remove(errorFile.Name())
             procKill(os.Getpid())
-            return struct {
-                Out  string
-                Err  string
-                Code int
-                Okay bool
-            }{"", "interrupt", -3, false}
+            result.Out = ""
+            result.Err = "interrupt"
+            result.Code = -3
+            result.Okay = false
+            return
         } else {
             if err == nil {
                 errint, err = strconv.Atoi(string(code))
@@ -2787,12 +2804,11 @@ func Copper(line string, squashErr bool) struct {
         }
     }
 
-    return struct {
-        Out  string
-        Err  string
-        Code int
-        Okay bool
-    }{string(ns), errout, errint, errint == 0}
+    result.Out = string(ns)
+    result.Err = errout
+    result.Code = errint
+    result.Okay = errint == 0
+    return
 }
 
 func restoreScreen() {

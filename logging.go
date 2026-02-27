@@ -11,6 +11,7 @@ import (
     "runtime"
     "strings"
     "sync"
+    "sync/atomic"
     "time"
 )
 
@@ -194,6 +195,7 @@ func queueLogRequest(request LogRequest) {
         // Queue is full - apply memory-aware handling
         if memoryConstrained && request.IsWebAccess {
             // Drop this web access log request to preserve memory
+            atomic.AddInt64(&logDropCount, 1)
             return
         }
 
@@ -218,6 +220,7 @@ func queueLogRequest(request LogRequest) {
                 return
             default:
                 // Drop the web access request to prevent blocking
+                atomic.AddInt64(&logDropCount, 1)
                 return
             }
         }
@@ -234,6 +237,11 @@ func processLogRequest(request LogRequest) {
     // Apply log level filtering (lower numbers = higher priority)
     if request.Level > logMinLevel {
         return // Skip this log entry - level too low
+    }
+
+    // Track log level statistics
+    if request.Level >= 0 && request.Level < 8 {
+        atomic.AddInt64(&logLevelCount[request.Level], 1)
     }
 
     // Apply sanitisation if enabled

@@ -739,6 +739,7 @@ func main() {
     var a_var_warn = flag.Bool("W", false, "emit errors when addition contains string mixed types")
     var a_enable_asserts = flag.Bool("a", false, "enable assertions. default is false, unless -t specified.")
     var a_enable_profiling = flag.Bool("P", false, "enable profiling of Za interpreter phases.")
+    var a_metrics_port = flag.Int("M", 0, "enable Prometheus metrics exporter on specified port (e.g. -M 9091)")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -947,6 +948,20 @@ func main() {
             // runtime.SetCPUProfileRate(1000)
             log.Fatalln(http.ListenAndServe("localhost:8008", http.DefaultServeMux))
         }()
+    }
+
+    // metrics - Prometheus exporter
+    metricsPort := *a_metrics_port
+    if metricsPort == 0 {
+        if portStr := os.Getenv("ZA_PROMETHEUS"); portStr != "" {
+            if p, err := strconv.Atoi(portStr); err == nil && p > 0 {
+                metricsPort = p
+            }
+        }
+    }
+    if metricsPort > 0 {
+        enableMetrics = true
+        startMetricsServer(metricsPort)
     }
 
     // test mode
@@ -1794,6 +1809,9 @@ func main() {
     }
 
     // a little paranoia to finish things off...
+    if enableMetrics {
+        stopMetricsServer()
+    }
     if logWorkerRunning {
         stopLogWorker()
     }

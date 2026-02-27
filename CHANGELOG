@@ -108,6 +108,22 @@ library changes
 language changes
 ----------------
 
+  * (experimental) added prometheus exporter: -M port or ZA_PROMETHEUS=port to invoke at startup.
+    - draft version
+    - no authentication or other protections in place yet
+    - traffic served from 0.0.0.0:port/metrics
+    - uses the VictoriaMetrics exporter implementation
+    - exports:
+        - system load, memory usage, swap usage, cpu time, thread and goroutine counts, function concurrency counts
+        - build information, FFI library, callback and function counts (still basic)
+        - eval() and exec() call counts/error rates
+        - shell command execution metrics
+        - exception counts (basic)
+        - logging system stats (messages by level, queue depths, drops)
+        - web request metrics (when web_serve() active)
+          - request counts, latencies, status code distribution
+        - profiling phase timings (when -P profiling active)
+
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
 
     PLEASE NOTE: FOR FFI FACILITIES DETAILED HERE,

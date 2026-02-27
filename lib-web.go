@@ -24,6 +24,8 @@ import (
     "sync/atomic"
     "time"
     // "github.com/GRbit/go-pcre"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 /* · web_serve_*:
@@ -77,6 +79,24 @@ var web_cache_max_memory = 100 // MB
 
 var web_gzip_enabled = true
 var web_request_count int64
+
+// webResponseRecorder wraps http.ResponseWriter to capture the final HTTP status code.
+type webResponseRecorder struct {
+    http.ResponseWriter
+    status int
+}
+
+func (r *webResponseRecorder) WriteHeader(code int) {
+    r.status = code
+    r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *webResponseRecorder) Write(b []byte) (int, error) {
+    if r.status == 0 {
+        r.status = http.StatusOK
+    }
+    return r.ResponseWriter.Write(b)
+}
 
 // HELPER FUNCTIONS /////////////////////////////////////////////////////////////////////////////
 
@@ -380,7 +400,15 @@ type webstruct struct {
 // if no match is found, the default will be to try and serve the request statically from the docroot
 // the docroot for the vhost should be available in web_handles[uid].docroot
 
-func webRouter(w http.ResponseWriter, r *http.Request) {
+func webRouter(origW http.ResponseWriter, r *http.Request) {
+
+    rec := &webResponseRecorder{ResponseWriter: origW}
+    w := http.ResponseWriter(rec)
+    var reqStart time.Time
+    matchedRoute := "<unmatched>"
+    if enableMetrics {
+        reqStart = time.Now()
+    }
 
     evalfs, _ := r.Context().Value("evalfs").(uint32)
 
@@ -453,6 +481,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
             if str.HasPrefix(path, rule.in) {
                 http.Redirect(w, r, rule.mutation.(string), http.StatusMovedPermanently)
                 wlog("Redirected from %s to %s.\n", path, rule.mutation.(string))
+                matchedRoute = rule.in
                 serviced = true
             }
 
@@ -485,6 +514,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                             }
                             wlog("%s served %s from cache.\n", host, new_path)
                             writeResponse(w, entry.content, use_gzip)
+                matchedRoute = rule.in
                             serviced = true
                             web_cache_lock.RUnlock()
                             break
@@ -584,6 +614,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                                 if expectedStatusCode == "" || expectedStatusCode == sf("%d", down_code) {
                                     http.Redirect(w, r, fail_rule.mutation.(string), http.StatusTemporaryRedirect)
                                     wlog("Redirected temporarily from %s to %s due to bad response.\n", path, fail_rule.mutation.(string))
+                matchedRoute = rule.in
                                     serviced = true
                                     break
                                 }
@@ -632,6 +663,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         web_cache_lock.Unlock()
                     }
                 }
+                matchedRoute = rule.in
                 serviced = true
             }
 
@@ -731,6 +763,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                 calltable[loc].gc = true
 
                 calllock.Unlock()
+                matchedRoute = rule.in
                 serviced = true
             }
 
@@ -785,6 +818,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                                         if expectedStatusCode == "" || expectedStatusCode == sf("%v", "404") {
                                             http.Redirect(w, r, fail_rule.mutation.(string), http.StatusTemporaryRedirect)
                                             wlog("Redirected temporarily from %s to %s due to bad response.\n", path, fail_rule.mutation.(string))
+                matchedRoute = rule.in
                                             serviced = true
                                             break
                                         }
@@ -818,6 +852,7 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
                         wlog("Could not read file %v to serve to %v.\n", new_path, remoteIp)
                     }
 
+                matchedRoute = rule.in
                     serviced = true
                     break
                 } // endif regex match path
@@ -828,14 +863,42 @@ func webRouter(w http.ResponseWriter, r *http.Request) {
         } // endfor rules
     }
 
-    if serviced {
-        return
-    }
-    http.NotFound(w, r)
-
+    // fix: count ALL requests (was only counting 404s — bug fix)
     atomic.AddInt64(&web_request_count, 1)
     if web_cache_enabled && atomic.LoadInt64(&web_request_count)%int64(web_cache_cleanup_interval) == 0 {
         cleanupWebCache()
+    }
+
+    if serviced {
+        // metrics for serviced requests
+        if enableMetrics {
+            if rec.status == 0 {
+                rec.status = http.StatusOK
+            }
+            ms := float64(time.Since(reqStart).Milliseconds())
+            statusClass := fmt.Sprintf("%dxx", rec.status/100)
+            labels := fmt.Sprintf(`{server=%q,route=%q}`, srvStr, matchedRoute)
+            statusLabels := fmt.Sprintf(`{server=%q,route=%q,status_class=%q}`, srvStr, matchedRoute, statusClass)
+            metrics.GetOrCreateCounter(`za_web_requests_total` + labels).Inc()
+            metrics.GetOrCreateCounter(`za_web_request_status_total` + statusLabels).Inc()
+            metrics.GetOrCreateSummary(`za_web_request_duration_ms` + labels).Update(ms)
+        }
+        return
+    }
+
+    // metrics for unmatched requests (404)
+    http.NotFound(w, r)
+    if enableMetrics {
+        if rec.status == 0 {
+            rec.status = http.StatusOK
+        }
+        ms := float64(time.Since(reqStart).Milliseconds())
+        statusClass := fmt.Sprintf("%dxx", rec.status/100)
+        labels := fmt.Sprintf(`{server=%q,route=%q}`, srvStr, matchedRoute)
+        statusLabels := fmt.Sprintf(`{server=%q,route=%q,status_class=%q}`, srvStr, matchedRoute, statusClass)
+        metrics.GetOrCreateCounter(`za_web_requests_total` + labels).Inc()
+        metrics.GetOrCreateCounter(`za_web_request_status_total` + statusLabels).Inc()
+        metrics.GetOrCreateSummary(`za_web_request_duration_ms` + labels).Update(ms)
     }
 
 }
