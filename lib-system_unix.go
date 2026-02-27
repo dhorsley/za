@@ -1807,3 +1807,108 @@ func getDefaultGatewayInfo() (map[string]interface{}, error) {
 
     return nil, fmt.Errorf("no default gateway found")
 }
+
+// getOpenFDs returns the number of open file descriptors for the current process
+func getOpenFDs() int {
+    fd_path := fmt.Sprintf("/proc/self/fd")
+    entries, err := os.ReadDir(fd_path)
+    if err != nil {
+        return 0
+    }
+    return len(entries)
+}
+
+// getMaxFDs returns the maximum number of file descriptors allowed for the current process
+func getMaxFDs() int {
+    var rlim syscall.Rlimit
+    err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlim)
+    if err != nil {
+        return 0
+    }
+    return int(rlim.Max)
+}
+
+// getSystemBootTime returns the system boot time as Unix timestamp
+func getSystemBootTime() int64 {
+    data, err := os.ReadFile("/proc/stat")
+    if err != nil {
+        return 0
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.HasPrefix(line, "btime ") {
+            fields := strings.Fields(line)
+            if len(fields) >= 2 {
+                btime, err := strconv.ParseInt(fields[1], 10, 64)
+                if err == nil {
+                    return btime
+                }
+            }
+        }
+    }
+    return 0
+}
+
+// getContextSwitches returns total context switches count
+func getContextSwitches() uint64 {
+    data, err := os.ReadFile("/proc/stat")
+    if err != nil {
+        return 0
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.HasPrefix(line, "ctxt ") {
+            fields := strings.Fields(line)
+            if len(fields) >= 2 {
+                ctxt, err := strconv.ParseUint(fields[1], 10, 64)
+                if err == nil {
+                    return ctxt
+                }
+            }
+        }
+    }
+    return 0
+}
+
+// getInterrupts returns total interrupts count
+func getInterrupts() uint64 {
+    data, err := os.ReadFile("/proc/stat")
+    if err != nil {
+        return 0
+    }
+
+    lines := strings.Split(string(data), "\n")
+    for _, line := range lines {
+        if strings.HasPrefix(line, "intr ") {
+            fields := strings.Fields(line)
+            if len(fields) >= 2 {
+                intr, err := strconv.ParseUint(fields[1], 10, 64)
+                if err == nil {
+                    return intr
+                }
+            }
+        }
+    }
+    return 0
+}
+
+// getSystemFileDescriptorStats returns file descriptor allocation stats
+func getSystemFileDescriptorStats() (allocated, maximum uint64) {
+    data, err := os.ReadFile("/proc/sys/fs/file-nr")
+    if err != nil {
+        return 0, 0
+    }
+
+    fields := strings.Fields(string(data))
+    if len(fields) >= 3 {
+        if a, err := strconv.ParseUint(fields[0], 10, 64); err == nil {
+            allocated = a
+        }
+        if m, err := strconv.ParseUint(fields[2], 10, 64); err == nil {
+            maximum = m
+        }
+    }
+    return allocated, maximum
+}

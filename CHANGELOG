@@ -109,20 +109,22 @@ language changes
 ----------------
 
   * (experimental) added prometheus exporter: -M port or ZA_PROMETHEUS=port to invoke at startup.
-    - draft version
-    - no authentication or other protections in place yet
-    - traffic served from 0.0.0.0:port/metrics
     - uses the VictoriaMetrics exporter implementation
-    - exports:
-        - system load, memory usage, swap usage, cpu time, thread and goroutine counts, function concurrency counts
-        - build information, FFI library, callback and function counts (still basic)
-        - eval() and exec() call counts/error rates
-        - shell command execution metrics
-        - exception counts (basic)
-        - logging system stats (messages by level, queue depths, drops)
-        - web request metrics (when web_serve() active)
-          - request counts, latencies, status code distribution
-        - profiling phase timings (when -P profiling active)
+    - SECURITY: IP-based access control via ZA_PROMETHEUS_CIDR env var (comma-separated CIDR list)
+      - if ZA_PROMETHEUS_CIDR not set: all requests blocked (403 Forbidden) - secure by default
+      - dual-stack auto-expansion: 127.0.0.1/32 → also allows ::1/128; 0.0.0.0/0 → also allows ::/0
+      - example: ZA_PROMETHEUS_CIDR="127.0.0.1/32,10.0.0.0/8" permits localhost and private subnet
+      - malformed entries logged as warnings; remaining valid CIDRs still apply
+    - exports 50+ metrics across 7 categories:
+        - Go Runtime: heap alloc/sys/idle/released, GC stats, mallocs/frees, sys bytes, CPU fraction
+        - Process: uptime, start time, open/max file descriptors, I/O bytes (read/write)
+        - System: load average, memory/swap usage, CPU count, boot time, context switches, interrupts, disk/network I/O
+        - Web Requests: total count, active in-flight, status distribution (4xx/5xx), latency, method/route/server labels
+        - Web Body Sizes: request/response body bytes with server/method/route labels
+        - Build Info: version, commit hash, build timestamp, architecture, branch
+        - Application: FFI lib/function counts, eval/exec call counts, shell command metrics, exception counts, logging stats
+    - Startup logs show effective allowlist: "[za] metrics server on port 9091: allowing: 0.0.0.0/0, ::/0"
+    - Rejected requests logged: "[za] metrics: rejected [::1]:54321"
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
 
