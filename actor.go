@@ -25,6 +25,8 @@ import (
     "sync/atomic"
     "time"
     "unsafe"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 var debugger = &Debugger{
@@ -685,6 +687,12 @@ var atlock = &sync.Mutex{}           // console cursor positioning
 //  errorChain tracks the full call stack (with caller/line info) for error reporting only.
 var errorChain []chainInfo
 
+var (
+    exceptionThrowCount     int64
+    exceptionCaughtCount    int64
+    exceptionUnhandledCount int64
+)
+
 // Stack frame structure for automated stack traces
 type stackFrame struct {
     function       string
@@ -1155,6 +1163,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // error handler
     defer func() {
         if r := recover(); r != nil {
+            atomic.AddInt64(&exceptionThrowCount, 1)
+            if enableMetrics {
+                metrics.GetOrCreateCounter(`za_exceptions_thrown_total`).Inc()
+            }
             // fall back to shell command?
             if interactive && !parser.hard_fault && !parser.std_call && permit_cmd_fallback {
                 cmd := basecode[source_base][parser.pc].Original
@@ -1345,6 +1357,11 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
                         panic(r)
                     }
                     setEcho(true)
+                }
+                // Increment unhandled exception counter
+                atomic.AddInt64(&exceptionUnhandledCount, 1)
+                if enableMetrics {
+                    metrics.GetOrCreateCounter(`za_exceptions_unhandled_total`).Inc()
                 }
                 finish(false, ERR_EVAL)
             }
@@ -7885,6 +7902,10 @@ tco_reentry:
                         if matched {
                             // This catch block matches - set the err variable and continue executing catch body
                             atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 1)
+                            atomic.AddInt64(&exceptionCaughtCount, 1)
+                            if enableMetrics {
+                                metrics.GetOrCreateCounter(`za_exceptions_caught_total`).Inc()
+                            }
 
                             // Create err variable with exception information
                             errVar := map[string]any{
@@ -7923,6 +7944,10 @@ tco_reentry:
                     if catchExcPtr != nil {
                         // This catch-all block matches any exception
                         atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 1)
+                        atomic.AddInt64(&exceptionCaughtCount, 1)
+                        if enableMetrics {
+                            metrics.GetOrCreateCounter(`za_exceptions_caught_total`).Inc()
+                        }
 
                         // Create err variable with exception information
                         errVar := map[string]any{

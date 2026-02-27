@@ -13,7 +13,10 @@ import (
     "strconv"
     "strings"
     "sync"
+    "time"
     "unsafe"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 // CType represents C data types that can be mapped to Za types
@@ -861,7 +864,25 @@ func RegisterCSymbol(symbol *CSymbol) {
 }
 
 // CallCFunction executes a C function via FFI using dlsym
-func CallCFunction(ctx context.Context, library string, functionName string, args []any) (any, []string) {
+func CallCFunction(ctx context.Context, library string, functionName string, args []any) (result any, notes []string) {
+    var start time.Time
+    if enableMetrics {
+        start = time.Now()
+    }
+
+    defer func() {
+        if !enableMetrics {
+            return
+        }
+        ms := float64(time.Since(start).Milliseconds())
+        labels := fmt.Sprintf(`{library=%q,function=%q}`, library, functionName)
+        metrics.GetOrCreateCounter(`za_ffi_calls_total` + labels).Inc()
+        if len(notes) > 0 {
+            metrics.GetOrCreateCounter(`za_ffi_errors_total` + labels).Inc()
+        }
+        metrics.GetOrCreateSummary(`za_ffi_duration_ms` + labels).Update(ms)
+    }()
+
     lib, exists := loadedCLibraries[library]
     if !exists {
         return nil, []string{fmt.Sprintf("[ERROR: C library '%s' not loaded]", library)}
@@ -881,7 +902,8 @@ func CallCFunction(ctx context.Context, library string, functionName string, arg
     }
 
     // Delegate to platform-specific implementation
-    return callCFunctionPlatform(ctx, lib, functionName, args)
+    result, notes = callCFunctionPlatform(ctx, lib, functionName, args)
+    return
 }
 
 // GetCLibrarySymbols returns all symbols from a loaded C library

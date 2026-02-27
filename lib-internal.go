@@ -18,10 +18,19 @@ import (
     "strings"
     str "strings"
     "sync/atomic"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 var execMode bool // used by report() for errors
 var execFs uint32 // used by report() for errors
+
+var (
+    evalCallCount  int64
+    evalErrorCount int64
+    execCallCount  int64
+    execErrorCount int64
+)
 
 const (
     _AT_NULL             = 0
@@ -1017,6 +1026,20 @@ func buildInternalLib() {
             return nil, err
         }
 
+        atomic.AddInt64(&evalCallCount, 1)
+        if enableMetrics {
+            metrics.GetOrCreateCounter(`za_eval_calls_total`).Inc()
+        }
+
+        defer func() {
+            if err != nil {
+                atomic.AddInt64(&evalErrorCount, 1)
+                if enableMetrics {
+                    metrics.GetOrCreateCounter(`za_eval_errors_total`).Inc()
+                }
+            }
+        }()
+
         if !permit_eval {
             panic(fmt.Errorf("eval() not permitted!"))
         }
@@ -1030,11 +1053,26 @@ func buildInternalLib() {
         calllock.RUnlock()
 
         // pf("-- [eval] ns %s fs %s q:|%s|\n",ns,evalfs,args[0].(string))
-        return ev(p, evalfs, args[0].(string))
+        ret, err = ev(p, evalfs, args[0].(string))
+        return
     }
 
     slhelp["exec"] = LibHelp{in: "string", out: "return_values", action: "execute code in [#i1]string[#i0]."}
     stdlib["exec"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+
+        atomic.AddInt64(&execCallCount, 1)
+        if enableMetrics {
+            metrics.GetOrCreateCounter(`za_exec_calls_total`).Inc()
+        }
+
+        defer func() {
+            if err != nil {
+                atomic.AddInt64(&execErrorCount, 1)
+                if enableMetrics {
+                    metrics.GetOrCreateCounter(`za_exec_errors_total`).Inc()
+                }
+            }
+        }()
 
         if !permit_eval {
             panic(fmt.Errorf("exec() not permitted!"))
