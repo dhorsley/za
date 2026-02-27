@@ -1,0 +1,16 @@
+
+You should install the various dashboard files from this directory in an appropriate
+location in your grafana installation after all of the components have been plumbed in.
+
+You will need a running prometheus and grafana instance and to invoke your za application with an appropriate CIDR list with metrics enabled.
+
+E.g.:
+
+  ZA_PROMETHEUS_CIDR="0.0.0.0/0" ZA_PROMETHEUS=9091 za script_name
+
+  # script_name:eg/web for example
+  # ZA_PROMETHEUS enables the exporter and sets the port number to serve the exports from, i.e. 0.0.0.0:9091 in the example above.
+  # you should also provide a more restrictive CIDR for your prometheus server if possible.
+
+
+
