@@ -2180,3 +2180,15 @@ type PDH_FMT_COUNTERVALUE struct {
     AnsiValue   [1024]byte
     WideValue   [1024]uint16
 }
+
+// getOpenFDs returns the number of open file descriptors for the current process
+// Windows doesn't have the same concept as Unix file descriptors
+func getOpenFDs() int {
+    return 0
+}
+
+// getMaxFDs returns the maximum number of file descriptors allowed for the current process
+// Windows doesn't have the same concept as Unix file descriptors
+func getMaxFDs() int {
+    return 0
+}

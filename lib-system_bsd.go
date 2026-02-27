@@ -1985,3 +1985,23 @@ func getProcessArgs(pid int32) (string, error) {
     // Join all arguments with spaces
     return strings.Join(args, " "), nil
 }
+
+// getOpenFDs returns the number of open file descriptors for the current process
+func getOpenFDs() int {
+    var rlim syscall.Rlimit
+    // Try to get FDs count via procfs-like approach for BSD
+    // For now, return 0 as a conservative estimate
+    // BSD systems don't have /proc/self/fd like Linux
+    _ = rlim
+    return 0
+}
+
+// getMaxFDs returns the maximum number of file descriptors allowed for the current process
+func getMaxFDs() int {
+    var rlim syscall.Rlimit
+    err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlim)
+    if err != nil {
+        return 0
+    }
+    return int(rlim.Max)
+}

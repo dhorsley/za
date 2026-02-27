@@ -9,6 +9,7 @@ import (
     "errors"
     "fmt"
     "html"
+    "io"
     "io/ioutil"
     "log"
     "math/rand"
@@ -79,11 +80,13 @@ var web_cache_max_memory = 100 // MB
 
 var web_gzip_enabled = true
 var web_request_count int64
+var web_active_requests int32
 
-// webResponseRecorder wraps http.ResponseWriter to capture the final HTTP status code.
+// webResponseRecorder wraps http.ResponseWriter to capture the final HTTP status code and response size.
 type webResponseRecorder struct {
     http.ResponseWriter
-    status int
+    status       int
+    responseSize int64
 }
 
 func (r *webResponseRecorder) WriteHeader(code int) {
@@ -95,7 +98,25 @@ func (r *webResponseRecorder) Write(b []byte) (int, error) {
     if r.status == 0 {
         r.status = http.StatusOK
     }
-    return r.ResponseWriter.Write(b)
+    n, err := r.ResponseWriter.Write(b)
+    r.responseSize += int64(n)
+    return n, err
+}
+
+// requestBodyCounter wraps io.ReadCloser to count bytes read from request body
+type requestBodyCounter struct {
+    inner io.ReadCloser
+    count int64
+}
+
+func (r *requestBodyCounter) Read(p []byte) (int, error) {
+    n, err := r.inner.Read(p)
+    r.count += int64(n)
+    return n, err
+}
+
+func (r *requestBodyCounter) Close() error {
+    return r.inner.Close()
 }
 
 // HELPER FUNCTIONS /////////////////////////////////////////////////////////////////////////////
@@ -404,21 +425,48 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
 
     rec := &webResponseRecorder{ResponseWriter: origW}
     w := http.ResponseWriter(rec)
-    var reqStart time.Time
-    matchedRoute := "<unmatched>"
-    if enableMetrics {
-        reqStart = time.Now()
-    }
+    var srvStr string
+    var matchedRoute string
+    method := r.Method
+    reqStart := time.Now()
+
+    // Wrap request body to count bytes
+    bodyCounter := &requestBodyCounter{inner: r.Body}
+    r.Body = bodyCounter
 
     evalfs, _ := r.Context().Value("evalfs").(uint32)
+
+    // Increment active request counter
+    atomic.AddInt32(&web_active_requests, 1)
+
+    // Register defer to record metrics for all request paths
+    defer func() {
+        // Decrement active request counter
+        atomic.AddInt32(&web_active_requests, -1)
+
+        if !enableMetrics {
+            return
+        }
+        status := rec.status
+        if status == 0 {
+            status = http.StatusOK
+        }
+        ms := float64(time.Since(reqStart).Milliseconds())
+        statusClass := fmt.Sprintf("%dxx", status/100)
+        labels := fmt.Sprintf(`{server=%q,method=%q,route=%q}`, srvStr, method, matchedRoute)
+        statusLabels := fmt.Sprintf(`{server=%q,method=%q,route=%q,status_class=%q}`, srvStr, method, matchedRoute, statusClass)
+        metrics.GetOrCreateCounter(`za_web_requests_total` + labels).Inc()
+        metrics.GetOrCreateCounter(`za_web_request_status_total` + statusLabels).Inc()
+        metrics.GetOrCreateSummary(`za_web_request_duration_ms` + labels).Update(ms)
+        metrics.GetOrCreateSummary(`za_web_request_body_size_bytes` + labels).Update(float64(bodyCounter.count))
+        metrics.GetOrCreateSummary(`za_web_response_body_size_bytes` + labels).Update(float64(rec.responseSize))
+    }()
 
     // we do not log by default
     // if globalvar log_web is true, then log to web_log_file (global)
 
     // we also throw out some debug info too when enabled. this should not be the default!
     // it really slows down request processing.
-
-    method := r.Method     // get, put, etc
     purl := r.URL          // provided url
     header := r.Header     // map[string][]string
     host := r.Host         // string from either Header or URL : this appears to include the port number on it
@@ -428,7 +476,6 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
     if scheme == "" {
         scheme = "http"
     }
-    _ = method
     _ = header
 
     var use_gzip = web_gzip_enabled && str.Contains(r.Header.Get("Accept-Encoding"), "gzip")
@@ -437,7 +484,8 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
     }
 
     srvAddr := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
-    srvStr := srvAddr.String()
+    srvStr = srvAddr.String()
+    matchedRoute = "<unmatched>"
 
     localSplitAt := str.IndexByte(srvStr, ':')
     localPort := srvStr[localSplitAt+1:]
@@ -783,6 +831,7 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                 var re = regexp.MustCompile(rule.in)
 
                 if re.MatchString(path) {
+                    matchedRoute = rule.in
                     // wlog("Attempting to serve %s\n",path)
                     if rule.in != "" && rule.mutation.(string) != "" {
                         // provided with a regex rewrite
@@ -818,7 +867,6 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                                         if expectedStatusCode == "" || expectedStatusCode == sf("%v", "404") {
                                             http.Redirect(w, r, fail_rule.mutation.(string), http.StatusTemporaryRedirect)
                                             wlog("Redirected temporarily from %s to %s due to bad response.\n", path, fail_rule.mutation.(string))
-                matchedRoute = rule.in
                                             serviced = true
                                             break
                                         }
@@ -852,7 +900,6 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                         wlog("Could not read file %v to serve to %v.\n", new_path, remoteIp)
                     }
 
-                matchedRoute = rule.in
                     serviced = true
                     break
                 } // endif regex match path
@@ -870,36 +917,11 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
     }
 
     if serviced {
-        // metrics for serviced requests
-        if enableMetrics {
-            if rec.status == 0 {
-                rec.status = http.StatusOK
-            }
-            ms := float64(time.Since(reqStart).Milliseconds())
-            statusClass := fmt.Sprintf("%dxx", rec.status/100)
-            labels := fmt.Sprintf(`{server=%q,route=%q}`, srvStr, matchedRoute)
-            statusLabels := fmt.Sprintf(`{server=%q,route=%q,status_class=%q}`, srvStr, matchedRoute, statusClass)
-            metrics.GetOrCreateCounter(`za_web_requests_total` + labels).Inc()
-            metrics.GetOrCreateCounter(`za_web_request_status_total` + statusLabels).Inc()
-            metrics.GetOrCreateSummary(`za_web_request_duration_ms` + labels).Update(ms)
-        }
         return
     }
 
-    // metrics for unmatched requests (404)
+    // Unmatched request: 404
     http.NotFound(w, r)
-    if enableMetrics {
-        if rec.status == 0 {
-            rec.status = http.StatusOK
-        }
-        ms := float64(time.Since(reqStart).Milliseconds())
-        statusClass := fmt.Sprintf("%dxx", rec.status/100)
-        labels := fmt.Sprintf(`{server=%q,route=%q}`, srvStr, matchedRoute)
-        statusLabels := fmt.Sprintf(`{server=%q,route=%q,status_class=%q}`, srvStr, matchedRoute, statusClass)
-        metrics.GetOrCreateCounter(`za_web_requests_total` + labels).Inc()
-        metrics.GetOrCreateCounter(`za_web_request_status_total` + statusLabels).Inc()
-        metrics.GetOrCreateSummary(`za_web_request_duration_ms` + labels).Update(ms)
-    }
 
 }
 
