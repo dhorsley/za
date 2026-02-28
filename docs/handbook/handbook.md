@@ -105,6 +105,10 @@ Daniel Horsley
 49. [Test Blocks](#test-blocks)
 50. [Test Behaviours](#test-behaviours)
 
+## Part XIV - Prometheus Metrics
+51. [Metrics Server](#metrics-server)
+52. [Custom Script Metrics](#custom-script-metrics)
+
 ## Appendices
 
 A. [Appendix A - Operator Reference](#appendix-a-operator-reference)
@@ -171,6 +175,16 @@ Za is available for Linux-, BSD- and Windows-variants. The same features are ava
 across all platforms where allowed by the OS.
 
 The interpreter also has a REPL with interactive help features.
+
+Za can also start an optional Prometheus metrics exporter on a specified port using the
+`-M` flag, or by setting the `ZA_PROMETHEUS` environment variable:
+
+```bash
+za -M 9091 script.za
+ZA_PROMETHEUS=9091 za script.za
+```
+
+Access is controlled by the `ZA_PROMETHEUS_CIDR` environment variable (see Part XIV).
 
 ## 3. The REPL
 
@@ -3567,6 +3581,320 @@ Yes?
 
 ---
 
+<div style="page-break-after: always;"></div>
+
+# Part XIV - Prometheus Metrics
+
+## 51. Metrics Server
+
+Za embeds a Prometheus-compatible metrics HTTP endpoint that exports detailed runtime, system, and application-level observability data. The metrics server can be enabled per-invocation and accessed via standard Prometheus or Grafana tooling.
+
+### Enabling the Metrics Server
+
+Use the `-M` flag with a port number, or set the `ZA_PROMETHEUS` environment variable:
+
+```bash
+# Command-line flag
+za -M 9091 script.za
+
+# Environment variable
+ZA_PROMETHEUS=9091 za script.za
+
+# Both forms are equivalent
+```
+
+Once enabled, the metrics endpoint is available at `http://localhost:9091/metrics` (assuming port 9091). You can then configure Prometheus or any Prometheus-compatible scraper to poll this endpoint.
+
+### Access Control via CIDR Allowlist
+
+By default, **no incoming requests are allowed**. Access is restricted using the `ZA_PROMETHEUS_CIDR` environment variable. Specify one or more CIDR blocks as a comma-separated list:
+
+```bash
+# Allow localhost only (IPv4 loopback; IPv6 auto-expanded to ::1/128)
+ZA_PROMETHEUS_CIDR="127.0.0.1/32" za -M 9091 script.za
+
+# Allow all addresses (both IPv4 and IPv6)
+ZA_PROMETHEUS_CIDR="0.0.0.0/0" za -M 9091 script.za
+
+# Allow multiple subnets
+ZA_PROMETHEUS_CIDR="127.0.0.1/32,192.168.1.0/24,10.0.0.0/8" za -M 9091 script.za
+```
+
+**Dual-stack behaviour:** IPv4 localhost (`127.0.0.1/32`) and all-routes (`0.0.0.0/0`) are automatically expanded to their IPv6 equivalents (`::1/128` and `::/0` respectively). Other IPv4 CIDR blocks are not auto-expanded; if you need to allow IPv6 clients on arbitrary subnets, specify those explicitly:
+
+```bash
+# Allow 192.168.x.x IPv4 + fe80::/10 IPv6 link-local
+ZA_PROMETHEUS_CIDR="192.168.0.0/16,fe80::/10" za -M 9091 script.za
+```
+
+Invalid CIDR entries are logged as warnings and skipped; valid entries still apply.
+
+### Built-in Metrics
+
+The metrics server automatically exports 50+ built-in metrics across the following categories:
+
+#### Go Runtime Metrics (`za_runtime_*`)
+
+Statistics from the Go runtime memory allocator and garbage collector:
+
+- `za_runtime_heap_alloc_bytes` — bytes allocated by the heap
+- `za_runtime_heap_sys_bytes` — total bytes reserved by heap
+- `za_runtime_heap_idle_bytes` — bytes in idle heap spans
+- `za_runtime_heap_inuse_bytes` — bytes currently in use
+- `za_runtime_heap_released_bytes` — bytes released to OS
+- `za_runtime_heap_objects` — number of allocated objects
+- `za_runtime_sys_bytes` — total bytes obtained from OS
+- `za_runtime_next_gc_bytes` — bytes of heap allocations triggering GC
+- `za_runtime_gc_cpu_fraction` — fraction of CPU spent in GC (0–1)
+- `za_runtime_mallocs_total` — total allocations
+- `za_runtime_frees_total` — total deallocations
+- `za_runtime_gc_cycles_total` — total GC cycles
+- `za_runtime_gc_pause_last_ns` — duration of last GC pause (nanoseconds)
+- `za_runtime_gc_pause_total_ns` — total time spent in GC pauses
+
+#### Process Metrics (`za_process_*`)
+
+Observability of the Za interpreter process itself:
+
+- `za_process_start_time_seconds` — Unix timestamp when process started
+- `za_process_uptime_seconds` — elapsed time since process start
+- `za_process_open_fds` — number of open file descriptors
+- `za_process_max_fds` — maximum allowed file descriptors (ulimit)
+- `za_process_io_bytes_total{direction="read"}` — total bytes read from disk
+- `za_process_io_bytes_total{direction="write"}` — total bytes written to disk
+
+#### System Metrics (`za_system_*`)
+
+Host-level system state and activity:
+
+- `za_system_load_average{period="1m"}`, `{period="5m"}`, `{period="15m"}` — load average
+- `za_system_memory_total_bytes` — total RAM
+- `za_system_memory_used_bytes` — RAM in use
+- `za_system_memory_available_bytes` — available RAM
+- `za_system_swap_total_bytes` — total swap space
+- `za_system_swap_used_bytes` — swap in use
+- `za_system_cpu_count` — number of CPU cores
+- `za_system_boot_time_seconds` — Unix timestamp of last boot
+- `za_system_context_switches_total` — total context switches
+- `za_system_interrupts_total` — total hardware interrupts
+- `za_system_filefd_allocated` — allocated file descriptors
+- `za_system_filefd_maximum` — max file descriptors allowed
+- `za_system_network_bytes_total{device, direction}` — bytes sent/received per interface
+- `za_system_network_packets_total{device, direction}` — packets sent/received per interface
+- `za_system_network_errors_total{device, direction}` — network errors per interface
+- `za_system_network_dropped_total{device, direction}` — dropped packets per interface
+- `za_system_disk_bytes_total{device, direction}` — bytes read/written per disk
+- `za_system_disk_ops_total{device, direction}` — operations per disk
+- `za_system_disk_time_ms{device, direction}` — time spent in I/O per disk
+- `za_system_disk_usage_bytes{mount_point}` — used bytes per mount point
+- `za_system_disk_usage_percent{mount_point}` — usage percentage per mount point
+
+#### Web Request Metrics (`za_web_*`)
+
+HTTP request/response tracking for the embedded web server:
+
+- `za_web_requests_total{server, method, route}` — total requests
+- `za_web_active_requests{server}` — currently in-flight requests
+- `za_web_request_status_total{server, method, route, status_class}` — requests by status class (1xx, 2xx, 3xx, 4xx, 5xx)
+- `za_web_request_duration_ms{server, method, route}` — histogram of request latency (milliseconds)
+- `za_web_request_body_size_bytes{server, method, route}` — histogram of request body size
+- `za_web_response_body_size_bytes{server, method, route}` — histogram of response body size
+
+#### Build Info (`za_build_*`)
+
+Static metadata about the Za interpreter:
+
+- `za_build_info{version, commit, timestamp, arch, os, branch}` — version and build details (label-based)
+
+#### Application Metrics (`za_app_*`)
+
+Internal interpreter activity:
+
+- `za_app_ffi_libs_loaded` — C libraries loaded via FFI
+- `za_app_ffi_functions_loaded` — C functions loaded via FFI
+- `za_app_eval_calls_total` — total `eval()` calls
+- `za_app_exec_calls_total` — total `exec()` calls
+- `za_app_shell_commands_total` — total shell command executions
+- `za_app_exceptions_total` — total exceptions thrown
+- `za_app_log_entries_total{level}` — log entries by severity
+
+### Scraping with Prometheus
+
+Once the metrics server is running, configure Prometheus (or Grafana) to scrape the endpoint:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: 'za'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:9091']
+```
+
+Reload Prometheus to begin collecting metrics. Use PromQL to query, alert, and visualize:
+
+```
+# Example queries
+rate(za_web_requests_total[1m])                    # Request rate
+za_process_uptime_seconds                          # Za process uptime
+sum(za_system_memory_used_bytes) / 1e9             # Memory in GB
+histogram_quantile(0.95, za_web_request_duration_ms)  # 95th percentile latency
+```
+
+---
+
+## 52. Custom Script Metrics
+
+When the metrics server is enabled (via `-M` or `ZA_PROMETHEUS`), Za scripts can register and update their own Prometheus metrics using the `metric_*` stdlib functions. This allows applications to expose domain-specific observability data alongside the built-in metrics.
+
+### Metric Types
+
+Three metric types are supported, matching Prometheus conventions:
+
+- **Counter**: Monotonically increasing value (e.g., total requests processed). Use `metric_inc()` and `metric_add()` to update.
+- **Gauge**: Arbitrary numeric value that can increase or decrease (e.g., queue depth). Use `metric_set()` to update.
+- **Summary**: Recorded observations with automatic percentile tracking (e.g., request latency). Use `metric_observe()` to update.
+
+### Function Overview
+
+All `metric_*` functions return `bool`: `true` on success, `false` when metrics are not enabled, the metric is not registered, the metric type is wrong, or a duplicate name is provided.
+
+#### Metric Naming and Labels
+
+Prometheus metric names follow the pattern `namespace_subsystem_name{label1="value1", label2="value2"}`. Za metric names must be valid Prometheus identifiers (alphanumerics and underscores). You may embed labels directly in the metric name for static labelling:
+
+```za
+# Valid metric names with embedded labels
+metric_register("app_requests_total{endpoint=\"/api\"}", "counter")
+metric_register("app_cache_hit_ratio{cache=\"redis\"}", "gauge")
+```
+
+### Function Reference
+
+### metric_enabled() -> bool
+
+Returns `true` if the metrics server is enabled (via `-M` flag or `ZA_PROMETHEUS` env var), `false` otherwise. Use this to conditionally execute metric-recording code:
+
+```za
+if metric_enabled()
+    metric_register("app_requests_total", "counter")
+endif
+```
+
+### metric_register(name, type) -> bool
+
+Registers a new metric. `name` must be a valid Prometheus identifier; `type` is one of `"counter"`, `"gauge"`, or `"summary"`. Returns `false` if metrics are disabled, the name is a duplicate, or the type is invalid:
+
+```za
+metric_register("app_jobs_processed", "counter")
+metric_register("app_queue_depth", "gauge")
+metric_register("app_job_duration_ms", "summary")
+```
+
+### metric_deregister(name) -> bool
+
+Removes a previously registered metric. Returns `false` if metrics are disabled or the metric does not exist:
+
+```za
+metric_deregister("app_jobs_processed")
+```
+
+### metric_inc(name) -> bool
+
+Increments a counter by 1. Returns `false` if metrics are disabled, the metric does not exist, or the metric is not a counter:
+
+```za
+# Process a job
+metric_inc("app_jobs_processed")
+```
+
+### metric_add(name, n) -> bool
+
+Adds a value to a counter. Returns `false` if metrics are disabled, the metric does not exist, or the metric is not a counter:
+
+```za
+# Record batch processing
+metric_add("app_jobs_processed", 5)
+```
+
+### metric_set(name, value) -> bool
+
+Sets a gauge to an exact value. Returns `false` if metrics are disabled, the metric does not exist, or the metric is not a gauge:
+
+```za
+# Update queue depth
+metric_set("app_queue_depth", 12)
+```
+
+### metric_observe(name, value) -> bool
+
+Records an observation (value) in a summary metric. Returns `false` if metrics are disabled, the metric does not exist, or the metric is not a summary:
+
+```za
+# Record request latency
+elapsed = epoch_nano_time() - start
+metric_observe("app_request_latency_ns", elapsed)
+```
+
+### Worked Example
+
+Here is a complete script demonstrating all three metric types:
+
+```za
+# Initialize metrics (safe to call unconditionally)
+metric_register("app_jobs_processed", "counter")
+metric_register("app_queue_depth", "gauge")
+metric_register("app_job_duration_ns", "summary")
+
+# Simulate job processing loop
+queue = [1, 2, 3, 4, 5]
+foreach job in queue
+    start_ns = epoch_nano_time()
+
+    # Simulate work
+    job_result = job * 2
+
+    # Increment counter for each job
+    metric_inc("app_jobs_processed")
+
+    # Record observation
+    elapsed = epoch_nano_time() - start_ns
+    metric_observe("app_job_duration_ns", elapsed)
+
+    println "Processed job {=job}: {=job_result}"
+endfor
+
+# Update gauge with final queue state
+metric_set("app_queue_depth", 0)
+
+# Query enabled state (for conditional metrics)
+if metric_enabled()
+    println "Metrics enabled; visit http://localhost:9091/metrics to inspect"
+endif
+```
+
+When run with `za -M 9091 script.za`, the custom metrics become available at `http://localhost:9091/metrics`:
+
+```
+# HELP app_jobs_processed Total jobs processed
+# TYPE app_jobs_processed counter
+app_jobs_processed 5
+
+# HELP app_queue_depth Current queue depth
+# TYPE app_queue_depth gauge
+app_queue_depth 0
+
+# HELP app_job_duration_ns Job processing duration in milliseconds
+# TYPE app_job_duration_ns summary
+app_job_duration_ns{quantile="0.5"} 50
+app_job_duration_ns{quantile="0.9"} 70
+app_job_duration_ns{quantile="0.99"} 110
+app_job_duration_ns_sum 321
+app_job_duration_ns_count 5
+```
+
+---
+
 # Appendix A — Operator reference
 
 - Arithmetic: `+ - * / % **`
@@ -3920,6 +4248,24 @@ abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot, e, floor, i
 - e
 - deg2rad
 - transpose
+
+
+## metrics
+
+**Functions (7):**
+
+
+metric_add, metric_deregister, metric_enabled, metric_inc, metric_observe, metric_register, metric_set
+
+
+**Commonly used (from examples/tests):**
+
+
+- metric_enabled
+- metric_register
+- metric_inc
+- metric_set
+- metric_observe
 
 
 ## network

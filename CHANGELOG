@@ -125,6 +125,18 @@ language changes
         - Application: FFI lib/function counts, eval/exec call counts, shell command metrics, exception counts, logging stats
     - Startup logs show effective allowlist: "[za] metrics server on port 9091: allowing: 0.0.0.0/0, ::/0"
     - Rejected requests logged: "[za] metrics: rejected [::1]:54321"
+    - Added stdlib library for custom script-defined metrics (when metrics server enabled with -M or ZA_PROMETHEUS):
+        - metric_enabled() - returns bool indicating if metrics server is running
+        - metric_register(name, type) - registers custom metric (type: "counter", "gauge", or "summary")
+        - metric_deregister(name) - removes custom metric from registry
+        - metric_inc(name) - increments counter by 1
+        - metric_add(name, n) - adds n to counter
+        - metric_set(name, value) - sets gauge to floating-point value
+        - metric_observe(name, value) - records observation in summary metric
+        - all functions return bool: true on success, false if metrics disabled, wrong type, or metric not found
+        - supports metrics with embedded labels: e.g., `app_requests_total{endpoint="/api"}`
+        - thread-safe: protected by mutex
+        - gauges implemented with atomic float64 bit operations
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
 
