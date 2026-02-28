@@ -916,9 +916,7 @@ func registerFFIInventory() {
         return float64(len(loadedCLibraries))
     })
     metrics.NewGauge(`za_ffi_active_callbacks`, func() float64 {
-        callbackMutex.RLock()
-        defer callbackMutex.RUnlock()
-        return float64(len(callbackHandles))
+        return float64(getActiveCallbackCount())
     })
 }
 

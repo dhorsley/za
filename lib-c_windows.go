@@ -10,6 +10,7 @@
 package main
 
 import (
+    "context"
     "fmt"
     "path/filepath"
     "strings"
@@ -44,7 +45,7 @@ func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrar
 }
 
 // callCFunctionPlatform attempts to call a C function with given arguments
-func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any, []string) {
+func callCFunctionPlatform(ctx context.Context, lib *CLibrary, functionName string, args []any) (any, []string) {
     return nil, []string{"FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms."}
 }
 

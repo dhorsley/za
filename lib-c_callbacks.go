@@ -1142,3 +1142,10 @@ func getTrampolineForSignature(sig string) (unsafe.Pointer, error) {
     return nil, fmt.Errorf("all callbacks use libffi closures for consistency and safety")
 }
 
+// getActiveCallbackCount returns the number of currently active callbacks
+func getActiveCallbackCount() int {
+    callbackMutex.RLock()
+    defer callbackMutex.RUnlock()
+    return len(callbackHandles)
+}
+
