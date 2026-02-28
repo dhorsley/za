@@ -6,6 +6,7 @@ import (
     "context"
     "fmt"
     "log"
+    "math"
     "net"
     "net/http"
     "os"
@@ -22,6 +23,27 @@ var (
     metricsServer *http.Server
     enableMetrics bool
     metricsAllowCIDRs []*net.IPNet  // nil slice = no CIDRs configured = block all
+)
+
+// User metric registry for custom metrics exposed via stdlib
+type userMetricKind int
+
+const (
+    userMetricCounter userMetricKind = iota
+    userMetricGauge
+    userMetricSummary
+)
+
+type userMetric struct {
+    kind    userMetricKind
+    counter *metrics.Counter  // counter type
+    summary *metrics.Summary  // summary type
+    gauge   int64             // atomic float64 bits (math.Float64bits) for gauge type
+}
+
+var (
+    userMetricsMu sync.Mutex
+    userMetrics   = make(map[string]*userMetric)
 )
 
 // startMetricsServer initializes and starts the Prometheus metrics HTTP server.
@@ -1004,4 +1026,225 @@ func registerLoggingGauges() {
     metrics.NewGauge(`za_log_drops_total`, func() float64 {
         return float64(atomic.LoadInt64(&logDropCount))
     })
+}
+
+// ============================================================================
+// USER METRIC MANAGEMENT
+// ============================================================================
+
+// userMetricRegister registers a new user-defined metric.
+// Returns true on success, false if already registered or on error.
+func userMetricRegister(name, kind string) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    var k userMetricKind
+    switch kind {
+    case "counter":
+        k = userMetricCounter
+    case "gauge":
+        k = userMetricGauge
+    case "summary":
+        k = userMetricSummary
+    default:
+        return false
+    }
+
+    userMetricsMu.Lock()
+    defer userMetricsMu.Unlock()
+
+    if _, exists := userMetrics[name]; exists {
+        return false // already registered
+    }
+
+    entry := &userMetric{kind: k}
+
+    switch k {
+    case userMetricCounter:
+        entry.counter = metrics.GetOrCreateCounter(name)
+    case userMetricGauge:
+        entry.gauge = 0
+        metrics.NewGauge(name, func() float64 {
+            return math.Float64frombits(uint64(atomic.LoadInt64(&entry.gauge)))
+        })
+    case userMetricSummary:
+        entry.summary = metrics.GetOrCreateSummary(name)
+    }
+
+    userMetrics[name] = entry
+    return true
+}
+
+// userMetricDeregister deregisters and removes a user-defined metric.
+// Returns true on success, false if not found.
+func userMetricDeregister(name string) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    userMetricsMu.Lock()
+    defer userMetricsMu.Unlock()
+
+    if _, exists := userMetrics[name]; !exists {
+        return false
+    }
+
+    delete(userMetrics, name)
+    metrics.UnregisterMetric(name)
+    return true
+}
+
+// userMetricInc increments a counter metric by 1.
+// Returns false if metric not found or wrong type.
+func userMetricInc(name string) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    userMetricsMu.Lock()
+    entry, exists := userMetrics[name]
+    userMetricsMu.Unlock()
+
+    if !exists || entry.kind != userMetricCounter {
+        return false
+    }
+
+    entry.counter.Inc()
+    return true
+}
+
+// userMetricAdd adds n to a counter metric.
+// Returns false if metric not found or wrong type.
+func userMetricAdd(name string, n int) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    userMetricsMu.Lock()
+    entry, exists := userMetrics[name]
+    userMetricsMu.Unlock()
+
+    if !exists || entry.kind != userMetricCounter {
+        return false
+    }
+
+    entry.counter.Add(n)
+    return true
+}
+
+// userMetricSet sets a gauge metric to a value.
+// Returns false if metric not found or wrong type.
+func userMetricSet(name string, value float64) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    userMetricsMu.Lock()
+    entry, exists := userMetrics[name]
+    userMetricsMu.Unlock()
+
+    if !exists || entry.kind != userMetricGauge {
+        return false
+    }
+
+    bits := math.Float64bits(value)
+    atomic.StoreInt64(&entry.gauge, int64(bits))
+    return true
+}
+
+// userMetricObserve records an observation in a summary metric.
+// Returns false if metric not found or wrong type.
+func userMetricObserve(name string, value float64) bool {
+    if !enableMetrics {
+        return false
+    }
+
+    userMetricsMu.Lock()
+    entry, exists := userMetrics[name]
+    userMetricsMu.Unlock()
+
+    if !exists || entry.kind != userMetricSummary {
+        return false
+    }
+
+    entry.summary.Update(value)
+    return true
+}
+
+// buildMetricsLib registers the metrics stdlib functions.
+func buildMetricsLib() {
+    features["metrics"] = Feature{version: 1, category: "metrics"}
+    categories["metrics"] = []string{
+        "metric_enabled",
+        "metric_register",
+        "metric_deregister",
+        "metric_inc",
+        "metric_add",
+        "metric_set",
+        "metric_observe",
+    }
+
+    slhelp["metric_enabled"] = LibHelp{in: "", out: "bool", action: "Returns true if the metrics server is enabled (started with -M or ZA_PROMETHEUS env var)."}
+    stdlib["metric_enabled"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        return enableMetrics, nil
+    }
+
+    slhelp["metric_register"] = LibHelp{in: "name,type", out: "bool", action: "Register a custom metric with type 'counter', 'gauge', or 'summary'. Returns false if already registered or metrics not enabled."}
+    stdlib["metric_register"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_register", args, 1, "2", "string", "string"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        kind := args[1].(string)
+        return userMetricRegister(name, kind), nil
+    }
+
+    slhelp["metric_deregister"] = LibHelp{in: "name", out: "bool", action: "Deregister and remove a custom metric. Returns false if not found or metrics not enabled."}
+    stdlib["metric_deregister"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_deregister", args, 1, "1", "string"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        return userMetricDeregister(name), nil
+    }
+
+    slhelp["metric_inc"] = LibHelp{in: "name", out: "bool", action: "Increment a counter metric by 1. Returns false if not found, wrong type, or metrics not enabled."}
+    stdlib["metric_inc"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_inc", args, 1, "1", "string"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        return userMetricInc(name), nil
+    }
+
+    slhelp["metric_add"] = LibHelp{in: "name,n", out: "bool", action: "Add n to a counter metric. Returns false if not found, wrong type, or metrics not enabled."}
+    stdlib["metric_add"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_add", args, 1, "2", "string", "int"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        n := args[1].(int)
+        return userMetricAdd(name, n), nil
+    }
+
+    slhelp["metric_set"] = LibHelp{in: "name,value", out: "bool", action: "Set a gauge metric to a value. Returns false if not found, wrong type, or metrics not enabled."}
+    stdlib["metric_set"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_set", args, 1, "2", "string", "float"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        value := args[1].(float64)
+        return userMetricSet(name, value), nil
+    }
+
+    slhelp["metric_observe"] = LibHelp{in: "name,value", out: "bool", action: "Record an observation in a summary metric. Returns false if not found, wrong type, or metrics not enabled."}
+    stdlib["metric_observe"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, _ := expect_args("metric_observe", args, 1, "2", "string", "float"); !ok {
+            return false, nil
+        }
+        name := args[0].(string)
+        value := args[1].(float64)
+        return userMetricObserve(name, value), nil
+    }
 }
