@@ -4,6 +4,7 @@
 package main
 
 import (
+    "context"
     "fmt"
     "unsafe"
 )
@@ -29,7 +30,7 @@ func DiscoverSymbolsWithAlias(libPath string, alias string, existingLib *CLibrar
 }
 
 // callCFunctionPlatform - FFI disabled in this build
-func callCFunctionPlatform(lib *CLibrary, functionName string, args []any) (any, []string) {
+func callCFunctionPlatform(ctx context.Context, lib *CLibrary, functionName string, args []any) (any, []string) {
     return nil, []string{"[ERROR: C FFI disabled in this build]"}
 }
 
@@ -234,3 +235,6 @@ func CPtrToString(ptr *CPointerValue) (string, error) {
 
 // wcharSize - Platform-detected wchar_t size (unavailable in noffi builds)
 var wcharSize uintptr = 0
+
+// getActiveCallbackCount - stub for noffi builds (FFI callbacks not available)
+func getActiveCallbackCount() int { return 0 }
