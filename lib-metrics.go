@@ -10,6 +10,7 @@ import (
     "net"
     "net/http"
     "os"
+    "regexp"
     "runtime"
     "strings"
     "sync"
@@ -46,10 +47,142 @@ var (
     userMetrics   = make(map[string]*userMetric)
 )
 
+// Default exclusion lists for metrics filtering
+var (
+    defaultNetExcludePrefixes = []string{
+        "lo", "veth", "docker", "br-", "virbr", "tun", "tap",
+        "dummy", "cali", "flannel", "cilium", "lxcbr", "vxlan",
+    }
+
+    defaultDiskExcludePrefixes = []string{
+        "loop", "ram", "fd", "sr", "scd", "zram",
+    }
+
+    // Matches partition devices: sda1, nvme0n1p1, mmcblk0p1, etc. (not whole disks)
+    partitionRegex = regexp.MustCompile(
+        `^(([hsv]|xv)d[a-z]\d+|nvme\d+n\d+p\d+|mmcblk\d+p\d+)$`,
+    )
+
+    defaultFSExcludeTypes = map[string]bool{
+        "tmpfs": true, "devtmpfs": true, "sysfs": true, "proc": true,
+        "procfs": true, "cgroup": true, "cgroup2": true, "overlay": true,
+        "squashfs": true, "devpts": true, "hugetlbfs": true, "mqueue": true,
+        "bpf": true, "tracefs": true, "debugfs": true, "securityfs": true,
+        "configfs": true, "pstore": true, "iso9660": true, "autofs": true,
+        "binfmt_misc": true, "nsfs": true, "rpc_pipefs": true,
+        "selinuxfs": true, "fusectl": true, "fuse.gvfsd-fuse": true,
+    }
+)
+
+// Runtime vars for metrics filtering (populated at startup, nil = use default exclusions)
+var (
+    metricsNetExcludePrefixes    []string
+    metricsDiskExcludePrefixes   []string
+    metricsDiskExcludePartitions bool
+    metricsFSExcludeTypes        map[string]bool
+    metricsNetIncludePatterns    []string        // non-nil → allowlist mode
+    metricsDiskIncludePatterns   []string        // non-nil → allowlist mode
+    metricsFSIncludeTypes        map[string]bool // non-nil → allowlist mode
+)
+
+// splitTrimmed splits a string on commas and trims whitespace from each part.
+func splitTrimmed(s string) []string {
+    var result []string
+    for _, part := range strings.Split(s, ",") {
+        if part = strings.TrimSpace(part); part != "" {
+            result = append(result, part)
+        }
+    }
+    return result
+}
+
+// getDefaultInterfaceIP returns the IP of the interface used for outbound traffic
+// by dialing a UDP address (no actual connection is made).
+func getDefaultInterfaceIP() string {
+    conn, err := net.Dial("udp", "8.8.8.8:80")
+    if err != nil {
+        return "0.0.0.0"
+    }
+    defer conn.Close()
+    return conn.LocalAddr().(*net.UDPAddr).IP.String()
+}
+
+// isNetExcluded returns true if a network interface should be excluded from metrics.
+// Explicit includes override exclusions.
+func isNetExcluded(iface string) bool {
+    // Check if explicitly included (overrides exclusions)
+    if metricsNetIncludePatterns != nil {
+        for _, pat := range metricsNetIncludePatterns {
+            if iface == pat || strings.HasPrefix(iface, pat) {
+                return false  // Explicitly included, so not excluded
+            }
+        }
+    }
+    // Apply default exclusions
+    for _, prefix := range metricsNetExcludePrefixes {
+        if iface == prefix || strings.HasPrefix(iface, prefix) {
+            return true
+        }
+    }
+    return false
+}
+
+// isDiskExcluded returns true if a disk device should be excluded from metrics.
+// Explicit includes override exclusions.
+func isDiskExcluded(device string) bool {
+    // Check if explicitly included (overrides exclusions)
+    if metricsDiskIncludePatterns != nil {
+        for _, pat := range metricsDiskIncludePatterns {
+            if device == pat || strings.HasPrefix(device, pat) {
+                return false  // Explicitly included, so not excluded
+            }
+        }
+    }
+    // Apply default exclusions
+    for _, prefix := range metricsDiskExcludePrefixes {
+        if strings.HasPrefix(device, prefix) {
+            return true
+        }
+    }
+    return metricsDiskExcludePartitions && partitionRegex.MatchString(device)
+}
+
+// isFSExcluded returns true if a filesystem type should be excluded from metrics.
+// Explicit includes override exclusions.
+func isFSExcluded(fsType string) bool {
+    // Check if explicitly included (overrides exclusions)
+    if metricsFSIncludeTypes != nil && metricsFSIncludeTypes[fsType] {
+        return false  // Explicitly included, so not excluded
+    }
+    // Apply default exclusions
+    return metricsFSExcludeTypes[fsType]
+}
+
 // startMetricsServer initializes and starts the Prometheus metrics HTTP server.
 // It registers all gauge-with-callback metrics and starts listening on the specified port.
 // allowCIDRs is a comma-separated list of CIDR blocks to allow; if empty, all requests are blocked.
-func startMetricsServer(port int, allowCIDRs string) {
+// bindAddr is the address to bind to ("" → "0.0.0.0", "auto" → default interface IP, or specific IP/hostname).
+func startMetricsServer(port int, allowCIDRs string, bindAddr string) {
+    // Initialize filtering variables
+    metricsNetExcludePrefixes = defaultNetExcludePrefixes
+    if v := os.Getenv("ZA_PROMETHEUS_NET_INCLUDE"); v != "" {
+        metricsNetIncludePatterns = splitTrimmed(v)
+    }
+
+    metricsDiskExcludePrefixes = defaultDiskExcludePrefixes
+    metricsDiskExcludePartitions = true
+    if v := os.Getenv("ZA_PROMETHEUS_DISK_INCLUDE"); v != "" {
+        metricsDiskIncludePatterns = splitTrimmed(v)
+    }
+
+    metricsFSExcludeTypes = defaultFSExcludeTypes
+    if v := os.Getenv("ZA_PROMETHEUS_FS_INCLUDE"); v != "" {
+        metricsFSIncludeTypes = make(map[string]bool)
+        for _, t := range splitTrimmed(v) {
+            metricsFSIncludeTypes[t] = true
+        }
+    }
+
     // Parse and validate CIDR allowlist
     metricsAllowCIDRs = nil  // reset
     for _, s := range strings.Split(allowCIDRs, ",") {
@@ -90,6 +223,14 @@ func startMetricsServer(port int, allowCIDRs string) {
     registerErrorChainGauge()
     registerLoggingGauges()
 
+    // Determine bind address
+    switch bindAddr {
+    case "":
+        bindAddr = "0.0.0.0"
+    case "auto":
+        bindAddr = getDefaultInterfaceIP()
+    }
+
     mux := http.NewServeMux()
     mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
         metrics.WritePrometheus(w, false)
@@ -99,19 +240,19 @@ func startMetricsServer(port int, allowCIDRs string) {
     })
 
     metricsServer = &http.Server{
-        Addr:    fmt.Sprintf("0.0.0.0:%d", port),
+        Addr:    fmt.Sprintf("%s:%d", bindAddr, port),
         Handler: metricsCIDRMiddleware(mux),
     }
 
     // Log effective configuration
     if len(metricsAllowCIDRs) == 0 {
-        log.Printf("[za] metrics server on port %d: no CIDR set — all requests blocked", port)
+        log.Printf("[za] metrics server on %s:%d: no CIDR set — all requests blocked", bindAddr, port)
     } else {
         var cidrs []string
         for _, cidr := range metricsAllowCIDRs {
             cidrs = append(cidrs, cidr.String())
         }
-        log.Printf("[za] metrics server on port %d: allowing: %s", port, strings.Join(cidrs, ", "))
+        log.Printf("[za] metrics server on %s:%d: allowing: %s", bindAddr, port, strings.Join(cidrs, ", "))
     }
 
     go func() {
@@ -514,9 +655,13 @@ var ffiDeclaredGaugesRegistered = &sync.Map{} // tracks which library aliases ha
 var networkGaugesRegistered = &sync.Map{} // tracks which network interfaces have been registered
 
 func registerNetworkGauges() {
+    const sentinel uint64 = 0xFFFFFFFFFFFFFFFF
     metrics.NewGauge(`za_system_network_bytes_total{interface="aggregated",direction="rx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) || stats.RxBytes == sentinel || stats.TxBytes == sentinel {
+                continue
+            }
             total += stats.RxBytes
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_rx_bytes", true); !exists {
@@ -525,7 +670,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_bytes_total{interface=%q,direction="rx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && s.RxBytes != sentinel && s.TxBytes != sentinel {
                                 return float64(s.RxBytes)
                             }
                         }
@@ -540,6 +685,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_bytes_total{interface="aggregated",direction="tx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) || stats.RxBytes == sentinel || stats.TxBytes == sentinel {
+                continue
+            }
             total += stats.TxBytes
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_tx_bytes", true); !exists {
@@ -548,7 +696,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_bytes_total{interface=%q,direction="tx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && s.RxBytes != sentinel && s.TxBytes != sentinel {
                                 return float64(s.TxBytes)
                             }
                         }
@@ -563,6 +711,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_packets_total{interface="aggregated",direction="rx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.RxPackets
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_rx_packets", true); !exists {
@@ -571,7 +722,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_packets_total{interface=%q,direction="rx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.RxPackets)
                             }
                         }
@@ -586,6 +737,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_packets_total{interface="aggregated",direction="tx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.TxPackets
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_tx_packets", true); !exists {
@@ -594,7 +748,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_packets_total{interface=%q,direction="tx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.TxPackets)
                             }
                         }
@@ -609,6 +763,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_errors_total{interface="aggregated",direction="rx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.RxErrors
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_rx_errors", true); !exists {
@@ -617,7 +774,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_errors_total{interface=%q,direction="rx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.RxErrors)
                             }
                         }
@@ -632,6 +789,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_errors_total{interface="aggregated",direction="tx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.TxErrors
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_tx_errors", true); !exists {
@@ -640,7 +800,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_errors_total{interface=%q,direction="tx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.TxErrors)
                             }
                         }
@@ -655,6 +815,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_dropped_total{interface="aggregated",direction="rx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.RxDropped
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_rx_dropped", true); !exists {
@@ -663,7 +826,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_dropped_total{interface=%q,direction="rx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.RxDropped)
                             }
                         }
@@ -678,6 +841,9 @@ func registerNetworkGauges() {
     metrics.NewGauge(`za_system_network_dropped_total{interface="aggregated",direction="tx"}`, func() float64 {
         var total uint64
         for _, stats := range cachedNetworkIO() {
+            if isNetExcluded(stats.Interface) {
+                continue
+            }
             total += stats.TxDropped
             // Lazy register per-interface gauges
             if _, exists := networkGaugesRegistered.LoadOrStore(stats.Interface+"_tx_dropped", true); !exists {
@@ -686,7 +852,7 @@ func registerNetworkGauges() {
                     fmt.Sprintf(`za_system_network_dropped_total{interface=%q,direction="tx"}`, iface),
                     func() float64 {
                         for _, s := range cachedNetworkIO() {
-                            if s.Interface == iface {
+                            if s.Interface == iface && !isNetExcluded(iface) {
                                 return float64(s.TxDropped)
                             }
                         }
@@ -709,6 +875,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_bytes_total{device="aggregated",direction="read"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.ReadBytes
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_read_bytes", true); !exists {
@@ -717,7 +886,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_bytes_total{device=%q,direction="read"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.ReadBytes)
                             }
                         }
@@ -732,6 +901,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_bytes_total{device="aggregated",direction="write"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.WriteBytes
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_write_bytes", true); !exists {
@@ -740,7 +912,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_bytes_total{device=%q,direction="write"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.WriteBytes)
                             }
                         }
@@ -755,6 +927,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_ops_total{device="aggregated",direction="read"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.ReadOps
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_read_ops", true); !exists {
@@ -763,7 +938,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_ops_total{device=%q,direction="read"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.ReadOps)
                             }
                         }
@@ -778,6 +953,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_ops_total{device="aggregated",direction="write"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.WriteOps
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_write_ops", true); !exists {
@@ -786,7 +964,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_ops_total{device=%q,direction="write"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.WriteOps)
                             }
                         }
@@ -801,6 +979,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_time_ms{device="aggregated",direction="read"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.ReadTime
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_read_time", true); !exists {
@@ -809,7 +990,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_time_ms{device=%q,direction="read"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.ReadTime)
                             }
                         }
@@ -824,6 +1005,9 @@ func registerDiskIOGauges() {
     metrics.NewGauge(`za_system_disk_time_ms{device="aggregated",direction="write"}`, func() float64 {
         var total uint64
         for _, stats := range cachedDiskIO() {
+            if isDiskExcluded(stats.Device) {
+                continue
+            }
             total += stats.WriteTime
             // Lazy register per-device gauges
             if _, exists := diskIOGaugesRegistered.LoadOrStore(stats.Device+"_write_time", true); !exists {
@@ -832,7 +1016,7 @@ func registerDiskIOGauges() {
                     fmt.Sprintf(`za_system_disk_time_ms{device=%q,direction="write"}`, dev),
                     func() float64 {
                         for _, s := range cachedDiskIO() {
-                            if s.Device == dev {
+                            if s.Device == dev && !isDiskExcluded(dev) {
                                 return float64(s.WriteTime)
                             }
                         }
@@ -855,6 +1039,10 @@ func registerDiskUsageGauges() {
     metrics.NewGauge(`za_system_disk_usage_bytes{mount_point="total",type="total"}`, func() float64 {
         var total uint64
         for _, usage := range cachedDiskUsage() {
+            fsType, _ := usage["fstype"].(string)
+            if isFSExcluded(fsType) {
+                continue
+            }
             if size, ok := usage["size"].(uint64); ok {
                 total += size
             } else if size, ok := usage["size"].(float64); ok {
@@ -870,10 +1058,13 @@ func registerDiskUsageGauges() {
                         func() float64 {
                             for _, u := range cachedDiskUsage() {
                                 if mp2, ok := u["mounted_path"].(string); ok && mp2 == mountPoint {
-                                    if size, ok := u["size"].(uint64); ok {
-                                        return float64(size)
-                                    } else if size, ok := u["size"].(float64); ok {
-                                        return size
+                                    fsType2, _ := u["fstype"].(string)
+                                    if !isFSExcluded(fsType2) {
+                                        if size, ok := u["size"].(uint64); ok {
+                                            return float64(size)
+                                        } else if size, ok := u["size"].(float64); ok {
+                                            return size
+                                        }
                                     }
                                 }
                             }
@@ -886,10 +1077,13 @@ func registerDiskUsageGauges() {
                         func() float64 {
                             for _, u := range cachedDiskUsage() {
                                 if mp2, ok := u["mounted_path"].(string); ok && mp2 == mountPoint {
-                                    if used, ok := u["used"].(uint64); ok {
-                                        return float64(used)
-                                    } else if used, ok := u["used"].(float64); ok {
-                                        return used
+                                    fsType2, _ := u["fstype"].(string)
+                                    if !isFSExcluded(fsType2) {
+                                        if used, ok := u["used"].(uint64); ok {
+                                            return float64(used)
+                                        } else if used, ok := u["used"].(float64); ok {
+                                            return used
+                                        }
                                     }
                                 }
                             }
@@ -902,10 +1096,13 @@ func registerDiskUsageGauges() {
                         func() float64 {
                             for _, u := range cachedDiskUsage() {
                                 if mp2, ok := u["mounted_path"].(string); ok && mp2 == mountPoint {
-                                    if avail, ok := u["available"].(uint64); ok {
-                                        return float64(avail)
-                                    } else if avail, ok := u["available"].(float64); ok {
-                                        return avail
+                                    fsType2, _ := u["fstype"].(string)
+                                    if !isFSExcluded(fsType2) {
+                                        if avail, ok := u["available"].(uint64); ok {
+                                            return float64(avail)
+                                        } else if avail, ok := u["available"].(float64); ok {
+                                            return avail
+                                        }
                                     }
                                 }
                             }
@@ -918,8 +1115,11 @@ func registerDiskUsageGauges() {
                         func() float64 {
                             for _, u := range cachedDiskUsage() {
                                 if mp2, ok := u["mounted_path"].(string); ok && mp2 == mountPoint {
-                                    if pct, ok := u["usage_percent"].(float64); ok {
-                                        return pct
+                                    fsType2, _ := u["fstype"].(string)
+                                    if !isFSExcluded(fsType2) {
+                                        if pct, ok := u["usage_percent"].(float64); ok {
+                                            return pct
+                                        }
                                     }
                                 }
                             }

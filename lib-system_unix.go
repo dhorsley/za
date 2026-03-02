@@ -1494,6 +1494,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             "available":     free,
             "usage_percent": usagePercent,
             "mounted_path":  mountPoint,
+            "fstype":        filesystem,
         }
 
         result = append(result, diskInfo)

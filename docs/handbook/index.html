@@ -3243,6 +3243,76 @@ class="sourceCode bash"><code class="sourceCode bash"><span id="cb177-1"><a href
 <span id="cb177-2"><a href="#cb177-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;192.168.0.0/16,fe80::/10&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
 <p>Invalid CIDR entries are logged as warnings and skipped; valid
 entries still apply.</p>
+<h3 id="metrics-filtering-excluding-virtualpseudo-devices">Metrics
+Filtering: Excluding Virtual/Pseudo Devices</h3>
+<p>By default, the metrics server excludes virtual network interfaces,
+disk devices, and pseudo-filesystems to reduce clutter. This is
+especially useful on systems with many containers, snaps, or loop
+devices.</p>
+<h4 id="default-exclusions">Default Exclusions</h4>
+<p><strong>Network interfaces:</strong> <code>lo</code>,
+<code>veth*</code>, <code>docker*</code>, <code>br-*</code>,
+<code>virbr*</code>, <code>tun*</code>, <code>tap*</code>,
+<code>dummy*</code>, <code>cali*</code>, <code>flannel*</code>,
+<code>cilium*</code>, <code>lxcbr*</code>, <code>vxlan*</code></p>
+<p><strong>Disk devices:</strong> <code>loop*</code>, <code>ram*</code>,
+<code>fd*</code>, <code>sr*</code>, <code>scd*</code>,
+<code>zram*</code>, and all partition devices (e.g., <code>sda1</code>,
+<code>nvme0n1p1</code>, <code>mmcblk0p1</code>)</p>
+<p><strong>Filesystems:</strong> <code>tmpfs</code>,
+<code>devtmpfs</code>, <code>sysfs</code>, <code>proc</code>,
+<code>procfs</code>, <code>cgroup</code>, <code>cgroup2</code>,
+<code>overlay</code>, <code>squashfs</code>, <code>devpts</code>,
+<code>hugetlbfs</code>, <code>mqueue</code>, <code>bpf</code>,
+<code>tracefs</code>, <code>debugfs</code>, <code>securityfs</code>,
+<code>configfs</code>, <code>pstore</code>, <code>iso9660</code>,
+<code>autofs</code>, <code>binfmt_misc</code>, <code>nsfs</code>,
+<code>rpc_pipefs</code>, <code>selinuxfs</code>, <code>fusectl</code>,
+<code>fuse.gvfsd-fuse</code></p>
+<p>Network interfaces with unreadable statistics (sentinel value
+<code>0xFFFFFFFFFFFFFFFF</code>) are automatically skipped.</p>
+<h4 id="selective-re-enabling-via-include-filters">Selective Re-enabling
+via Include Filters</h4>
+<p>If you need to monitor a normally-excluded device, use the additive
+include environment variables. These override the default exclusions for
+matching patterns:</p>
+<div class="sourceCode" id="cb178"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb178-1"><a href="#cb178-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor veth interfaces (normally excluded)</span></span>
+<span id="cb178-2"><a href="#cb178-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_NET_INCLUDE</span><span class="op">=</span><span class="st">&quot;veth,docker&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb178-3"><a href="#cb178-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb178-4"><a href="#cb178-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor loop devices (normally excluded)</span></span>
+<span id="cb178-5"><a href="#cb178-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_DISK_INCLUDE</span><span class="op">=</span><span class="st">&quot;loop,sda&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb178-6"><a href="#cb178-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb178-7"><a href="#cb178-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor tmpfs and overlay filesystems (normally excluded)</span></span>
+<span id="cb178-8"><a href="#cb178-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_FS_INCLUDE</span><span class="op">=</span><span class="st">&quot;tmpfs,overlay,ext4&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
+<p>Patterns use prefix matching (e.g., <code>veth</code> matches
+<code>veth0</code>, <code>veth1</code>, etc.) or exact match. Multiple
+patterns are comma-separated. When you set an include filter, all
+default exclusions still apply to other devices — only the matching ones
+are re-enabled.</p>
+<h3 id="configurable-bind-address">Configurable Bind Address</h3>
+<p>By default, the metrics server binds to <code>0.0.0.0</code> (all
+IPv4 interfaces). You can customize this via the
+<code>ZA_PROMETHEUS_BIND</code> environment variable:</p>
+<div class="sourceCode" id="cb179"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb179-1"><a href="#cb179-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default: bind to all interfaces</span></span>
+<span id="cb179-2"><a href="#cb179-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb179-3"><a href="#cb179-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb179-4"><a href="#cb179-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to localhost only</span></span>
+<span id="cb179-5"><a href="#cb179-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;127.0.0.1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb179-6"><a href="#cb179-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb179-7"><a href="#cb179-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to default gateway interface (auto-detected)</span></span>
+<span id="cb179-8"><a href="#cb179-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;auto&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb179-9"><a href="#cb179-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb179-10"><a href="#cb179-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to specific IPv6 address</span></span>
+<span id="cb179-11"><a href="#cb179-11" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;::1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span></code></pre></div>
+<p>When using <code>ZA_PROMETHEUS_BIND="auto"</code>, Za detects the IP
+address of the interface used for outbound traffic (e.g., the default
+gateway). This is useful for multi-homed systems where you want metrics
+accessible only via a specific network path.</p>
+<p>Startup logs show the effective bind address:</p>
+<pre><code>[za] metrics server on 192.168.1.5:9091: allowing: 192.168.1.0/24
+[za] metrics server on 127.0.0.1:9091: no CIDR set — all requests blocked</code></pre>
 <h3 id="built-in-metrics">Built-in Metrics</h3>
 <p>The metrics server automatically exports 50+ built-in metrics across
 the following categories:</p>
@@ -3380,13 +3450,13 @@ severity</li>
 <h3 id="scraping-with-prometheus">Scraping with Prometheus</h3>
 <p>Once the metrics server is running, configure Prometheus (or Grafana)
 to scrape the endpoint:</p>
-<div class="sourceCode" id="cb178"><pre
-class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb178-1"><a href="#cb178-1" aria-hidden="true" tabindex="-1"></a><span class="co"># prometheus.yml</span></span>
-<span id="cb178-2"><a href="#cb178-2" aria-hidden="true" tabindex="-1"></a><span class="fu">scrape_configs</span><span class="kw">:</span></span>
-<span id="cb178-3"><a href="#cb178-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;za&#39;</span></span>
-<span id="cb178-4"><a href="#cb178-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">metrics_path</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;/metrics&#39;</span></span>
-<span id="cb178-5"><a href="#cb178-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">static_configs</span><span class="kw">:</span></span>
-<span id="cb178-6"><a href="#cb178-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&#39;localhost:9091&#39;</span><span class="kw">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb181"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb181-1"><a href="#cb181-1" aria-hidden="true" tabindex="-1"></a><span class="co"># prometheus.yml</span></span>
+<span id="cb181-2"><a href="#cb181-2" aria-hidden="true" tabindex="-1"></a><span class="fu">scrape_configs</span><span class="kw">:</span></span>
+<span id="cb181-3"><a href="#cb181-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;za&#39;</span></span>
+<span id="cb181-4"><a href="#cb181-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">metrics_path</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;/metrics&#39;</span></span>
+<span id="cb181-5"><a href="#cb181-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">static_configs</span><span class="kw">:</span></span>
+<span id="cb181-6"><a href="#cb181-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&#39;localhost:9091&#39;</span><span class="kw">]</span></span></code></pre></div>
 <p>Reload Prometheus to begin collecting metrics. Use PromQL to query,
 alert, and visualize:</p>
 <pre><code># Example queries
@@ -4396,20 +4466,20 @@ use +gl</code></pre>
 signedness of wide char)</li>
 </ul></li>
 <li><p><strong>Enum definitions</strong> (single-line or multiline):</p>
-<div class="sourceCode" id="cb195"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb195-1"><a href="#cb195-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
-<span id="cb195-2"><a href="#cb195-2" aria-hidden="true" tabindex="-1"></a>    OK <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
-<span id="cb195-3"><a href="#cb195-3" aria-hidden="true" tabindex="-1"></a>    ERROR <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
-<span id="cb195-4"><a href="#cb195-4" aria-hidden="true" tabindex="-1"></a>    PENDING <span class="op">=</span> <span class="dv">100</span></span>
-<span id="cb195-5"><a href="#cb195-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div></li>
+<div class="sourceCode" id="cb198"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb198-1"><a href="#cb198-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
+<span id="cb198-2"><a href="#cb198-2" aria-hidden="true" tabindex="-1"></a>    OK <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb198-3"><a href="#cb198-3" aria-hidden="true" tabindex="-1"></a>    ERROR <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
+<span id="cb198-4"><a href="#cb198-4" aria-hidden="true" tabindex="-1"></a>    PENDING <span class="op">=</span> <span class="dv">100</span></span>
+<span id="cb198-5"><a href="#cb198-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div></li>
 <li><p><strong>Function signatures</strong> (auto-generates LIB
 declarations):</p>
-<div class="sourceCode" id="cb196"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb196-1"><a href="#cb196-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
-<span id="cb196-2"><a href="#cb196-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
-<span id="cb196-3"><a href="#cb196-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span>
-<span id="cb196-4"><a href="#cb196-4" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span>
-<span id="cb196-5"><a href="#cb196-5" aria-hidden="true" tabindex="-1"></a>__declspec<span class="op">(</span>dllexport<span class="op">)</span> <span class="dt">void</span> exported_function<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb199"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb199-1"><a href="#cb199-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
+<span id="cb199-2"><a href="#cb199-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
+<span id="cb199-3"><a href="#cb199-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span>
+<span id="cb199-4"><a href="#cb199-4" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span>
+<span id="cb199-5"><a href="#cb199-5" aria-hidden="true" tabindex="-1"></a>__declspec<span class="op">(</span>dllexport<span class="op">)</span> <span class="dt">void</span> exported_function<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span></code></pre></div>
 <ul>
 <li>Supports simple and pointer return types</li>
 <li>Supports multiline declarations</li>
@@ -4420,10 +4490,10 @@ conventions)</li>
 <li>Skips static inline, typedef, and private functions (_prefix)</li>
 </ul></li>
 <li><p><strong>Constants referencing earlier constants</strong>:</p>
-<div class="sourceCode" id="cb197"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb197-1"><a href="#cb197-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BASE_SIZE </span><span class="dv">1024</span></span>
-<span id="cb197-2"><a href="#cb197-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFFER_SIZE </span><span class="op">(</span><span class="pp">BASE_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">2</span><span class="op">)</span><span class="pp">      </span><span class="co">// Works! = 2048</span></span>
-<span id="cb197-3"><a href="#cb197-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#define LARGE_BUFFER </span><span class="op">(</span><span class="pp">BUFFER_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">4</span><span class="op">)</span><span class="pp">   </span><span class="co">// Works! = 8192</span></span></code></pre></div>
+<div class="sourceCode" id="cb200"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb200-1"><a href="#cb200-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BASE_SIZE </span><span class="dv">1024</span></span>
+<span id="cb200-2"><a href="#cb200-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFFER_SIZE </span><span class="op">(</span><span class="pp">BASE_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">2</span><span class="op">)</span><span class="pp">      </span><span class="co">// Works! = 2048</span></span>
+<span id="cb200-3"><a href="#cb200-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#define LARGE_BUFFER </span><span class="op">(</span><span class="pp">BUFFER_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">4</span><span class="op">)</span><span class="pp">   </span><span class="co">// Works! = 8192</span></span></code></pre></div>
 <ul>
 <li>Supports chained references (A → B → C)</li>
 <li>Limitation: Forward references not supported (constants must be
@@ -4432,10 +4502,10 @@ defined in order)</li>
 skipped)</li>
 </ul></li>
 <li><p><strong>Typedef declarations</strong>:</p>
-<div class="sourceCode" id="cb198"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb198-1"><a href="#cb198-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">uint32_t</span><span class="op">;</span></span>
-<span id="cb198-2"><a href="#cb198-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Point <span class="op">{</span> <span class="dt">int</span> x<span class="op">,</span> y<span class="op">;</span> <span class="op">}</span> Point<span class="op">;</span></span>
-<span id="cb198-3"><a href="#cb198-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> Point<span class="op">*</span> PointPtr<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb201"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb201-1"><a href="#cb201-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">uint32_t</span><span class="op">;</span></span>
+<span id="cb201-2"><a href="#cb201-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Point <span class="op">{</span> <span class="dt">int</span> x<span class="op">,</span> y<span class="op">;</span> <span class="op">}</span> Point<span class="op">;</span></span>
+<span id="cb201-3"><a href="#cb201-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> Point<span class="op">*</span> PointPtr<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>Simple type aliases</li>
 <li>Typedef chains (multi-level resolution)</li>
@@ -4449,23 +4519,23 @@ enhancement)</li>
 </ul></li>
 <li><p><strong>Preprocessor conditionals</strong> (platform-aware
 parsing):</p>
-<div class="sourceCode" id="cb199"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb199-1"><a href="#cb199-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __linux__</span></span>
-<span id="cb199-2"><a href="#cb199-2" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define BUFFER_SIZE </span><span class="dv">2048</span></span>
-<span id="cb199-3"><a href="#cb199-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> linux_only_func<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb199-4"><a href="#cb199-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
-<span id="cb199-5"><a href="#cb199-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb199-6"><a href="#cb199-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef __WINDOWS__</span></span>
-<span id="cb199-7"><a href="#cb199-7" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define UNIX_FLAG </span><span class="dv">1</span></span>
-<span id="cb199-8"><a href="#cb199-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
-<span id="cb199-9"><a href="#cb199-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb199-10"><a href="#cb199-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#if defined(__LP64__) &amp;&amp; VERSION &gt; 1</span></span>
-<span id="cb199-11"><a href="#cb199-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 64-bit</span></span>
-<span id="cb199-12"><a href="#cb199-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#elif VERSION == 1</span></span>
-<span id="cb199-13"><a href="#cb199-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">size_t</span><span class="op">;</span>   <span class="co">// 32-bit legacy</span></span>
-<span id="cb199-14"><a href="#cb199-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#else</span></span>
-<span id="cb199-15"><a href="#cb199-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">short</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 16-bit</span></span>
-<span id="cb199-16"><a href="#cb199-16" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span></code></pre></div>
+<div class="sourceCode" id="cb202"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb202-1"><a href="#cb202-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __linux__</span></span>
+<span id="cb202-2"><a href="#cb202-2" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define BUFFER_SIZE </span><span class="dv">2048</span></span>
+<span id="cb202-3"><a href="#cb202-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> linux_only_func<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb202-4"><a href="#cb202-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb202-5"><a href="#cb202-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb202-6"><a href="#cb202-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef __WINDOWS__</span></span>
+<span id="cb202-7"><a href="#cb202-7" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define UNIX_FLAG </span><span class="dv">1</span></span>
+<span id="cb202-8"><a href="#cb202-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb202-9"><a href="#cb202-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb202-10"><a href="#cb202-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#if defined(__LP64__) &amp;&amp; VERSION &gt; 1</span></span>
+<span id="cb202-11"><a href="#cb202-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 64-bit</span></span>
+<span id="cb202-12"><a href="#cb202-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#elif VERSION == 1</span></span>
+<span id="cb202-13"><a href="#cb202-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">size_t</span><span class="op">;</span>   <span class="co">// 32-bit legacy</span></span>
+<span id="cb202-14"><a href="#cb202-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#else</span></span>
+<span id="cb202-15"><a href="#cb202-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">short</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 16-bit</span></span>
+<span id="cb202-16"><a href="#cb202-16" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span></code></pre></div>
 <ul>
 <li>Supported directives: <code>#ifdef</code>, <code>#ifndef</code>,
 <code>#if</code>, <code>#elif</code>, <code>#else</code>,
@@ -4512,16 +4582,16 @@ evaluation (<code>L'x'</code>, <code>u'x'</code>, <code>U'x'</code>,
 <li><p><strong>Struct definitions</strong> (automatically registered as
 Za types):</p></li>
 </ol>
-<div class="sourceCode" id="cb200"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb200-1"><a href="#cb200-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb200-2"><a href="#cb200-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> x<span class="op">;</span></span>
-<span id="cb200-3"><a href="#cb200-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> y<span class="op">;</span></span>
-<span id="cb200-4"><a href="#cb200-4" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Point<span class="op">;</span></span>
-<span id="cb200-5"><a href="#cb200-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb200-6"><a href="#cb200-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb200-7"><a href="#cb200-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
-<span id="cb200-8"><a href="#cb200-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
-<span id="cb200-9"><a href="#cb200-9" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb203"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb203-1"><a href="#cb203-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb203-2"><a href="#cb203-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> x<span class="op">;</span></span>
+<span id="cb203-3"><a href="#cb203-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> y<span class="op">;</span></span>
+<span id="cb203-4"><a href="#cb203-4" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Point<span class="op">;</span></span>
+<span id="cb203-5"><a href="#cb203-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb203-6"><a href="#cb203-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb203-7"><a href="#cb203-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
+<span id="cb203-8"><a href="#cb203-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
+<span id="cb203-9"><a href="#cb203-9" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>C structs automatically registered in Za’s
 <code>structmaps</code></li>
@@ -4555,11 +4625,11 @@ int literal)</li>
 </ul></li>
 <li><p><strong>wchar_t support</strong> (platform-aware implicit type
 alias):</p>
-<div class="sourceCode" id="cb201"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb201-1"><a href="#cb201-1" aria-hidden="true" tabindex="-1"></a><span class="co">// C header</span></span>
-<span id="cb201-2"><a href="#cb201-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_wchar_size<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb201-3"><a href="#cb201-3" aria-hidden="true" tabindex="-1"></a><span class="dt">wchar_t</span> wchar_echo<span class="op">(</span><span class="dt">wchar_t</span> c<span class="op">);</span></span>
-<span id="cb201-4"><a href="#cb201-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> wchar_fill_array<span class="op">(</span><span class="dt">wchar_t</span> <span class="op">*</span>arr<span class="op">,</span> <span class="dt">int</span> len<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb204"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb204-1"><a href="#cb204-1" aria-hidden="true" tabindex="-1"></a><span class="co">// C header</span></span>
+<span id="cb204-2"><a href="#cb204-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_wchar_size<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb204-3"><a href="#cb204-3" aria-hidden="true" tabindex="-1"></a><span class="dt">wchar_t</span> wchar_echo<span class="op">(</span><span class="dt">wchar_t</span> c<span class="op">);</span></span>
+<span id="cb204-4"><a href="#cb204-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> wchar_fill_array<span class="op">(</span><span class="dt">wchar_t</span> <span class="op">*</span>arr<span class="op">,</span> <span class="dt">int</span> len<span class="op">);</span></span></code></pre></div>
 <pre class="za"><code># Za code - wchar_t automatically mapped
 module &quot;./libtest.so&quot; as tw auto &quot;./test.h&quot;
 use +tw
@@ -4584,9 +4654,9 @@ type</li>
 <li>Transparent to Za code - just pass/receive as integers</li>
 </ul>
 <p><strong>Compatible with typedefs:</strong></p>
-<div class="sourceCode" id="cb203"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb203-1"><a href="#cb203-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">wchar_t</span> WCHAR<span class="op">;</span></span>
-<span id="cb203-2"><a href="#cb203-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> WCHAR<span class="op">*</span> LPWSTR<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb206"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">wchar_t</span> WCHAR<span class="op">;</span></span>
+<span id="cb206-2"><a href="#cb206-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> WCHAR<span class="op">*</span> LPWSTR<span class="op">;</span></span></code></pre></div>
 <p>Already handled by existing typedef resolution (item 8 above).</p>
 <p><strong>Use cases:</strong></p>
 <ul>
@@ -4598,10 +4668,10 @@ class="sourceCode c"><code class="sourceCode c"><span id="cb203-1"><a href="#cb2
 </ul></li>
 <li><p><strong>Function pointer typedefs</strong> (v1.2.2+):</p></li>
 </ol>
-<div class="sourceCode" id="cb204"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb204-1"><a href="#cb204-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">int</span> <span class="op">(*</span>compare_t<span class="op">)(</span><span class="dt">const</span> <span class="dt">void</span><span class="op">*,</span> <span class="dt">const</span> <span class="dt">void</span><span class="op">*);</span></span>
-<span id="cb204-2"><a href="#cb204-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>callback_t<span class="op">)(</span><span class="dt">int</span> signal<span class="op">);</span></span>
-<span id="cb204-3"><a href="#cb204-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">double</span> <span class="op">(*</span>math_func_t<span class="op">)(</span><span class="dt">double</span><span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb207"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb207-1"><a href="#cb207-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">int</span> <span class="op">(*</span>compare_t<span class="op">)(</span><span class="dt">const</span> <span class="dt">void</span><span class="op">*,</span> <span class="dt">const</span> <span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb207-2"><a href="#cb207-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>callback_t<span class="op">)(</span><span class="dt">int</span> signal<span class="op">);</span></span>
+<span id="cb207-3"><a href="#cb207-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">double</span> <span class="op">(*</span>math_func_t<span class="op">)(</span><span class="dt">double</span><span class="op">);</span></span></code></pre></div>
 <ul>
 <li>Parses function pointer signatures from typedef declarations</li>
 <li>Stores signature metadata (parameter types, return type)</li>
@@ -4617,16 +4687,16 @@ parameters</li>
 <li><strong>Function pointer fields in structs and unions</strong>
 (v1.2.2+):</li>
 </ol>
-<div class="sourceCode" id="cb205"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb205-1"><a href="#cb205-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb205-2"><a href="#cb205-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>callback<span class="op">)(</span><span class="dt">void</span><span class="op">*);</span></span>
-<span id="cb205-3"><a href="#cb205-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>cleanup<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb205-4"><a href="#cb205-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Handler<span class="op">;</span></span>
-<span id="cb205-5"><a href="#cb205-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb205-6"><a href="#cb205-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">union</span> <span class="op">{</span></span>
-<span id="cb205-7"><a href="#cb205-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>compare<span class="op">)(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">int</span><span class="op">);</span></span>
-<span id="cb205-8"><a href="#cb205-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>action<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb205-9"><a href="#cb205-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> FuncUnion<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb208"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb208-1"><a href="#cb208-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb208-2"><a href="#cb208-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>callback<span class="op">)(</span><span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb208-3"><a href="#cb208-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>cleanup<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb208-4"><a href="#cb208-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Handler<span class="op">;</span></span>
+<span id="cb208-5"><a href="#cb208-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb208-6"><a href="#cb208-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">union</span> <span class="op">{</span></span>
+<span id="cb208-7"><a href="#cb208-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>compare<span class="op">)(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb208-8"><a href="#cb208-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>action<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb208-9"><a href="#cb208-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> FuncUnion<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>Parses function pointer field declarations like
 <code>int (*callback)(void*)</code></li>
@@ -4806,10 +4876,10 @@ macros to correctly identify the actual return types.</p>
 </tbody>
 </table>
 <p><strong>Problem without macro expansion:</strong></p>
-<div class="sourceCode" id="cb211"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb211-1"><a href="#cb211-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
-<span id="cb211-2"><a href="#cb211-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
-<span id="cb211-3"><a href="#cb211-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb214"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb214-1"><a href="#cb214-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
+<span id="cb214-2"><a href="#cb214-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
+<span id="cb214-3"><a href="#cb214-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
 <p>Without expansion, Za would see this as:</p>
 <pre><code>gdImageCreateTrueColor(...) -&gt; void    # WRONG: No visible return type!</code></pre>
 <p><strong>Solution with AUTO (macro expansion enabled):</strong></p>
@@ -7909,8 +7979,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb335"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb335-1"><a href="#cb335-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb338"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb338-1"><a href="#cb338-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
