@@ -137,6 +137,20 @@ language changes
         - supports metrics with embedded labels: e.g., `app_requests_total{endpoint="/api"}`
         - thread-safe: protected by mutex
         - gauges implemented with atomic float64 bit operations
+    - Default exclusion filters for virtual network interfaces, disk devices, and virtual filesystems:
+        - Network: lo, veth*, docker*, br-*, virbr*, tun*, tap*, dummy*, cali*, flannel*, cilium*, lxcbr*, vxlan*
+        - Disk I/O: loop*, ram*, fd*, sr*, scd*, zram* + partition devices (sda1, nvme0n1p1, mmcblk0p1, etc.)
+        - Filesystems: tmpfs, devtmpfs, sysfs, proc, cgroup, cgroup2, overlay, squashfs, and 17 other pseudo/kernel types
+        - Sentinel value detection: unreadable /sys/class/net/*/statistics/ files (0xFFFFFFFFFFFFFFFF) are skipped
+    - Additive include filters for selective re-enabling of filtered metrics:
+        - ZA_PROMETHEUS_NET_INCLUDE=iface1,iface2 - explicitly include these network interfaces (overrides default exclusions)
+        - ZA_PROMETHEUS_DISK_INCLUDE=sda,sdb - explicitly include these disk devices (overrides default exclusions)
+        - ZA_PROMETHEUS_FS_INCLUDE=ext4,xfs - explicitly include these filesystem types (overrides default exclusions)
+    - Configurable bind address via ZA_PROMETHEUS_BIND:
+        - "" (empty/unset): bind to 0.0.0.0 - all IPv4 interfaces (default)
+        - "auto": bind to default gateway interface IP (auto-detected via UDP routing)
+        - "127.0.0.1" or specific IP/hostname: bind to specific address
+        - startup logs show effective bind address: "[za] metrics server on 192.168.1.5:9091: allowing: ..."
 
   * (experimental) added C Foreign Function Interface (FFI) for dynamic library integration
 

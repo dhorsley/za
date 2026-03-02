@@ -3629,6 +3629,64 @@ ZA_PROMETHEUS_CIDR="192.168.0.0/16,fe80::/10" za -M 9091 script.za
 
 Invalid CIDR entries are logged as warnings and skipped; valid entries still apply.
 
+### Metrics Filtering: Excluding Virtual/Pseudo Devices
+
+By default, the metrics server excludes virtual network interfaces, disk devices, and pseudo-filesystems to reduce clutter. This is especially useful on systems with many containers, snaps, or loop devices.
+
+#### Default Exclusions
+
+**Network interfaces:** `lo`, `veth*`, `docker*`, `br-*`, `virbr*`, `tun*`, `tap*`, `dummy*`, `cali*`, `flannel*`, `cilium*`, `lxcbr*`, `vxlan*`
+
+**Disk devices:** `loop*`, `ram*`, `fd*`, `sr*`, `scd*`, `zram*`, and all partition devices (e.g., `sda1`, `nvme0n1p1`, `mmcblk0p1`)
+
+**Filesystems:** `tmpfs`, `devtmpfs`, `sysfs`, `proc`, `procfs`, `cgroup`, `cgroup2`, `overlay`, `squashfs`, `devpts`, `hugetlbfs`, `mqueue`, `bpf`, `tracefs`, `debugfs`, `securityfs`, `configfs`, `pstore`, `iso9660`, `autofs`, `binfmt_misc`, `nsfs`, `rpc_pipefs`, `selinuxfs`, `fusectl`, `fuse.gvfsd-fuse`
+
+Network interfaces with unreadable statistics (sentinel value `0xFFFFFFFFFFFFFFFF`) are automatically skipped.
+
+#### Selective Re-enabling via Include Filters
+
+If you need to monitor a normally-excluded device, use the additive include environment variables. These override the default exclusions for matching patterns:
+
+```bash
+# Monitor veth interfaces (normally excluded)
+ZA_PROMETHEUS_NET_INCLUDE="veth,docker" za -M 9091 script.za
+
+# Monitor loop devices (normally excluded)
+ZA_PROMETHEUS_DISK_INCLUDE="loop,sda" za -M 9091 script.za
+
+# Monitor tmpfs and overlay filesystems (normally excluded)
+ZA_PROMETHEUS_FS_INCLUDE="tmpfs,overlay,ext4" za -M 9091 script.za
+```
+
+Patterns use prefix matching (e.g., `veth` matches `veth0`, `veth1`, etc.) or exact match. Multiple patterns are comma-separated. When you set an include filter, all default exclusions still apply to other devices — only the matching ones are re-enabled.
+
+### Configurable Bind Address
+
+By default, the metrics server binds to `0.0.0.0` (all IPv4 interfaces). You can customize this via the `ZA_PROMETHEUS_BIND` environment variable:
+
+```bash
+# Default: bind to all interfaces
+ZA_PROMETHEUS=9091 za script.za
+
+# Bind to localhost only
+ZA_PROMETHEUS_BIND="127.0.0.1" ZA_PROMETHEUS=9091 za script.za
+
+# Bind to default gateway interface (auto-detected)
+ZA_PROMETHEUS_BIND="auto" ZA_PROMETHEUS=9091 za script.za
+
+# Bind to specific IPv6 address
+ZA_PROMETHEUS_BIND="::1" ZA_PROMETHEUS=9091 za script.za
+```
+
+When using `ZA_PROMETHEUS_BIND="auto"`, Za detects the IP address of the interface used for outbound traffic (e.g., the default gateway). This is useful for multi-homed systems where you want metrics accessible only via a specific network path.
+
+Startup logs show the effective bind address:
+
+```
+[za] metrics server on 192.168.1.5:9091: allowing: 192.168.1.0/24
+[za] metrics server on 127.0.0.1:9091: no CIDR set — all requests blocked
+```
+
 ### Built-in Metrics
 
 The metrics server automatically exports 50+ built-in metrics across the following categories:

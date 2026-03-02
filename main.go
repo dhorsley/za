@@ -962,7 +962,8 @@ func main() {
     if metricsPort > 0 {
         enableMetrics = true
         metricsAllowCIDRs := os.Getenv("ZA_PROMETHEUS_CIDR")
-        startMetricsServer(metricsPort, metricsAllowCIDRs)
+        metricsBindAddr := os.Getenv("ZA_PROMETHEUS_BIND")
+        startMetricsServer(metricsPort, metricsAllowCIDRs, metricsBindAddr)
     }
 
     // test mode
