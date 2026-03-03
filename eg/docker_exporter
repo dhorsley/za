@@ -1,0 +1,361 @@
+#!/usr/bin/za
+
+# Docker container Prometheus metrics exporter
+# Reads from cgroups and /proc directly for full metric fidelity
+# Usage: ZA_PROMETHEUS=9091 ZA_PROMETHEUS_CIDR="127.0.0.1/32" za docker_exporter
+
+INTERVAL = 15000
+
+# Detect cgroup version once at startup
+v2_test = ${test -f /sys/fs/cgroup/cgroup.controllers && echo "1" || echo "0"}
+cgroup_v2 = trim(v2_test, 0) == "1"
+if cgroup_v2
+    println "[container-metrics] cgroup v2 detected"
+else
+    println "[container-metrics] cgroup v1 detected"
+endif
+
+var registered []
+var seen_metrics map
+
+# Register metric, set value, and track for deregistration
+def reg_set(name, kind, value)
+    # Only register once (metric_register resetting on re-register)
+    if key(ref seen_metrics, name)
+        metric_set(name, value.as_float)
+    else
+        metric_register(name, kind)
+        metric_set(name, value.as_float)
+        @seen_metrics[name] = true
+        @registered = append(registered, name)
+    endif
+end
+
+# Get cgroup paths for a container PID
+def get_cgroup_paths(pid)
+    var paths map
+    if cgroup_v2
+        base = ""
+        foreach line in $in "/proc/{pid}/cgroup"
+            parts = line.split(":")
+            continue if len(parts) < 3
+            if parts[0] == "0" and parts[1] == ""
+                base = "/sys/fs/cgroup" + trim(parts[2], 0)
+                break
+            endif
+        endfor
+        paths["cpu"]    = base
+        paths["memory"] = base
+        paths["blkio"]  = base
+        paths["pids"]   = base
+    else
+        foreach line in $in "/proc/{pid}/cgroup"
+            parts = line.split(":")
+            continue if len(parts) < 3
+            sub  = parts[1]
+            rel  = trim(parts[2], 0)
+            base = "/sys/fs/cgroup/" + sub + rel
+            case sub
+            has "cpu"    paths["cpu"]    = base
+            is "memory"  paths["memory"] = base
+            is "blkio"   paths["blkio"]  = base
+            is "pids"    paths["pids"]   = base
+            endcase
+        endfor
+    endif
+    return paths
+end
+
+# Parse whitespace-separated "key value" lines into a map
+def parse_kv(content)
+    var result map
+    foreach line in content
+        parts = line.split(" ")
+        on len(parts) >= 2 do result[parts[0]] = parts[1]
+    endfor
+    return result
+end
+
+def collect_cpu(name, cpu_base, start_ts)
+    on cpu_base == "" do return
+    if cgroup_v2
+        stat        = parse_kv($in "{cpu_base}/cpu.stat")
+        user_secs   = stat["user_usec"].as_float   / 1000000.0
+        system_secs = stat["system_usec"].as_float / 1000000.0
+        total_secs  = stat["usage_usec"].as_float  / 1000000.0
+        thr_periods = stat["nr_throttled"].as_int
+        thr_secs    = stat["throttled_usec"].as_float / 1000000.0
+
+        max_line = trim($in "{cpu_base}/cpu.max", 0)
+        parts = max_line.split(" ")
+        quota = -1
+        period = 100000
+        if len(parts) >= 2 and parts[0] != "max"
+            quota = parts[0].as_int
+            period = parts[1].as_int
+        endif
+    else
+        acct        = parse_kv($in "{cpu_base}/cpuacct.stat")
+        cstat       = parse_kv($in "{cpu_base}/cpu.stat")
+        hz          = clktck().as_float
+        user_secs   = acct["user"].as_float   / hz
+        system_secs = acct["system"].as_float / hz
+        raw_total   = $in "{cpu_base}/cpuacct.usage"
+        total_secs  = trim(raw_total, 0).as_float / 1000000000.0
+        thr_periods = cstat["nr_throttled"].as_int
+        thr_secs    = cstat["throttled_time"].as_float / 1000000000.0
+
+        quota_raw = trim($in "{cpu_base}/cpu.cfs_quota_us", 0)
+        period_raw = trim($in "{cpu_base}/cpu.cfs_period_us", 0)
+        quota = -1
+        period = 100000
+        if quota_raw != ""
+            quota = quota_raw.as_int
+        endif
+        if period_raw != ""
+            period = period_raw.as_int
+        endif
+    endif
+    reg_set(`container_cpu_usage_seconds_total{name="{name}",mode="user"}`,   "gauge", user_secs)
+    reg_set(`container_cpu_usage_seconds_total{name="{name}",mode="system"}`, "gauge", system_secs)
+    reg_set(`container_cpu_usage_seconds_total{name="{name}",mode="total"}`,  "gauge", total_secs)
+    reg_set(`container_cpu_throttled_periods_total{name="{name}"}`,           "gauge", thr_periods)
+    reg_set(`container_cpu_throttled_seconds_total{name="{name}"}`,           "gauge", thr_secs)
+
+    # CPU quota and period metrics
+    if quota > 0
+        reg_set(`container_cpu_quota_microseconds{name="{name}"}`, "gauge", quota)
+        reg_set(`container_cpu_period_microseconds{name="{name}"}`, "gauge", period)
+
+        # Reserved CPU percentage: (quota / period) * 100
+        reserved_percent = (quota.as_float / period.as_float) * 100.0
+        reg_set(`container_cpu_reserved_percent{name="{name}"}`, "gauge", reserved_percent)
+
+        # Usage as percentage of reserved: (usage_secs / (quota_secs / period_secs)) * 100
+        quota_seconds = quota.as_float / 1000000.0
+        usage_percent_of_reserved = (total_secs / quota_seconds) * 100.0
+        reg_set(`container_cpu_usage_percent_of_reserved{name="{name}"}`, "gauge", usage_percent_of_reserved)
+    endif
+
+    # Current CPU usage percentage (of wall-clock time)
+    uptime_seconds = epoch_time() - start_ts
+    if uptime_seconds > 0
+        usage_percent = (total_secs / uptime_seconds) * 100.0
+        reg_set(`container_cpu_usage_percent{name="{name}"}`, "gauge", usage_percent)
+    endif
+end
+
+def collect_memory(name, memory_base)
+    on memory_base == "" do return
+    if cgroup_v2
+        usage     = trim($in "{memory_base}/memory.current", 0).as_int
+        limit_raw = trim($in "{memory_base}/memory.max", 0)
+        limit     = 0
+        on limit_raw != "max" do limit = limit_raw.as_int
+        swap      = trim($in "{memory_base}/memory.swap.current", 0).as_int
+        stat      = parse_kv($in "{memory_base}/memory.stat")
+        rss       = stat["anon"].as_int
+        cache     = stat["file"].as_int
+        inactive  = stat["inactive_file"].as_int
+        oom       = 0
+        foreach line in $in "{memory_base}/memory.events"
+            parts = line.split(" ")
+            if len(parts) >= 2 and parts[0] == "oom_kill"
+                oom = parts[1].as_int
+            endif
+        endfor
+    else
+        usage  = trim($in "{memory_base}/memory.usage_in_bytes", 0).as_int
+        limit  = trim($in "{memory_base}/memory.limit_in_bytes", 0).as_int
+        memsw  = trim($in "{memory_base}/memory.memsw.usage_in_bytes", 0).as_int
+        swap   = memsw - usage
+        on swap < 0 do swap = 0
+        stat   = parse_kv($in "{memory_base}/memory.stat")
+        rss    = stat["rss"].as_int
+        cache  = stat["cache"].as_int
+        inactive = stat["inactive_file"].as_int
+        oom    = 0
+        foreach line in $in "{memory_base}/memory.oom_control"
+            parts = line.split(" ")
+            if len(parts) >= 2 and parts[0] == "oom_kill"
+                oom = parts[1].as_int
+            endif
+        endfor
+    endif
+    working_set = usage - inactive
+    on working_set < 0 do working_set = 0
+    reg_set(`container_memory_usage_bytes{name="{name}"}`,       "gauge", usage)
+    reg_set(`container_memory_limit_bytes{name="{name}"}`,       "gauge", limit)
+    reg_set(`container_memory_rss_bytes{name="{name}"}`,         "gauge", rss)
+    reg_set(`container_memory_cache_bytes{name="{name}"}`,       "gauge", cache)
+    reg_set(`container_memory_working_set_bytes{name="{name}"}`, "gauge", working_set)
+    reg_set(`container_memory_swap_bytes{name="{name}"}`,        "gauge", swap)
+    reg_set(`container_memory_oom_events_total{name="{name}"}`,  "gauge", oom)
+end
+
+def collect_blkio(name, blkio_base)
+    on blkio_base == "" do return
+    if cgroup_v2
+        foreach line in $in "{blkio_base}/io.stat"
+            line = trim(line, 0)
+            continue if line == ""
+            parts = line.split(" ")
+            continue if len(parts) < 2
+            dev = parts[0]
+            continue if not (dev ~ "^\\d+:\\d+")
+            rbytes = 0
+            wbytes = 0
+            rios   = 0
+            wios   = 0
+            fi = 1
+            while fi < len(parts)
+                kv = parts[fi].split("=")
+                if len(kv) == 2
+                    case kv[0]
+                    is "rbytes"
+                        rbytes = kv[1].as_int
+                    is "wbytes"
+                        wbytes = kv[1].as_int
+                    is "rios"
+                        rios = kv[1].as_int
+                    is "wios"
+                        wios = kv[1].as_int
+                    endcase
+                endif
+                fi++
+            endwhile
+            reg_set(`container_blkio_bytes_total{name="{name}",device="{dev}",operation="read"}`,  "gauge", rbytes)
+            reg_set(`container_blkio_bytes_total{name="{name}",device="{dev}",operation="write"}`, "gauge", wbytes)
+            reg_set(`container_blkio_ops_total{name="{name}",device="{dev}",operation="read"}`,    "gauge", rios)
+            reg_set(`container_blkio_ops_total{name="{name}",device="{dev}",operation="write"}`,   "gauge", wios)
+        endfor
+    else
+        foreach line in $in "{blkio_base}/blkio.throttle.io_service_bytes"
+            line = trim(line, 0)
+            continue if line == ""
+            parts = line.split(" ")
+            continue if len(parts) < 3
+            dev = parts[0]
+            continue if not (dev ~ "^\\d+:\\d+")
+            op  = parts[1].lower
+            val = parts[2].as_int
+            reg_set(`container_blkio_bytes_total{name="{name}",device="{dev}",operation="{op}"}`, "gauge", val)
+        endfor
+        foreach line in $in "{blkio_base}/blkio.throttle.io_serviced"
+            line = trim(line, 0)
+            continue if line == ""
+            parts = line.split(" ")
+            continue if len(parts) < 3
+            dev = parts[0]
+            continue if not (dev ~ "^\\d+:\\d+")
+            op  = parts[1].lower
+            val = parts[2].as_int
+            reg_set(`container_blkio_ops_total{name="{name}",device="{dev}",operation="{op}"}`, "gauge", val)
+        endfor
+    endif
+end
+
+def collect_network(name, pid)
+    line_num = 0
+    foreach line in $in "/proc/{pid}/net/dev"
+        line_num++
+        continue if line_num <= 2
+        line = trim(line, 0)
+        continue if line == ""
+        line.replace(":", " ").fields
+        iface = F[1]
+        continue if iface == "lo"
+        rx_bytes   = F[2].as_int
+        rx_packets = F[3].as_int
+        rx_errs    = F[4].as_int
+        rx_drop    = F[5].as_int
+        tx_bytes   = F[10].as_int
+        tx_packets = F[11].as_int
+        tx_errs    = F[12].as_int
+        tx_drop    = F[13].as_int
+        reg_set(`container_network_bytes_total{name="{name}",interface="{iface}",direction="rx"}`,   "gauge", rx_bytes)
+        reg_set(`container_network_bytes_total{name="{name}",interface="{iface}",direction="tx"}`,   "gauge", tx_bytes)
+        reg_set(`container_network_packets_total{name="{name}",interface="{iface}",direction="rx"}`, "gauge", rx_packets)
+        reg_set(`container_network_packets_total{name="{name}",interface="{iface}",direction="tx"}`, "gauge", tx_packets)
+        reg_set(`container_network_errors_total{name="{name}",interface="{iface}",direction="rx"}`,  "gauge", rx_errs)
+        reg_set(`container_network_errors_total{name="{name}",interface="{iface}",direction="tx"}`,  "gauge", tx_errs)
+        reg_set(`container_network_dropped_total{name="{name}",interface="{iface}",direction="rx"}`, "gauge", rx_drop)
+        reg_set(`container_network_dropped_total{name="{name}",interface="{iface}",direction="tx"}`, "gauge", tx_drop)
+    endfor
+end
+
+def collect_pids(name, pids_base)
+    on pids_base == "" do return
+    current = trim($in "{pids_base}/pids.current", 0).as_int
+    max_raw = trim($in "{pids_base}/pids.max", 0)
+    max_val = 0
+    on max_raw != "max" do max_val = max_raw.as_int
+    reg_set(`container_pids_current{name="{name}"}`, "gauge", current)
+    reg_set(`container_pids_limit{name="{name}"}`,   "gauge", max_val)
+end
+
+metric_register("containers_running_total", "gauge")
+metric_register("containers_total",         "gauge")
+metric_register("scrape_duration_ms",       "gauge")
+
+while true
+    scrape_start = epoch_nano_time()
+
+    foreach m in registered
+        metric_deregister(m)
+    endfor
+    registered = []
+    seen_metrics -= seen_metrics
+
+    fmt = "{{.Name}}\t{{.Id}}\t{{.State.Pid}}\t{{.State.StartedAt}}\t{{.Config.Image}}\t{{.RestartCount}}\t{{.State.Running}}"
+    inspect_raw = ${docker ps -aq | xargs -r docker inspect --format "{fmt}" 2>/dev/null}
+
+    running_count = 0
+    total_count   = 0
+
+    foreach line in inspect_raw
+        continue if trim(line, 0) == ""
+        parts = line.split("\t")
+        continue if len(parts) < 7
+
+        name     = trim(parts[0], 0).replace("/", "")
+        id       = parts[1]
+        pid      = parts[2].as_int
+        started  = parts[3]
+        image    = parts[4]
+        restarts = parts[5].as_int
+        running  = parts[6] ~ "true"
+
+        start_ts = epoch_time(started)
+
+        total_count++
+        on running do running_count++
+
+        paths = get_cgroup_paths(pid)
+
+        reg_set(`container_info{name="{name}",id="{id}",image="{image}"}`, "gauge", 1)
+        reg_set(`container_start_time_seconds{name="{name}"}`, "gauge", start_ts)
+
+        running_val = 0
+        on running do running_val = 1
+        reg_set(`container_running{name="{name}"}`,       "gauge", running_val)
+        reg_set(`container_restart_count{name="{name}"}`, "gauge", restarts)
+
+        on not running do continue
+
+        collect_cpu(name, paths["cpu"], start_ts)
+        collect_memory(name, paths["memory"])
+        collect_blkio(name, paths["blkio"])
+        collect_network(name, pid)
+        collect_pids(name, paths["pids"])
+    endfor
+
+    metric_set("containers_running_total", running_count.as_float)
+    metric_set("containers_total",         total_count.as_float)
+
+    scrape_end = epoch_nano_time()
+    scrape_duration = (scrape_end - scrape_start) / 1000000.0
+    metric_set("scrape_duration_ms", scrape_duration)
+
+    pause INTERVAL
+endwhile
