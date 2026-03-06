@@ -58,6 +58,8 @@ logging json enable
 #  PORT is the TCP port to listen on.
 #  HOST is the IP or DNS name to use as, effectively, a virtual host address of the site.
 
+web_gzip_enable(false)
+
 println "Starting server process [{HOST}:{PORT}]"
 uid = web_serve_start(HOME_PATH,PORT,HOST)
 println "Started server process [{uid}]"
