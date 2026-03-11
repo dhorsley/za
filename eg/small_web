@@ -32,7 +32,7 @@ define cleanup(s)
     exit 0
 end
 
-web_gzip_enable(false)
+web_gzip_enable(true)
 
 sid = web_serve_start(HOME_PATH,PORT,HOST)
 
