@@ -479,9 +479,11 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
     _ = header
 
     var use_gzip = web_gzip_enabled && str.Contains(r.Header.Get("Accept-Encoding"), "gzip")
-    if use_gzip {
+        /* @note: removed, as this sets the header before the status code is written. writeResponse() already sets this:
+        if use_gzip {
         w.Header().Set("Content-Encoding", "gzip")
     }
+        */
 
     srvAddr := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
     srvStr = srvAddr.String()
@@ -895,7 +897,8 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                     // serve
                     if err == nil {
                         wlog("%s served %s to %s.\n", host, new_path, remoteIp)
-                        w.Write([]byte(s))
+                                                // w.Write([]byte(s) // @note: removed, bypasses compression
+                                                writeResponse(w, []byte(s), use_gzip)
                     } else {
                         wlog("Could not read file %v to serve to %v.\n", new_path, remoteIp)
                     }
