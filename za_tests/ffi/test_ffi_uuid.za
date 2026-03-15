@@ -1,0 +1,114 @@
+#!/usr/bin/env za
+
+module "libuuid.so.1" as uuid auto "/usr/include/uuid/uuid.h"
+use +uuid
+
+# Explicit function declarations for output parameters
+lib uuid::uuid_generate(uu:pointer) -> void
+lib uuid::uuid_unparse_lower(uu:pointer, out:pointer) -> void
+lib uuid::uuid_parse(in:string, uu:pointer) -> int
+lib uuid::uuid_clear(uu:pointer) -> void
+lib uuid::uuid_is_null(uu:pointer) -> int
+lib uuid::uuid_copy(dst:pointer, src:pointer) -> void
+lib uuid::uuid_compare(uu1:pointer, uu2:pointer) -> int
+lib uuid::uuid_generate_random(uu:pointer) -> void
+lib uuid::uuid_type(uu:pointer) -> int
+lib uuid::uuid_variant(uu:pointer) -> int
+
+# Helper: read null-terminated C string from buffer
+def read_cstring(buf, maxlen)
+    s = ""
+    i = 0
+    while i < maxlen
+        b = c_get_byte(buf, i)
+        if b == 0
+            break
+        endif
+        s = s + char(b)
+        i = i + 1
+    endwhile
+    return s
+end
+
+def run_uuid_tests()
+    println "[#4]=== UUID FFI Tests ==="
+
+    # Allocate persistent UUID buffers for all tests
+    uu1 = c_alloc(16)
+    str1 = c_alloc(37)
+    s1 = ""
+
+    # Test 1: Generate and unparse
+    println "[#6]1. Generate and unparse UUID"
+    uuid_generate(uu1)
+    uuid_unparse_lower(uu1, str1)
+    s1 = read_cstring(str1, 37)
+
+    assert len(s1) == 36, "UUID string length should be 36"
+    assert substr(s1, 8, 1) == "-", "UUID dash at pos 8"
+    assert substr(s1, 13, 1) == "-", "UUID dash at pos 13"
+    assert substr(s1, 18, 1) == "-", "UUID dash at pos 18"
+    assert substr(s1, 23, 1) == "-", "UUID dash at pos 23"
+
+    println "[#2]  ✓ Generated UUID"
+    println "        ", s1
+
+    # Test 2: Round-trip parse/unparse
+    println "[#6]2. Round-trip parse and unparse"
+    uu2 = c_alloc(16)
+    str2 = c_alloc(37)
+    rc = uuid_parse(s1, uu2)
+    assert rc == 0, "uuid_parse should return 0"
+
+    uuid_unparse_lower(uu2, str2)
+    s2 = read_cstring(str2, 37)
+
+    assert s1 == s2, "Parsed and unparsed UUID should match"
+    println "[#2]  ✓ Round-trip successful"
+    println "        Original:", s1
+    println "        Reparsed:", s2
+    c_free(uu2)
+    c_free(str2)
+
+    # Test 3: Nil UUID
+    println "[#6]3. Nil UUID (zero UUID)"
+    uu3 = c_alloc(16)
+    uuid_clear(uu3)
+    is_null = uuid_is_null(uu3)
+    assert is_null != 0, "Cleared UUID should be null"
+    println "[#2]  ✓ Nil UUID correctly identified"
+    c_free(uu3)
+
+    # Test 4: Copy and compare
+    println "[#6]4. Copy and compare UUIDs"
+    uu4 = c_alloc(16)
+    uu5 = c_alloc(16)
+    uuid_copy(uu4, uu1)
+    cmp = uuid_compare(uu1, uu4)
+    assert cmp == 0, "Copied UUID should be equal"
+    println "[#2]  ✓ UUID copy successful"
+
+    uuid_generate_random(uu5)
+    cmp2 = uuid_compare(uu1, uu5)
+    assert cmp2 != 0, "Different UUIDs should not be equal"
+    println "[#2]  ✓ Different UUIDs correctly identified"
+    c_free(uu4)
+    c_free(uu5)
+
+    # Test 5: UUID type
+    println "[#6]5. UUID type detection"
+    uu6 = c_alloc(16)
+    uuid_generate_random(uu6)
+    t = uuid_type(uu6)
+    assert t == UUID_TYPE_DCE_RANDOM, "Random UUID should be type 4"
+    println "[#2]  ✓ UUID type correctly identified as DCE_RANDOM"
+    c_free(uu6)
+
+    # Cleanup main buffers
+    c_free(uu1)
+    c_free(str1)
+
+    println "[#4]=== UUID Tests Complete ==="
+end
+
+run_uuid_tests()
