@@ -1,0 +1,94 @@
+#!/usr/bin/env za
+
+module "libblkid.so.1" as blkid auto "/usr/include/blkid/blkid.h"
+use +blkid
+
+# Explicit function declarations
+lib blkid::blkid_known_fstype(type:string) -> int
+lib blkid::blkid_known_pttype(type:string) -> int
+lib blkid::blkid_new_probe_from_filename(filename:string) -> pointer
+lib blkid::blkid_probe_enable_superblocks(pr:pointer, enable:int) -> int
+lib blkid::blkid_free_probe(pr:pointer) -> void
+
+def run_blkid_tests()
+    println "[#4]=== BLKID FFI Tests ==="
+
+    # Test 1: Library functionality
+    println "[#6]1. Library functionality test"
+    fs_known = blkid_known_fstype("ext4")
+    assert fs_known != 0, "blkid_known_fstype should work"
+    println "[#2]  ✓ Library functional"
+
+    # Test 2: Known filesystem types
+    println "[#6]2. Known filesystem types"
+    ext4 = blkid_known_fstype("ext4")
+    assert ext4 != 0, "ext4 should be known"
+    println "[#2]  ✓ ext4"
+    println "        Result:", ext4
+
+    xfs = blkid_known_fstype("xfs")
+    assert xfs != 0, "xfs should be known"
+    println "[#2]  ✓ xfs"
+    println "        Result:", xfs
+
+    btrfs = blkid_known_fstype("btrfs")
+    assert btrfs != 0, "btrfs should be known"
+    println "[#2]  ✓ btrfs"
+    println "        Result:", btrfs
+
+    vfat = blkid_known_fstype("vfat")
+    assert vfat != 0, "vfat should be known"
+    println "[#2]  ✓ vfat"
+    println "        Result:", vfat
+
+    unknown = blkid_known_fstype("notafilesystem")
+    assert unknown == 0, "Unknown filesystem should return 0"
+    println "[#2]  ✓ notafilesystem"
+    println "        Result:", unknown
+
+    # Test 3: Known partition table types
+    println "[#6]3. Known partition table types"
+    gpt = blkid_known_pttype("gpt")
+    assert gpt != 0, "gpt should be known"
+    println "[#2]  ✓ gpt"
+    println "        Result:", gpt
+
+    dos = blkid_known_pttype("dos")
+    assert dos != 0, "dos should be known"
+    println "[#2]  ✓ dos"
+    println "        Result:", dos
+
+    unknown_pt = blkid_known_pttype("notaparttype")
+    assert unknown_pt == 0, "Unknown partition type should return 0"
+    println "[#2]  ✓ notaparttype"
+    println "        Result:", unknown_pt
+
+    # Test 4: Extended filesystem checks
+    println "[#6]4. Extended filesystem checks"
+    iso = blkid_known_fstype("iso9660")
+    assert iso != 0, "iso9660 should be known"
+    println "[#2]  ✓ iso9660"
+    println "        Result:", iso
+
+    ntfs = blkid_known_fstype("ntfs")
+    assert ntfs != 0, "ntfs should be known"
+    println "[#2]  ✓ ntfs"
+    println "        Result:", ntfs
+
+    # Test 5: Probe lifecycle
+    println "[#6]5. Probe lifecycle"
+    pr = blkid_new_probe_from_filename("/etc/fstab")
+    pr_valid = !c_ptr_is_null(pr)
+    assert pr_valid, "blkid_new_probe_from_filename should return valid probe"
+    println "[#2]  ✓ Probe created successfully"
+
+    blkid_probe_enable_superblocks(pr, 1)
+    println "[#2]  ✓ Superblocks enabled"
+
+    blkid_free_probe(pr)
+    println "[#2]  ✓ Probe freed"
+
+    println "[#4]=== BLKID Tests Complete ==="
+end
+
+run_blkid_tests()

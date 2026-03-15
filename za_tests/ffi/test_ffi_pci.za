@@ -1,0 +1,118 @@
+#!/usr/bin/env za
+
+module "libpci.so.3" as pci auto "/usr/include/pci/pci.h"
+use +pci
+
+# Explicit function declarations
+lib pci::pci_alloc() -> pointer
+lib pci::pci_init(acc:pointer) -> void
+lib pci::pci_scan_bus(acc:pointer) -> void
+lib pci::pci_cleanup(acc:pointer) -> void
+lib pci::pci_fill_info(d:pointer, flags:int) -> void
+lib pci::pci_lookup_name(acc:pointer, buf:pointer, size:int, type:int, ...args) -> string
+
+# Helper to lookup and read device/vendor name
+def read_pci_name(buf)
+    name = ""
+    i = 0
+    while i < 255
+        b = c_get_byte(buf, i)
+        if b == 0
+            break
+        endif
+        name = name + char(b)
+        i = i + 1
+    endwhile
+    return name
+end
+
+def run_pci_tests()
+    println "[#4]=== PCI FFI Tests ==="
+
+    # Test 1: Alloc and init
+    println "[#6]1. Allocate and initialize access structure"
+    acc = pci_alloc()
+    assert !c_ptr_is_null(acc), "pci_alloc should return valid access structure"
+    println "[#2]  ✓ Access structure allocated"
+
+    pci_init(acc)
+    println "[#2]  ✓ Access structure initialized"
+
+    # Test 2: Scan bus and enumerate devices
+    println "[#6]2. Scan PCI bus and enumerate devices"
+    pci_scan_bus(acc)
+    println "[#2]  ✓ PCI bus scanned successfully"
+    println "[#2]  ✓ Scanned PCI devices:"
+
+    # Enumerate devices from pci_access->devices linked list
+    acc_addr = c_ptr_to_int(acc)
+    devices_addr = c_get_int64_at_addr(acc_addr, 64)
+
+    device_count = 0
+
+    # Buffer for looking up names
+    name_buf = c_alloc(256)
+
+    # Iterate through pci_dev linked list
+    while devices_addr != 0 && device_count < 256
+        device_count = device_count + 1
+
+        # Read device address fields
+        bus = c_get_byte_at_addr(devices_addr.as_int, 10)
+        devnum = c_get_byte_at_addr(devices_addr.as_int, 11)
+        func = c_get_byte_at_addr(devices_addr.as_int, 12)
+
+        # Fill in device identification info (vendor_id and device_id are set by this)
+        pci_fill_info(devices_addr, PCI_FILL_IDENT)
+
+        # Read vendor_id and device_id from struct (verified offsets: 20 and 22)
+        # These fields are populated by pci_fill_info() with PCI_FILL_IDENT flag
+        vendor_id = c_get_uint16_at_addr(devices_addr.as_int, 20)
+        device_id = c_get_uint16_at_addr(devices_addr.as_int, 22)
+
+        # Get vendor name using pci_lookup_name
+        # PCI_LOOKUP_VENDOR = 1, pass vendor_id
+        vendor_name = pci_lookup_name(acc, name_buf, 256, 1, vendor_id)
+
+        # Get device name using pci_lookup_name
+        # PCI_LOOKUP_DEVICE = 2, pass vendor_id and device_id
+        device_name = pci_lookup_name(acc, name_buf, 256, 2, vendor_id, device_id)
+
+        # Display device with lookup results
+        id=format("[%3d:%3d:%3d]", bus, devnum, func)
+        println format("  [#6]%-13s [#5]%-40s [#4]%s[#-]", id, vendor_name, device_name)
+
+        # Move to next device in linked list
+        next_addr = c_get_int64_at_addr(devices_addr.as_int, 0)
+        devices_addr = next_addr
+    endwhile
+
+    c_free(name_buf)
+
+    if device_count > 0
+        println "[#2]  ✓ Enumerated ", device_count, " PCI device(s) from scan"
+    else
+        println "[#2]  ✓ PCI bus scan complete (no devices enumerated)"
+    endif
+
+    # Test 3: Basic constants
+    println "[#6]3. PCI Fill constants"
+    fill_val = PCI_FILL_IDENT
+    assert fill_val != 0, "PCI_FILL_IDENT constant should be available"
+    println "[#2]  ✓ PCI_FILL_IDENT"
+    println "        Value:", fill_val
+
+    fill_class = PCI_FILL_CLASS
+    assert fill_class != 0, "PCI_FILL_CLASS constant should be available"
+    println "[#2]  ✓ PCI_FILL_CLASS"
+    println "        Value:", fill_class
+
+    # Test 4: Cleanup
+    println "[#6]4. Cleanup"
+    pci_cleanup(acc)
+    println "[#2]  ✓ Access structure cleaned up"
+
+    println "[#4]=== PCI Tests Complete ==="
+end
+
+run_pci_tests()
