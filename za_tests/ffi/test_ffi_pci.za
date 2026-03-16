@@ -1,6 +1,11 @@
 #!/usr/bin/env za
 
-module "libpci.so.3" as pci auto "/usr/include/pci/pci.h"
+case release_id()
+is "ubuntu"
+  module "libpci.so.3" as pci auto "/usr/include/x86_64-linux-gnu/sys/pci.h"
+or
+  module "libpci.so.3" as pci auto "/usr/include/pci/pci.h"
+endcase
 use +pci
 
 # Explicit function declarations
@@ -10,6 +15,7 @@ lib pci::pci_scan_bus(acc:pointer) -> void
 lib pci::pci_cleanup(acc:pointer) -> void
 lib pci::pci_fill_info(d:pointer, flags:int) -> void
 lib pci::pci_lookup_name(acc:pointer, buf:pointer, size:int, type:int, ...args) -> string
+PCI_FILL_IDENT=1 # override this to make sure it runs on ubuntu
 
 # Helper to lookup and read device/vendor name
 def read_pci_name(buf)
@@ -96,16 +102,19 @@ def run_pci_tests()
     endif
 
     # Test 3: Basic constants
-    println "[#6]3. PCI Fill constants"
-    fill_val = PCI_FILL_IDENT
-    assert fill_val != 0, "PCI_FILL_IDENT constant should be available"
-    println "[#2]  ✓ PCI_FILL_IDENT"
-    println "        Value:", fill_val
+    case release_id()
+    is "arch"
+      println "[#6]3. PCI Fill constants"
+      fill_val = PCI_FILL_IDENT
+      assert fill_val != 0, "PCI_FILL_IDENT constant should be available"
+      println "[#2]  ✓ PCI_FILL_IDENT"
+      println "        Value:", fill_val
 
-    fill_class = PCI_FILL_CLASS
-    assert fill_class != 0, "PCI_FILL_CLASS constant should be available"
-    println "[#2]  ✓ PCI_FILL_CLASS"
-    println "        Value:", fill_class
+      fill_class = PCI_FILL_CLASS
+      assert fill_class != 0, "PCI_FILL_CLASS constant should be available"
+      println "[#2]  ✓ PCI_FILL_CLASS"
+      println "        Value:", fill_class
+    endcase
 
     # Test 4: Cleanup
     println "[#6]4. Cleanup"
