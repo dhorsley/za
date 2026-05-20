@@ -12,24 +12,23 @@ ValidIpAddressRegex= "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([
 ValidHostnameRegex = "^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9])$"
 ssh_options = "-q"
 
-def is_valid_host(h)
-    on not h is string do return false
+def is_valid_host(h:string)
+    # on not h is string do return false
     on h ~ ValidIpAddressRegex do return true
     on h ~ ValidHostnameRegex do return true
     return false
 end
 
-def assh(host,cmd)
+def assh(host:string,cmd:string)
     r=|ssh {=ssh_options} {host} '{cmd}'
     return r
 end
 
-def bssh(hosts,cmd)
+def bssh(hosts:[]string,cmd:string)
     foreach h in hosts
         break if not h.is_valid_host
         async rlist assh(h,cmd) h
     endfor
-
     res=await(ref rlist,true)
     return res
 end
