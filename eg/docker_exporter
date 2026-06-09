@@ -56,10 +56,10 @@ def get_cgroup_paths(pid)
             rel  = trim(parts[2], 0)
             base = "/sys/fs/cgroup/" + sub + rel
             case sub
-            has "cpu"    paths["cpu"]    = base
-            is "memory"  paths["memory"] = base
-            is "blkio"   paths["blkio"]  = base
-            is "pids"    paths["pids"]   = base
+            has "cpu"    ; paths["cpu"]    = base
+            is "memory"  ; paths["memory"] = base
+            is "blkio"   ; paths["blkio"]  = base
+            is "pids"    ; paths["pids"]   = base
             endcase
         endfor
     endif
