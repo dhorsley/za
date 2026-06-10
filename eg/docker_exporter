@@ -167,11 +167,10 @@ def collect_memory(name, memory_base)
         oom    = 0
         foreach line in $in "{memory_base}/memory.oom_control"
             parts = line.split(" ")
-            on len(parts) >= 2 and parts[0] == "oom_kill" do oom = parts[1].as_int
+            on parts.len>1 and parts[0] == "oom_kill" do oom = parts[1].as_int
         endfor
     endif
-    working_set = usage - inactive
-    on working_set < 0 do working_set = 0
+    working_set = (usage - inactive)[0:]
     reg_set(`container_memory_usage_bytes{name="{name}"}`,       "gauge", usage)
     reg_set(`container_memory_limit_bytes{name="{name}"}`,       "gauge", limit)
     reg_set(`container_memory_rss_bytes{name="{name}"}`,         "gauge", rss)
