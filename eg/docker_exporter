@@ -7,13 +7,9 @@
 INTERVAL = 15000
 
 # Detect cgroup version once at startup
-v2_test = ${test -f /sys/fs/cgroup/cgroup.controllers && echo "1" || echo "0"}
-cgroup_v2 = trim(v2_test, 0) == "1"
-if cgroup_v2
-    println "[container-metrics] cgroup v2 detected"
-else
-    println "[container-metrics] cgroup v1 detected"
-endif
+
+cgroup_v2 = is_file("/sys/fs/cgroup/cgroup.controllers")
+println "[container-metrics] cgroup {=cgroup_v2?`v2`:`v1`} detected"
 
 var registered []
 var seen_metrics map
@@ -40,7 +36,7 @@ def get_cgroup_paths(pid)
             parts = line.split(":")
             continue if len(parts) < 3
             if parts[0] == "0" and parts[1] == ""
-                base = "/sys/fs/cgroup" + trim(parts[2], 0)
+                base = "/sys/fs/cgroup" + $st parts[2]
                 break
             endif
         endfor
@@ -53,7 +49,7 @@ def get_cgroup_paths(pid)
             parts = line.split(":")
             continue if len(parts) < 3
             sub  = parts[1]
-            rel  = trim(parts[2], 0)
+            rel  = $st parts[2]
             base = "/sys/fs/cgroup/" + sub + rel
             case sub
             has "cpu"    ; paths["cpu"]    = base
@@ -86,7 +82,7 @@ def collect_cpu(name, cpu_base, start_ts)
         thr_periods = stat["nr_throttled"].as_int
         thr_secs    = stat["throttled_usec"].as_float / 1000000.0
 
-        max_line = trim($in "{cpu_base}/cpu.max", 0)
+        max_line = $st $in "{cpu_base}/cpu.max"
         parts = max_line.split(" ")
         quota = -1
         period = 100000
@@ -105,16 +101,12 @@ def collect_cpu(name, cpu_base, start_ts)
         thr_periods = cstat["nr_throttled"].as_int
         thr_secs    = cstat["throttled_time"].as_float / 1000000000.0
 
-        quota_raw = trim($in "{cpu_base}/cpu.cfs_quota_us", 0)
-        period_raw = trim($in "{cpu_base}/cpu.cfs_period_us", 0)
+        quota_raw = $st $in "{cpu_base}/cpu.cfs_quota_us"
+        period_raw = $st $in "{cpu_base}/cpu.cfs_period_us"
         quota = -1
         period = 100000
-        if quota_raw != ""
-            quota = quota_raw.as_int
-        endif
-        if period_raw != ""
-            period = period_raw.as_int
-        endif
+        on quota_raw != "" do quota = quota_raw.as_int
+        on period_raw != "" do period = period_raw.as_int
     endif
     reg_set(`container_cpu_usage_seconds_total{name="{name}",mode="user"}`,   "gauge", user_secs)
     reg_set(`container_cpu_usage_seconds_total{name="{name}",mode="system"}`, "gauge", system_secs)
@@ -149,7 +141,7 @@ def collect_memory(name, memory_base)
     on memory_base == "" do return
     if cgroup_v2
         usage     = trim($in "{memory_base}/memory.current", 0).as_int
-        limit_raw = trim($in "{memory_base}/memory.max", 0)
+        limit_raw = $st $in "{memory_base}/memory.max"
         limit     = 0
         on limit_raw != "max" do limit = limit_raw.as_int
         swap      = trim($in "{memory_base}/memory.swap.current", 0).as_int
@@ -160,9 +152,7 @@ def collect_memory(name, memory_base)
         oom       = 0
         foreach line in $in "{memory_base}/memory.events"
             parts = line.split(" ")
-            if len(parts) >= 2 and parts[0] == "oom_kill"
-                oom = parts[1].as_int
-            endif
+            on len(parts) >= 2 and parts[0] == "oom_kill" do oom = parts[1].as_int
         endfor
     else
         usage  = trim($in "{memory_base}/memory.usage_in_bytes", 0).as_int
@@ -177,9 +167,7 @@ def collect_memory(name, memory_base)
         oom    = 0
         foreach line in $in "{memory_base}/memory.oom_control"
             parts = line.split(" ")
-            if len(parts) >= 2 and parts[0] == "oom_kill"
-                oom = parts[1].as_int
-            endif
+            on len(parts) >= 2 and parts[0] == "oom_kill" do oom = parts[1].as_int
         endfor
     endif
     working_set = usage - inactive
@@ -197,7 +185,7 @@ def collect_blkio(name, blkio_base)
     on blkio_base == "" do return
     if cgroup_v2
         foreach line in $in "{blkio_base}/io.stat"
-            line = trim(line, 0)
+            line = $st line
             continue if line == ""
             parts = line.split(" ")
             continue if len(parts) < 2
@@ -231,7 +219,7 @@ def collect_blkio(name, blkio_base)
         endfor
     else
         foreach line in $in "{blkio_base}/blkio.throttle.io_service_bytes"
-            line = trim(line, 0)
+            line = $st line
             continue if line == ""
             parts = line.split(" ")
             continue if len(parts) < 3
@@ -242,7 +230,7 @@ def collect_blkio(name, blkio_base)
             reg_set(`container_blkio_bytes_total{name="{name}",device="{dev}",operation="{op}"}`, "gauge", val)
         endfor
         foreach line in $in "{blkio_base}/blkio.throttle.io_serviced"
-            line = trim(line, 0)
+            line = $st line
             continue if line == ""
             parts = line.split(" ")
             continue if len(parts) < 3
@@ -260,7 +248,7 @@ def collect_network(name, pid)
     foreach line in $in "/proc/{pid}/net/dev"
         line_num++
         continue if line_num <= 2
-        line = trim(line, 0)
+        line = $st line
         continue if line == ""
         line.replace(":", " ").fields
         iface = F[1]
@@ -287,7 +275,7 @@ end
 def collect_pids(name, pids_base)
     on pids_base == "" do return
     current = trim($in "{pids_base}/pids.current", 0).as_int
-    max_raw = trim($in "{pids_base}/pids.max", 0)
+    max_raw = $st $in "{pids_base}/pids.max"
     max_val = 0
     on max_raw != "max" do max_val = max_raw.as_int
     reg_set(`container_pids_current{name="{name}"}`, "gauge", current)
@@ -314,7 +302,7 @@ while true
     total_count   = 0
 
     foreach line in inspect_raw
-        continue if trim(line, 0) == ""
+        continue if $st line == ""
         parts = line.split("\t")
         continue if len(parts) < 7
 
