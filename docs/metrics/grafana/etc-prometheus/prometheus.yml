@@ -37,7 +37,7 @@ scrape_configs:
     #   export ZA_PROMETHEUS_CIDR="192.168.0.0/16"     (entire subnet)
     #   export ZA_PROMETHEUS_CIDR="0.0.0.0/0"           (all IPv4 + auto-expanded IPv6)
     static_configs:
-      - targets: ["10.0.2.15:9091"]
+      - targets: ["10.0.2.2:9091"]
         labels:
           app: "za"
 
