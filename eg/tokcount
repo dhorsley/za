@@ -4,8 +4,11 @@ tc=0
 interpol(false)
 foreach l in $in "/dev/stdin"
   c=l.tokens.tokens.len
-  println "[#2]%5d[#-] : [#4]%3d[#-] : %s".format(1+key_l,c,l.stripcc)
+  print "\n[#2]%5d[#-]".format(1+key_l)
+  continue if c==0
+  print " : [#4]%3d[#-] : %s".format(c,l.stripcc)
   tc+=c
 endfor
 
-println "\nTotal tokens in file : ",tc,"\n"
+println "\n\nTotal tokens in file : ",tc,"\n"
+
