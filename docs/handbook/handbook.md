@@ -2569,17 +2569,21 @@ sha224sum(string)
 # Returns SHA256 checksum of input string:
 sha256sum(string)
 
-# Returns struct with .sum and .err for S3 ETag comparison:
-s3sum(filename[, blocksize])
+# Returns struct with .sum, .err, and .headers for S3 ETag comparison:
+s3sum(filename[, blocksize[, legacyOnly]])
 ```
 
 - s3sum supports multipart upload calculations with configurable block sizes.
 - Error codes: 0=ok, 1=single-part warning, 2=file error, 3=checksum error
 - Auto-selects 8MB blocksize when blocksize=0
+- When legacyOnly is true, skip modern checksums and only compute legacy ETag.
+- The .headers map contains modern checksums in hex and base64: md5, md5_base64, sha256, sha256_base64, sha1, sha1_base64, crc32, crc32_base64, crc32c, crc32c_base64.
+- To get remote checksums: checksums=${aws s3api head-object --bucket {bucket} --key {key} --checksum-mode ENABLED}
+- To upload with checksums: aws s3api put-object --bucket {bucket} --key {key} --body {file} --checksum-algorithm SHA256
 
 S3 ETag Functionality
 
-The s3sum function specifically calculates checksums compatible with Amazon S3 ETags, including multipart upload format (hash-parts) for files larger than the blocksize.
+The s3sum function specifically calculates checksums compatible with Amazon S3 ETags, including multipart upload format (hash-parts) for files larger than the blocksize. It also computes modern AWS checksums (SHA256, SHA1, CRC32, CRC32C) in both hex and base64 encodings for direct comparison with S3 object metadata. Note that modern checksums are only stored on S3 if the object was uploaded with the --checksum-algorithm flag. They are only returned by head-object when --checksum-mode ENABLED is used.
 
 ### 38.13 TUI (Terminal User Interface)
 
