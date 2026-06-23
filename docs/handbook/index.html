@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
@@ -7,9 +7,6 @@
   <meta name="author" content="Daniel Horsley" />
   <title>Za - The Za Programming Language Handbook</title>
   <style>
-    /* Default styles provided by pandoc.
-    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
-    */
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
     div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -2376,19 +2373,33 @@ sha224sum(string)
 # Returns SHA256 checksum of input string:
 sha256sum(string)
 
-# Returns struct with .sum and .err for S3 ETag comparison:
-s3sum(filename[, blocksize])</code></pre>
+# Returns struct with .sum, .err, and .headers for S3 ETag comparison:
+s3sum(filename[, blocksize[, legacyOnly]])</code></pre>
 <ul>
 <li>s3sum supports multipart upload calculations with configurable block
 sizes.</li>
 <li>Error codes: 0=ok, 1=single-part warning, 2=file error, 3=checksum
 error</li>
 <li>Auto-selects 8MB blocksize when blocksize=0</li>
+<li>When legacyOnly is true, skip modern checksums and only compute
+legacy ETag.</li>
+<li>The .headers map contains modern checksums in hex and base64: md5,
+md5_base64, sha256, sha256_base64, sha1, sha1_base64, crc32,
+crc32_base64, crc32c, crc32c_base64.</li>
+<li>To get remote checksums: checksums=${aws s3api head-object –bucket
+{bucket} –key {key} –checksum-mode ENABLED}</li>
+<li>To upload with checksums: aws s3api put-object –bucket {bucket} –key
+{key} –body {file} –checksum-algorithm SHA256</li>
 </ul>
 <p>S3 ETag Functionality</p>
 <p>The s3sum function specifically calculates checksums compatible with
 Amazon S3 ETags, including multipart upload format (hash-parts) for
-files larger than the blocksize.</p>
+files larger than the blocksize. It also computes modern AWS checksums
+(SHA256, SHA1, CRC32, CRC32C) in both hex and base64 encodings for
+direct comparison with S3 object metadata. Note that modern checksums
+are only stored on S3 if the object was uploaded with the
+–checksum-algorithm flag. They are only returned by head-object when
+–checksum-mode ENABLED is used.</p>
 <h3 id="tui-terminal-user-interface">38.13 TUI (Terminal User
 Interface)</h3>
 <p>Create TUI objects and style:</p>
