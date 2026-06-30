@@ -1,7 +1,7 @@
 #!/usr/bin/za
 
 define q(val)
-    delay=rand(4)
+    delay=1+rand(4)
     pause delay*100
     return as_string(val)
 end
@@ -16,8 +16,8 @@ for e = 0 to 99
     async handles q(e) "task number "+e
 endfor
 
-println "pausing 1/4 second to allow for task warmup."
-pause 250
+println "pausing 1/2 second to allow for task warmup."
+pause 500
 
 while
 
@@ -25,7 +25,7 @@ while
     res=await("handles",false)
     println " : await() complete."
 
-    on len(res)==0 do break
+    break if len(res)==0
 
     # collect current results
     foreach r in res
@@ -38,9 +38,5 @@ endwhile
 
 println "Collated output:"
 println output.pp
-#foreach a in output
-#    println format("{key_a} -> [%v] %v",kind(a),a)
-#endfor
-#println
 
 
