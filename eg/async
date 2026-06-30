@@ -2,7 +2,6 @@
 
 define q(val)
     delay=rand(4)
-    # println val
     pause delay*100
     return as_string(val)
 end
@@ -14,22 +13,34 @@ coproc(false)
 println "Spinning async tasks"
 
 for e = 0 to 99
-    async handles q(e)
+    async handles q(e) "task number "+e
 endfor
 
-# while true
+println "pausing 1/4 second to allow for task warmup."
+pause 250
 
-    println "[#2]Waiting...[#-]"
-    res=await("handles",true)
-    println "await() complete."
+while
+
+    print "[#2]Waiting...[#-]"
+    res=await("handles",false)
+    println " : await() complete."
 
     on len(res)==0 do break
 
-    foreach a in res
-        println format("{key_a} -> [%v] %v",kind(a),a)
+    # collect current results
+    foreach r in res
+        output[key_r]=r
     endfor
 
-    println
-    pause 50
+    pause 5 
 
-# endwhile
+endwhile
+
+println "Collated output:"
+println output.pp
+#foreach a in output
+#    println format("{key_a} -> [%v] %v",kind(a),a)
+#endfor
+#println
+
+
