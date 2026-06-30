@@ -2,12 +2,13 @@
 
 which batcat >/dev/null 2>&1
 
-if (( $? == 0 )); then
-  alias bat=batcat
+if (($? != 0)); then
+  # alias bat=batcat
+  echo "batcat not installed."
+  exit 1
 fi
 
-p=$(bat --config-dir)
+p=$(batcat --config-dir)
 mkdir -p ${p}/syntaxes
 cp za.sublime-syntax ${p}/syntaxes/
-bat cache --build
-
+batcat cache --build
