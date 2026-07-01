@@ -16,8 +16,9 @@ for e = 0 to 99
     async handles q(e) "task number "+e
 endfor
 
-println "pausing 1/2 second to allow for task warmup."
-pause 500
+println "Waiting for all async tasks to start..."
+delay = async_wait_startup("handles")
+println ": Completed startups in {delay} µs"
 
 while
 
@@ -25,14 +26,14 @@ while
     res=await("handles",false)
     println " : await() complete."
 
-    break if len(res)==0
+    break if len(handles)==0
 
     # collect current results
     foreach r in res
         output[key_r]=r
     endfor
 
-    pause 5 
+    pause 50
 
 endwhile
 

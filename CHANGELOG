@@ -105,6 +105,18 @@ library changes
           * example: add_ptr = c_as_function_ptr(ptr, "int,int->int"); result = c_call_function_ptr(add_ptr, 10, 20)
       - enables callbacks from C libraries (qsort comparators, signal handlers, etc.)
 
+  * async/await improvements
+      - added async_wait_startup(handle_map) - blocks until all tasks in the map have started executing
+          * returns time blocked in microseconds (int64), or nil if the map is empty
+          * errors if the handle map is undeclared
+          * eliminates need for artificial pause/warmup delays before polling with await()
+      - internal async infrastructure refactored to use asyncHandle struct
+          * bundles result channel with a started channel for precise startup detection
+          * task() goroutine closes started channel immediately upon execution begin
+      - await() now backward compatible with both old raw channels and new asyncHandle structs
+      - pp() now gracefully displays asyncHandle values instead of crashing on reflection
+      - updated eg/async example to demonstrate async_wait_startup() and fixed loop break logic
+
 language changes
 ----------------
 

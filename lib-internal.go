@@ -18,6 +18,7 @@ import (
     "strings"
     str "strings"
     "sync/atomic"
+    "time"
 
     "github.com/VictoriaMetrics/metrics"
 )
@@ -387,7 +388,7 @@ func buildInternalLib() {
         "local", "clktck", "funcref", "thisfunc", "thisref", "cursoron", "cursoroff", "cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w", "pane_r", "pane_c", "utf8supported", "execpath", "trap", "coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term", "term", "has_colour",
-        "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "get_mem", "zainfo", "get_cores", "permit",
+        "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "async_wait_startup", "get_mem", "zainfo", "get_cores", "permit",
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
         "ast", "varbind", "sizeof", "dup", "defined", "log_queue_status",
         "set_depth",
@@ -1509,8 +1510,18 @@ func buildInternalLib() {
             vlock.Lock()
             for k, v := range (*ident)[bin].IValue.(map[string]any) {
 
+                var ch chan any
+                switch hv := v.(type) {
+                case asyncHandle:
+                    ch = hv.Result
+                case chan any:
+                    ch = hv
+                default:
+                    continue
+                }
+
                 select {
-                case retval := <-v.(chan any):
+                case retval := <-ch:
 
                     if retval == nil { // shouldn't happen
                         fmt.Printf("[await] received result for key: %s → %#v\n", k, retval.(struct {
@@ -1527,7 +1538,7 @@ func buildInternalLib() {
                     }).r
 
                     // close the channel, yes i know, not at the client end, etc
-                    close(v.(chan any))
+                    close(ch)
 
                     // remove async/await pair from handle list
                     delete((*ident)[bin].IValue.(map[string]any), k)
@@ -1547,6 +1558,48 @@ func buildInternalLib() {
             }
         }
         return results, nil
+    }
+
+    slhelp["async_wait_startup"] = LibHelp{in: "handle_map", out: "integer microseconds", action: "Blocks until every async task in the handle map has begun executing. Returns the total time blocked in microseconds, or nil if the map is empty. Errors if the handle map is undeclared."}
+    stdlib["async_wait_startup"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("async_wait_startup", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+
+        bin := bind_int(evalfs, args[0].(string))
+
+        if !(*ident)[bin].declared {
+            return nil, errors.New("async_wait_startup requires the name of a declared local handle map")
+        }
+
+        var handles []asyncHandle
+        var empty bool
+
+        vlock.RLock()
+        m, ok := (*ident)[bin].IValue.(map[string]any)
+        if !ok || len(m) == 0 {
+            empty = true
+        } else {
+            for _, v := range m {
+                switch hv := v.(type) {
+                case asyncHandle:
+                    handles = append(handles, hv)
+                }
+            }
+        }
+        vlock.RUnlock()
+
+        if empty {
+            return nil, nil
+        }
+
+        start := time.Now()
+        for _, h := range handles {
+            <-h.Started
+        }
+        elapsed := time.Since(start)
+
+        return int64(elapsed / time.Microsecond), nil
     }
 
     slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key. Returns true on successful removal."}

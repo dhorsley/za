@@ -278,6 +278,8 @@ func prettyPrintValue(val reflect.Value, currentIndent string, depth int, maxDep
         return colours["number"] + v.String() + colours["reset"]
     case *big.Float:
         return colours["number"] + v.String() + colours["reset"]
+    case asyncHandle:
+        return colours["null"] + "<asyncHandle>" + colours["reset"]
     }
 
     switch val.Kind() {

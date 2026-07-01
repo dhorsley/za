@@ -164,14 +164,21 @@ func fillStruct(t *Variable, structvalues []any, Typemap map[string]reflect.Type
     return nil
 }
 
-func task(caller uint32, base uint32, endClose bool, callname string, iargs ...any) (chan any, string) {
+type asyncHandle struct {
+    Result  chan any
+    Started chan struct{} // closed the moment the goroutine begins executing
+}
+
+func task(caller uint32, base uint32, endClose bool, callname string, iargs ...any) (chan any, chan struct{}, string) {
 
     r := make(chan any)
+    started := make(chan struct{})
 
     loc, id := GetNextFnSpace(true, callname+"@", call_s{prepared: true, base: base, caller: caller, gc: false, gcShyness: 100})
     // fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
     go func() {
+        close(started) // signal: this goroutine has started executing
         if endClose {
             defer close(r)
         }
@@ -247,7 +254,7 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
         atomic.AddInt32(&concurrent_funcs, -1)
 
     }()
-    return r, id
+    return r, started, id
 }
 
 // finish : flag the machine state as okay or in error and
@@ -4766,16 +4773,17 @@ tco_reentry:
                 // construct a go call that includes a normal Call
                 globlock.Lock()
                 if handles == "nil" {
-                    _, _ = task(ifs, lmv, true, call, resu...)
+                    _, _, _ = task(ifs, lmv, true, call, resu...)
                 } else {
-                    h, id := task(ifs, lmv, false, call, resu...)
-                    // assign channel h to handles map
+                    h, started, id := task(ifs, lmv, false, call, resu...)
+                    // assign asyncHandle to handles map
+                    handle := asyncHandle{Result: h, Started: started}
                     if nival == nil {
                         // fmt.Printf("about to vsetElement() in ASYNC (no key name) : nival:%#v h:%#v\n",nival,h)
-                        vsetElement(nil, ifs, ident, handles, sf("async_%v", id), h)
+                        vsetElement(nil, ifs, ident, handles, sf("async_%v", id), handle)
                     } else {
                         // fmt.Printf("about to vsetElement() in ASYNC : nival:%#v h:%#v\n",nival,h)
-                        vsetElement(nil, ifs, ident, handles, sf("%v", nival), h)
+                        vsetElement(nil, ifs, ident, handles, sf("%v", nival), handle)
                     }
                 }
                 globlock.Unlock()
