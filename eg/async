@@ -3,12 +3,10 @@
 define q(val)
     delay=1+rand(4)
     pause delay*100
-    return as_string(val)
+    return val*3f
 end
 
 # MAIN
-
-coproc(false)
 
 println "Spinning async tasks"
 
@@ -17,20 +15,21 @@ for e = 0 to 99
 endfor
 
 println "Waiting for all async tasks to start..."
-delay = async_wait_startup("handles")
+delay = async_wait_startup(ref handles)
 println ": Completed startups in {delay} µs"
 
 while
 
     print "[#2]Waiting...[#-]"
-    res=await("handles",false)
+    res=await(ref handles,false)
     println " : await() complete."
+    println " : remaining handles = {=handles.len}"
 
     break if len(handles)==0
 
     # collect current results
     foreach r in res
-        output[key_r]=r
+        output[key_r]="{r} : {=r.kind}"
     endfor
 
     pause 50
