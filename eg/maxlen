@@ -3,22 +3,24 @@
 doc `
     simple function to figure max length string in a given array
     column then demonstrates using the result.
-
-    it's not exactly efficient - just another map and list test.
 `
 
 
-define longest(ar_s,fld,sep)
-    return (ar_s -> `field(#,fld,sep).len.as_string`) . list_int . max
+define longest_key(arr)
+    return (arr -> `#[0].len`) . list_int . max
 end
 
-
-ln=env().longest(1,"=")
-
-foreach e in env()
-    key=e.field(1,"=")
-    println "[#6]%{ln}s[#-] -> %s".format(key,key.get_env)
+elist=[]
+# flatten out values including the = delimiter
+foreach i in env()
+    _=fields(i,"=")
+    value=F[2:].join("=")
+    elist=append(elist,[F[1],value])
 endfor
 
+ln=elist.longest_key
 
+foreach e in elist
+    println "[#6]%{ln}s[#-] -> %s".format(e[0],e[1])
+endfor
 
