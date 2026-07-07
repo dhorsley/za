@@ -3,26 +3,71 @@
     "lineComment": "#"
   },
   "brackets": [
-    ["{", "}"],
-    ["[", "]"],
-    ["(", ")"]
+    [
+      "{",
+      "}"
+    ],
+    [
+      "[",
+      "]"
+    ],
+    [
+      "(",
+      ")"
+    ]
   ],
   "autoClosingPairs": [
-    { "open": "{", "close": "}" },
-    { "open": "[", "close": "]" },
-    { "open": "(", "close": ")" },
-    { "open": "\"", "close": "\"", "notIn": ["string"] },
-    { "open": "`", "close": "`", "notIn": ["string"] }
+    {
+      "open": "{",
+      "close": "}"
+    },
+    {
+      "open": "[",
+      "close": "]"
+    },
+    {
+      "open": "(",
+      "close": ")"
+    },
+    {
+      "open": "\"",
+      "close": "\"",
+      "notIn": [
+        "string"
+      ]
+    },
+    {
+      "open": "`",
+      "close": "`",
+      "notIn": [
+        "string"
+      ]
+    }
   ],
   "surroundingPairs": [
-    ["{", "}"],
-    ["[", "]"],
-    ["(", ")"],
-    ["\"", "\""],
-    ["`", "`"]
+    [
+      "{",
+      "}"
+    ],
+    [
+      "[",
+      "]"
+    ],
+    [
+      "(",
+      ")"
+    ],
+    [
+      "\"",
+      "\""
+    ],
+    [
+      "`",
+      "`"
+    ]
   ],
   "indentationRules": {
-    "increaseIndentPattern": "\\b(for|while|if|case|struct|enum|def|try|test|foreach)\\b",
-    "decreaseIndentPattern": "\\b(endfor|endwhile|endif|endcase|endstruct|endenum|end|endtry|endtest)\\b"
+    "increaseIndentPattern": "\\\\b(async|case|def|enum|for|foreach|if|struct|test|try|while)\\\\b",
+    "decreaseIndentPattern": "\\\\b(end|endcase|enddef|endfor|endtest|endtry|endwhile|endif|endstruct)\\\\b"
   }
-} 
+}

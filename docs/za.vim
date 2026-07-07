@@ -48,8 +48,6 @@ syn match Float     "\<[-+]\=\d\+[\.]\=\d*\([Ee][-+]\=\d\+\)\=[f]\=\>"
 "==========
 syn match   Comment     "^\s*\zs#.*$"   contains=@CommentGroup
 syn match   Comment     "\s\zs#.*$"     contains=@CommentGroup
-syn match   Comment     "^\s*\zs//.*$"  contains=@CommentGroup
-syn match   Comment     "\s\zs//.*$"    contains=@CommentGroup
 
 " Identifiers: {{{1
 "=============
@@ -91,8 +89,6 @@ syntax match list_functions "\(^|.\|\s*\)pop\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)sort\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)ssort\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)peek\s*("he=e-1
-syntax match list_functions "\(^|.\|\s*\)any\s*("he=e-1
-syntax match list_functions "\(^|.\|\s*\)all\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)esplit\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)sum\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)min\s*("he=e-1
@@ -344,9 +340,9 @@ syntax match web_functions "\(^|.\|\s*\)net_interfaces\s*("he=e-1
 syntax match web_functions "\(^|.\|\s*\)html_escape\s*("he=e-1
 syntax match web_functions "\(^|.\|\s*\)html_unescape\s*("he=e-1
 
-syntax match db_functions "\(^|.\|\s\*\)db_init\s*("he=e-1
-syntax match db_functions "\(^|.\|\s\*\)db_query\s*("he=e-1
-syntax match db_functions "\(^|.\|\s\*\)db_close\s*("he=e-1
+syntax match db_functions "\(^|.\|\s*\)db_init\s*("he=e-1
+syntax match db_functions "\(^|.\|\s*\)db_query\s*("he=e-1
+syntax match db_functions "\(^|.\|\s*\)db_close\s*("he=e-1
 
 syntax match string_functions "\(^|.\|\s*\)clean\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)next_match\s*("he=e-1
@@ -535,7 +531,6 @@ syntax match unsorted_functions "\(^|.\|\s*\)icmp_ping\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)is_subset\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)concat\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)error_default_handler\s*("he=e-1
-syntax match unsorted_functions "\(^|.\|\s*\)sanitisation_enabled\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)ssl_cert_validate\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)email_get_body\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)tcp_close\s*("he=e-1
@@ -656,6 +651,99 @@ syntax match unsorted_functions "\(^|.\|\s*\)ini_set_section\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)ini_write\s*("he=e-1
 
 
+syntax match c_functions "\(^|.\|\s*\)c_alloc\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_struct\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_as_function_ptr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_call_function_ptr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_fclose\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_fopen\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_free\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_free_struct\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_byte\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_byte_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_double\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_double_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_float\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_float_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int16\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int16_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int32_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int64\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_int64_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_symbol\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint16\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint16_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint32_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint64\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_get_uint64_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_new_string\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_null\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_ptr_is_null\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_ptr_to_int\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_ptr_to_string\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_register_callback\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_register_signal_handler\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_byte\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_byte_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_double\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_double_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_float\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_float_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int16\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int16_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int32_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int64\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_int64_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_string\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint16\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint16_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint32_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint64\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_set_uint64_at_addr\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_unmarshal_struct\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_unregister_callback\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_unregister_signal_handler\s*("he=e-1
+
+syntax match metrics_functions "\(^|.\|\s*\)metric_add\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_deregister\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_enabled\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_inc\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_observe\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_register\s*("he=e-1
+syntax match metrics_functions "\(^|.\|\s*\)metric_set\s*("he=e-1
+
+syntax match internal_functions "\(^|.\|\s*\)async_wait_startup\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)conclear\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)conread\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)conset\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)conwrite\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)defined\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)import_errors\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)import_has_errors\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)suppress_prompt\s*("he=e-1
+
+syntax match conversion_functions "\(^|.\|\s*\)explain\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)pp\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)table\s*("he=e-1
+
+syntax match string_functions "\(^|.\|\s*\)msplit\s*("he=e-1
+syntax match string_functions "\(^|.\|\s*\)sanitisation\s*("he=e-1
+
+syntax match os_functions "\(^|.\|\s*\)fileabs\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)filebase\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)glob\s*("he=e-1
+
+syntax match web_functions "\(^|.\|\s*\)web_template\s*("he=e-1
+syntax match web_functions "\(^|.\|\s*\)tcp_server\s*("he=e-1
+
+syntax match auto_functions "\(^|.\|\s*\)trace\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)dio\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)nio\s*("he=e-1
+
 " Za Keywords: {{{1
 " ==============
 
@@ -671,6 +759,7 @@ syntax match statements "\(^\|\s\+\)\(version\|require\|println\|showdef\|endwit
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(endstruct\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(accessfile\|showstruct\)\($\|\s\+\)"
+syntax match statements "\(^|\s\+\)\(true\|false\|nil\|NaN\|catch\|try\|endtry\|throw\|throws\|then\|lib\|macro\|namespace\|unset\|use\|uses\|bigf\|bigi\|pointer\|number\|loud\)\($\|\s\+\)"
 
 syntax match forstatements "\(^\|\s\+\)\(foreach\|for\|ef\|endfor\)\($\|\s\+\)"
 
@@ -682,6 +771,10 @@ syntax match types "\sfloat\(\s\|$\)"
 syntax match types "\sstring\(\s\|$\)"
 syntax match types "\smap\(\s\|$\)"
 syntax match types "\sarray\(\s\|$\)"
+syntax match types "\sbigf\(\s\|$\)"
+syntax match types "\sbigi\(\s\|$\)"
+syntax match types "\spointer\(\s\|$\)"
+syntax match types "\snumber\(\s\|$\)"
 
 " Color Matching {{{1
 " ===============
@@ -735,7 +828,7 @@ syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,yaml_functions,zip_functions,auto_functions,tui_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,yaml_functions,zip_functions,c_functions,metrics_functions,auto_functions,tui_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -789,6 +882,8 @@ hi def link image_functions functionlist
 hi def link sum_functions functionlist
 hi def link yaml_functions functionlist
 hi def link zip_functions functionlist
+hi def link c_functions functionlist
+hi def link metrics_functions functionlist
 hi def link auto_functions functionlist
 
 if !exists("g:sh_no_error")

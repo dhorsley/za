@@ -37,7 +37,7 @@ cp "$ZADIR/lua/za-nvim/syntax.lua" "$NVIM_CONFIG/lua/za/"
 # Add to init.lua if not already present
 INIT_FILE="$NVIM_CONFIG/init.lua"
 if [ -f "$INIT_FILE" ]; then
-    if ! grep -q 'require("za").setup()' "$INIT_FILE"; then
+    if ! grep -q "require([\"']za[\"']).setup()" "$INIT_FILE"; then
         echo -e "${YELLOW}Adding za setup to init.lua...${NC}"
         echo "" >> "$INIT_FILE"
         echo "-- Za syntax highlighting" >> "$INIT_FILE"

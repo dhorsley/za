@@ -35,8 +35,6 @@ local za_keywords = {
     "async",
     "module",
     "require",
-    "import",
-    "export",
     "struct",
     "endstruct",
     "enum",
@@ -59,7 +57,6 @@ local za_keywords = {
     "nop",
     "log",
     "cls",
-    "web",
     "pane",
     "help",
     "hist",
@@ -69,11 +66,7 @@ local za_keywords = {
     "version",
     "println",
     "logging",
-    "subject",
-    "disable",
-    "enable",
     "contains",
-    "accessfile",
     "showstruct",
     "on",
     "at",
@@ -82,6 +75,25 @@ local za_keywords = {
     -- Additional keywords from original syntax
     "quiet",
     "setglob",
+    "NaN",
+    "bigf",
+    "bigi",
+    "false",
+    "init",
+    "lib",
+    "loud",
+    "macro",
+    "namespace",
+    "nil",
+    "number",
+    "pointer",
+    "then",
+    "throws",
+    "true",
+    "try",
+    "unset",
+    "use",
+    "uses",
 }
 
 -- Test-related statements (highlighted differently)
@@ -102,6 +114,10 @@ local za_types = {
     "map",
     "array",
     "any",
+    "bigf",
+    "bigi",
+    "pointer",
+    "number",
 }
 
 local za_functions = {
@@ -466,8 +482,6 @@ local za_functions = {
     "push_front",
     "pop",
     "peek",
-    "any",
-    "all",
     "esplit",
     "min",
     "max",
@@ -688,6 +702,127 @@ local za_functions = {
     "email_remove_header",
     "email_base64_encode",
     "email_base64_decode",
+    "alltrue",
+    "anytrue",
+    "async_wait_startup",
+    "c_alloc",
+    "c_alloc_struct",
+    "c_as_function_ptr",
+    "c_call_function_ptr",
+    "c_fclose",
+    "c_fopen",
+    "c_free",
+    "c_free_struct",
+    "c_get_byte",
+    "c_get_byte_at_addr",
+    "c_get_double",
+    "c_get_double_at_addr",
+    "c_get_float",
+    "c_get_float_at_addr",
+    "c_get_int16",
+    "c_get_int16_at_addr",
+    "c_get_int32",
+    "c_get_int32_at_addr",
+    "c_get_int64",
+    "c_get_int64_at_addr",
+    "c_get_symbol",
+    "c_get_uint16",
+    "c_get_uint16_at_addr",
+    "c_get_uint32",
+    "c_get_uint32_at_addr",
+    "c_get_uint64",
+    "c_get_uint64_at_addr",
+    "c_new_string",
+    "c_null",
+    "c_ptr_is_null",
+    "c_ptr_to_int",
+    "c_ptr_to_string",
+    "c_register_callback",
+    "c_register_signal_handler",
+    "c_set_byte",
+    "c_set_byte_at_addr",
+    "c_set_double",
+    "c_set_double_at_addr",
+    "c_set_float",
+    "c_set_float_at_addr",
+    "c_set_int16",
+    "c_set_int16_at_addr",
+    "c_set_int32",
+    "c_set_int32_at_addr",
+    "c_set_int64",
+    "c_set_int64_at_addr",
+    "c_set_string",
+    "c_set_uint16",
+    "c_set_uint16_at_addr",
+    "c_set_uint32",
+    "c_set_uint32_at_addr",
+    "c_set_uint64",
+    "c_set_uint64_at_addr",
+    "c_unmarshal_struct",
+    "c_unregister_callback",
+    "c_unregister_signal_handler",
+    "cmd_version",
+    "conclear",
+    "conread",
+    "conset",
+    "conwrite",
+    "debug_cpu_files",
+    "defined",
+    "difference",
+    "dinfo",
+    "dot",
+    "error_source_line_numbers",
+    "error_style",
+    "exception_strictness",
+    "explain",
+    "feed",
+    "fileabs",
+    "filebase",
+    "gdump",
+    "group_mod",
+    "gw_address",
+    "gw_info",
+    "gw_interface",
+    "has_privileges",
+    "import_errors",
+    "import_has_errors",
+    "interpolate",
+    "intersect",
+    "is_disjoint",
+    "is_subset",
+    "is_superset",
+    "kind",
+    "log_exception",
+    "log_exception_with_stack",
+    "log_sanitise",
+    "matmul",
+    "maxfloat",
+    "maxint",
+    "merge",
+    "metric_add",
+    "metric_deregister",
+    "metric_enabled",
+    "metric_inc",
+    "metric_observe",
+    "metric_register",
+    "metric_set",
+    "msplit",
+    "powershell_version",
+    "prod",
+    "ps_list",
+    "reg_filter",
+    "reg_match",
+    "reg_replace",
+    "sanitisation",
+    "set_depth",
+    "suppress_prompt",
+    "symmetric_difference",
+    "transpose",
+    "user_mod",
+    "values",
+    "web_template",
+    "wininfo",
+    "wrap_text",
 }
 
 -- Define highlight groups using nvim_set_hl
@@ -1069,6 +1204,28 @@ local function highlight_line(buf, line_num, line)
         end
     end
 
+    -- Highlight UFCS function names (identifier after dot, even without parentheses)
+    for left_word, right_word in line:gmatch("([%a_][%w_]*)%.([%a_][%w_]*)") do
+        local full_match = left_word .. "." .. right_word
+        local dot_pos = line:find(full_match, 1, true)
+        while dot_pos do
+            local func_start = dot_pos + #left_word + 1
+            local func_end = func_start + #right_word - 1
+            if not is_pos_in_string(func_start) and not is_pos_in_comment(func_start) then
+                local is_builtin = false
+                for _, builtin in ipairs(za_functions) do
+                    if right_word == builtin then
+                        is_builtin = true
+                        break
+                    end
+                end
+                local hl_group = is_builtin and "zaFunction" or "zaUserFunction"
+                vim.api.nvim_buf_add_highlight(buf, -1, hl_group, line_num - 1, func_start - 1, func_end)
+            end
+            dot_pos = line:find(full_match, dot_pos + 1, true)
+        end
+    end
+
     return highlights
 end
 
@@ -1090,6 +1247,9 @@ function M.setup()
     -- Define highlight groups
     define_highlights()
 
+    -- Create a dedicated namespace for za syntax highlights
+    local za_ns = vim.api.nvim_create_namespace("za")
+
     -- Create autocmd for syntax highlighting
     vim.api.nvim_create_autocmd("FileType", {
         pattern = "za",
@@ -1098,18 +1258,18 @@ function M.setup()
 
             -- Highlight only visible lines for performance
             local function highlight_visible_lines()
-                -- Clear existing highlights
-                vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+                -- Clear only za highlights (preserve other plugins' extmarks)
+                vim.api.nvim_buf_clear_namespace(buf, za_ns, 0, -1)
 
                 -- Get only visible lines
                 local start_line = vim.fn.line("w0") - 1 -- Convert to 0-based
-                local end_line = vim.fn.line("w$") - 1
+                local end_line = vim.fn.line("w$")       -- Exclusive end index
                 local visible_lines = vim.api.nvim_buf_get_lines(buf, start_line, end_line, false)
 
                 -- Highlight visible lines
                 for i, line in ipairs(visible_lines) do
                     local line_num = start_line + i
-                    -- highlight_line(buf, line_num, line)
+                    highlight_line(buf, line_num, line)
                 end
             end
 
