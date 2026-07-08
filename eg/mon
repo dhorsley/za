@@ -422,7 +422,7 @@ define showCpu(timeout,sample_start_in,showCpuDetails,showCpuBars,showCpuTotals)
     on !utf8supported() do activity_indicator="-"
 
     cpuinfo=cpu_info().Usage["cores"]
-    cpucount=cpu_info().Usage["cores"].len
+    cpucount=cpuinfo.len
 
     var diff map[map]
     row=1
