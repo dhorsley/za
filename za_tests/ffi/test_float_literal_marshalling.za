@@ -10,12 +10,12 @@ try
     use +mathlib
 
     # Declare math functions with float and double parameters
-    LIB mathlib::fabsf(x:float) -> float       # Absolute value (32-bit)
-    LIB mathlib::fabs(x:double) -> double      # Absolute value (64-bit)
-    LIB mathlib::sqrtf(x:float) -> float       # Square root (32-bit)
-    LIB mathlib::sqrt(x:double) -> double      # Square root (64-bit)
-    LIB mathlib::powf(x:float, y:float) -> float       # Power (32-bit)
-    LIB mathlib::pow(x:double, y:double) -> double     # Power (64-bit)
+    lib mathlib::fabsf(x:float) -> float       # Absolute value (32-bit)
+    lib mathlib::fabs(x:double) -> double      # Absolute value (64-bit)
+    lib mathlib::sqrtf(x:float) -> float       # Square root (32-bit)
+    lib mathlib::sqrt(x:double) -> double      # Square root (64-bit)
+    lib mathlib::powf(x:float, y:float) -> float       # Power (32-bit)
+    lib mathlib::pow(x:double, y:double) -> double     # Power (64-bit)
 
     # ========================================
     # Test 1: Positive Float Literals (32-bit / float)
@@ -223,7 +223,7 @@ try
 
         # Declare glOrtho with 6 double parameters
         # void glOrtho(GLdouble left, GLdouble bottom, GLdouble right, GLdouble top, GLdouble near, GLdouble far)
-        LIB gl::glOrtho(left:double, bottom:double, right:double, top:double, near:double, far:double) -> void
+        lib gl::glOrtho(left:double, bottom:double, right:double, top:double, near:double, far:double) -> void
 
         # Test 11a: Standard orthographic projection with all positive float literals
         println "  Calling glOrtho(-1.0, -1.0, 1.0, 1.0, 0.1, 100.0)"
@@ -259,55 +259,6 @@ try
         println "  → Error: " + as_string(gl_err)
         println "  ℹ Float literal marshalling still executed (check debug output)"
     endtry
-
-    # ========================================
-    # Test 12: REGRESSION - Wrong Type Declaration (float vs double)
-    # ========================================
-    println "\n[#6]Test 12: Regression - Type Declaration Impact[#-]"
-
-    println "  [#2]Bug Summary:[#-]"
-    println "  Original bug: glOrtho and glFrustum were declared with 'float' parameters"
-    println "  But OpenGL expects 'double' (64-bit) for these functions"
-    println ""
-    println "  [#1]The Problem:[#-]"
-    println "  • Declaration: 'float' type (32-bit)"
-    println "  • Marshalling: Za converts float64 → CFloat (32-bit)"
-    println "  • Function expects: double (64-bit)"
-    println "  • Result: Reads 32 bits of data + 32 bits of garbage"
-    println ""
-    println "  Example debug output:"
-    println "    ✗ WRONG: 'float64 -1 -> float32 -1.0 (CFloat)'"
-    println "    ✓ RIGHT: 'float64 -1 -> double (CDouble)'"
-    println ""
-    println "  [#3]The Fix:[#-]"
-    println "  Changed declarations from:"
-    println "    lib gl::glOrtho(left:float, ...) -> void"
-    println "    lib gl::glFrustum(left:float, ...) -> void"
-    println "  To:"
-    println "    lib gl::glOrtho(left:double, ...) -> void"
-    println "    lib gl::glFrustum(left:double, ...) -> void"
-    println ""
-    println "  [#2]Verification:[#-]"
-    println "  Test 11 above demonstrates correct glOrtho marshalling with 6 double parameters"
-    println "  All parameters shown as 'double (CDouble)' in debug output ✓"
-
-    # ========================================
-    # Summary
-    # ========================================
-    println "\n[#2]═══════════════════════════════[#-]"
-    println "[#2]All float literal marshalling tests passed![#-]"
-    println "[#2]✓ Positive float literals[#-]"
-    println "[#2]✓ Negative float literals[#-]"
-    println "[#2]✓ Small float values[#-]"
-    println "[#2]✓ Expression results vs literals[#-]"
-    println "[#2]✓ Return value marshalling (32-bit)[#-]"
-    println "[#2]✓ Return value marshalling (64-bit)[#-]"
-    println "[#2]✓ Multiple parameter marshalling[#-]"
-    println "[#2]✓ Mixed literal and expression[#-]"
-    println "[#2]✓ Large value edge cases[#-]"
-    println "[#2]✓ OpenGL glOrtho() - 6 double parameters with literals[#-]"
-    println "[#2]✓ REGRESSION TEST - float vs double type mismatch demonstration[#-]"
-    println "[#2]═══════════════════════════════[#-]\n"
 
 catch e
     println "[#1]✗ Test failed with error: {e}[#-]"
