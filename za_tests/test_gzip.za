@@ -1,0 +1,304 @@
+#!/usr/bin/env za
+
+# Test script for GZIP library functions
+# Tests file-based and in-memory compression/decompression
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== GZIP Library Tests ==="
+
+# Test 1: Basic file compression and decompression
+println "\n1. Testing basic file compression and decompression..."
+try
+    write_file("gzip_test1.txt", "Hello, GZIP world! This is a test file for compression.")
+    
+    result = gzip_compress("gzip_test1.txt", "gzip_test1.gz")
+    println "Compression result:", result
+    
+    if is_file("gzip_test1.gz")
+        println "✓ Compressed file created"
+        compressed_size = file_size("gzip_test1.gz")
+        original_size = file_size("gzip_test1.txt")
+        println "Original size:", original_size, "bytes, Compressed size:", compressed_size, "bytes"
+    else
+        println "✗ Compressed file not found"
+    endif
+    
+    # Decompress and verify
+    result = gzip_decompress("gzip_test1.gz", "gzip_test1_out.txt")
+    println "Decompression result:", result
+    
+    actual = read_file("gzip_test1_out.txt")
+    expected = "Hello, GZIP world! This is a test file for compression."
+    if actual == expected
+        println "✓ Round-trip content verified"
+    else
+        println "✗ Round-trip content mismatch"
+    endif
+catch err
+    println "Error in basic test:"
+    println pp(err)
+endtry
+
+# Test 2: Compression with different levels (int)
+println "\n2. Testing compression levels as integers..."
+try
+    write_file("gzip_level_test.txt", "AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTTUUVVWWXXYYZZ" * 100)
+    
+    # Level 0 (no compression)
+    result = gzip_compress("gzip_level_test.txt", "gzip_level_0.gz", map(.level 0))
+    println "Level 0 result:", result
+    size_0 = file_size("gzip_level_0.gz")
+    println "Level 0 file size:", size_0
+    
+    # Level 1 (fast)
+    result = gzip_compress("gzip_level_test.txt", "gzip_level_1.gz", map(.level 1))
+    size_1 = file_size("gzip_level_1.gz")
+    println "Level 1 file size:", size_1
+    
+    # Level 9 (best)
+    result = gzip_compress("gzip_level_test.txt", "gzip_level_9.gz", map(.level 9))
+    size_9 = file_size("gzip_level_9.gz")
+    println "Level 9 file size:", size_9
+    
+    # Verify all decompress correctly
+    foreach f in ["gzip_level_0.gz", "gzip_level_1.gz", "gzip_level_9.gz"]
+        outname = replace(f, ".gz", "_out.txt")
+        gzip_decompress(f, outname)
+        actual = read_file(outname)
+        expected = read_file("gzip_level_test.txt")
+        if actual == expected
+            println "✓", f, "decompressed correctly"
+        else
+            println "✗", f, "decompression mismatch"
+        endif
+    endfor
+catch err
+    println "Error in level test:"
+    println pp(err)
+endtry
+
+# Test 3: Compression with string level aliases
+println "\n3. Testing compression level aliases..."
+try
+    write_file("gzip_alias_test.txt", "The quick brown fox jumps over the lazy dog. " * 50)
+    
+    foreach alias in ["default", "none", "no", "fast", "speed", "best", "huffman"]
+        outgz = "gzip_alias_" + alias + ".gz"
+        result = gzip_compress("gzip_alias_test.txt", outgz, map(.level alias))
+        if result
+            size = file_size(outgz)
+            println "✓ Alias", alias, "-> size:", size
+        else
+            println "✗ Alias", alias, "failed"
+        endif
+    endfor
+    
+    # Verify default and best produce different sizes for compressible content
+    # (best should be smaller or equal)
+    if file_size("gzip_alias_best.gz") <= file_size("gzip_alias_default.gz")
+        println "✓ Best compression <= default compression size"
+    else
+        println "! Best compression > default compression size (unusual but possible)"
+    endif
+catch err
+    println "Error in alias test:"
+    println pp(err)
+endtry
+
+# Test 4: Overwrite option
+println "\n4. Testing overwrite option..."
+try
+    write_file("gzip_overwrite_src.txt", "Original content")
+    gzip_compress("gzip_overwrite_src.txt", "gzip_overwrite.gz")
+    
+    # With overwrite=false and existing file, should throw an error/return false
+    write_file("gzip_overwrite_src2.txt", "Different content")
+    try
+        result = gzip_compress("gzip_overwrite_src2.txt", "gzip_overwrite.gz", map(.overwrite false))
+        if !result
+            println "✓ overwrite=false correctly refused to overwrite"
+        else
+            println "✗ overwrite=false should have refused"
+        endif
+    catch err
+        println "✓ overwrite=false caught expected error"
+    endtry
+    
+    # With overwrite=true (default), should succeed
+    result = gzip_compress("gzip_overwrite_src2.txt", "gzip_overwrite.gz", map(.overwrite true))
+    if result
+        println "✓ overwrite=true succeeded"
+    else
+        println "✗ overwrite=true failed"
+    endif
+catch err
+    println "Error in overwrite test:"
+    println pp(err)
+endtry
+
+# Test 5: In-memory bytes compression and decompression
+println "\n5. Testing in-memory bytes compression..."
+try
+    # Create a byte array using to_typed
+    test_bytes = [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33].to_typed("[]uint8")
+    println "Original bytes length:", len(test_bytes)
+    
+    compressed = gzip_compress_bytes(test_bytes)
+    println "Compressed bytes length:", len(compressed)
+    
+    if len(compressed) > 0
+        println "✓ Compression produced bytes"
+    else
+        println "✗ Compression produced empty result"
+    endif
+    
+    decompressed = gzip_decompress_bytes(compressed)
+    println "Decompressed bytes length:", len(decompressed)
+    
+    # Verify round-trip
+    if len(decompressed) == len(test_bytes)
+        match = true
+        for i = 0 to len(test_bytes) - 1
+            if decompressed[i] != test_bytes[i]
+                match = false
+                break
+            endif
+        endfor
+        if match
+            println "✓ Bytes round-trip verified"
+        else
+            println "✗ Bytes round-trip mismatch"
+        endif
+    else
+        println "✗ Length mismatch after round-trip"
+    endif
+catch err
+    println "Error in bytes test:"
+    println pp(err)
+endtry
+
+# Test 6: In-memory compression with level option
+println "\n6. Testing in-memory compression with levels..."
+try
+    test_data = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].to_typed("[]uint8")
+    
+    # Default level
+    compressed_default = gzip_compress_bytes(test_data)
+    
+    # Best compression
+    compressed_best = gzip_compress_bytes(test_data, map(.level "best"))
+    
+    # No compression
+    compressed_none = gzip_compress_bytes(test_data, map(.level "none"))
+    
+    println "Default size:", len(compressed_default)
+    println "Best size:", len(compressed_best)
+    println "None size:", len(compressed_none)
+    
+    # All should decompress back to original
+    foreach compressed in [compressed_default, compressed_best, compressed_none]
+        decompressed = gzip_decompress_bytes(compressed)
+        if len(decompressed) == len(test_data)
+            println "✓ Level decompresses correctly"
+        else
+            println "✗ Level decompression length mismatch"
+        endif
+    endfor
+catch err
+    println "Error in bytes level test:"
+    println pp(err)
+endtry
+
+# Test 7: Error handling - non-existent source file
+println "\n7. Testing error handling - non-existent file..."
+try
+    result = gzip_compress("non_existent_file_12345.txt", "non_existent.gz")
+    println "Unexpected success:", result
+    if !result
+        println "✓ Correctly returned false for missing source"
+    endif
+catch err
+    println "Expected error:"
+    println pp(err)
+endtry
+
+# Test 8: Error handling - invalid level
+println "\n8. Testing error handling - invalid level..."
+try
+    write_file("gzip_invalid.txt", "x")
+    result = gzip_compress("gzip_invalid.txt", "gzip_invalid.gz", map(.level 99))
+    println "Unexpected success:", result
+    if !result
+        println "✓ Correctly rejected out-of-range level"
+    endif
+catch err
+    println "Expected error:"
+    println pp(err)
+endtry
+
+# Test 9: Error handling - invalid level alias
+println "\n9. Testing error handling - invalid level alias..."
+try
+    result = gzip_compress("gzip_invalid.txt", "gzip_invalid2.gz", map(.level "supermax"))
+    println "Unexpected success:", result
+    if !result
+        println "✓ Correctly rejected unknown alias"
+    endif
+catch err
+    println "Expected error:"
+    println pp(err)
+endtry
+
+# Test 10: Larger content round-trip
+println "\n10. Testing larger content round-trip..."
+try
+    large_content = ""
+    for i = 1 to 500
+        large_content = large_content + "This is line number " + i + " of a reasonably large test file used for gzip compression testing in the Za programming language runtime.\n"
+    endfor
+    write_file("gzip_large.txt", large_content)
+    
+    result = gzip_compress("gzip_large.txt", "gzip_large.gz", map(.level "best"))
+    println "Large compression result:", result
+    
+    result = gzip_decompress("gzip_large.gz", "gzip_large_out.txt")
+    println "Large decompression result:", result
+    
+    actual = read_file("gzip_large_out.txt")
+    if actual == large_content
+        println "✓ Large file round-trip verified"
+    else
+        println "✗ Large file round-trip failed"
+    endif
+catch err
+    println "Error in large file test:"
+    println pp(err)
+endtry
+
+# Cleanup test files
+println "\nCleaning up test files..."
+try
+    foreach pattern in [
+        "gzip_test1.txt", "gzip_test1.gz", "gzip_test1_out.txt",
+        "gzip_level_test.txt", "gzip_level_0.gz", "gzip_level_1.gz", "gzip_level_9.gz",
+        "gzip_level_0_out.txt", "gzip_level_1_out.txt", "gzip_level_9_out.txt",
+        "gzip_alias_test.txt", "gzip_alias_default.gz", "gzip_alias_none.gz",
+        "gzip_alias_no.gz", "gzip_alias_fast.gz", "gzip_alias_speed.gz",
+        "gzip_alias_best.gz", "gzip_alias_huffman.gz",
+        "gzip_overwrite_src.txt", "gzip_overwrite_src2.txt", "gzip_overwrite.gz",
+        "gzip_invalid.txt", "gzip_invalid2.gz",
+        "gzip_large.txt", "gzip_large.gz", "gzip_large_out.txt"
+    ]
+        if is_file(pattern)
+            delete(pattern)
+        endif
+    endfor
+    println "✓ Cleanup completed"
+catch err
+    println "Error during cleanup:"
+    println pp(err)
+endtry
+
+println "\n=== GZIP Library Tests Complete ==="

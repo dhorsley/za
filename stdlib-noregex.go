@@ -36,6 +36,7 @@ func buildStandardLib() {
     buildErrorLib()
     buildYamlLib()
     buildZipLib()
+    buildGzipLib()
     buildSmtpLib()
     buildCronLib()
     buildSystemLib()

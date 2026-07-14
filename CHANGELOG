@@ -27,6 +27,31 @@ library changes
 
   * added now() to lib-date.go (time in seconds since epoch)
 
+  * added gzip compression/decompression library (lib-gzip.go)
+      - gzip_compress(source_file, dest_file[, options_map]) -> bool
+      - gzip_decompress(source_file, dest_file[, options_map]) -> bool
+      - gzip_compress_bytes(data[, options_map]) -> []uint8
+      - gzip_decompress_bytes(data) -> []uint8
+      - options map supports:
+          * .overwrite bool (default true) - refuse to overwrite existing destination when false
+          * .level int|string (default "default") - compression level control
+              - integer levels: -2 (huffman only) to 9 (best compression)
+              - string aliases: "default", "none"/"no", "fast"/"speed", "best", "huffman"
+      - uses Go standard library compress/gzip; interoperable with system gzip(1)
+      - file-based functions read/write via os.ReadFile/os.WriteFile
+      - in-memory functions operate on []uint8 byte arrays for binary data workflows
+      - registered under "gzip" category with feature version 1
+      - available in all build configurations (stdlib.go and stdlib-noregex.go)
+
+  * added za_tests/test_gzip.za - comprehensive test suite covering:
+      - basic file round-trip compression/decompression
+      - integer compression levels (0, 1, 9)
+      - string level aliases (default, none, no, fast, speed, best, huffman)
+      - overwrite option behavior
+      - in-memory []uint8 compression with levels
+      - error handling for missing files, invalid levels, and unknown aliases
+      - large file (500-line) round-trip with best compression
+
   * added stdlib functions for C pointer manipulation
       - c_null() - returns null C pointer
       - c_fopen(path, mode) - opens file, returns C FILE* pointer

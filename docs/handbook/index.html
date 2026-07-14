@@ -2344,7 +2344,36 @@ result = zip_create(&quot;test_archive.zip&quot;, files)</code></pre>
 <p>Remove files:</p>
 <pre class="za"><code>result = zip_remove(&quot;test_archive.zip&quot;, [&quot;test2.txt&quot;])</code></pre>
 <p>Please see za_tests/test_zip.za for a larger example set.</p>
-<h3 id="regular-expressions-pcre">38.11 Regular Expressions (PCRE)</h3>
+<h3 id="compression-operations-gzip">38.11 Compression Operations
+(GZIP)</h3>
+<p>GZIP provides single-stream compression and decompression for files
+and in-memory byte arrays. Unlike ZIP, GZIP does not archive multiple
+files; it compresses one byte stream.</p>
+<p>Compress a file:</p>
+<pre class="za"><code>result = gzip_compress(&quot;license.txt&quot;, &quot;license.gz&quot;)</code></pre>
+<p>Decompress a file:</p>
+<pre class="za"><code>result = gzip_decompress(&quot;license.gz&quot;, &quot;license.txt&quot;)</code></pre>
+<p>Compression levels (optional map argument):</p>
+<pre class="za"><code># Integer levels: -2 (huffman only) to 9 (best compression)
+gzip_compress(&quot;data.txt&quot;, &quot;data_best.gz&quot;, map(.level 9))
+
+# String aliases
+gzip_compress(&quot;data.txt&quot;, &quot;data_fast.gz&quot;, map(.level &quot;fast&quot;))
+gzip_compress(&quot;data.txt&quot;, &quot;data_none.gz&quot;, map(.level &quot;none&quot;))</code></pre>
+<p>Overwrite control:</p>
+<pre class="za"><code># Refuse to overwrite an existing destination file
+gzip_compress(&quot;data.txt&quot;, &quot;data.gz&quot;, map(.overwrite false))</code></pre>
+<p>In-memory byte array compression (returns <code>[]uint8</code>):</p>
+<pre class="za"><code>raw = [72, 101, 108, 108, 111].to_typed(&quot;[]uint8&quot;)
+compressed = gzip_compress_bytes(raw)
+decompressed = gzip_decompress_bytes(compressed)</code></pre>
+<p>In-memory compression with level:</p>
+<pre class="za"><code>compressed = gzip_compress_bytes(raw, map(.level &quot;best&quot;))</code></pre>
+<p>Available level aliases: <code>"default"</code>, <code>"none"</code>
+/ <code>"no"</code>, <code>"fast"</code> / <code>"speed"</code>,
+<code>"best"</code>, <code>"huffman"</code>.</p>
+<p>Please see za_tests/test_gzip.za for a larger example set.</p>
+<h3 id="regular-expressions-pcre">38.12 Regular Expressions (PCRE)</h3>
 <p>Regular expressions provide powerful pattern matching for text
 processing. The reg_* library calls use a PCRE library implementation
 instead of the builtin regular expression engine. Due to this, these
@@ -2358,7 +2387,7 @@ reg_filter(string, regex[, count])</code></pre>
 <p>Replacement:</p>
 <pre class="za"><code># Replaces regex matches with replacement string:
 reg_replace(var, regex, replacement[, int_flags])</code></pre>
-<h3 id="checksum-operations">38.12 Checksum Operations</h3>
+<h3 id="checksum-operations">38.13 Checksum Operations</h3>
 <p>Checksum operations are essential for file integrity verification and
 security.</p>
 <pre class="za"><code># Returns MD5 checksum of input string:
@@ -2400,7 +2429,7 @@ direct comparison with S3 object metadata. Note that modern checksums
 are only stored on S3 if the object was uploaded with the
 –checksum-algorithm flag. They are only returned by head-object when
 –checksum-mode ENABLED is used.</p>
-<h3 id="tui-terminal-user-interface">38.13 TUI (Terminal User
+<h3 id="tui-terminal-user-interface">38.14 TUI (Terminal User
 Interface)</h3>
 <p>Create TUI objects and style:</p>
 <pre class="za"><code># Create TUI options map
@@ -2445,7 +2474,7 @@ tui_screen(1)  # Switch to secondary screen</code></pre>
 <p>The TUI system uses maps to configure display properties like
 position (Row, Col), size (Width, Height), content (Content, Data), and
 styling (Border, colours)</p>
-<h3 id="notification-operations">38.14 Notification Operations</h3>
+<h3 id="notification-operations">38.15 Notification Operations</h3>
 <p>Za provides 7 builtin file system notification library functions.</p>
 <p>Watcher Management Functions</p>
 <pre class="za"><code># Create new watcher, returns [watcher, error_code]
@@ -2478,7 +2507,7 @@ ev_mask(notify_event, str_event_type)</code></pre>
 <li>“rename” - File/directory renaming</li>
 <li>“chmod” - Permission changes</li>
 </ul>
-<h3 id="error-handling-and-logging">38.15 Error Handling and
+<h3 id="error-handling-and-logging">38.16 Error Handling and
 Logging</h3>
 <p>Robust error handling and logging are essential for reliable system
 administration:</p>
@@ -2515,7 +2544,7 @@ log critical: &quot;System out of memory&quot;
 standard library categories for system administration tasks. Each
 category provides specialized tools that can be combined to create
 comprehensive automation solutions.</p>
-<h3 id="ini-configuration-file-operations">38.16 INI Configuration File
+<h3 id="ini-configuration-file-operations">38.17 INI Configuration File
 Operations</h3>
 <p>INI files provide simple configuration management for applications
 and services. The INI library, where possible, preserves comments, blank
@@ -2840,12 +2869,12 @@ logging json fields +version &quot;1.2.1&quot;
 logging json off</code></pre>
 <p>JSON logging provides structured data that’s easier to parse and
 analyze:</p>
-<div class="sourceCode" id="cb150"><pre
-class="sourceCode json"><code class="sourceCode json"><span id="cb150-1"><a href="#cb150-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
-<span id="cb150-2"><a href="#cb150-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
-<span id="cb150-3"><a href="#cb150-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb150-4"><a href="#cb150-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
-<span id="cb150-5"><a href="#cb150-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb156"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb156-1"><a href="#cb156-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">Plain</span> <span class="er">text</span> <span class="er">output</span></span>
+<span id="cb156-2"><a href="#cb156-2" aria-hidden="true" tabindex="-1"></a><span class="dv">2023-10-15</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="ot">[</span><span class="er">WEBMON</span><span class="ot">]</span> <span class="er">Service</span> <span class="er">started</span> <span class="er">on</span> <span class="dv">15</span> <span class="er">Oct</span> <span class="dv">23</span> <span class="dv">14</span><span class="er">:</span><span class="dv">23</span><span class="er">:</span><span class="dv">11</span> <span class="er">+0000</span></span>
+<span id="cb156-3"><a href="#cb156-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb156-4"><a href="#cb156-4" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">JSON</span> <span class="er">output</span></span>
+<span id="cb156-5"><a href="#cb156-5" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span><span class="st">&quot;2023-10-15T14:23:11Z&quot;</span><span class="fu">,</span><span class="dt">&quot;level&quot;</span><span class="fu">:</span><span class="st">&quot;INFO&quot;</span><span class="fu">,</span><span class="dt">&quot;subject&quot;</span><span class="fu">:</span><span class="st">&quot;WEBMON&quot;</span><span class="fu">,</span><span class="dt">&quot;message&quot;</span><span class="fu">:</span><span class="st">&quot;Service started on 15 Oct 23 14:23:11 +0000&quot;</span><span class="fu">,</span><span class="dt">&quot;service&quot;</span><span class="fu">:</span><span class="st">&quot;web-monitor&quot;</span><span class="fu">,</span><span class="dt">&quot;version&quot;</span><span class="fu">:</span><span class="st">&quot;1.2.1&quot;</span><span class="fu">}</span></span></code></pre></div>
 <h3 id="web-access-logging">46.2 Web Access Logging</h3>
 <p>For scripts that use Za’s built-in web server, you can enable
 separate access logging:</p>
@@ -3005,18 +3034,18 @@ selective execution and reporting</li>
 normal script execution</li>
 </ul>
 <h3 id="test-execution-modes">48.2 Test Execution Modes</h3>
-<div class="sourceCode" id="cb160"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb160-1"><a href="#cb160-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
-<span id="cb160-2"><a href="#cb160-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
-<span id="cb160-3"><a href="#cb160-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb160-4"><a href="#cb160-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
-<span id="cb160-5"><a href="#cb160-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
-<span id="cb160-6"><a href="#cb160-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb160-7"><a href="#cb160-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
-<span id="cb160-8"><a href="#cb160-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
-<span id="cb160-9"><a href="#cb160-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb160-10"><a href="#cb160-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
-<span id="cb160-11"><a href="#cb160-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
+<div class="sourceCode" id="cb166"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb166-1"><a href="#cb166-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run all tests</span></span>
+<span id="cb166-2"><a href="#cb166-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> script</span>
+<span id="cb166-3"><a href="#cb166-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb166-4"><a href="#cb166-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run specific test groups</span></span>
+<span id="cb166-5"><a href="#cb166-5" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-G</span> <span class="st">&quot;database&quot;</span> script</span>
+<span id="cb166-6"><a href="#cb166-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb166-7"><a href="#cb166-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run with custom output file</span></span>
+<span id="cb166-8"><a href="#cb166-8" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-o</span> <span class="st">&quot;test_results.txt&quot;</span> script</span>
+<span id="cb166-9"><a href="#cb166-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb166-10"><a href="#cb166-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Override group assertion failure action]</span></span>
+<span id="cb166-11"><a href="#cb166-11" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-t</span> <span class="at">-O</span> <span class="st">&quot;fail|continue&quot;</span> script</span></code></pre></div>
 <h3 id="test-structure">48.3 Test Structure</h3>
 <p>Tests use a simple structure:</p>
 <pre class="za"><code>test &quot;test_name&quot; GROUP &quot;group_name&quot; [ASSERT FAIL|CONTINUE]
@@ -3217,14 +3246,14 @@ Prometheus or Grafana tooling.</p>
 <h3 id="enabling-the-metrics-server">Enabling the Metrics Server</h3>
 <p>Use the <code>-M</code> flag with a port number, or set the
 <code>ZA_PROMETHEUS</code> environment variable:</p>
-<div class="sourceCode" id="cb175"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb175-1"><a href="#cb175-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Command-line flag</span></span>
-<span id="cb175-2"><a href="#cb175-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
-<span id="cb175-3"><a href="#cb175-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb175-4"><a href="#cb175-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Environment variable</span></span>
-<span id="cb175-5"><a href="#cb175-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
-<span id="cb175-6"><a href="#cb175-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb175-7"><a href="#cb175-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Both forms are equivalent</span></span></code></pre></div>
+<div class="sourceCode" id="cb181"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb181-1"><a href="#cb181-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Command-line flag</span></span>
+<span id="cb181-2"><a href="#cb181-2" aria-hidden="true" tabindex="-1"></a><span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb181-3"><a href="#cb181-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb181-4"><a href="#cb181-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Environment variable</span></span>
+<span id="cb181-5"><a href="#cb181-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb181-6"><a href="#cb181-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb181-7"><a href="#cb181-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Both forms are equivalent</span></span></code></pre></div>
 <p>Once enabled, the metrics endpoint is available at
 <code>http://localhost:9091/metrics</code> (assuming port 9091). You can
 then configure Prometheus or any Prometheus-compatible scraper to poll
@@ -3234,24 +3263,24 @@ Allowlist</h3>
 <p>By default, <strong>no incoming requests are allowed</strong>. Access
 is restricted using the <code>ZA_PROMETHEUS_CIDR</code> environment
 variable. Specify one or more CIDR blocks as a comma-separated list:</p>
-<div class="sourceCode" id="cb176"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb176-1"><a href="#cb176-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow localhost only (IPv4 loopback; IPv6 auto-expanded to ::1/128)</span></span>
-<span id="cb176-2"><a href="#cb176-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;127.0.0.1/32&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
-<span id="cb176-3"><a href="#cb176-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb176-4"><a href="#cb176-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow all addresses (both IPv4 and IPv6)</span></span>
-<span id="cb176-5"><a href="#cb176-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;0.0.0.0/0&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
-<span id="cb176-6"><a href="#cb176-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb176-7"><a href="#cb176-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow multiple subnets</span></span>
-<span id="cb176-8"><a href="#cb176-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;127.0.0.1/32,192.168.1.0/24,10.0.0.0/8&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
+<div class="sourceCode" id="cb182"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb182-1"><a href="#cb182-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow localhost only (IPv4 loopback; IPv6 auto-expanded to ::1/128)</span></span>
+<span id="cb182-2"><a href="#cb182-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;127.0.0.1/32&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb182-3"><a href="#cb182-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb182-4"><a href="#cb182-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow all addresses (both IPv4 and IPv6)</span></span>
+<span id="cb182-5"><a href="#cb182-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;0.0.0.0/0&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb182-6"><a href="#cb182-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb182-7"><a href="#cb182-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow multiple subnets</span></span>
+<span id="cb182-8"><a href="#cb182-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;127.0.0.1/32,192.168.1.0/24,10.0.0.0/8&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
 <p><strong>Dual-stack behaviour:</strong> IPv4 localhost
 (<code>127.0.0.1/32</code>) and all-routes (<code>0.0.0.0/0</code>) are
 automatically expanded to their IPv6 equivalents (<code>::1/128</code>
 and <code>::/0</code> respectively). Other IPv4 CIDR blocks are not
 auto-expanded; if you need to allow IPv6 clients on arbitrary subnets,
 specify those explicitly:</p>
-<div class="sourceCode" id="cb177"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb177-1"><a href="#cb177-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow 192.168.x.x IPv4 + fe80::/10 IPv6 link-local</span></span>
-<span id="cb177-2"><a href="#cb177-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;192.168.0.0/16,fe80::/10&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
+<div class="sourceCode" id="cb183"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb183-1"><a href="#cb183-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Allow 192.168.x.x IPv4 + fe80::/10 IPv6 link-local</span></span>
+<span id="cb183-2"><a href="#cb183-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_CIDR</span><span class="op">=</span><span class="st">&quot;192.168.0.0/16,fe80::/10&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
 <p>Invalid CIDR entries are logged as warnings and skipped; valid
 entries still apply.</p>
 <h3 id="metrics-filtering-excluding-virtualpseudo-devices">Metrics
@@ -3287,15 +3316,15 @@ via Include Filters</h4>
 <p>If you need to monitor a normally-excluded device, use the additive
 include environment variables. These override the default exclusions for
 matching patterns:</p>
-<div class="sourceCode" id="cb178"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb178-1"><a href="#cb178-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor veth interfaces (normally excluded)</span></span>
-<span id="cb178-2"><a href="#cb178-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_NET_INCLUDE</span><span class="op">=</span><span class="st">&quot;veth,docker&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
-<span id="cb178-3"><a href="#cb178-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb178-4"><a href="#cb178-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor loop devices (normally excluded)</span></span>
-<span id="cb178-5"><a href="#cb178-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_DISK_INCLUDE</span><span class="op">=</span><span class="st">&quot;loop,sda&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
-<span id="cb178-6"><a href="#cb178-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb178-7"><a href="#cb178-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor tmpfs and overlay filesystems (normally excluded)</span></span>
-<span id="cb178-8"><a href="#cb178-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_FS_INCLUDE</span><span class="op">=</span><span class="st">&quot;tmpfs,overlay,ext4&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
+<div class="sourceCode" id="cb184"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb184-1"><a href="#cb184-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor veth interfaces (normally excluded)</span></span>
+<span id="cb184-2"><a href="#cb184-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_NET_INCLUDE</span><span class="op">=</span><span class="st">&quot;veth,docker&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb184-3"><a href="#cb184-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb184-4"><a href="#cb184-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor loop devices (normally excluded)</span></span>
+<span id="cb184-5"><a href="#cb184-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_DISK_INCLUDE</span><span class="op">=</span><span class="st">&quot;loop,sda&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span>
+<span id="cb184-6"><a href="#cb184-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb184-7"><a href="#cb184-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Monitor tmpfs and overlay filesystems (normally excluded)</span></span>
+<span id="cb184-8"><a href="#cb184-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_FS_INCLUDE</span><span class="op">=</span><span class="st">&quot;tmpfs,overlay,ext4&quot;</span> <span class="ex">za</span> <span class="at">-M</span> 9091 script.za</span></code></pre></div>
 <p>Patterns use prefix matching (e.g., <code>veth</code> matches
 <code>veth0</code>, <code>veth1</code>, etc.) or exact match. Multiple
 patterns are comma-separated. When you set an include filter, all
@@ -3305,18 +3334,18 @@ are re-enabled.</p>
 <p>By default, the metrics server binds to <code>0.0.0.0</code> (all
 IPv4 interfaces). You can customize this via the
 <code>ZA_PROMETHEUS_BIND</code> environment variable:</p>
-<div class="sourceCode" id="cb179"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb179-1"><a href="#cb179-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default: bind to all interfaces</span></span>
-<span id="cb179-2"><a href="#cb179-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
-<span id="cb179-3"><a href="#cb179-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb179-4"><a href="#cb179-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to localhost only</span></span>
-<span id="cb179-5"><a href="#cb179-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;127.0.0.1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
-<span id="cb179-6"><a href="#cb179-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb179-7"><a href="#cb179-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to default gateway interface (auto-detected)</span></span>
-<span id="cb179-8"><a href="#cb179-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;auto&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
-<span id="cb179-9"><a href="#cb179-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb179-10"><a href="#cb179-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to specific IPv6 address</span></span>
-<span id="cb179-11"><a href="#cb179-11" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;::1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span></code></pre></div>
+<div class="sourceCode" id="cb185"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb185-1"><a href="#cb185-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Default: bind to all interfaces</span></span>
+<span id="cb185-2"><a href="#cb185-2" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb185-3"><a href="#cb185-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb185-4"><a href="#cb185-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to localhost only</span></span>
+<span id="cb185-5"><a href="#cb185-5" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;127.0.0.1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb185-6"><a href="#cb185-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb185-7"><a href="#cb185-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to default gateway interface (auto-detected)</span></span>
+<span id="cb185-8"><a href="#cb185-8" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;auto&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span>
+<span id="cb185-9"><a href="#cb185-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb185-10"><a href="#cb185-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind to specific IPv6 address</span></span>
+<span id="cb185-11"><a href="#cb185-11" aria-hidden="true" tabindex="-1"></a><span class="va">ZA_PROMETHEUS_BIND</span><span class="op">=</span><span class="st">&quot;::1&quot;</span> <span class="va">ZA_PROMETHEUS</span><span class="op">=</span>9091 <span class="ex">za</span> script.za</span></code></pre></div>
 <p>When using <code>ZA_PROMETHEUS_BIND="auto"</code>, Za detects the IP
 address of the interface used for outbound traffic (e.g., the default
 gateway). This is useful for multi-homed systems where you want metrics
@@ -3461,13 +3490,13 @@ severity</li>
 <h3 id="scraping-with-prometheus">Scraping with Prometheus</h3>
 <p>Once the metrics server is running, configure Prometheus (or Grafana)
 to scrape the endpoint:</p>
-<div class="sourceCode" id="cb181"><pre
-class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb181-1"><a href="#cb181-1" aria-hidden="true" tabindex="-1"></a><span class="co"># prometheus.yml</span></span>
-<span id="cb181-2"><a href="#cb181-2" aria-hidden="true" tabindex="-1"></a><span class="fu">scrape_configs</span><span class="kw">:</span></span>
-<span id="cb181-3"><a href="#cb181-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;za&#39;</span></span>
-<span id="cb181-4"><a href="#cb181-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">metrics_path</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;/metrics&#39;</span></span>
-<span id="cb181-5"><a href="#cb181-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">static_configs</span><span class="kw">:</span></span>
-<span id="cb181-6"><a href="#cb181-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&#39;localhost:9091&#39;</span><span class="kw">]</span></span></code></pre></div>
+<div class="sourceCode" id="cb187"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb187-1"><a href="#cb187-1" aria-hidden="true" tabindex="-1"></a><span class="co"># prometheus.yml</span></span>
+<span id="cb187-2"><a href="#cb187-2" aria-hidden="true" tabindex="-1"></a><span class="fu">scrape_configs</span><span class="kw">:</span></span>
+<span id="cb187-3"><a href="#cb187-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;za&#39;</span></span>
+<span id="cb187-4"><a href="#cb187-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">metrics_path</span><span class="kw">:</span><span class="at"> </span><span class="st">&#39;/metrics&#39;</span></span>
+<span id="cb187-5"><a href="#cb187-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">static_configs</span><span class="kw">:</span></span>
+<span id="cb187-6"><a href="#cb187-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">&#39;localhost:9091&#39;</span><span class="kw">]</span></span></code></pre></div>
 <p>Reload Prometheus to begin collecting metrics. Use PromQL to query,
 alert, and visualize:</p>
 <pre><code># Example queries
@@ -4138,6 +4167,17 @@ zip_extract_file, zip_list, zip_remove</p>
 <li>zip_extract_file</li>
 <li>zip_add</li>
 </ul>
+<h2 id="gzip">gzip</h2>
+<p><strong>Functions (4):</strong></p>
+<p>gzip_compress, gzip_compress_bytes, gzip_decompress,
+gzip_decompress_bytes</p>
+<p><strong>Commonly used (from examples/tests):</strong></p>
+<ul>
+<li>gzip_compress</li>
+<li>gzip_decompress</li>
+<li>gzip_compress_bytes</li>
+<li>gzip_decompress_bytes</li>
+</ul>
 <div style="page-break-after: always;">
 
 </div>
@@ -4477,20 +4517,20 @@ use +gl</code></pre>
 signedness of wide char)</li>
 </ul></li>
 <li><p><strong>Enum definitions</strong> (single-line or multiline):</p>
-<div class="sourceCode" id="cb198"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb198-1"><a href="#cb198-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
-<span id="cb198-2"><a href="#cb198-2" aria-hidden="true" tabindex="-1"></a>    OK <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
-<span id="cb198-3"><a href="#cb198-3" aria-hidden="true" tabindex="-1"></a>    ERROR <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
-<span id="cb198-4"><a href="#cb198-4" aria-hidden="true" tabindex="-1"></a>    PENDING <span class="op">=</span> <span class="dv">100</span></span>
-<span id="cb198-5"><a href="#cb198-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div></li>
+<div class="sourceCode" id="cb204"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb204-1"><a href="#cb204-1" aria-hidden="true" tabindex="-1"></a><span class="kw">enum</span> Status <span class="op">{</span></span>
+<span id="cb204-2"><a href="#cb204-2" aria-hidden="true" tabindex="-1"></a>    OK <span class="op">=</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb204-3"><a href="#cb204-3" aria-hidden="true" tabindex="-1"></a>    ERROR <span class="op">=</span> <span class="op">-</span><span class="dv">1</span><span class="op">,</span></span>
+<span id="cb204-4"><a href="#cb204-4" aria-hidden="true" tabindex="-1"></a>    PENDING <span class="op">=</span> <span class="dv">100</span></span>
+<span id="cb204-5"><a href="#cb204-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div></li>
 <li><p><strong>Function signatures</strong> (auto-generates LIB
 declarations):</p>
-<div class="sourceCode" id="cb199"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb199-1"><a href="#cb199-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
-<span id="cb199-2"><a href="#cb199-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
-<span id="cb199-3"><a href="#cb199-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span>
-<span id="cb199-4"><a href="#cb199-4" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span>
-<span id="cb199-5"><a href="#cb199-5" aria-hidden="true" tabindex="-1"></a>__declspec<span class="op">(</span>dllexport<span class="op">)</span> <span class="dt">void</span> exported_function<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb205"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb205-1"><a href="#cb205-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> strlen<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>s<span class="op">);</span></span>
+<span id="cb205-2"><a href="#cb205-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>malloc<span class="op">(</span><span class="dt">size_t</span> size<span class="op">);</span></span>
+<span id="cb205-3"><a href="#cb205-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> printf<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>format<span class="op">,</span> <span class="op">...);</span></span>
+<span id="cb205-4"><a href="#cb205-4" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span>
+<span id="cb205-5"><a href="#cb205-5" aria-hidden="true" tabindex="-1"></a>__declspec<span class="op">(</span>dllexport<span class="op">)</span> <span class="dt">void</span> exported_function<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span></code></pre></div>
 <ul>
 <li>Supports simple and pointer return types</li>
 <li>Supports multiline declarations</li>
@@ -4501,10 +4541,10 @@ conventions)</li>
 <li>Skips static inline, typedef, and private functions (_prefix)</li>
 </ul></li>
 <li><p><strong>Constants referencing earlier constants</strong>:</p>
-<div class="sourceCode" id="cb200"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb200-1"><a href="#cb200-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BASE_SIZE </span><span class="dv">1024</span></span>
-<span id="cb200-2"><a href="#cb200-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFFER_SIZE </span><span class="op">(</span><span class="pp">BASE_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">2</span><span class="op">)</span><span class="pp">      </span><span class="co">// Works! = 2048</span></span>
-<span id="cb200-3"><a href="#cb200-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#define LARGE_BUFFER </span><span class="op">(</span><span class="pp">BUFFER_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">4</span><span class="op">)</span><span class="pp">   </span><span class="co">// Works! = 8192</span></span></code></pre></div>
+<div class="sourceCode" id="cb206"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BASE_SIZE </span><span class="dv">1024</span></span>
+<span id="cb206-2"><a href="#cb206-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFFER_SIZE </span><span class="op">(</span><span class="pp">BASE_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">2</span><span class="op">)</span><span class="pp">      </span><span class="co">// Works! = 2048</span></span>
+<span id="cb206-3"><a href="#cb206-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#define LARGE_BUFFER </span><span class="op">(</span><span class="pp">BUFFER_SIZE </span><span class="op">*</span><span class="pp"> </span><span class="dv">4</span><span class="op">)</span><span class="pp">   </span><span class="co">// Works! = 8192</span></span></code></pre></div>
 <ul>
 <li>Supports chained references (A → B → C)</li>
 <li>Limitation: Forward references not supported (constants must be
@@ -4513,10 +4553,10 @@ defined in order)</li>
 skipped)</li>
 </ul></li>
 <li><p><strong>Typedef declarations</strong>:</p>
-<div class="sourceCode" id="cb201"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb201-1"><a href="#cb201-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">uint32_t</span><span class="op">;</span></span>
-<span id="cb201-2"><a href="#cb201-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Point <span class="op">{</span> <span class="dt">int</span> x<span class="op">,</span> y<span class="op">;</span> <span class="op">}</span> Point<span class="op">;</span></span>
-<span id="cb201-3"><a href="#cb201-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> Point<span class="op">*</span> PointPtr<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb207"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb207-1"><a href="#cb207-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">uint32_t</span><span class="op">;</span></span>
+<span id="cb207-2"><a href="#cb207-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> Point <span class="op">{</span> <span class="dt">int</span> x<span class="op">,</span> y<span class="op">;</span> <span class="op">}</span> Point<span class="op">;</span></span>
+<span id="cb207-3"><a href="#cb207-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> Point<span class="op">*</span> PointPtr<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>Simple type aliases</li>
 <li>Typedef chains (multi-level resolution)</li>
@@ -4530,23 +4570,23 @@ enhancement)</li>
 </ul></li>
 <li><p><strong>Preprocessor conditionals</strong> (platform-aware
 parsing):</p>
-<div class="sourceCode" id="cb202"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb202-1"><a href="#cb202-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __linux__</span></span>
-<span id="cb202-2"><a href="#cb202-2" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define BUFFER_SIZE </span><span class="dv">2048</span></span>
-<span id="cb202-3"><a href="#cb202-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> linux_only_func<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb202-4"><a href="#cb202-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
-<span id="cb202-5"><a href="#cb202-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb202-6"><a href="#cb202-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef __WINDOWS__</span></span>
-<span id="cb202-7"><a href="#cb202-7" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define UNIX_FLAG </span><span class="dv">1</span></span>
-<span id="cb202-8"><a href="#cb202-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
-<span id="cb202-9"><a href="#cb202-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb202-10"><a href="#cb202-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#if defined(__LP64__) &amp;&amp; VERSION &gt; 1</span></span>
-<span id="cb202-11"><a href="#cb202-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 64-bit</span></span>
-<span id="cb202-12"><a href="#cb202-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#elif VERSION == 1</span></span>
-<span id="cb202-13"><a href="#cb202-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">size_t</span><span class="op">;</span>   <span class="co">// 32-bit legacy</span></span>
-<span id="cb202-14"><a href="#cb202-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#else</span></span>
-<span id="cb202-15"><a href="#cb202-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">short</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 16-bit</span></span>
-<span id="cb202-16"><a href="#cb202-16" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span></code></pre></div>
+<div class="sourceCode" id="cb208"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb208-1"><a href="#cb208-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef __linux__</span></span>
+<span id="cb208-2"><a href="#cb208-2" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define BUFFER_SIZE </span><span class="dv">2048</span></span>
+<span id="cb208-3"><a href="#cb208-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">int</span> linux_only_func<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb208-4"><a href="#cb208-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb208-5"><a href="#cb208-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb208-6"><a href="#cb208-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef __WINDOWS__</span></span>
+<span id="cb208-7"><a href="#cb208-7" aria-hidden="true" tabindex="-1"></a>  <span class="pp">#define UNIX_FLAG </span><span class="dv">1</span></span>
+<span id="cb208-8"><a href="#cb208-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb208-9"><a href="#cb208-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb208-10"><a href="#cb208-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#if defined(__LP64__) &amp;&amp; VERSION &gt; 1</span></span>
+<span id="cb208-11"><a href="#cb208-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">long</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 64-bit</span></span>
+<span id="cb208-12"><a href="#cb208-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#elif VERSION == 1</span></span>
+<span id="cb208-13"><a href="#cb208-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">int</span> <span class="dt">size_t</span><span class="op">;</span>   <span class="co">// 32-bit legacy</span></span>
+<span id="cb208-14"><a href="#cb208-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#else</span></span>
+<span id="cb208-15"><a href="#cb208-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">typedef</span> <span class="dt">unsigned</span> <span class="dt">short</span> <span class="dt">size_t</span><span class="op">;</span>  <span class="co">// 16-bit</span></span>
+<span id="cb208-16"><a href="#cb208-16" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span></code></pre></div>
 <ul>
 <li>Supported directives: <code>#ifdef</code>, <code>#ifndef</code>,
 <code>#if</code>, <code>#elif</code>, <code>#else</code>,
@@ -4593,16 +4633,16 @@ evaluation (<code>L'x'</code>, <code>u'x'</code>, <code>U'x'</code>,
 <li><p><strong>Struct definitions</strong> (automatically registered as
 Za types):</p></li>
 </ol>
-<div class="sourceCode" id="cb203"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb203-1"><a href="#cb203-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb203-2"><a href="#cb203-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> x<span class="op">;</span></span>
-<span id="cb203-3"><a href="#cb203-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> y<span class="op">;</span></span>
-<span id="cb203-4"><a href="#cb203-4" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Point<span class="op">;</span></span>
-<span id="cb203-5"><a href="#cb203-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb203-6"><a href="#cb203-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb203-7"><a href="#cb203-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
-<span id="cb203-8"><a href="#cb203-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
-<span id="cb203-9"><a href="#cb203-9" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb209"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb209-1"><a href="#cb209-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb209-2"><a href="#cb209-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> x<span class="op">;</span></span>
+<span id="cb209-3"><a href="#cb209-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> y<span class="op">;</span></span>
+<span id="cb209-4"><a href="#cb209-4" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Point<span class="op">;</span></span>
+<span id="cb209-5"><a href="#cb209-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb209-6"><a href="#cb209-6" aria-hidden="true" tabindex="-1"></a>   <span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb209-7"><a href="#cb209-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">uint8_t</span> rgb<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
+<span id="cb209-8"><a href="#cb209-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> name<span class="op">[</span><span class="dv">32</span><span class="op">];</span></span>
+<span id="cb209-9"><a href="#cb209-9" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span> Color<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>C structs automatically registered in Za’s
 <code>structmaps</code></li>
@@ -4636,11 +4676,11 @@ int literal)</li>
 </ul></li>
 <li><p><strong>wchar_t support</strong> (platform-aware implicit type
 alias):</p>
-<div class="sourceCode" id="cb204"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb204-1"><a href="#cb204-1" aria-hidden="true" tabindex="-1"></a><span class="co">// C header</span></span>
-<span id="cb204-2"><a href="#cb204-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_wchar_size<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb204-3"><a href="#cb204-3" aria-hidden="true" tabindex="-1"></a><span class="dt">wchar_t</span> wchar_echo<span class="op">(</span><span class="dt">wchar_t</span> c<span class="op">);</span></span>
-<span id="cb204-4"><a href="#cb204-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> wchar_fill_array<span class="op">(</span><span class="dt">wchar_t</span> <span class="op">*</span>arr<span class="op">,</span> <span class="dt">int</span> len<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb210"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb210-1"><a href="#cb210-1" aria-hidden="true" tabindex="-1"></a><span class="co">// C header</span></span>
+<span id="cb210-2"><a href="#cb210-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_wchar_size<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb210-3"><a href="#cb210-3" aria-hidden="true" tabindex="-1"></a><span class="dt">wchar_t</span> wchar_echo<span class="op">(</span><span class="dt">wchar_t</span> c<span class="op">);</span></span>
+<span id="cb210-4"><a href="#cb210-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> wchar_fill_array<span class="op">(</span><span class="dt">wchar_t</span> <span class="op">*</span>arr<span class="op">,</span> <span class="dt">int</span> len<span class="op">);</span></span></code></pre></div>
 <pre class="za"><code># Za code - wchar_t automatically mapped
 module &quot;./libtest.so&quot; as tw auto &quot;./test.h&quot;
 use +tw
@@ -4665,9 +4705,9 @@ type</li>
 <li>Transparent to Za code - just pass/receive as integers</li>
 </ul>
 <p><strong>Compatible with typedefs:</strong></p>
-<div class="sourceCode" id="cb206"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb206-1"><a href="#cb206-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">wchar_t</span> WCHAR<span class="op">;</span></span>
-<span id="cb206-2"><a href="#cb206-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> WCHAR<span class="op">*</span> LPWSTR<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb212"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb212-1"><a href="#cb212-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">wchar_t</span> WCHAR<span class="op">;</span></span>
+<span id="cb212-2"><a href="#cb212-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> WCHAR<span class="op">*</span> LPWSTR<span class="op">;</span></span></code></pre></div>
 <p>Already handled by existing typedef resolution (item 8 above).</p>
 <p><strong>Use cases:</strong></p>
 <ul>
@@ -4679,10 +4719,10 @@ class="sourceCode c"><code class="sourceCode c"><span id="cb206-1"><a href="#cb2
 </ul></li>
 <li><p><strong>Function pointer typedefs</strong> (v1.2.2+):</p></li>
 </ol>
-<div class="sourceCode" id="cb207"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb207-1"><a href="#cb207-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">int</span> <span class="op">(*</span>compare_t<span class="op">)(</span><span class="dt">const</span> <span class="dt">void</span><span class="op">*,</span> <span class="dt">const</span> <span class="dt">void</span><span class="op">*);</span></span>
-<span id="cb207-2"><a href="#cb207-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>callback_t<span class="op">)(</span><span class="dt">int</span> signal<span class="op">);</span></span>
-<span id="cb207-3"><a href="#cb207-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">double</span> <span class="op">(*</span>math_func_t<span class="op">)(</span><span class="dt">double</span><span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb213"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb213-1"><a href="#cb213-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">int</span> <span class="op">(*</span>compare_t<span class="op">)(</span><span class="dt">const</span> <span class="dt">void</span><span class="op">*,</span> <span class="dt">const</span> <span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb213-2"><a href="#cb213-2" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>callback_t<span class="op">)(</span><span class="dt">int</span> signal<span class="op">);</span></span>
+<span id="cb213-3"><a href="#cb213-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">double</span> <span class="op">(*</span>math_func_t<span class="op">)(</span><span class="dt">double</span><span class="op">);</span></span></code></pre></div>
 <ul>
 <li>Parses function pointer signatures from typedef declarations</li>
 <li>Stores signature metadata (parameter types, return type)</li>
@@ -4698,16 +4738,16 @@ parameters</li>
 <li><strong>Function pointer fields in structs and unions</strong>
 (v1.2.2+):</li>
 </ol>
-<div class="sourceCode" id="cb208"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb208-1"><a href="#cb208-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
-<span id="cb208-2"><a href="#cb208-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>callback<span class="op">)(</span><span class="dt">void</span><span class="op">*);</span></span>
-<span id="cb208-3"><a href="#cb208-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>cleanup<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb208-4"><a href="#cb208-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Handler<span class="op">;</span></span>
-<span id="cb208-5"><a href="#cb208-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb208-6"><a href="#cb208-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">union</span> <span class="op">{</span></span>
-<span id="cb208-7"><a href="#cb208-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>compare<span class="op">)(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">int</span><span class="op">);</span></span>
-<span id="cb208-8"><a href="#cb208-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>action<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
-<span id="cb208-9"><a href="#cb208-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> FuncUnion<span class="op">;</span></span></code></pre></div>
+<div class="sourceCode" id="cb214"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb214-1"><a href="#cb214-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb214-2"><a href="#cb214-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>callback<span class="op">)(</span><span class="dt">void</span><span class="op">*);</span></span>
+<span id="cb214-3"><a href="#cb214-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>cleanup<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb214-4"><a href="#cb214-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> Handler<span class="op">;</span></span>
+<span id="cb214-5"><a href="#cb214-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb214-6"><a href="#cb214-6" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">union</span> <span class="op">{</span></span>
+<span id="cb214-7"><a href="#cb214-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> <span class="op">(*</span>compare<span class="op">)(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb214-8"><a href="#cb214-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">(*</span>action<span class="op">)(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb214-9"><a href="#cb214-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> FuncUnion<span class="op">;</span></span></code></pre></div>
 <ul>
 <li>Parses function pointer field declarations like
 <code>int (*callback)(void*)</code></li>
@@ -4887,10 +4927,10 @@ macros to correctly identify the actual return types.</p>
 </tbody>
 </table>
 <p><strong>Problem without macro expansion:</strong></p>
-<div class="sourceCode" id="cb214"><pre
-class="sourceCode c"><code class="sourceCode c"><span id="cb214-1"><a href="#cb214-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
-<span id="cb214-2"><a href="#cb214-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
-<span id="cb214-3"><a href="#cb214-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb220"><pre
+class="sourceCode c"><code class="sourceCode c"><span id="cb220-1"><a href="#cb220-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Header file (libgd.h)</span></span>
+<span id="cb220-2"><a href="#cb220-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BGD_DECLARE</span><span class="op">(</span><span class="pp">type</span><span class="op">)</span><span class="pp"> BGD_EXPORT_DATA_PROT type BGD_STDCALL</span></span>
+<span id="cb220-3"><a href="#cb220-3" aria-hidden="true" tabindex="-1"></a>BGD_DECLARE<span class="op">(</span>gdImagePtr<span class="op">)</span> gdImageCreateTrueColor<span class="op">(</span><span class="dt">int</span> sx<span class="op">,</span> <span class="dt">int</span> sy<span class="op">);</span></span></code></pre></div>
 <p>Without expansion, Za would see this as:</p>
 <pre><code>gdImageCreateTrueColor(...) -&gt; void    # WRONG: No visible return type!</code></pre>
 <p><strong>Solution with AUTO (macro expansion enabled):</strong></p>
@@ -7990,8 +8030,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb338"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb338-1"><a href="#cb338-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb344"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb344-1"><a href="#cb344-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

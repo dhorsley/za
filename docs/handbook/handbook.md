@@ -2526,7 +2526,59 @@ result = zip_remove("test_archive.zip", ["test2.txt"])
 
 Please see za_tests/test_zip.za for a larger example set.
 
-### 38.11 Regular Expressions (PCRE)
+### 38.11 Compression Operations (GZIP)
+
+GZIP provides single-stream compression and decompression for files and in-memory byte arrays. Unlike ZIP, GZIP does not archive multiple files; it compresses one byte stream.
+
+Compress a file:
+
+```za
+result = gzip_compress("license.txt", "license.gz")
+```
+
+Decompress a file:
+
+```za
+result = gzip_decompress("license.gz", "license.txt")
+```
+
+Compression levels (optional map argument):
+
+```za
+# Integer levels: -2 (huffman only) to 9 (best compression)
+gzip_compress("data.txt", "data_best.gz", map(.level 9))
+
+# String aliases
+gzip_compress("data.txt", "data_fast.gz", map(.level "fast"))
+gzip_compress("data.txt", "data_none.gz", map(.level "none"))
+```
+
+Overwrite control:
+
+```za
+# Refuse to overwrite an existing destination file
+gzip_compress("data.txt", "data.gz", map(.overwrite false))
+```
+
+In-memory byte array compression (returns `[]uint8`):
+
+```za
+raw = [72, 101, 108, 108, 111].to_typed("[]uint8")
+compressed = gzip_compress_bytes(raw)
+decompressed = gzip_decompress_bytes(compressed)
+```
+
+In-memory compression with level:
+
+```za
+compressed = gzip_compress_bytes(raw, map(.level "best"))
+```
+
+Available level aliases: `"default"`, `"none"` / `"no"`, `"fast"` / `"speed"`, `"best"`, `"huffman"`.
+
+Please see za_tests/test_gzip.za for a larger example set.
+
+### 38.12 Regular Expressions (PCRE)
 
 Regular expressions provide powerful pattern matching for text processing. The reg_* library calls use a PCRE library implementation instead of the builtin regular expression engine. Due to this, these calls are only available on static linux builds of Za.
 
@@ -2552,7 +2604,7 @@ reg_replace(var, regex, replacement[, int_flags])
 ```
 
 
-### 38.12 Checksum Operations
+### 38.13 Checksum Operations
 
 Checksum operations are essential for file integrity verification and security.
 
@@ -2585,7 +2637,7 @@ S3 ETag Functionality
 
 The s3sum function specifically calculates checksums compatible with Amazon S3 ETags, including multipart upload format (hash-parts) for files larger than the blocksize. It also computes modern AWS checksums (SHA256, SHA1, CRC32, CRC32C) in both hex and base64 encodings for direct comparison with S3 object metadata. Note that modern checksums are only stored on S3 if the object was uploaded with the --checksum-algorithm flag. They are only returned by head-object when --checksum-mode ENABLED is used.
 
-### 38.13 TUI (Terminal User Interface)
+### 38.14 TUI (Terminal User Interface)
 
 Create TUI objects and style:
 
@@ -2658,7 +2710,7 @@ tui_screen(1)  # Switch to secondary screen
 The TUI system uses maps to configure display properties like position (Row, Col), size (Width, Height), content (Content, Data), and styling (Border, colours)
 
 
-### 38.14 Notification Operations
+### 38.15 Notification Operations
 
 Za provides 7 builtin file system notification library functions.
 
@@ -2707,7 +2759,7 @@ Supported event types for ev_mask:
 - "chmod"  - Permission changes
 
 
-### 38.15 Error Handling and Logging
+### 38.16 Error Handling and Logging
 
 Robust error handling and logging are essential for reliable system administration:
 
@@ -2745,7 +2797,7 @@ log critical: "System out of memory"
 
 These representative idioms demonstrate the flexibility of Za's standard library categories for system administration tasks. Each category provides specialized tools that can be combined to create comprehensive automation solutions.
 
-### 38.16 INI Configuration File Operations
+### 38.17 INI Configuration File Operations
 
 INI files provide simple configuration management for applications and services. The INI library, where possible, preserves comments, blank lines, and formatting while reading and writing configuration files.
 
@@ -4594,6 +4646,22 @@ zip_add, zip_create, zip_create_from_dir, zip_extract, zip_extract_file, zip_lis
 - zip_remove
 - zip_extract_file
 - zip_add
+
+## gzip
+
+**Functions (4):**
+
+
+gzip_compress, gzip_compress_bytes, gzip_decompress, gzip_decompress_bytes
+
+
+**Commonly used (from examples/tests):**
+
+
+- gzip_compress
+- gzip_decompress
+- gzip_compress_bytes
+- gzip_decompress_bytes
 
 <div style="page-break-after: always;"></div>
 
