@@ -2213,7 +2213,34 @@ foreach config_file in config_files
     if config_file.size &gt; 0
         process_config(config_file.name)
     endif
-endfor</code></pre>
+endfor
+
+# Directory creation
+mkdir(&quot;/tmp/backup&quot;)
+mkdir(&quot;/tmp/backup&quot;, &quot;700&quot;)
+mkdir_p(&quot;/tmp/backup/2024/01/15&quot;)
+
+# Directory creation with options map
+mkdir(&quot;/tmp/secure&quot;, map(.mode &quot;700&quot;))
+mkdir(&quot;/tmp/deep/nested&quot;, map(.recursive true))
+mkdir(&quot;/tmp/deep/secure&quot;, map(.recursive true, .mode &quot;700&quot;))
+
+# File permissions
+chmod(&quot;/tmp/backup/script&quot;, &quot;755&quot;)
+
+# Create empty files or update timestamps
+touch(&quot;/tmp/backup/last_run&quot;)
+
+# Symbolic links
+symlink(&quot;/etc/app/config&quot;, &quot;/tmp/backup/config_link&quot;)
+target = readlink(&quot;/tmp/backup/config_link&quot;)
+
+# Truncate files
+truncate(&quot;/tmp/backup/large.log&quot;, 0)
+
+# Temporary files and directories
+tmp_dir = temp_dir()
+tmp_file = temp_file(&quot;report_*.txt&quot;)</code></pre>
 <h3 id="os-and-system-operations">38.6 OS and System Operations</h3>
 <p>System operations enable interaction with the operating system for
 monitoring and control:</p>
@@ -2229,8 +2256,8 @@ pid = pid()
 
 # Directory operations
 if not is_dir(file)
-    | mkdir &quot;{file}&quot;
-    | chmod 755 {file}
+    mkdir_p(file)
+    chmod(file, &quot;755&quot;)
 endif
 
 cd(&quot;/var/log&quot;)
@@ -2240,6 +2267,14 @@ current_dir = cwd()
 current_pid = pid()
 parent_pid = ppid()
 process_info = ps_info(current_pid)
+
+# Search processes by name
+za_pids = pgrep(&quot;za&quot;)
+println &quot;Found za processes:&quot;, za_pids
+
+# Bulk signal sending (safe: uses non-terminating WINCH)
+count = pkill(&quot;za&quot;, &quot;WINCH&quot;)
+println &quot;Sent WINCH to&quot;, count, &quot;za processes&quot;
 
 # User and group information
 current_user = user()
@@ -4051,13 +4086,14 @@ ev_watch_remove</p>
 <li>ev_event</li>
 </ul>
 <h2 id="os">os</h2>
-<p><strong>Functions (37):</strong></p>
-<p>can_read, can_write, cd, chroot, copy, cwd, delete, dir, env,
-fileabs, filebase, get_env, glob, group_add, group_del, group_info,
-group_list, group_membership, group_mod, groupname, is_device, is_pipe,
-is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename,
-set_env, umask, user_add, user_del, user_info, user_list, user_mod,
-username</p>
+<p><strong>Functions (48):</strong></p>
+<p>can_read, can_write, cd, chmod, chown, chroot, copy, cwd, delete,
+dir, env, fileabs, filebase, get_env, glob, group_add, group_del,
+group_info, group_list, group_membership, group_mod, groupname,
+is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky,
+is_symlink, mkdir, mkdir_p, parent, readlink, rename, set_env, symlink,
+sync, temp_dir, temp_file, touch, truncate, umask, user_add, user_del,
+user_info, user_list, user_mod, username</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>dir</li>
@@ -4072,6 +4108,10 @@ username</p>
 <li>can_read</li>
 <li>is_symlink</li>
 <li>is_socket</li>
+<li>mkdir</li>
+<li>mkdir_p</li>
+<li>chmod</li>
+<li>touch</li>
 </ul>
 <h2 id="package">package</h2>
 <p><strong>Functions (5):</strong></p>
@@ -4146,11 +4186,11 @@ sha512sum_file</p>
 <code>eg/</code> or <code>za_tests/</code> for this category in the
 uploaded tree)</p>
 <h2 id="system">system</h2>
-<p><strong>Functions (24):</strong></p>
+<p><strong>Functions (26):</strong></p>
 <p>cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info,
-gw_interface, iodiff, mem_info, mount_info, net_devices, nio, ps_info,
-ps_list, ps_map, ps_tree, resource_usage, send_signal, sys_load,
-sys_resources, top_cpu, top_dio, top_mem, top_nio</p>
+gw_interface, iodiff, mem_info, mount_info, net_devices, nio, pgrep,
+pkill, ps_info, ps_list, ps_map, ps_tree, resource_usage, send_signal,
+sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>sys_resources</li>
@@ -4164,6 +4204,8 @@ sys_resources, top_cpu, top_dio, top_mem, top_nio</p>
 <li>net_devices</li>
 <li>mem_info</li>
 <li>disk_usage</li>
+<li>pgrep</li>
+<li>pkill</li>
 </ul>
 <h2 id="tui">tui</h2>
 <p><strong>Functions (16):</strong></p>
