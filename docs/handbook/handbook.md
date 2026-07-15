@@ -2322,6 +2322,33 @@ foreach config_file in config_files
         process_config(config_file.name)
     endif
 endfor
+
+# Directory creation
+mkdir("/tmp/backup")
+mkdir("/tmp/backup", "700")
+mkdir_p("/tmp/backup/2024/01/15")
+
+# Directory creation with options map
+mkdir("/tmp/secure", map(.mode "700"))
+mkdir("/tmp/deep/nested", map(.recursive true))
+mkdir("/tmp/deep/secure", map(.recursive true, .mode "700"))
+
+# File permissions
+chmod("/tmp/backup/script", "755")
+
+# Create empty files or update timestamps
+touch("/tmp/backup/last_run")
+
+# Symbolic links
+symlink("/etc/app/config", "/tmp/backup/config_link")
+target = readlink("/tmp/backup/config_link")
+
+# Truncate files
+truncate("/tmp/backup/large.log", 0)
+
+# Temporary files and directories
+tmp_dir = temp_dir()
+tmp_file = temp_file("report_*.txt")
 ```
 
 ### 38.6 OS and System Operations
@@ -2341,8 +2368,8 @@ pid = pid()
 
 # Directory operations
 if not is_dir(file)
-    | mkdir "{file}"
-    | chmod 755 {file}
+    mkdir_p(file)
+    chmod(file, "755")
 endif
 
 cd("/var/log")
@@ -2352,6 +2379,14 @@ current_dir = cwd()
 current_pid = pid()
 parent_pid = ppid()
 process_info = ps_info(current_pid)
+
+# Search processes by name
+za_pids = pgrep("za")
+println "Found za processes:", za_pids
+
+# Bulk signal sending (safe: uses non-terminating WINCH)
+count = pkill("za", "WINCH")
+println "Sent WINCH to", count, "za processes"
 
 # User and group information
 current_user = user()
@@ -4496,10 +4531,10 @@ ev_event, ev_exists, ev_mask, ev_watch, ev_watch_add, ev_watch_close, ev_watch_r
 
 ## os
 
-**Functions (37):**
+**Functions (48):**
 
 
-can_read, can_write, cd, chroot, copy, cwd, delete, dir, env, fileabs, filebase, get_env, glob, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, parent, rename, set_env, umask, user_add, user_del, user_info, user_list, user_mod, username
+can_read, can_write, cd, chmod, chown, chroot, copy, cwd, delete, dir, env, fileabs, filebase, get_env, glob, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, mkdir, mkdir_p, parent, readlink, rename, set_env, symlink, sync, temp_dir, temp_file, touch, truncate, umask, user_add, user_del, user_info, user_list, user_mod, username
 
 
 **Commonly used (from examples/tests):**
@@ -4517,6 +4552,10 @@ can_read, can_write, cd, chroot, copy, cwd, delete, dir, env, fileabs, filebase,
 - can_read
 - is_symlink
 - is_socket
+- mkdir
+- mkdir_p
+- chmod
+- touch
 
 
 ## package
@@ -4612,10 +4651,10 @@ crc32_file, md5sum, md5sum_bytes, md5sum_file, s3sum, sha1sum, sha1sum_file, sha
 
 ## system
 
-**Functions (24):**
+**Functions (26):**
 
 
-cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, iodiff, mem_info, mount_info, net_devices, nio, ps_info, ps_list, ps_map, ps_tree, resource_usage, send_signal, sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio
+cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, iodiff, mem_info, mount_info, net_devices, nio, pgrep, pkill, ps_info, ps_list, ps_map, ps_tree, resource_usage, send_signal, sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio
 
 
 **Commonly used (from examples/tests):**
@@ -4632,6 +4671,8 @@ cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, i
 - net_devices
 - mem_info
 - disk_usage
+- pgrep
+- pkill
 
 
 ## tui

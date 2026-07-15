@@ -1,0 +1,180 @@
+#!/usr/bin/env za
+
+# Test script for file operations (mkdir, mkdir_p, chmod, touch, chown, symlink, readlink, sync, truncate, temp_dir, temp_file)
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== File Operations Tests ==="
+
+# Test 1: mkdir and mkdir_p
+println "\n1. Testing mkdir and mkdir_p..."
+base_dir = temp_dir("file_ops_test_XXXXX")
+println "Base test dir:", base_dir
+
+result = mkdir(base_dir + "/subdir1")
+if result
+    println "✓ mkdir succeeded"
+else
+    println "✗ mkdir failed"
+endif
+
+result = mkdir_p(base_dir + "/deep/nested/dir")
+if result
+    println "✓ mkdir_p (deep nested) succeeded"
+else
+    println "✗ mkdir_p failed"
+endif
+
+# Test mkdir with options map
+result = mkdir(base_dir + "/map_subdir", map(.mode "700"))
+if result
+    println "✓ mkdir with .mode map succeeded"
+else
+    println "✗ mkdir with .mode map failed"
+endif
+
+result = mkdir(base_dir + "/recursive/deep/path", map(.recursive true))
+if result
+    println "✓ mkdir with .recursive map succeeded"
+else
+    println "✗ mkdir with .recursive map failed"
+endif
+
+result = mkdir(base_dir + "/recursive_mode/deep", map(.recursive true, .mode "700"))
+if result
+    println "✓ mkdir with .recursive and .mode map succeeded"
+else
+    println "✗ mkdir with .recursive and .mode map failed"
+endif
+
+# Test 2: touch
+println "\n2. Testing touch..."
+result = touch(base_dir + "/newfile")
+if result
+    println "✓ touch (create new file) succeeded"
+else
+    println "✗ touch (create) failed"
+endif
+
+result = touch(base_dir + "/newfile")
+if result
+    println "✓ touch (update existing) succeeded"
+else
+    println "✗ touch (update) failed"
+endif
+
+# Test 3: chmod
+println "\n3. Testing chmod..."
+result = chmod(base_dir + "/newfile", "600")
+if result
+    println "✓ chmod 600 succeeded"
+else
+    println "✗ chmod failed"
+endif
+
+result = chmod(base_dir + "/newfile", "755")
+if result
+    println "✓ chmod 755 succeeded"
+else
+    println "✗ chmod failed"
+endif
+
+# Test 4: symlink and readlink
+println "\n4. Testing symlink and readlink..."
+result = symlink(base_dir + "/newfile", base_dir + "/link_to_newfile")
+if result
+    println "✓ symlink succeeded"
+else
+    println "✗ symlink failed"
+endif
+
+target = readlink(base_dir + "/link_to_newfile")
+if target == base_dir + "/newfile"
+    println "✓ readlink returned correct target:", target
+else
+    println "✗ readlink returned:", target
+endif
+
+# Test 5: truncate
+println "\n5. Testing truncate..."
+write_file(base_dir + "/truncate_test", "hello world")
+result = truncate(base_dir + "/truncate_test", 5)
+if result
+    content = read_file(base_dir + "/truncate_test")
+    if content == "hello"
+        println "✓ truncate to 5 succeeded, content:", content
+    else
+        println "✗ truncate content wrong:", content
+    endif
+else
+    println "✗ truncate failed"
+endif
+
+# Test 6: temp_dir and temp_file
+println "\n6. Testing temp_dir and temp_file..."
+tmpd = temp_dir()
+if tmpd != "" and is_dir(tmpd)
+    println "✓ temp_dir created:", tmpd
+else
+    println "✗ temp_dir failed"
+endif
+
+tmpf = temp_file()
+if tmpf != "" and is_file(tmpf)
+    println "✓ temp_file created:", tmpf
+else
+    println "✗ temp_file failed"
+endif
+
+tmpf2 = temp_file("custom_*.txt")
+if tmpf2 != "" and is_file(tmpf2) and tmpf2 ~ "custom_"
+    println "✓ temp_file with pattern succeeded:", tmpf2
+else
+    println "✗ temp_file with pattern failed"
+endif
+
+# Test 7: chown (may fail if not root, so handle gracefully)
+println "\n7. Testing chown..."
+result = chown(base_dir + "/newfile", user())
+if result
+    println "✓ chown to current user succeeded"
+else
+    println "! chown returned false (may be permission denied - expected if not owner)"
+endif
+
+# Test 8: sync (just verify it doesn't crash)
+println "\n8. Testing sync..."
+result = sync()
+if result
+    println "✓ sync succeeded"
+else
+    println "✗ sync failed"
+endif
+
+# Cleanup
+println "\n9. Cleaning up test directories..."
+result = delete(base_dir + "/newfile")
+result = delete(base_dir + "/link_to_newfile")
+result = delete(base_dir + "/truncate_test")
+# Remove entire base directory tree
+| rm -rf {base_dir}
+if result
+    println "✓ Cleanup succeeded"
+else
+    println "! Cleanup returned false (some dirs may remain)"
+endif
+
+# Cleanup temp files
+if tmpf != ""
+    delete(tmpf)
+endif
+if tmpf2 != ""
+    delete(tmpf2)
+endif
+if tmpd != ""
+    | rm -rf {tmpd}
+endif
+
+println "\n=== File Operations Tests Complete ==="

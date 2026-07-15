@@ -2,6 +2,7 @@ package main
 
 import (
     "errors"
+    "strings"
     "time"
 )
 
@@ -196,7 +197,7 @@ func buildSystemLib() {
         "nio", "dio",
         "resource_usage", "iodiff",
         "disk_usage", "mount_info", "net_devices",
-        "send_signal",
+        "send_signal", "pgrep", "pkill",
     }
 
     // Top N resource consumers (with ALL option where n=-1)
@@ -522,5 +523,50 @@ func buildSystemLib() {
             return false, err
         }
         return ok, nil
+    }
+
+    slhelp["pgrep"] = LibHelp{in: "pattern", out: "[]int", action: "Return PIDs of processes whose name contains the pattern (substring match)."}
+    stdlib["pgrep"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("pgrep", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        pattern := args[0].(string)
+        processes, err := getProcessList(nil)
+        if err != nil {
+            return nil, err
+        }
+        var pids []int
+        for _, proc := range processes {
+            if strings.Contains(proc.Name, pattern) {
+                pids = append(pids, proc.PID)
+            }
+        }
+        return pids, nil
+    }
+
+    slhelp["pkill"] = LibHelp{in: "pattern[,signal]", out: "int", action: "Send signal to processes whose name contains the pattern. Returns count of processes signalled. Default signal is TERM."}
+    stdlib["pkill"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("pkill", args, 3, "1", "string", "2", "string", "string", "2", "string", "int"); !ok {
+            return nil, err
+        }
+        pattern := args[0].(string)
+        sig := any("TERM")
+        if len(args) > 1 {
+            sig = args[1]
+        }
+        processes, err := getProcessList(nil)
+        if err != nil {
+            return 0, err
+        }
+        count := 0
+        for _, proc := range processes {
+            if strings.Contains(proc.Name, pattern) {
+                ok, _ := sendSignal(proc.PID, sig)
+                if ok {
+                    count++
+                }
+            }
+        }
+        return count, nil
     }
 }

@@ -23,13 +23,8 @@ else
     println "✗ Signal 0 to self failed unexpectedly"
 endif
 
-# Try SIGUSR1 - safe, non-terminating signal
-result = send_signal(our_pid, "USR1")
-if result
-    println "✓ SIGUSR1 to self reported success"
-else
-    println "! SIGUSR1 to self returned false"
-endif
+# Only test signal 0 to self; other signals may trigger debugger/handlers
+println "  (Skipping self-directed signals beyond 0 to avoid debugger triggers)"
 
 # Test 2: Send signal to non-existent process
 println "\n2. Testing send_signal to non-existent process..."

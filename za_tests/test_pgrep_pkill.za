@@ -1,0 +1,71 @@
+#!/usr/bin/env za
+
+# Test script for pgrep and pkill
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== pgrep / pkill Tests ==="
+
+# Test 1: pgrep on a well-known process (init or ourselves)
+println "\n1. Testing pgrep on 'za'..."
+pids = pgrep("za")
+if len(pids) > 0
+    println "✓ pgrep found za processes:", pids
+else
+    println "! pgrep found no 'za' processes (unexpected but not fatal)"
+endif
+
+# Test 2: pgrep on a process that should exist
+println "\n2. Testing pgrep on 'init' or 'systemd'..."
+pids = pgrep("init")
+if len(pids) > 0
+    println "✓ pgrep found init processes:", pids
+else
+    pids = pgrep("systemd")
+    if len(pids) > 0
+        println "✓ pgrep found systemd processes:", pids
+    else
+        println "! pgrep found no init/systemd processes"
+    endif
+endif
+
+# Test 3: pgrep on non-existent process
+println "\n3. Testing pgrep on non-existent process..."
+pids = pgrep("nonexistent_process_xyz_12345")
+if len(pids) == 0
+    println "✓ pgrep correctly returned empty list for non-existent process"
+else
+    println "✗ pgrep unexpectedly found matches:", pids
+endif
+
+# Test 4: pkill with safe signal (signal 0 - existence check, no harm)
+println "\n4. Testing pkill with signal 0 (harmless existence check)..."
+count = pkill("za", 0)
+if count > 0
+    println "✓ pkill signal 0 checked", count, "za process(es)"
+else
+    println "! pkill signal 0 found no za processes (unexpected)"
+endif
+
+# Test 5: pkill with safe signal (WINCH - window resize, non-terminating)
+println "\n5. Testing pkill with safe signal WINCH..."
+count = pkill("za", "WINCH")
+if count > 0
+    println "✓ pkill WINCH sent to", count, "za process(es)"
+else
+    println "! pkill WINCH found no za processes"
+endif
+
+# Test 6: pkill on non-existent pattern
+println "\n6. Testing pkill on non-existent pattern..."
+count = pkill("nonexistent_xyz_12345")
+if count == 0
+    println "✓ pkill on non-existent pattern returned 0"
+else
+    println "✗ pkill on non-existent pattern returned:", count
+endif
+
+println "\n=== pgrep / pkill Tests Complete ==="
+println "Note: pkill tests use safe signals (0, WINCH) to avoid terminating processes."

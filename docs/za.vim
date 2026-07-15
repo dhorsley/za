@@ -412,6 +412,17 @@ syntax match os_functions "\(^|.\|\s*\)chroot\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)delete\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)rename\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)copy\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)mkdir\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)mkdir_p\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)chmod\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)touch\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)chown\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)symlink\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)readlink\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)sync\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)truncate\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)temp_dir\s*("he=e-1
+syntax match os_functions "\(^|.\|\s*\)temp_file\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)can_read\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)can_write\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)parent\s*("he=e-1
@@ -503,6 +514,8 @@ syntax match uuid_functions "\(^|.\|\s*\)uuid_parse\s*("he=e-1
 syntax match uuid_functions "\(^|.\|\s*\)uuid_validate\s*("he=e-1
 
 syntax match auto_functions "\(^|.\|\s*\)send_signal\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)pgrep\s*("he=e-1
+syntax match auto_functions "\(^|.\|\s*\)pkill\s*("he=e-1
 
 syntax match unsorted_functions "\(^|.\|\s*\)levdist\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)error_local_variables\s*("he=e-1

@@ -49,6 +49,26 @@ library changes
       - platform-specific implementations for Unix, Windows, and BSD
       - test coverage: za_tests/test_send_signal.za, tests/lib-system_test.go
 
+  * added file and system operations to lib-os.go
+      - mkdir(path[, mode_string|options_map]) -> bool - create directory
+          * options map: .recursive (bool), .mode (string) for recursive creation
+      - mkdir_p(path[, mode_string]) -> bool - recursive directory creation
+      - chmod(path, mode_string) -> bool - change file permissions (octal string)
+      - touch(path) -> bool - create empty file or update timestamp
+      - chown(path, user[, group]) -> bool - change owner (names or numeric IDs)
+      - symlink(src, dst) -> bool - create symbolic link
+      - readlink(path) -> string - read symlink target
+      - sync() -> bool - flush filesystem buffers
+      - truncate(path, size) -> bool - truncate file to size
+      - temp_dir([pattern]) -> string - create temporary directory
+      - temp_file([pattern]) -> string - create temporary file
+      - test coverage: za_tests/test_file_ops.za
+
+  * added process utilities to lib-system.go
+      - pgrep(pattern) -> []int - return PIDs of processes matching name substring
+      - pkill(pattern[, signal]) -> int - send signal to matching processes, returns count
+      - test coverage: za_tests/test_pgrep_pkill.za
+
   * updated syntax highlighters to recognise new builtins:
       - docs/lua/za-nvim/syntax.lua
       - docs/za.vim

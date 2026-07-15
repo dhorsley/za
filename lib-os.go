@@ -11,8 +11,10 @@ import (
     "os/user"
     "path/filepath"
     "regexp"
+    "strconv"
     "strings"
     "syscall"
+    "time"
 )
 
 func fcopy(s, d string) (int64, error) {
@@ -42,6 +44,14 @@ func fcopy(s, d string) (int64, error) {
     return n, err
 }
 
+func parseModeString(modeStr string) (os.FileMode, error) {
+    m, err := strconv.ParseUint(modeStr, 8, 32)
+    if err != nil {
+        return 0, fmt.Errorf("invalid mode string: %s", modeStr)
+    }
+    return os.FileMode(m), nil
+}
+
 func buildOsLib() {
 
     // os level
@@ -49,6 +59,8 @@ func buildOsLib() {
     features["os"] = Feature{version: 1, category: "os"}
     categories["os"] = []string{"env", "get_env", "set_env", "cwd", "can_read",
         "can_write", "cd", "dir", "glob", "umask", "chroot", "delete", "rename", "copy",
+        "mkdir", "mkdir_p", "chmod", "touch", "chown", "symlink", "readlink",
+        "sync", "truncate", "temp_dir", "temp_file",
         "parent", "is_symlink", "is_device", "is_pipe", "is_socket", "is_sticky",
         "is_setuid", "is_setgid", "username", "groupname", "user_list", "group_list",
         "user_add", "user_del", "group_add", "group_del", "group_membership",
@@ -472,6 +484,213 @@ func buildOsLib() {
         }
         _, err = fcopy(args[0].(string), args[1].(string))
         return err == nil, err
+    }
+
+    slhelp["mkdir"] = LibHelp{in: "path[,mode_string|options_map]", out: "bool", action: "Create a directory. Mode string is octal (e.g. \"755\"). Options map: .recursive (bool), .mode (string)."}
+    stdlib["mkdir"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("mkdir", args, 3, "1", "string", "2", "string", "string", "2", "string", "map"); !ok {
+            return nil, err
+        }
+        path := args[0].(string)
+        mode := os.FileMode(0755)
+        recursive := false
+
+        if len(args) > 1 {
+            switch v := args[1].(type) {
+            case string:
+                m, err := parseModeString(v)
+                if err != nil {
+                    return false, err
+                }
+                mode = m
+            case map[string]any:
+                if mv, ok := v["mode"]; ok {
+                    if ms, ok := mv.(string); ok {
+                        m, err := parseModeString(ms)
+                        if err != nil {
+                            return false, err
+                        }
+                        mode = m
+                    }
+                }
+                if rv, ok := v["recursive"]; ok {
+                    if rb, ok := rv.(bool); ok {
+                        recursive = rb
+                    }
+                }
+            default:
+                return false, errors.New("mkdir: second argument must be a mode string or a map")
+            }
+        }
+
+        if recursive {
+            err = os.MkdirAll(path, mode)
+        } else {
+            err = os.Mkdir(path, mode)
+        }
+        return err == nil, err
+    }
+
+    slhelp["mkdir_p"] = LibHelp{in: "path[,mode_string]", out: "bool", action: "Create a directory and all parent directories. Mode string is octal (e.g. \"755\")."}
+    stdlib["mkdir_p"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("mkdir_p", args, 2, "1", "string", "2", "string", "string"); !ok {
+            return nil, err
+        }
+        mode := os.FileMode(0755)
+        if len(args) > 1 {
+            m, err := parseModeString(args[1].(string))
+            if err != nil {
+                return false, err
+            }
+            mode = m
+        }
+        err = os.MkdirAll(args[0].(string), mode)
+        return err == nil, err
+    }
+
+    slhelp["chmod"] = LibHelp{in: "path,mode_string", out: "bool", action: "Change file permissions. Mode string is octal (e.g. \"755\")."}
+    stdlib["chmod"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("chmod", args, 1, "2", "string", "string"); !ok {
+            return nil, err
+        }
+        mode, err := parseModeString(args[1].(string))
+        if err != nil {
+            return false, err
+        }
+        err = os.Chmod(args[0].(string), mode)
+        return err == nil, err
+    }
+
+    slhelp["touch"] = LibHelp{in: "path", out: "bool", action: "Create an empty file if it does not exist, or update its modification time if it does."}
+    stdlib["touch"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("touch", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        path := args[0].(string)
+        _, err = os.Stat(path)
+        if err != nil {
+            if os.IsNotExist(err) {
+                f, err := os.Create(path)
+                if err != nil {
+                    return false, err
+                }
+                f.Close()
+                return true, nil
+            }
+            return false, err
+        }
+        now := time.Now()
+        err = os.Chtimes(path, now, now)
+        return err == nil, err
+    }
+
+    slhelp["chown"] = LibHelp{in: "path,user[,group]", out: "bool", action: "Change file owner and group. User and group can be names or numeric IDs."}
+    stdlib["chown"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("chown", args, 2, "2", "string", "string", "3", "string", "string", "string"); !ok {
+            return nil, err
+        }
+        path := args[0].(string)
+
+        uid := -1
+        userArg := args[1].(string)
+        if u, err := strconv.Atoi(userArg); err == nil {
+            uid = u
+        } else {
+            uinfo, err := user.Lookup(userArg)
+            if err != nil {
+                return false, fmt.Errorf("chown: unknown user %s", userArg)
+            }
+            uid, _ = strconv.Atoi(uinfo.Uid)
+        }
+
+        gid := -1
+        if len(args) > 2 {
+            groupArg := args[2].(string)
+            if g, err := strconv.Atoi(groupArg); err == nil {
+                gid = g
+            } else {
+                ginfo, err := user.LookupGroup(groupArg)
+                if err != nil {
+                    return false, fmt.Errorf("chown: unknown group %s", groupArg)
+                }
+                gid, _ = strconv.Atoi(ginfo.Gid)
+            }
+        }
+
+        err = os.Chown(path, uid, gid)
+        return err == nil, err
+    }
+
+    slhelp["symlink"] = LibHelp{in: "src_path,dst_path", out: "bool", action: "Create a symbolic link."}
+    stdlib["symlink"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("symlink", args, 1, "2", "string", "string"); !ok {
+            return nil, err
+        }
+        err = os.Symlink(args[0].(string), args[1].(string))
+        return err == nil, err
+    }
+
+    slhelp["readlink"] = LibHelp{in: "path", out: "string", action: "Return the target of a symbolic link, or empty string if not a symlink."}
+    stdlib["readlink"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("readlink", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        target, err := os.Readlink(args[0].(string))
+        if err != nil {
+            return "", nil
+        }
+        return target, nil
+    }
+
+    slhelp["sync"] = LibHelp{in: "", out: "bool", action: "Flush all filesystem buffers to disk."}
+    stdlib["sync"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sync", args, 0); !ok {
+            return nil, err
+        }
+        syscall.Sync()
+        return true, nil
+    }
+
+    slhelp["truncate"] = LibHelp{in: "path,size", out: "bool", action: "Truncate a file to the specified size."}
+    stdlib["truncate"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("truncate", args, 1, "2", "string", "int"); !ok {
+            return nil, err
+        }
+        err = os.Truncate(args[0].(string), int64(args[1].(int)))
+        return err == nil, err
+    }
+
+    slhelp["temp_dir"] = LibHelp{in: "[pattern]", out: "string", action: "Create a temporary directory and return its path."}
+    stdlib["temp_dir"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("temp_dir", args, 2, "1", "string", "0"); !ok {
+            return nil, err
+        }
+        pattern := "za-*"
+        if len(args) > 0 {
+            pattern = args[0].(string)
+        }
+        dir, err := os.MkdirTemp("", pattern)
+        if err != nil {
+            return "", err
+        }
+        return dir, nil
+    }
+
+    slhelp["temp_file"] = LibHelp{in: "[pattern]", out: "string", action: "Create a temporary file and return its path."}
+    stdlib["temp_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("temp_file", args, 2, "1", "string", "0"); !ok {
+            return nil, err
+        }
+        pattern := "za-*"
+        if len(args) > 0 {
+            pattern = args[0].(string)
+        }
+        f, err := os.CreateTemp("", pattern)
+        if err != nil {
+            return "", err
+        }
+        f.Close()
+        return f.Name(), nil
     }
 
     slhelp["env"] = LibHelp{in: "", out: "string", action: "Return all available environmental variables."}
