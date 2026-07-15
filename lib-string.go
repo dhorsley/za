@@ -186,7 +186,7 @@ func buildStringLib() {
         "next_match", "line_add", "line_delete", "line_replace", "line_add_before", "line_add_after", "line_match", "line_filter", "grep", "sgrep", "line_head", "line_tail", "is_utf8",
         "reverse", "tr", "lower", "upper", "format", "ccformat", "literal", "pos", "bg256", "fg256", "bgrgb", "fgrgb",
         "split", "join", "collapse", "strpos", "stripansi", "addansi", "stripquotes", "stripcc", "clean",
-        "rvalid", "levdist", "keys",
+        "rvalid", "levdist", "keys","values",
     }
 
     replaceCompileCache := make(map[string]regexp.Regexp)

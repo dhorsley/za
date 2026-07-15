@@ -73,7 +73,7 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     n += 1
                     continue
                 }
-            case map[string]any, map[string]string, map[string]int, map[string]bool, map[string]float64, map[string]uint, map[string][]any:
+            case map[string]any, map[string]string, map[string]int, map[string]bool, map[string]float64, map[string]uint, map[string][]any, map[string][]string, map[string][]int:
                 if types[p] == "map" {
                     n += 1
                     continue
