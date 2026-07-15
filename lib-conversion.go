@@ -7,11 +7,13 @@ import (
     "bytes"
     "encoding/base64"
     "encoding/gob"
+    "encoding/hex"
     "encoding/json"
     "errors"
     "fmt"
     "math"
     "math/big"
+    "net/url"
     "os"
     "reflect"
     "regexp"
@@ -1267,7 +1269,8 @@ func buildConversionLib() {
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
-        "is_number", "base64e", "base64d", "json_decode", "json_format", "json_query", "pp",
+        "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
+        "json_decode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi",
     }
@@ -1959,6 +1962,54 @@ func buildConversionLib() {
             return nil, err
         }
         return "\n" + md2ansi(args[0].(string)) + "\n", nil
+    }
+
+    slhelp["hex_encode"] = LibHelp{in: "string|[]uint8", out: "string", action: "Returns the hex-encoded representation of a string or byte array."}
+    stdlib["hex_encode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("hex_encode", args, 2,
+            "1", "string",
+            "1", "[]uint8"); !ok {
+            return nil, err
+        }
+        switch v := args[0].(type) {
+        case string:
+            return hex.EncodeToString([]byte(v)), nil
+        case []uint8:
+            return hex.EncodeToString(v), nil
+        }
+        return "", errors.New("hex_encode: unexpected type")
+    }
+
+    slhelp["hex_decode"] = LibHelp{in: "string", out: "[]uint8", action: "Decodes a hex-encoded string and returns the resulting byte array, or an error if the string is not valid hex."}
+    stdlib["hex_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("hex_decode", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        b, err := hex.DecodeString(args[0].(string))
+        if err != nil {
+            return nil, errors.New(sf("hex_decode: invalid hex string: %v", err))
+        }
+        return b, nil
+    }
+
+    slhelp["url_encode"] = LibHelp{in: "string", out: "string", action: "Returns a URL-encoded (percent-encoded) version of the input string."}
+    stdlib["url_encode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("url_encode", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        return url.QueryEscape(args[0].(string)), nil
+    }
+
+    slhelp["url_decode"] = LibHelp{in: "string", out: "string", action: "Returns a URL-decoded version of the input string, or an error if the input is not valid."}
+    stdlib["url_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("url_decode", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        s, err := url.QueryUnescape(args[0].(string))
+        if err != nil {
+            return "", errors.New(sf("url_decode: invalid encoded string: %v", err))
+        }
+        return s, nil
     }
 
 }

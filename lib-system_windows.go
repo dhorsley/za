@@ -6,8 +6,10 @@ import (
     "encoding/binary"
     "fmt"
     "net"
+    "os"
     "runtime"
     "sort"
+    "strconv"
     "strings"
     "syscall"
     "time"
@@ -2191,4 +2193,47 @@ func getOpenFDs() int {
 // Windows doesn't have the same concept as Unix file descriptors
 func getMaxFDs() int {
     return 0
+}
+
+func sendSignal(pid int, sig any) (bool, error) {
+    var s os.Signal
+    switch v := sig.(type) {
+    case int:
+        switch v {
+        case 9:
+            s = os.Kill
+        case 2:
+            s = os.Interrupt
+        default:
+            return false, fmt.Errorf("send_signal: signal number %d is not supported on Windows", v)
+        }
+    case string:
+        switch strings.ToUpper(v) {
+        case "KILL", "TERM":
+            s = os.Kill
+        case "INT":
+            s = os.Interrupt
+        default:
+            if n, err := strconv.Atoi(v); err == nil {
+                if n == 9 {
+                    s = os.Kill
+                } else if n == 2 {
+                    s = os.Interrupt
+                } else {
+                    return false, fmt.Errorf("send_signal: signal name %q is not supported on Windows", v)
+                }
+            } else {
+                return false, fmt.Errorf("send_signal: unknown signal name %q", v)
+            }
+        }
+    }
+    p, err := os.FindProcess(pid)
+    if err != nil {
+        return false, nil
+    }
+    err = p.Signal(s)
+    if err == nil {
+        return true, nil
+    }
+    return false, nil
 }

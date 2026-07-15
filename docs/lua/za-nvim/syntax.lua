@@ -127,6 +127,13 @@ local za_functions = {
     "sha224sum",
     "sha256sum",
     "s3sum",
+    "md5sum_file",
+    "sha1sum_file",
+    "sha256sum_file",
+    "sha512sum_file",
+    "crc32_file",
+    "md5sum_bytes",
+    "sha256sum_bytes",
 
     -- Math functions
     "seed",
@@ -206,6 +213,7 @@ local za_functions = {
     "disk_usage",
     "mount_info",
     "net_devices",
+    "send_signal",
 
     -- Web functions
     "wpage",
@@ -516,6 +524,10 @@ local za_functions = {
     "is_number",
     "base64e",
     "base64d",
+    "hex_encode",
+    "hex_decode",
+    "url_encode",
+    "url_decode",
     "json_decode",
     "json_format",
     "json_query",
@@ -532,6 +544,9 @@ local za_functions = {
     "to_typed",
     "table",
     "md2ansi",
+    "uuid_generate",
+    "uuid_parse",
+    "uuid_validate",
 
     -- Internal functions
     "last",

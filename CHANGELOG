@@ -2,6 +2,59 @@
 CHANGE LOG
 =============================================================================================
 
+1.2.3
+=====
+
+library changes
+---------------
+
+  * added native UUID library (lib-uuid.go) - no external dependencies
+      - uuid_generate() -> string - generates RFC 4122 version 4 UUIDs
+      - uuid_parse(string) -> string - normalizes UUID strings (accepts with/without
+        dashes, mixed case) and returns canonical lowercase form
+      - uuid_validate(string) -> bool - strict RFC 4122 validation
+      - registered under "uuid" category with feature version 1
+      - test coverage: za_tests/test_uuid.za, tests/lib-uuid_test.go
+
+  * added hex encoding/decoding to lib-conversion.go
+      - hex_encode(string|[]uint8) -> string - encodes strings or byte arrays to hex
+      - hex_decode(string) -> []uint8 - decodes hex strings to byte arrays
+          * rejects odd-length and invalid hex input
+      - test coverage: za_tests/test_hex.za, tests/lib-conversion_test.go
+
+  * added URL encoding/decoding to lib-conversion.go
+      - url_encode(string) -> string - query-style URL encoding
+      - url_decode(string) -> string - URL decoding
+      - test coverage: za_tests/test_url.za, tests/lib-conversion_test.go
+
+  * added checksum file and bytes variants to lib-sum.go
+      - file-based (stream via io.Copy, no full-file memory load):
+          * md5sum_file(path) -> string
+          * sha1sum_file(path) -> string
+          * sha256sum_file(path) -> string
+          * sha512sum_file(path) -> string
+          * crc32_file(path) -> string
+      - bytes-based:
+          * md5sum_bytes([]uint8) -> string
+          * sha256sum_bytes([]uint8) -> string
+      - all checksums return lowercase hex strings
+      - test coverage: za_tests/test_checksums.za, tests/lib-sum_test.go
+
+  * added send_signal(pid, signal) to lib-system.go
+      - sends Unix signals to processes by PID
+      - signal argument accepts either numeric signal number or string name
+          * string names: "HUP", "INT", "KILL", "TERM", "USR1", "USR2", "CHLD",
+            "WINCH", "STOP", "CONT", "ALRM", etc.
+      - returns false on EPERM/ESRCH instead of fatal error
+      - platform-specific implementations for Unix, Windows, and BSD
+      - test coverage: za_tests/test_send_signal.za, tests/lib-system_test.go
+
+  * updated syntax highlighters to recognise new builtins:
+      - docs/lua/za-nvim/syntax.lua
+      - docs/za.vim
+      - docs/vscode-za/syntaxes/za.tmLanguage.json
+
+
 1.2.2
 =====
 

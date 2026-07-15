@@ -1,0 +1,129 @@
+#!/usr/bin/env za
+
+# Test script for URL encoding/decoding functions
+# Tests url_encode and url_decode
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== URL Encoding/Decoding Tests ==="
+
+# Test 1: url_encode with simple strings
+println "\n1. Testing url_encode with simple strings..."
+try
+    simple = url_encode("hello world")
+    if simple == "hello+world" or simple == "hello%20world"
+        println "✓ Simple space encoding correct:", simple
+    else
+        println "✗ Simple space encoding incorrect, got:", simple
+    endif
+    
+    no_special = url_encode("hello")
+    if no_special == "hello"
+        println "✓ No special chars encoding correct"
+    else
+        println "✗ No special chars encoding incorrect, got:", no_special
+    endif
+    
+    empty = url_encode("")
+    if empty == ""
+        println "✓ Empty string encoding correct"
+    else
+        println "✗ Empty string encoding incorrect, got:", empty
+    endif
+catch err
+    println "Error in simple encode test:"
+    println pp(err)
+endtry
+
+# Test 2: url_encode with special characters
+println "\n2. Testing url_encode with special characters..."
+try
+    special = url_encode("a+b=c&d=e?f=g")
+    if strpos(special, "%2B") >= 0 and strpos(special, "%3D") >= 0 and strpos(special, "%26") >= 0
+        println "✓ Special chars encoding correct:", special
+    else
+        println "✗ Special chars encoding incorrect, got:", special
+    endif
+    
+    unicode = url_encode("hello world!@#$%")
+    if strpos(unicode, "%21") >= 0 or strpos(unicode, "%40") >= 0
+        println "✓ Unicode/special encoding correct:", unicode
+    else
+        println "✗ Unicode/special encoding incorrect, got:", unicode
+    endif
+catch err
+    println "Error in special encode test:"
+    println pp(err)
+endtry
+
+# Test 3: url_decode
+println "\n3. Testing url_decode..."
+try
+    decoded = url_decode("hello%20world")
+    if decoded == "hello world"
+        println "✓ Simple decode correct:", decoded
+    else
+        println "✗ Simple decode incorrect, got:", decoded
+    endif
+    
+    plus = url_decode("hello+world")
+    if plus == "hello world" or plus == "hello+world"
+        println "✓ Plus decode correct:", plus
+    else
+        println "✗ Plus decode incorrect, got:", plus
+    endif
+    
+    special = url_decode("a%2Bb%3Dc%26d%3De")
+    if special == "a+b=c&d=e"
+        println "✓ Special chars decode correct:", special
+    else
+        println "✗ Special chars decode incorrect, got:", special
+    endif
+    
+    empty = url_decode("")
+    if empty == ""
+        println "✓ Empty string decode correct"
+    else
+        println "✗ Empty string decode incorrect, got:", empty
+    endif
+    
+    # Invalid encoding should fail
+    try
+        bad = url_decode("%zz")
+        println "✗ Invalid encoding should have failed, got:", bad
+    catch bad_err
+        println "✓ Invalid encoding correctly rejected"
+    endtry
+catch err
+    println "Error in decode test:"
+    println pp(err)
+endtry
+
+# Test 4: Round-trip encode/decode
+println "\n4. Testing round-trip encode/decode..."
+try
+    originals = [
+        "hello world",
+        "a+b=c&d=e",
+        "path/to/file.txt",
+        "key=value&foo=bar"
+    ]
+    
+    foreach original in originals
+        encoded = url_encode(original)
+        decoded = url_decode(encoded)
+        if decoded == original
+            println "✓ Round-trip successful for:", original
+        else
+            println "✗ Round-trip failed for:", original
+            println "  Encoded:", encoded
+            println "  Decoded:", decoded
+        endif
+    endfor
+catch err
+    println "Error in round-trip test:"
+    println pp(err)
+endtry
+
+println "\n=== URL Encoding/Decoding Tests Complete ==="

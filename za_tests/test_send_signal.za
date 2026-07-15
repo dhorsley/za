@@ -1,0 +1,121 @@
+#!/usr/bin/env za
+
+# Test script for send_signal function
+# Tests sending signals to processes (Unix/Linux only)
+# Note: This test requires careful handling and may not work on all platforms
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Send Signal Tests ==="
+
+our_pid = pid()
+println "Our PID:", our_pid
+
+# Test 1: Send signal to self
+println "\n1. Testing send_signal to self..."
+
+# Signal 0 just checks if process exists (no actual signal sent)
+result = send_signal(our_pid, 0)
+if result
+    println "✓ Signal 0 to self succeeded (process exists)"
+else
+    println "✗ Signal 0 to self failed unexpectedly"
+endif
+
+# Try SIGUSR1 - safe, non-terminating signal
+result = send_signal(our_pid, "USR1")
+if result
+    println "✓ SIGUSR1 to self reported success"
+else
+    println "! SIGUSR1 to self returned false"
+endif
+
+# Test 2: Send signal to non-existent process
+println "\n2. Testing send_signal to non-existent process..."
+
+# PID 999999 is unlikely to exist
+result = send_signal(999999, "KILL")
+if !result
+    println "✓ Signal to non-existent process returned false (expected)"
+else
+    println "✗ Signal to non-existent process returned true (unexpected)"
+endif
+
+# Try with numeric signal
+result = send_signal(999999, 9)
+if !result
+    println "✓ Numeric signal to non-existent process returned false"
+else
+    println "✗ Numeric signal to non-existent process returned true"
+endif
+
+# Test 3: Send signal to init/PID 1 (should always exist, but we may not have permission)
+println "\n3. Testing send_signal to PID 1 (init)..."
+
+# Signal 0 just checks existence, should work even without permission
+result = send_signal(1, 0)
+if result
+    println "✓ Signal 0 to PID 1 succeeded (process exists)"
+else
+    println "! Signal 0 to PID 1 returned false (permission denied)"
+endif
+
+# Try to send an actual signal - may fail with permission denied
+result = send_signal(1, "HUP")
+if result
+    println "✓ SIGHUP to PID 1 succeeded (unexpected, may be privileged)"
+else
+    println "✓ SIGHUP to PID 1 returned false (permission denied, expected)"
+endif
+
+# Test 4: Invalid signal names
+println "\n4. Testing invalid signal names..."
+
+result = send_signal(our_pid, "INVALID_SIGNAL")
+if !result
+    println "✓ Invalid signal name 'INVALID_SIGNAL' correctly rejected"
+else
+    println "✗ Invalid signal name should have failed, got:", result
+endif
+
+result = send_signal(our_pid, "SIGFOO")
+if !result
+    println "✓ Invalid signal name 'SIGFOO' correctly rejected"
+else
+    println "✗ Invalid signal name 'SIGFOO' should have failed, got:", result
+endif
+
+result = send_signal(our_pid, -1)
+if !result
+    println "✓ Negative signal number correctly rejected"
+else
+    println "✗ Negative signal number should have failed, got:", result
+endif
+
+# Test 5: Valid signal names by numeric code (only safe ones that don't kill us)
+println "\n5. Testing valid signal names..."
+
+result = send_signal(our_pid, 10)  # SIGUSR1
+if result
+    println "✓ Numeric signal 10 (SIGUSR1) sent successfully"
+else
+    println "! Numeric signal 10 (SIGUSR1) returned false"
+endif
+
+result = send_signal(our_pid, 12)  # SIGUSR2
+if result
+    println "✓ Numeric signal 12 (SIGUSR2) sent successfully"
+else
+    println "! Numeric signal 12 (SIGUSR2) returned false"
+endif
+
+result = send_signal(our_pid, 28)  # SIGWINCH
+if result
+    println "✓ Numeric signal 28 (SIGWINCH) sent successfully"
+else
+    println "! Numeric signal 28 (SIGWINCH) returned false"
+endif
+
+println "\n=== Send Signal Tests Complete ==="
+println "Note: Some tests may fail on Windows or without appropriate permissions"

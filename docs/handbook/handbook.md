@@ -1,7 +1,7 @@
 ---
 title: "Za - The Za Programming Language Handbook"
 author: "Daniel Horsley"
-version: "1.2.2"
+version: "1.2.3"
 css: za.css
 ---
 <div style="text-align:center; page-break-after: always;">
@@ -2284,6 +2284,16 @@ parsed_config = json_decode(config_json)    # Back to map
 secret_data = "user:password"
 encoded = secret_data.base64e        # "dXNlcjpwYXNzd29yZA=="
 decoded = encoded.base64d            # "user:password"
+
+# Hex encoding/decoding
+raw_bytes = [72, 101, 108, 108, 111].to_typed("[]uint8")
+hex_str = hex_encode(raw_bytes)       # "48656c6c6f"
+decoded_bytes = hex_decode(hex_str)   # [72, 101, 108, 108, 111]
+
+# URL encoding/decoding
+query = "hello world"
+encoded = url_encode(query)           # "hello+world"
+decoded = url_decode(encoded)         # "hello world"
 ```
 
 ### 38.5 File Operations
@@ -2347,6 +2357,23 @@ process_info = ps_info(current_pid)
 current_user = user()
 current_uid = user_info(current_user).UID
 current_gid = user_info(current_user).GID
+
+# Signal management
+our_pid = pid()
+
+# Check if process exists (signal 0)
+if send_signal(our_pid, 0)
+    println "Process exists"
+endif
+
+# Send named signals
+send_signal(our_pid, "USR1")   # Send SIGUSR1
+send_signal(our_pid, 15)       # Send SIGTERM by number
+
+# Handle permission errors gracefully
+if not send_signal(1, "HUP")
+    println "Cannot signal init (permission denied)"
+endif
 ```
 
 ### 38.7 Network Operations
@@ -2636,6 +2663,24 @@ s3sum(filename[, blocksize[, legacyOnly]])
 S3 ETag Functionality
 
 The s3sum function specifically calculates checksums compatible with Amazon S3 ETags, including multipart upload format (hash-parts) for files larger than the blocksize. It also computes modern AWS checksums (SHA256, SHA1, CRC32, CRC32C) in both hex and base64 encodings for direct comparison with S3 object metadata. Note that modern checksums are only stored on S3 if the object was uploaded with the --checksum-algorithm flag. They are only returned by head-object when --checksum-mode ENABLED is used.
+
+File-based checksums (stream via io.Copy, no full-file memory load):
+
+```za
+md5 = md5sum_file("/etc/app/config.ini")
+sha1 = sha1sum_file("/etc/app/config.ini")
+sha256 = sha256sum_file("/etc/app/config.ini")
+sha512 = sha512sum_file("/etc/app/config.ini")
+crc = crc32_file("/etc/app/config.ini")
+```
+
+Bytes-based checksums:
+
+```za
+raw = [72, 101, 108, 108, 111].to_typed("[]uint8")
+md5 = md5sum_bytes(raw)
+sha256 = sha256sum_bytes(raw)
+```
 
 ### 38.14 TUI (Terminal User Interface)
 
@@ -3016,6 +3061,30 @@ config.ini_write("/etc/myapp/config.ini")
 ```
 
 See `eg/initest` for a complete example of INI manipulation.
+
+### 38.18 UUID Generation and Validation
+
+UUID generation and validation are essential for distributed systems, logging, and unique identifiers:
+
+```za
+# Generate a new v4 UUID
+id = uuid_generate()
+println id   # e.g. "550e8400-e29b-41d4-a716-446655440000"
+
+# Validate UUID format
+if uuid_validate(id)
+    println "Valid UUID"
+endif
+
+# Parse and normalize UUID strings
+parsed = uuid_parse("550e8400e29b41d4a716446655440000")
+println parsed   # "550e8400-e29b-41d4-a716-446655440000"
+
+# Validate rejects bad input
+if not uuid_validate("not-a-uuid")
+    println "Invalid UUID rejected"
+endif
+```
 
 ---
 
@@ -4083,10 +4152,10 @@ argmax, argmin, concatenate, det, det_big, find, flatten, identity, inverse, inv
 
 ## conversion
 
-**Functions (35):**
+**Functions (39):**
 
 
-as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, is_number, itob, json_decode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, table, to_typed, write_struct
+as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, hex_decode, hex_encode, is_number, itob, json_decode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, table, to_typed, url_decode, url_encode, write_struct
 
 
 **Commonly used (from examples/tests):**
@@ -4532,10 +4601,10 @@ addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256, fgrgb, field, fi
 
 ## sum
 
-**Functions (5):**
+**Functions (12):**
 
 
-md5sum, s3sum, sha1sum, sha224sum, sha256sum
+crc32_file, md5sum, md5sum_bytes, md5sum_file, s3sum, sha1sum, sha1sum_file, sha224sum, sha256sum, sha256sum_bytes, sha256sum_file, sha512sum_file
 
 
 **Commonly used:** (no occurrences found in `eg/` or `za_tests/` for this category in the uploaded tree)
@@ -4543,10 +4612,10 @@ md5sum, s3sum, sha1sum, sha224sum, sha256sum
 
 ## system
 
-**Functions (23):**
+**Functions (24):**
 
 
-cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, iodiff, mem_info, mount_info, net_devices, nio, ps_info, ps_list, ps_map, ps_tree, resource_usage, sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio
+cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, iodiff, mem_info, mount_info, net_devices, nio, ps_info, ps_list, ps_map, ps_tree, resource_usage, send_signal, sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio
 
 
 **Commonly used (from examples/tests):**
@@ -4587,6 +4656,22 @@ editor, tui, tui_box, tui_clear, tui_input, tui_menu, selector, tui_new, tui_new
 - tui_pager
 - tui_menu
 - tui_input
+
+
+## uuid
+
+**Functions (3):**
+
+
+uuid_generate, uuid_parse, uuid_validate
+
+
+**Commonly used (from examples/tests):**
+
+
+- uuid_generate
+- uuid_validate
+- uuid_parse
 
 
 ## web

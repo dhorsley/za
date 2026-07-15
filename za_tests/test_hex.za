@@ -1,0 +1,167 @@
+#!/usr/bin/env za
+
+# Test script for hex encoding/decoding functions
+# Tests hex_encode and hex_decode
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Hex Encoding/Decoding Tests ==="
+
+# Test 1: hex_encode with string
+println "\n1. Testing hex_encode with string..."
+try
+    encoded = hex_encode("Hello")
+    if encoded == "48656c6c6f"
+        println "✓ String encoding correct:", encoded
+    else
+        println "✗ String encoding incorrect, got:", encoded
+    endif
+    
+    # Empty string
+    empty = hex_encode("")
+    if empty == ""
+        println "✓ Empty string encoding correct"
+    else
+        println "✗ Empty string encoding incorrect, got:", empty
+    endif
+    
+    # Special characters via byte array
+    special_bytes = [0, 1, 255].to_typed("[]uint8")
+    special = hex_encode(special_bytes)
+    if special == "0001ff"
+        println "✓ Special characters encoding correct:", special
+    else
+        println "✗ Special characters encoding incorrect, got:", special
+    endif
+catch err
+    println "Error in string encode test:"
+    println pp(err)
+endtry
+
+# Test 2: hex_encode with byte array
+println "\n2. Testing hex_encode with byte array..."
+try
+    bytes = [72, 101, 108, 108, 111].to_typed("[]uint8")
+    encoded = hex_encode(bytes)
+    if encoded == "48656c6c6f"
+        println "✓ Byte array encoding correct:", encoded
+    else
+        println "✗ Byte array encoding incorrect, got:", encoded
+    endif
+    
+    # Empty bytes
+    empty_bytes = [].to_typed("[]uint8")
+    empty_encoded = hex_encode(empty_bytes)
+    if empty_encoded == ""
+        println "✓ Empty byte array encoding correct"
+    else
+        println "✗ Empty byte array encoding incorrect, got:", empty_encoded
+    endif
+catch err
+    println "Error in byte encode test:"
+    println pp(err)
+endtry
+
+# Test 3: hex_decode success cases
+println "\n3. Testing hex_decode..."
+try
+    decoded = hex_decode("48656c6c6f")
+    if len(decoded) == 5 and decoded[0] == 72 and decoded[1] == 101
+        println "✓ Decoding correct, length:", len(decoded)
+    else
+        println "✗ Decoding incorrect, got:", decoded
+    endif
+    
+    # Empty string
+    empty_decoded = hex_decode("")
+    if len(empty_decoded) == 0
+        println "✓ Empty hex decode correct"
+    else
+        println "✗ Empty hex decode incorrect, got:", empty_decoded
+    endif
+    
+    # Uppercase
+    upper = hex_decode("48656C6C6F")
+    if len(upper) == 5 and upper[0] == 72
+        println "✓ Uppercase hex decode correct"
+    else
+        println "✗ Uppercase hex decode incorrect, got:", upper
+    endif
+catch err
+    println "Error in decode success test:"
+    println pp(err)
+endtry
+
+# Test 3b: hex_decode error cases
+println "\n3b. Testing hex_decode error handling..."
+
+# Odd length should fail
+try
+    odd = hex_decode("abc")
+    println "✗ Odd length should have failed, got:", odd
+catch err
+    println "✓ Odd length correctly rejected"
+endtry
+
+# Invalid hex should fail
+try
+    bad = hex_decode("zzzz")
+    println "✗ Invalid hex should have failed, got:", bad
+catch err
+    println "✓ Invalid hex correctly rejected"
+endtry
+catch err
+    println "Error in decode test:"
+    println pp(err)
+endtry
+
+# Test 4: Round-trip encode/decode
+println "\n4. Testing round-trip encode/decode..."
+try
+    original = "The quick brown fox jumps over the lazy dog!"
+    encoded = hex_encode(original)
+    decoded = hex_decode(encoded)
+    
+    # Convert decoded bytes back to string for comparison
+    round_trip = ""
+    for i = 0 to len(decoded) - 1
+        round_trip = round_trip + char(as_int(decoded[i]))
+    endfor
+    
+    if round_trip == original
+        println "✓ String round-trip successful"
+    else
+        println "✗ String round-trip failed"
+        println "Original:", original
+        println "Round-trip:", round_trip
+    endif
+    
+    # Byte array round-trip
+    bytes = [0, 1, 2, 255, 128, 64].to_typed("[]uint8")
+    bytes_encoded = hex_encode(bytes)
+    bytes_decoded = hex_decode(bytes_encoded)
+    
+    match = true
+    if len(bytes_decoded) == len(bytes)
+        for i = 0 to len(bytes) - 1
+            if bytes_decoded[i] != bytes[i]
+                match = false
+                break
+            endif
+        endfor
+    else
+        match = false
+    endif
+    
+    if match
+        println "✓ Byte array round-trip successful"
+    else
+        println "✗ Byte array round-trip failed"
+    endif
+catch err
+    println "Error in round-trip test:"
+    println pp(err)
+endtry
+
+println "\n=== Hex Encoding/Decoding Tests Complete ==="

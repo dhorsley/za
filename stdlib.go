@@ -39,6 +39,7 @@ func buildStandardLib() {
     buildYamlLib()
     buildZipLib()
     buildGzipLib()
+    buildUuidLib()
     buildSmtpLib()
     buildCronLib()
     buildFfiLib()

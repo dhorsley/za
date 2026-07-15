@@ -196,6 +196,7 @@ func buildSystemLib() {
         "nio", "dio",
         "resource_usage", "iodiff",
         "disk_usage", "mount_info", "net_devices",
+        "send_signal",
     }
 
     // Top N resource consumers (with ALL option where n=-1)
@@ -507,5 +508,19 @@ func buildSystemLib() {
             return nil, err
         }
         return getDefaultGatewayInfo()
+    }
+
+    slhelp["send_signal"] = LibHelp{in: "pid,signal_name_or_number", out: "bool", action: "Sends a signal to a process. Returns true on success. Returns false on permission denied or process not found. Signal can be a name (e.g. \"TERM\", \"KILL\", \"INT\", \"HUP\") or an integer."}
+    stdlib["send_signal"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("send_signal", args, 2, "2", "int", "string", "2", "int", "int"); !ok {
+            return nil, err
+        }
+        pid := args[0].(int)
+        sig := args[1]
+        ok, err := sendSignal(pid, sig)
+        if err != nil {
+            return false, err
+        }
+        return ok, nil
     }
 }

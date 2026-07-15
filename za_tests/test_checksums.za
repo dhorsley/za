@@ -1,0 +1,221 @@
+#!/usr/bin/env za
+
+# Test script for checksum file and bytes functions
+# Tests md5sum_file, sha1sum_file, sha256sum_file, sha512sum_file, crc32_file
+# Tests md5sum_bytes, sha256sum_bytes
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Checksum File and Bytes Tests ==="
+
+# Create test files with known content
+test_content = "The quick brown fox jumps over the lazy dog"
+write_file("checksum_test.txt", test_content)
+
+# Known MD5 for "The quick brown fox jumps over the lazy dog" (without newline)
+# md5sum("The quick brown fox jumps over the lazy dog") = 9e107d9d372bb6826bd81d3542a419d6
+# Known SHA1 = 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12
+# Known SHA256 = d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592
+
+# Test 1: md5sum_file
+println "\n1. Testing md5sum_file..."
+try
+    file_md5 = md5sum_file("checksum_test.txt")
+    println "File MD5:", file_md5
+    if len(file_md5) == 32
+        println "✓ MD5 has correct length (32 hex chars)"
+    else
+        println "✗ MD5 has incorrect length:", len(file_md5)
+    endif
+    
+    # Verify it matches string version
+    string_md5 = md5sum(test_content)
+    if file_md5 == string_md5
+        println "✓ File MD5 matches string MD5"
+    else
+        println "✗ File MD5 does not match string MD5"
+        println "  File:", file_md5
+        println "  String:", string_md5
+    endif
+    
+    # Non-existent file should error
+    try
+        bad = md5sum_file("nonexistent_file.txt")
+        println "✗ Non-existent file should have failed"
+    catch err
+        println "✓ Non-existent file correctly rejected"
+    endtry
+catch err
+    println "Error in md5sum_file test:"
+    println pp(err)
+endtry
+
+# Test 2: sha1sum_file
+println "\n2. Testing sha1sum_file..."
+try
+    file_sha1 = sha1sum_file("checksum_test.txt")
+    println "File SHA1:", file_sha1
+    if len(file_sha1) == 40
+        println "✓ SHA1 has correct length (40 hex chars)"
+    else
+        println "✗ SHA1 has incorrect length:", len(file_sha1)
+    endif
+    
+    string_sha1 = sha1sum(test_content)
+    if file_sha1 == string_sha1
+        println "✓ File SHA1 matches string SHA1"
+    else
+        println "✗ File SHA1 does not match string SHA1"
+    endif
+catch err
+    println "Error in sha1sum_file test:"
+    println pp(err)
+endtry
+
+# Test 3: sha256sum_file
+println "\n3. Testing sha256sum_file..."
+try
+    file_sha256 = sha256sum_file("checksum_test.txt")
+    println "File SHA256:", file_sha256
+    if len(file_sha256) == 64
+        println "✓ SHA256 has correct length (64 hex chars)"
+    else
+        println "✗ SHA256 has incorrect length:", len(file_sha256)
+    endif
+    
+    string_sha256 = sha256sum(test_content)
+    if file_sha256 == string_sha256
+        println "✓ File SHA256 matches string SHA256"
+    else
+        println "✗ File SHA256 does not match string SHA256"
+    endif
+catch err
+    println "Error in sha256sum_file test:"
+    println pp(err)
+endtry
+
+# Test 4: sha512sum_file
+println "\n4. Testing sha512sum_file..."
+try
+    file_sha512 = sha512sum_file("checksum_test.txt")
+    println "File SHA512:", file_sha512
+    if len(file_sha512) == 128
+        println "✓ SHA512 has correct length (128 hex chars)"
+    else
+        println "✗ SHA512 has incorrect length:", len(file_sha512)
+    endif
+catch err
+    println "Error in sha512sum_file test:"
+    println pp(err)
+endtry
+
+# Test 5: crc32_file
+println "\n5. Testing crc32_file..."
+try
+    file_crc32 = crc32_file("checksum_test.txt")
+    println "File CRC32:", file_crc32
+    if len(file_crc32) == 8
+        println "✓ CRC32 has correct length (8 hex chars)"
+    else
+        println "✗ CRC32 has incorrect length:", len(file_crc32)
+    endif
+catch err
+    println "Error in crc32_file test:"
+    println pp(err)
+endtry
+
+# Test 6: md5sum_bytes
+println "\n6. Testing md5sum_bytes..."
+try
+    bytes = [84, 104, 101, 32, 113, 117, 105, 99, 107, 32, 98, 114, 111, 119, 110, 32, 102, 111, 120, 32, 106, 117, 109, 112, 115, 32, 111, 118, 101, 114, 32, 116, 104, 101, 32, 108, 97, 122, 121, 32, 100, 111, 103].to_typed("[]uint8")
+    bytes_md5 = md5sum_bytes(bytes)
+    println "Bytes MD5:", bytes_md5
+    
+    string_md5 = md5sum(test_content)
+    if bytes_md5 == string_md5
+        println "✓ Bytes MD5 matches string MD5"
+    else
+        println "✗ Bytes MD5 does not match string MD5"
+    endif
+    
+    empty_bytes = [].to_typed("[]uint8")
+    empty_md5 = md5sum_bytes(empty_bytes)
+    if empty_md5 == "d41d8cd98f00b204e9800998ecf8427e"
+        println "✓ Empty bytes MD5 matches known value (d41d8cd98f00b204e9800998ecf8427e)"
+    else
+        println "✗ Empty bytes MD5 incorrect, got:", empty_md5
+    endif
+catch err
+    println "Error in md5sum_bytes test:"
+    println pp(err)
+endtry
+
+# Test 7: sha256sum_bytes
+println "\n7. Testing sha256sum_bytes..."
+try
+    bytes = [84, 104, 101, 32, 113, 117, 105, 99, 107, 32, 98, 114, 111, 119, 110, 32, 102, 111, 120, 32, 106, 117, 109, 112, 115, 32, 111, 118, 101, 114, 32, 116, 104, 101, 32, 108, 97, 122, 121, 32, 100, 111, 103].to_typed("[]uint8")
+    bytes_sha256 = sha256sum_bytes(bytes)
+    println "Bytes SHA256:", bytes_sha256
+    
+    string_sha256 = sha256sum(test_content)
+    if bytes_sha256 == string_sha256
+        println "✓ Bytes SHA256 matches string SHA256"
+    else
+        println "✗ Bytes SHA256 does not match string SHA256"
+    endif
+catch err
+    println "Error in sha256sum_bytes test:"
+    println pp(err)
+endtry
+
+# Test 8: Consistency across different inputs
+println "\n8. Testing consistency with different inputs..."
+try
+    write_file("checksum_empty.txt", "")
+    write_file("checksum_single.txt", "a")
+    write_file("checksum_large.txt", "x" * 10000)
+    
+    empty_md5 = md5sum_file("checksum_empty.txt")
+    single_md5 = md5sum_file("checksum_single.txt")
+    large_md5 = md5sum_file("checksum_large.txt")
+    
+    if empty_md5 == "d41d8cd98f00b204e9800998ecf8427e"
+        println "✓ Empty file MD5 matches known value"
+    else
+        println "✗ Empty file MD5 incorrect, got:", empty_md5
+    endif
+    
+    if single_md5 == "0cc175b9c0f1b6a831c399e269772661"
+        println "✓ Single char file MD5 matches known value ('a')"
+    else
+        println "✗ Single char file MD5 incorrect, got:", single_md5
+    endif
+    
+    if len(large_md5) == 32
+        println "✓ Large file MD5 has correct length"
+    else
+        println "✗ Large file MD5 has incorrect length:", len(large_md5)
+    endif
+    
+    # Verify all different checksums are different for different inputs
+    if empty_md5 != single_md5 and single_md5 != large_md5
+        println "✓ Different inputs produce different MD5s"
+    else
+        println "✗ Different inputs produced same MD5"
+    endif
+catch err
+    println "Error in consistency test:"
+    println pp(err)
+endtry
+
+# Cleanup
+println "\nCleaning up test files..."
+foreach f in ["checksum_test.txt", "checksum_empty.txt", "checksum_single.txt", "checksum_large.txt"]
+    if is_file(f)
+        delete(f)
+    endif
+endfor
+println "✓ Cleanup complete"
+
+println "\n=== Checksum File and Bytes Tests Complete ==="

@@ -1913,3 +1913,50 @@ func getSystemFileDescriptorStats() (allocated, maximum uint64) {
     }
     return allocated, maximum
 }
+
+func sendSignal(pid int, sig any) (bool, error) {
+    var s syscall.Signal
+    switch v := sig.(type) {
+    case int:
+        s = syscall.Signal(v)
+    case string:
+        switch strings.ToUpper(v) {
+        case "HUP":
+            s = syscall.SIGHUP
+        case "INT":
+            s = syscall.SIGINT
+        case "KILL":
+            s = syscall.SIGKILL
+        case "TERM":
+            s = syscall.SIGTERM
+        case "USR1":
+            s = syscall.SIGUSR1
+        case "USR2":
+            s = syscall.SIGUSR2
+        case "CHLD":
+            s = syscall.SIGCHLD
+        case "WINCH":
+            s = syscall.SIGWINCH
+        case "STOP":
+            s = syscall.SIGSTOP
+        case "CONT":
+            s = syscall.SIGCONT
+        case "ALRM":
+            s = syscall.SIGALRM
+        default:
+            if n, err := strconv.Atoi(v); err == nil {
+                s = syscall.Signal(n)
+            } else {
+                return false, fmt.Errorf("send_signal: unknown signal name %q", v)
+            }
+        }
+    }
+    err := syscall.Kill(pid, s)
+    if err == nil {
+        return true, nil
+    }
+    if err == syscall.EPERM || err == syscall.ESRCH {
+        return false, nil
+    }
+    return false, err
+}

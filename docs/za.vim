@@ -123,6 +123,10 @@ syntax match conversion_functions "\(^|.\|\s*\)list_bigf\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)local\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)base64e\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)base64d\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)hex_encode\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)hex_decode\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)url_encode\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)url_decode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_decode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_format\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_query\s*("he=e-1
@@ -457,6 +461,13 @@ syntax match sum_functions "\(^|.\|\s*\)sha1sum\s*("he=e-1
 syntax match sum_functions "\(^|.\|\s*\)sha224sum\s*("he=e-1
 syntax match sum_functions "\(^|.\|\s*\)sha256sum\s*("he=e-1
 syntax match sum_functions "\(^|.\|\s*\)s3sum\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)md5sum_file\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)sha1sum_file\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)sha256sum_file\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)sha512sum_file\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)crc32_file\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)md5sum_bytes\s*("he=e-1
+syntax match sum_functions "\(^|.\|\s*\)sha256sum_bytes\s*("he=e-1
 
 syntax match auto_functions "\(^|.\|\s*\)tcp_server_accept\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)tcp_server_stop\s*("he=e-1
@@ -486,6 +497,12 @@ syntax match zip_functions "\(^|.\|\s*\)zip_extract\s*("he=e-1
 syntax match zip_functions "\(^|.\|\s*\)zip_extract_file\s*("he=e-1
 syntax match zip_functions "\(^|.\|\s*\)zip_list\s*("he=e-1
 syntax match zip_functions "\(^|.\|\s*\)zip_remove\s*("he=e-1
+
+syntax match uuid_functions "\(^|.\|\s*\)uuid_generate\s*("he=e-1
+syntax match uuid_functions "\(^|.\|\s*\)uuid_parse\s*("he=e-1
+syntax match uuid_functions "\(^|.\|\s*\)uuid_validate\s*("he=e-1
+
+syntax match auto_functions "\(^|.\|\s*\)send_signal\s*("he=e-1
 
 syntax match unsorted_functions "\(^|.\|\s*\)levdist\s*("he=e-1
 syntax match unsorted_functions "\(^|.\|\s*\)error_local_variables\s*("he=e-1
@@ -828,7 +845,7 @@ syn region  BacktkQuote   start=+L\=`+ skip=+\\\\\|\\`+ end=+`+ extend
 
 " Clusters: contains=@... clusters: {{{1
 "==================================
-syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,yaml_functions,zip_functions,c_functions,metrics_functions,auto_functions,tui_functions
+syn cluster Functions       contains=list_functions,time_functions,conversion_functions,internal_functions,os_functions,package_functions,math_functions,file_functions,web_functions,db_functions,string_functions,image_functions,html_functions,notify_functions,sum_functions,yaml_functions,zip_functions,uuid_functions,c_functions,metrics_functions,auto_functions,tui_functions
 syn cluster ArithParenList  contains=Float,Integer,Operator,SingleQuote,Variable,CtrlSeq,Paren,Functions
 
 " Arithmetic Parenthesized Expressions: {{{1
@@ -882,6 +899,7 @@ hi def link image_functions functionlist
 hi def link sum_functions functionlist
 hi def link yaml_functions functionlist
 hi def link zip_functions functionlist
+hi def link uuid_functions functionlist
 hi def link c_functions functionlist
 hi def link metrics_functions functionlist
 hi def link auto_functions functionlist

@@ -6,6 +6,7 @@ import (
     "crypto/md5"
     "crypto/sha1"
     "crypto/sha256"
+    "crypto/sha512"
     "encoding/base64"
     "encoding/hex"
     "hash/crc32"
@@ -238,6 +239,111 @@ func buildSumLib() {
             return nil, err
         }
         return sf("%x", sha256.Sum256([]byte(args[0].(string)))), nil
+    }
+
+    // --- file checksum variants ---
+
+    slhelp["md5sum_file"] = LibHelp{in: "filename", out: "string", action: "Returns the MD5 checksum of the contents of a file."}
+    stdlib["md5sum_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("md5sum_file", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        f, err := os.Open(args[0].(string))
+        if err != nil {
+            return "", err
+        }
+        defer f.Close()
+        h := md5.New()
+        if _, err := io.Copy(h, f); err != nil {
+            return "", err
+        }
+        return sf("%x", h.Sum(nil)), nil
+    }
+
+    slhelp["sha1sum_file"] = LibHelp{in: "filename", out: "string", action: "Returns the SHA1 checksum of the contents of a file."}
+    stdlib["sha1sum_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sha1sum_file", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        f, err := os.Open(args[0].(string))
+        if err != nil {
+            return "", err
+        }
+        defer f.Close()
+        h := sha1.New()
+        if _, err := io.Copy(h, f); err != nil {
+            return "", err
+        }
+        return sf("%x", h.Sum(nil)), nil
+    }
+
+    slhelp["sha256sum_file"] = LibHelp{in: "filename", out: "string", action: "Returns the SHA256 checksum of the contents of a file."}
+    stdlib["sha256sum_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sha256sum_file", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        f, err := os.Open(args[0].(string))
+        if err != nil {
+            return "", err
+        }
+        defer f.Close()
+        h := sha256.New()
+        if _, err := io.Copy(h, f); err != nil {
+            return "", err
+        }
+        return sf("%x", h.Sum(nil)), nil
+    }
+
+    slhelp["sha512sum_file"] = LibHelp{in: "filename", out: "string", action: "Returns the SHA512 checksum of the contents of a file."}
+    stdlib["sha512sum_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sha512sum_file", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        f, err := os.Open(args[0].(string))
+        if err != nil {
+            return "", err
+        }
+        defer f.Close()
+        h := sha512.New()
+        if _, err := io.Copy(h, f); err != nil {
+            return "", err
+        }
+        return sf("%x", h.Sum(nil)), nil
+    }
+
+    slhelp["crc32_file"] = LibHelp{in: "filename", out: "string", action: "Returns the CRC32-IEEE checksum of the contents of a file."}
+    stdlib["crc32_file"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("crc32_file", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        f, err := os.Open(args[0].(string))
+        if err != nil {
+            return "", err
+        }
+        defer f.Close()
+        h := crc32.NewIEEE()
+        if _, err := io.Copy(h, f); err != nil {
+            return "", err
+        }
+        return sf("%x", h.Sum(nil)), nil
+    }
+
+    // --- bytes checksum variants ---
+
+    slhelp["md5sum_bytes"] = LibHelp{in: "[]uint8", out: "string", action: "Returns the MD5 checksum of a byte array."}
+    stdlib["md5sum_bytes"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("md5sum_bytes", args, 1, "1", "[]uint8"); !ok {
+            return nil, err
+        }
+        return sf("%x", md5.Sum(args[0].([]uint8))), nil
+    }
+
+    slhelp["sha256sum_bytes"] = LibHelp{in: "[]uint8", out: "string", action: "Returns the SHA256 checksum of a byte array."}
+    stdlib["sha256sum_bytes"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("sha256sum_bytes", args, 1, "1", "[]uint8"); !ok {
+            return nil, err
+        }
+        return sf("%x", sha256.Sum256(args[0].([]uint8))), nil
     }
 
 }

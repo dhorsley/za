@@ -1,0 +1,202 @@
+#!/usr/bin/env za
+
+# Test script for UUID library functions
+# Tests uuid_generate, uuid_parse, and uuid_validate
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== UUID Library Tests ==="
+
+# Test 1: Generate a UUID and validate format
+println "\n1. Testing uuid_generate()..."
+try
+    u = uuid_generate()
+    println "Generated UUID:", u
+    
+    if len(u) == 36
+        println "✓ UUID has correct length (36)"
+    else
+        println "✗ UUID has incorrect length:", len(u)
+    endif
+    
+    # Check dashes at correct positions
+    if u[8] == "-" and u[13] == "-" and u[18] == "-" and u[23] == "-"
+        println "✓ UUID has correct dash positions"
+    else
+        println "✗ UUID dash positions incorrect"
+    endif
+    
+    # Check version 4 indicator
+    if u[14] == "4"
+        println "✓ UUID version is 4"
+    else
+        println "✗ UUID version is not 4:", u[14]
+    endif
+    
+    # Check variant indicator (8-9a-b)
+    variant_char = u[19]
+    if variant_char == "8" or variant_char == "9" or variant_char == "a" or variant_char == "b"
+        println "✓ UUID variant bits correct"
+    else
+        println "✗ UUID variant bits incorrect:", variant_char
+    endif
+    
+    # Validate it
+    valid = uuid_validate(u)
+    if valid
+        println "✓ Generated UUID passes validation"
+    else
+        println "✗ Generated UUID fails validation"
+    endif
+catch err
+    println "Error in generate test:"
+    println pp(err)
+endtry
+
+# Test 2: Generate multiple UUIDs and check uniqueness
+println "\n2. Testing UUID uniqueness..."
+try
+    uuids = []
+    for i = 1 to 100
+        uuids = append(uuids, uuid_generate())
+    endfor
+    
+    unique = true
+    for i = 0 to len(uuids) - 1
+        for j = i + 1 to len(uuids) - 1
+            if uuids[i] == uuids[j]
+                unique = false
+                println "✗ Duplicate found:", uuids[i]
+                break
+            endif
+        endfor
+        if !unique
+            break
+        endif
+    endfor
+    
+    if unique
+        println "✓ All 100 generated UUIDs are unique"
+    else
+        println "✗ Found duplicate UUIDs"
+    endif
+catch err
+    println "Error in uniqueness test:"
+    println pp(err)
+endtry
+
+# Test 3: uuid_parse - normalize various formats
+println "\n3. Testing uuid_parse()..."
+try
+    test_cases = [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "550e8400e29b41d4a716446655440000",
+        "550E8400-E29B-41D4-A716-446655440000",
+        "550E8400E29B41D4A716446655440000"
+    ]
+    
+    expected = "550e8400-e29b-41d4-a716-446655440000"
+    
+    foreach tc in test_cases
+        parsed = uuid_parse(tc)
+        if parsed == expected
+            println "✓ Parsed correctly:", tc, "->", parsed
+        else
+            println "✗ Parse failed for:", tc, "got:", parsed
+        endif
+    endfor
+    
+    # Test invalid input
+    invalid = uuid_parse("not-a-uuid")
+    if invalid == ""
+        println "✓ Invalid input returns empty string"
+    else
+        println "✗ Invalid input should return empty, got:", invalid
+    endif
+    
+    # Test too short
+    short = uuid_parse("550e8400")
+    if short == ""
+        println "✓ Too short input returns empty string"
+    else
+        println "✗ Too short input should return empty, got:", short
+    endif
+    
+    # Test with non-hex characters
+    bad_hex = uuid_parse("550e8400-e29b-41d4-a716-44665544000g")
+    if bad_hex == ""
+        println "✓ Non-hex input returns empty string"
+    else
+        println "✗ Non-hex input should return empty, got:", bad_hex
+    endif
+catch err
+    println "Error in parse test:"
+    println pp(err)
+endtry
+
+# Test 4: uuid_validate - strict validation
+println "\n4. Testing uuid_validate()..."
+try
+    valid_cases = [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "00000000-0000-0000-0000-000000000000",
+        "ffffffff-ffff-ffff-ffff-ffffffffffff"
+    ]
+    
+    foreach vc in valid_cases
+        if uuid_validate(vc)
+            println "✓ Valid UUID accepted:", vc
+        else
+            println "✗ Valid UUID rejected:", vc
+        endif
+    endfor
+    
+    invalid_cases = [
+        "550e8400e29b41d4a716446655440000",       # Missing dashes
+        "550e8400-e29b-41d4-a716-44665544000",     # Too short
+        "550e8400-e29b-41d4-a716-4466554400000",  # Too long
+        "550e8400-e29b-41d4-a716-44665544000g",   # Invalid hex
+        "not-a-uuid-at-all",
+        "",
+        "550e8400-e29b-41d4-a716_446655440000"    # Wrong separator
+    ]
+    
+    foreach ic in invalid_cases
+        if !uuid_validate(ic)
+            println "✓ Invalid UUID rejected:", ic
+        else
+            println "✗ Invalid UUID accepted:", ic
+        endif
+    endfor
+catch err
+    println "Error in validate test:"
+    println pp(err)
+endtry
+
+# Test 5: Round-trip parse + validate
+println "\n5. Testing parse + validate round-trip..."
+try
+    original = "550e8400-e29b-41d4-a716-446655440000"
+    parsed = uuid_parse(original)
+    
+    if parsed == original and uuid_validate(parsed)
+        println "✓ Round-trip successful"
+    else
+        println "✗ Round-trip failed"
+    endif
+    
+    # Generate, parse, validate
+    gen = uuid_generate()
+    parsed_gen = uuid_parse(gen)
+    if parsed_gen == gen and uuid_validate(parsed_gen)
+        println "✓ Generated UUID round-trip successful"
+    else
+        println "✗ Generated UUID round-trip failed"
+    endif
+catch err
+    println "Error in round-trip test:"
+    println pp(err)
+endtry
+
+println "\n=== UUID Library Tests Complete ==="
