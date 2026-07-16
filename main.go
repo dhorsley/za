@@ -38,6 +38,28 @@ import (
 // up to two levels of depth (e.g., `a.b.c` or `a[i].b`) are permitted.
 var F_EnableComplexAssignments = true
 
+// bcDebugCompile and bcDebugExec control bytecode debug output via ZA_DEBUG_BYTECODE env var.
+var bcDebugCompile bool
+var bcDebugExec bool
+
+func initBytecodeDebug() {
+    v := os.Getenv("ZA_DEBUG_BYTECODE")
+    if v == "" {
+        return
+    }
+    for _, part := range strings.Split(v, ",") {
+        switch strings.TrimSpace(strings.ToLower(part)) {
+        case "all", "1", "yes", "true":
+            bcDebugCompile = true
+            bcDebugExec = true
+        case "exec":
+            bcDebugExec = true
+        case "compile":
+            bcDebugCompile = true
+        }
+    }
+}
+
 //
 // ALIASES
 //
@@ -404,6 +426,8 @@ const PrecedenceInvalid = -100
 func main() {
 
     // lineWrap=true // currently disabled - it breaks up ansi sequences. will re-enable when dealt with.
+
+    initBytecodeDebug()
 
     setupRO() // to calc offset position of read-only flag in struct type info - used to disable it during copies.
 

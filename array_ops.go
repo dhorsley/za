@@ -38,7 +38,10 @@ func checkShape(a, b reflect.Value) error {
 
 // isSlice checks if a value is a slice (including nested slices)
 func isSlice(v any) bool {
-    return reflect.TypeOf(v).Kind() == reflect.Slice
+	if v == nil {
+		return false
+	}
+	return reflect.TypeOf(v).Kind() == reflect.Slice
 }
 
 // getSliceDimensions returns the dimensions of a nested slice as a slice of ints

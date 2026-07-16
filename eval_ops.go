@@ -492,9 +492,9 @@ func ev_sub(val1 any, val2 any) any {
         })
     }
 
-    // Handle slice-scalar broadcasting
+    // Handle slice-scalar broadcasting (preserve operand order: scalar - slice)
     if !isSlice(val1) && isSlice(val2) {
-        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
             return ev_sub(x, y)
         })
     }
@@ -845,9 +845,9 @@ func ev_div(val1 any, val2 any) any {
         })
     }
 
-    // Handle slice-scalar broadcasting
+    // Handle slice-scalar broadcasting (preserve operand order: scalar / slice)
     if !isSlice(val1) && isSlice(val2) {
-        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
             return ev_div(x, y)
         })
     }
@@ -1032,9 +1032,9 @@ func ev_mod(val1 any, val2 any) any {
         })
     }
 
-    // Handle slice-scalar broadcasting
+    // Handle slice-scalar broadcasting (preserve operand order: scalar % slice)
     if !isSlice(val1) && isSlice(val2) {
-        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
             return ev_mod(x, y)
         })
     }
@@ -1120,9 +1120,9 @@ func ev_pow(val1 any, val2 any) any {
         })
     }
 
-    // Handle slice-scalar broadcasting
+    // Handle slice-scalar broadcasting (preserve operand order: scalar ** slice)
     if !isSlice(val1) && isSlice(val2) {
-        return ApplyElementwiseBinaryOp(val2, val1, func(x, y any) any {
+        return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
             return ev_pow(x, y)
         })
     }
@@ -1843,6 +1843,18 @@ func compare(val1 any, val2 any, operation int64) any {
         return true
     }
 
+    if val1 == nil || val2 == nil {
+        switch operation {
+        case SYM_EQ:
+            return false
+        case SYM_NE:
+            return true
+        case SYM_LT, SYM_LE, SYM_GT, SYM_GE:
+            return false
+        }
+        return false
+    }
+
     panic(fmt.Errorf("type error: cannot compare type %s and %s", typeOf(val1), typeOf(val2)))
 }
 
@@ -2306,192 +2318,163 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
     // pf("(cfe) kind_override -> %s\n",kind_override)
     // pf("cfe call for %s with [%#v] and arg_names [%#v] \n",name,args,arg_names)
 
-    if f, ok := stdlib[name]; !ok {
+    // Extract bare name for stdlib lookup (stdlib functions have no prefix)
+    bareName := name
+    if idx := str.LastIndex(name, "::"); idx >= 0 {
+        bareName = name[idx+2:]
+    }
 
-        var lmv uint32
-        var isFunc bool
+    lmv, isFunc := fnlookup.lmget(name)
 
-        lmv, isFunc = fnlookup.lmget(name)
+    // check if exists in user defined function space first (allow shadowing stdlib)
+    if isFunc {
 
-        // check if exists in user defined function space
-        if isFunc {
+        // make Za function call
 
-            // make Za function call
+        // don't lock in space allocator on recursive calls
+        var do_lock bool
+        evname, _ := numlookup.lmget(evalfs)
+        if len(evname) >= len(name) && evname[:len(name)] != name {
+            do_lock = true
+        }
+        // pf("(in call) do_lock %v - name %v - evalfs_name %v\n",do_lock,name,evname)
 
-            // don't lock in space allocator on recursive calls
-            var do_lock bool
-            evname, _ := numlookup.lmget(evalfs)
-            if len(evname) >= len(name) && evname[:len(name)] != name {
-                do_lock = true
-            }
-            // pf("(in call) do_lock %v - name %v - evalfs_name %v\n",do_lock,name,evname)
+        loc, _ := GetNextFnSpace(do_lock, name+"@", call_s{prepared: true, base: lmv, caller: evalfs})
 
-            loc, _ := GetNextFnSpace(do_lock, name+"@", call_s{prepared: true, base: lmv, caller: evalfs})
+        // Try blocks are now handled directly during phraseParse()
 
-            // Try blocks are now handled directly during phraseParse()
+        var ident = make([]Variable, identInitialSize)
 
-            var ident = make([]Variable, identInitialSize)
+        var rcount uint8
+        var callErr error
 
-            var rcount uint8
-            var callErr error
+        // Set the callLine field in the calltable entry before calling the function
+        atomic.StoreInt32(&calltable[loc].callLine, int32(p.line))
 
-            // Set the callLine field in the calltable entry before calling the function
-            atomic.StoreInt32(&calltable[loc].callLine, int32(p.line))
+        if enableProfiling {
+            startTime := time.Now()
+            rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
+            recordPhase(p.ctx, name, time.Since(startTime))
+        } else {
+            rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
+        }
+        if callErr != nil {
+            return nil, true, method_result, callErr
+            // panic(errors.New(sf("call error in function call %s",id)))
+        }
 
-            if enableProfiling {
-                startTime := time.Now()
-                rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
-                recordPhase(p.ctx, name, time.Since(startTime))
-            } else {
-                rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
-            }
-            if callErr != nil {
-                return nil, true, method_result, callErr
-                // panic(errors.New(sf("call error in function call %s",id)))
-            }
+        // handle the returned result, if present.
+        calllock.Lock()
+        res = calltable[loc].retvals
+        calltable[loc].gcShyness = 100
+        calltable[loc].gc = true
+        calllock.Unlock()
+        // Check if function returned with exception - only if the called function has exception state
+        var hasExceptionState bool
+        if loc < uint32(len(calltable)) {
+            exceptionPtr := atomic.LoadPointer(&calltable[loc].activeException)
+            hasExceptionState = exceptionPtr != nil
+        }
 
-            // handle the returned result, if present.
-            calllock.Lock()
-            res = calltable[loc].retvals
-            calltable[loc].gcShyness = 100
-            calltable[loc].gc = true
-            calllock.Unlock()
-            // Check if function returned with exception - only if the called function has exception state
-            var hasExceptionState bool
-            if loc < uint32(len(calltable)) {
-                exceptionPtr := atomic.LoadPointer(&calltable[loc].activeException)
-                hasExceptionState = exceptionPtr != nil
-            }
+        if res != nil && hasExceptionState {
+            if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
+                if status, ok := retArray[0].(int); ok {
+                    switch status {
+                    case EXCEPTION_THROWN:
+                        // Function returned with unhandled exception - propagate it up
+                        // Set exception state in current context
+                        var category any = "unknown"
+                        var message string = "unknown error"
 
-            if res != nil && hasExceptionState {
-                if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
-                    if status, ok := retArray[0].(int); ok {
-                        switch status {
-                        case EXCEPTION_THROWN:
-                            // Function returned with unhandled exception - propagate it up
-                            // Set exception state in current context
-                            var category any = "unknown"
-                            var message string = "unknown error"
-
-                            if len(retArray) >= 4 {
-                                // Check if we have the full exception info preserved
-                                if excPtr, ok := retArray[3].(*exceptionInfo); ok {
-                                    // Use the preserved exception info with original stack trace
-                                    atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excPtr))
-                                } else {
-                                    // Fallback: extract basic info
-                                    category = retArray[1]
-                                    message = GetAsString(retArray[2])
-
-                                    // Create new exception info (shouldn't happen with new format)
-                                    excInfo := &exceptionInfo{
-                                        category:   category,
-                                        message:    message,
-                                        line:       0, // We don't have line info in eval context
-                                        function:   name,
-                                        fs:         evalfs,
-                                        stackTrace: nil, // No stack trace in fallback
-                                    }
-                                    atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
-                                }
-                            } else if len(retArray) >= 3 {
-                                // Legacy format - extract basic info
+                        if len(retArray) >= 4 {
+                            // Check if we have the full exception info preserved
+                            if excPtr, ok := retArray[3].(*exceptionInfo); ok {
+                                // Use the preserved exception info with original stack trace
+                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excPtr))
+                            } else {
+                                // Fallback: extract basic info
                                 category = retArray[1]
                                 message = GetAsString(retArray[2])
 
-                                // Set exception state in the calling function's context (async-safe)
-                                if evalfs < uint32(len(calltable)) {
-                                    // Check if there's already an active exception with a stack trace
-                                    currentExceptionPtr := atomic.LoadPointer(&calltable[evalfs].activeException)
-                                    currentException := (*exceptionInfo)(currentExceptionPtr)
-
-                                    var stackTraceCopy []stackFrame
-                                    if currentException != nil && len(currentException.stackTrace) > 0 {
-                                        // Preserve the existing stack trace from the original exception
-                                        stackTraceCopy = make([]stackFrame, len(currentException.stackTrace))
-                                        copy(stackTraceCopy, currentException.stackTrace)
-                                    } else {
-                                        // Generate new stack trace if none exists
-                                        stackTrace := generateStackTrace(name, evalfs, 0) // We don't have line info in eval context
-                                        stackTraceCopy = make([]stackFrame, len(stackTrace))
-                                        copy(stackTraceCopy, stackTrace)
-                                    }
-
-                                    excInfo := &exceptionInfo{
-                                        category:   category,
-                                        message:    message,
-                                        line:       0, // We don't have line info in eval context
-                                        function:   name,
-                                        fs:         evalfs,
-                                        stackTrace: stackTraceCopy,
-                                    }
-                                    atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
+                                // Create new exception info (shouldn't happen with new format)
+                                excInfo := &exceptionInfo{
+                                    category:   category,
+                                    message:    message,
+                                    line:       0, // We don't have line info in eval context
+                                    function:   name,
+                                    fs:         evalfs,
+                                    stackTrace: nil, // No stack trace in fallback
                                 }
+                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
                             }
+                        } else if len(retArray) >= 3 {
+                            // Legacy format - extract basic info
+                            category = retArray[1]
+                            message = GetAsString(retArray[2])
 
-                            // Return the exception information so the calling statement can handle it
-                            return retArray, false, method_result, nil
-                        case EXCEPTION_HANDLED:
-                            // Exception was handled - return the actual result
-                            if len(retArray) >= 2 {
-                                return retArray[1], false, method_result, nil
+                            // Set exception state in the calling function's context (async-safe)
+                            if evalfs < uint32(len(calltable)) {
+                                // Check if there's already an active exception with a stack trace
+                                currentExceptionPtr := atomic.LoadPointer(&calltable[evalfs].activeException)
+                                currentException := (*exceptionInfo)(currentExceptionPtr)
+
+                                var stackTraceCopy []stackFrame
+                                if currentException != nil && len(currentException.stackTrace) > 0 {
+                                    // Preserve the existing stack trace from the original exception
+                                    stackTraceCopy = make([]stackFrame, len(currentException.stackTrace))
+                                    copy(stackTraceCopy, currentException.stackTrace)
+                                } else {
+                                    // Generate new stack trace if none exists
+                                    stackTrace := generateStackTrace(name, evalfs, 0) // We don't have line info in eval context
+                                    stackTraceCopy = make([]stackFrame, len(stackTrace))
+                                    copy(stackTraceCopy, stackTrace)
+                                }
+
+                                excInfo := &exceptionInfo{
+                                    category:   category,
+                                    message:    message,
+                                    line:       0, // We don't have line info in eval context
+                                    function:   name,
+                                    fs:         evalfs,
+                                    stackTrace: stackTraceCopy,
+                                }
+                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
                             }
-                            return nil, false, method_result, nil
-                        case EXCEPTION_RETURN:
-                            // Function returned from within try block - return the actual result
-                            if len(retArray) >= 2 {
-                                return retArray[1], false, method_result, nil
-                            }
-                            return nil, false, method_result, nil
                         }
+
+                        // Return the exception information so the calling statement can handle it
+                        return retArray, false, method_result, nil
+                    case EXCEPTION_HANDLED:
+                        // Exception was handled - return the actual result
+                        if len(retArray) >= 2 {
+                            return retArray[1], false, method_result, nil
+                        }
+                        return nil, false, method_result, nil
+                    case EXCEPTION_RETURN:
+                        // Function returned from within try block - return the actual result
+                        if len(retArray) >= 2 {
+                            return retArray[1], false, method_result, nil
+                        }
+                        return nil, false, method_result, nil
                     }
                 }
-            }
-
-            switch rcount {
-            case 0:
-                return nil, false, method_result, nil
-            case 1:
-                switch res.(type) {
-                case []any:
-                    return res.([]any)[0], false, method_result, nil
-                }
-                return nil, false, method_result, nil
-            default:
-                return res, false, method_result, nil
-            }
-
-        } else {
-
-            // Check for C library functions as final fallback
-            if str.Contains(name, "::") {
-                parts := str.SplitN(name, "::", 2)
-                if len(parts) == 2 {
-                    libraryName := parts[0]
-                    functionName := parts[1]
-
-                    result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
-                    if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                        return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
-                    }
-                    return result, false, nil, nil
-                }
-            } else {
-                if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
-                    result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
-                    if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                        return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
-                    }
-                    return result, false, nil, nil
-                }
-                if foundNamespace := uc_match_func(name); foundNamespace != "" {
-                }
-
-                return nil, true, nil, nil
             }
         }
 
-    } else {
+        switch rcount {
+        case 0:
+            return nil, false, method_result, nil
+        case 1:
+            switch res.(type) {
+            case []any:
+                return res.([]any)[0], false, method_result, nil
+            }
+            return nil, false, method_result, nil
+        default:
+            return res, false, method_result, nil
+        }
+
+    } else if f, ok := stdlib[bareName]; ok {
 
         // call standard library function
         p.std_call = true
@@ -2608,6 +2591,35 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
                 }
             }
             return res, err != nil, method_result, nil
+        }
+
+    } else {
+
+        // Check for C library functions as final fallback
+        if str.Contains(name, "::") {
+            parts := str.SplitN(name, "::", 2)
+            if len(parts) == 2 {
+                libraryName := parts[0]
+                functionName := parts[1]
+
+                result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
+                if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
+                    return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
+                }
+                return result, false, nil, nil
+            }
+        } else {
+            if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
+                result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
+                if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
+                    return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
+                }
+                return result, false, nil, nil
+            }
+            if foundNamespace := uc_match_func(name); foundNamespace != "" {
+            }
+
+            return nil, true, nil, nil
         }
     }
     return nil, true, nil, nil

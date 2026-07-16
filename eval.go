@@ -1312,28 +1312,34 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     if !isStruct {
         // filter for functions here
         var isFunc bool
+        bareName := name
 
-        // check if exists in user defined function space
-        if _, isFunc = stdlib[name]; !isFunc {
-            if !str.Contains(name, "::") {
-                var useName string
-                if found := uc_match_func(name); found != "" {
-                    useName = found + "::" + name
-                } else {
-                    useName = "main::" + name
-                    if len(p.namespace) > 0 {
-                        useName = p.namespace + "::" + name
-                    }
+        // Resolve fully-qualified name first
+        if !str.Contains(name, "::") {
+            var useName string
+            if found := uc_match_func(name); found != "" {
+                useName = found + "::" + name
+            } else {
+                useName = "main::" + name
+                if len(p.namespace) > 0 {
+                    useName = p.namespace + "::" + name
                 }
-                name = useName
             }
-            isFunc = fnlookup.lmexists(name)
+            name = useName
+        }
 
-            // Check for C functions as fallback (before panic)
-            if !isFunc {
-                if namespace := FindCFunction(name); namespace != "" {
-                    isFunc = true
-                }
+        // Check user-defined functions first (allow shadowing stdlib)
+        isFunc = fnlookup.lmexists(name)
+
+        // Fallback to stdlib using the bare name (stdlib functions have no prefix)
+        if !isFunc {
+            _, isFunc = stdlib[bareName]
+        }
+
+        // Check for C functions as fallback (before panic)
+        if !isFunc {
+            if namespace := FindCFunction(name); namespace != "" {
+                isFunc = true
             }
         }
 

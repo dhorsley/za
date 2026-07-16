@@ -15,6 +15,88 @@ type Phrase struct {
     Tokens     []Token // each token found
     SourceLine int16
     TokenCount int16 // number of tokens generated for this phrase
+    bc         *phraseBytecode // cached bytecode for expressions (nil for statements or if not compiled)
+}
+
+type phraseBytecode struct {
+    code      []Instr
+    pool      []any
+    compiled  bool
+    fallback  bool
+    isAssign  bool
+    assignPos int
+}
+
+type OpCode uint8
+
+const (
+    OpLoadConstInt OpCode = iota
+    OpLoadConstFloat
+    OpLoadConstString
+    OpLoadLocal
+    OpLoadGlobal
+    OpLoadIdent
+    OpStoreLocal
+    OpPop
+    OpDup
+    OpAddInt
+    OpAddFloat
+    OpAddString
+    OpAddGeneric
+    OpSubInt
+    OpSubFloat
+    OpSubGeneric
+    OpMulInt
+    OpMulFloat
+    OpMulGeneric
+    OpDivFloat
+    OpDivGeneric
+    OpModInt
+    OpModGeneric
+    OpEqInt
+    OpEqFloat
+    OpEqString
+    OpEqGeneric
+    OpLtInt
+    OpLtFloat
+    OpLtGeneric
+    OpLeInt
+    OpLeFloat
+    OpLeGeneric
+    OpGtInt
+    OpGtFloat
+    OpGtGeneric
+    OpGeInt
+    OpGeFloat
+    OpGeGeneric
+    OpNeInt
+    OpNeFloat
+    OpNeString
+    OpNeGeneric
+    OpNot
+    OpNegInt
+    OpNegFloat
+    OpNegGeneric
+    OpAnd
+    OpOr
+    OpIndexGet
+    OpIndexSet
+    OpFieldGet
+    OpFieldSet
+    OpArrayNew
+    OpMapNew
+    OpCallStd
+    OpCallUser
+    OpJumpIfFalse
+    OpJump
+    OpTernaryCond
+    OpEnd
+)
+
+type Instr struct {
+    Op   OpCode
+    Arg1 uint16
+    Arg2 uint16
 }
 
 type BaseCode struct {
@@ -190,6 +272,8 @@ type s_loop struct {
     iterOverArray    any              // stored value to iterate over from start expression
     repeatCond       []Token          // tested with wrappedEval() // used by while + custom for conditions
     repeatAmendment  []Token          // used by custom FOR conditions
+    repeatCondBC     *phraseBytecode  // compiled bytecode for repeatCond (nil if not compiled)
+    repeatAmendmentBC *phraseBytecode // compiled bytecode for repeatAmendment (nil if not compiled)
 }
 
 // struct to support pseudo-windows in console

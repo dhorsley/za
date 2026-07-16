@@ -75,6 +75,77 @@ library changes
       - docs/vscode-za/syntaxes/za.tmLanguage.json
 
 
+interpreter/vm changes
+----------------------
+
+  * added expression-only bytecode compiler for faster expression evaluation
+      - expr_compile.go: Pratt-parser based compiler with fast-path opcodes for int,
+        float64, string, and bool types
+      - expr_vm.go: stack-based virtual machine with sync.Pool reuse and 1024-element
+        fixed []any stacks to avoid append() allocation in hot paths
+      - enabled by default at parse time; disable with ZA_BYTECODE=0
+      - debug output via ZA_DEBUG_BYTECODE=compile,exec (or =1/=all) to stderr
+      - fallback to interpreter (dparse()) is permanent per phrase (bcFallback = true);
+        failed compilations are never retried
+      - OpLoadIdent embeds pre-resolved bindpos+1 in Arg2 for fast local variable access
+        without calling bind_int()
+      - v1 scope: bare expressions, assignment RHS, if/while conditions, for loop custom
+        conditions and amendments. function calls, field access, enum members, methods,
+        &&/|| short-circuiting, and ternary conditionals fall back to interpreter
+      - resolveIdent() supports withEnumName context and uc_match_constant() for USE-chain
+        module constant lookups without fallback
+      - new opcodes: OpNegInt, OpNegFloat, OpNegGeneric (unary minus), OpGeInt/OpGeFloat/
+        OpGeGeneric (>=), OpNeInt/OpNeFloat/OpNeString/OpNeGeneric (!=)
+
+  * extracted VM execution blocks in actor.go Call() into helper functions
+      - evalExprOrVM, evalWhileCond, evalEndwhileCond, evalForAmend, evalForCond,
+        evalDefaultCase - reduces Call() stack frame size for deep recursion
+
+
+fixes
+-----
+
+  * fixed non-commutative scalar/list operations (ev_sub, ev_div, ev_mod, ev_pow)
+      - scalar / list, scalar - list, scalar % list, and scalar ** list were computing
+        list / scalar, list - scalar, etc. due to swapped arguments in
+        ApplyElementwiseBinaryOp calls
+      - example: 2.0 / [9900, 9901] now returns [~0.0002, ~0.0002] instead of
+        [4950, 4950.5]
+      - affected: eval_ops.go scalar-slice broadcasting branches for subtraction,
+        division, modulo, and power operators
+
+  * fixed stdlib functions shadowing user-defined functions
+      - interpreter checked stdlib before fnlookup, so user-defined functions with the
+        same name as stdlib functions (e.g., now()) were never called
+      - reversed check order in eval.go and eval_ops.go: user-defined functions now
+        shadow stdlib; stdlib functions are still found by their bare (non-prefixed)
+        names
+      - example: a script defining now() that returns epoch_nano_time() now works
+        correctly instead of calling the stdlib now() which returns seconds
+
+
+Now considered supported
+------------------------
+
+  * C Foreign Function Interface (FFI) and AUTO clause for MODULE statements
+      - dynamic library loading with automatic C header parsing
+      - constants, enums, typedefs, structs, and function signatures auto-discovered
+      - callback system, function pointers, opaque pointer handling, memory read/write
+      - type coercion, wchar_t support, variadic functions, preprocessor directives
+
+  * prometheus exporter: -M port or ZA_PROMETHEUS=port to invoke at startup
+      - IP-based access control via ZA_PROMETHEUS_CIDR env var
+      - 50+ built-in metrics across Go runtime, process, system, web, build, and application
+      - custom metric registration via stdlib calls (metric_register, metric_inc, etc.)
+      - default exclusion filters for virtual network interfaces, disk devices, and filesystems
+
+  * script bundling facility via -x CLI argument
+      - produces self-extracting executable with script and dependencies
+      - output name controlled with -n <name> option
+
+  * lib-ini.go: basic support for .ini files
+
+
 1.2.2
 =====
 

@@ -45,6 +45,181 @@ func showIdent(ident *[]Variable) {
     }
 }
 
+// evalExprOrVM evaluates a simple expression using bytecode VM or parser fallback.
+// Returns (result, error). Used for IF conditions.
+func evalExprOrVM(bc *phraseBytecode, tokens []Token, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16, label string) (any, error) {
+    if bc != nil && bc.compiled && !bc.isAssign {
+        result, err := runExprVM(bc.code, bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d %s error: %v\n", ifs, sourceLine, label, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d %s result: %v\n", ifs, sourceLine, label, result)
+            }
+        }
+        return result, err
+    }
+    return parser.Eval(ifs, tokens)
+}
+
+// evalWhileCond evaluates a WHILE condition using bytecode VM or parser fallback.
+// Returns (result bool, ok bool, condBC *phraseBytecode).
+func evalWhileCond(inbound *Phrase, etoks []Token, parser *leparser, ifs uint32, ident *[]Variable) (bool, bool, *phraseBytecode) {
+    if inbound.bc != nil && inbound.bc.compiled && !inbound.bc.isAssign {
+        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d while-condition error: %v\n", ifs, inbound.SourceLine, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d while-condition result: %v\n", ifs, inbound.SourceLine, result)
+            }
+        }
+        if err != nil {
+            return false, false, inbound.bc
+        }
+        if v, ok := result.(bool); ok {
+            return v, true, inbound.bc
+        }
+        return false, false, inbound.bc
+    }
+    we := parser.wrappedEval(ifs, ident, ifs, ident, etoks)
+    if we.evalError {
+        return false, false, nil
+    }
+    if v, ok := we.result.(bool); ok {
+        return v, true, nil
+    }
+    return false, false, nil
+}
+
+// evalEndwhileCond re-evaluates a WHILE condition at ENDWHILE using bytecode VM or parser fallback.
+// Returns (result bool, ok bool).
+func evalEndwhileCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) (bool, bool) {
+    if cond.repeatCondBC != nil && cond.repeatCondBC.compiled && !cond.repeatCondBC.isAssign {
+        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d endwhile-condition error: %v\n", ifs, sourceLine, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d endwhile-condition result: %v\n", ifs, sourceLine, result)
+            }
+        }
+        if err != nil {
+            return false, false
+        }
+        if v, ok := result.(bool); ok {
+            return v, true
+        }
+        return false, false
+    }
+    we := parser.wrappedEval(ifs, ident, ifs, ident, cond.repeatCond)
+    if we.evalError {
+        return false, false
+    }
+    if v, ok := we.result.(bool); ok {
+        return v, true
+    }
+    return false, false
+}
+
+// evalForAmend evaluates a FOR loop amendment using bytecode VM or parser fallback.
+// Returns true on success, false on error.
+func evalForAmend(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) bool {
+    if cond.repeatAmendmentBC != nil && cond.repeatAmendmentBC.compiled && !cond.repeatAmendmentBC.isAssign {
+        _, err := runExprVM(cond.repeatAmendmentBC.code, cond.repeatAmendmentBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-amendment error: %v\n", ifs, sourceLine, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-amendment ok\n", ifs, sourceLine)
+            }
+        }
+        return err == nil
+    }
+    evAmendment := parser.wrappedEval(ifs, ident, ifs, ident, cond.repeatAmendment)
+    return !evAmendment.evalError
+}
+
+// evalForCond evaluates a FOR loop condition using bytecode VM or parser fallback.
+// Returns (result bool, ok bool).
+func evalForCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) (bool, bool) {
+    if cond.repeatCondBC != nil && cond.repeatCondBC.compiled && !cond.repeatCondBC.isAssign {
+        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-condition error: %v\n", ifs, sourceLine, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-condition result: %v\n", ifs, sourceLine, result)
+            }
+        }
+        if err != nil {
+            return false, false
+        }
+        if v, ok := result.(bool); ok {
+            return v, true
+        }
+        return false, false
+    }
+    evCond := parser.wrappedEval(ifs, ident, ifs, ident, cond.repeatCond)
+    if evCond.evalError {
+        return false, false
+    }
+    if v, ok := evCond.result.(bool); ok {
+        return v, true
+    }
+    return false, false
+}
+
+// evalDefaultCase evaluates a bare expression or assignment using bytecode VM or parser fallback.
+func evalDefaultCase(inbound *Phrase, parser *leparser, ifs uint32, ident *[]Variable) ExpressionCarton {
+    if inbound.bc != nil && inbound.bc.compiled {
+        if inbound.bc.isAssign {
+            result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+            we := ExpressionCarton{}
+            if err != nil {
+                we.evalError = true
+                we.errVal = err
+            } else {
+                we.result = result
+                we.evalError = false
+                we.assign = true
+                we.assignPos = inbound.bc.assignPos
+            }
+            if bcDebugExec {
+                if err != nil {
+                    fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d assign-RHS error: %v\n", ifs, inbound.SourceLine, err)
+                } else {
+                    fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d assign-RHS result: %v\n", ifs, inbound.SourceLine, result)
+                }
+            }
+            if !we.evalError && we.assign {
+                parser.doAssign(ifs, ident, ifs, ident, inbound.Tokens, &we, we.assignPos, false)
+            }
+            return we
+        }
+        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+        we := ExpressionCarton{}
+        if err != nil {
+            we.evalError = true
+            we.errVal = err
+        } else {
+            we.result = result
+            we.evalError = false
+            we.assign = false
+            we.assignPos = -1
+        }
+        if bcDebugExec {
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d error: %v\n", ifs, inbound.SourceLine, err)
+            } else {
+                fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d result: %v\n", ifs, inbound.SourceLine, result)
+            }
+        }
+        return we
+    }
+    return parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens)
+}
+
 // populate a struct.
 func fillStruct(t *Variable, structvalues []any, Typemap map[string]reflect.Type, hasAry bool, fieldNames []string) error {
 
@@ -1330,7 +1505,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
                         // Set exception state for try/catch handling
                         callErr = nil
-                        // Don't return - let the function continue so try/catch blocks can see the exception
+                        // Don't return here - let the execution loop reach C_Endtry
+                        // so it can check activeException and set retvalues properly.
+                        // This matches dparse() behaviour where panics are converted
+                        // to exceptions and the function continues to the endtry.
                     }
                 }
 
@@ -2446,35 +2624,26 @@ tco_reentry:
 
             var res bool
             var etoks []Token
+            var condBC *phraseBytecode
 
             if inbound.TokenCount == 1 {
                 etoks = []Token{Token{tokType: Identifier, tokText: "true", subtype: subtypeConst, tokVal: true}}
                 res = true
             } else {
-
                 etoks = inbound.Tokens[1:]
-                we = parser.wrappedEval(ifs, ident, ifs, ident, etoks)
-                if we.evalError {
+                var ok bool
+                res, ok, condBC = evalWhileCond(inbound, etoks, parser, ifs, ident)
+                if !ok {
                     parser.report(inbound.SourceLine, "could not evaluate WHILE condition")
                     finish(false, ERR_EVAL)
                     break
                 }
-
-                switch we.result.(type) {
-                case bool:
-                    res = we.result.(bool)
-                default:
-                    parser.report(inbound.SourceLine, "WHILE condition must evaluate to boolean")
-                    finish(false, ERR_EVAL)
-                    break
-                }
-
             }
 
             if isBool(res) && res {
                 // while cond is true, stack, then continue loop
                 depth += 1
-                loops[depth] = s_loop{repeatFrom: parser.pc, whileContinueAt: parser.pc + enddistance, repeatCond: etoks, loopType: LT_WHILE}
+                loops[depth] = s_loop{repeatFrom: parser.pc, whileContinueAt: parser.pc + enddistance, repeatCond: etoks, loopType: LT_WHILE, repeatCondBC: condBC}
                 lastConstruct = append(lastConstruct, C_While)
                 break
             } else {
@@ -2512,14 +2681,14 @@ tco_reentry:
             }
 
             // evaluate condition
-            we = parser.wrappedEval(ifs, ident, ifs, ident, cond.repeatCond)
-            if we.evalError {
-                parser.report(inbound.SourceLine, sf("eval fault in ENDWHILE\n%+v\n", we.errVal))
+            res, ok := evalEndwhileCond(cond, parser, ifs, ident, inbound.SourceLine)
+            if !ok {
+                parser.report(inbound.SourceLine, sf("eval fault in ENDWHILE\n"))
                 finish(false, ERR_EVAL)
                 break
             }
 
-            if we.result.(bool) {
+            if res {
                 // while still true, loop
                 parser.pc = cond.repeatFrom
             } else {
@@ -3283,11 +3452,28 @@ tco_reentry:
                     break
                 }
 
+                // Compile condition and amendment expressions for bytecode VM
+                var condBC *phraseBytecode
+                var amendBC *phraseBytecode
+                if len(iterCondition) > 0 {
+                    code, pool, err := compileExpr(iterCondition, ifs, ident, currentModule)
+                    if err == nil {
+                        condBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                    }
+                }
+                if len(iterAmendment) > 0 {
+                    code, pool, err := compileExpr(iterAmendment, ifs, ident, currentModule)
+                    if err == nil {
+                        amendBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                    }
+                }
+
                 depth += 1
                 loops[depth] = s_loop{
                     optNoUse: Opt_LoopStart,
                     loopType: LT_FOR, forEndPos: parser.pc + enddistance, repeatFrom: parser.pc + 1,
                     repeatCond: iterCondition, repeatAmendment: iterAmendment, repeatCustom: true,
+                    repeatCondBC: condBC, repeatAmendmentBC: amendBC,
                 }
 
                 lastConstruct = append(lastConstruct, C_For)
@@ -3617,8 +3803,7 @@ tco_reentry:
 
                         // amend iterator
                         if len((*thisLoop).repeatAmendment) > 0 {
-                            evAmendment := parser.wrappedEval(ifs, ident, ifs, ident, (*thisLoop).repeatAmendment)
-                            if evAmendment.evalError {
+                            if !evalForAmend(*thisLoop, parser, ifs, ident, inbound.SourceLine) {
                                 parser.report(inbound.SourceLine, "Invalid expression for amendment in FOR")
                                 finish(false, ERR_EVAL)
                                 break
@@ -3627,22 +3812,15 @@ tco_reentry:
 
                         // check iterator
                         if len((*thisLoop).repeatCond) > 0 {
-                            evCond := parser.wrappedEval(ifs, ident, ifs, ident, (*thisLoop).repeatCond)
-                            if evCond.evalError {
+                            res, ok := evalForCond(*thisLoop, parser, ifs, ident, inbound.SourceLine)
+                            if !ok {
                                 parser.report(inbound.SourceLine, "Invalid condition for amendment in FOR")
                                 finish(false, ERR_EVAL)
                                 break
                             }
                             loopEnd = true
-                            switch evCond.result.(type) {
-                            case bool:
-                                if evCond.result.(bool) {
-                                    loopEnd = false
-                                }
-                            default:
-                                parser.report(inbound.SourceLine, "Condition does not evaluate to a bool in FOR")
-                                finish(false, ERR_EVAL)
-                                break
+                            if res {
+                                loopEnd = false
                             }
                         }
 
@@ -7334,7 +7512,7 @@ tco_reentry:
             }
 
             // eval
-            expr, err = parser.Eval(ifs, inbound.Tokens[1:])
+            expr, err = evalExprOrVM(inbound.bc, inbound.Tokens[1:], parser, ifs, ident, inbound.SourceLine, "if-condition")
             if err != nil {
                 parser.report(inbound.SourceLine, sf("Could not evaluate expression.\n%#v\n%+v", expr, err))
                 finish(false, ERR_SYNTAX)
@@ -8291,7 +8469,7 @@ tco_reentry:
             }
 
             // try to eval and assign
-            we = parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens)
+            we = evalDefaultCase(inbound, parser, ifs, ident)
 
             // Check if wrappedEval returned an exception
             if we.result != nil {

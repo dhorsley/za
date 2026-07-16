@@ -32,7 +32,7 @@ working_home=home()
 
 println "[#1]Async Test[#-]"
 
-cmd="find /usr -maxdepth 5"
+cmd="find /usr -maxdepth 3"
 println "\nnow calling in background '{cmd}'\n"
 
 h=&{{cmd}}

@@ -1,0 +1,485 @@
+package main
+
+import (
+	"fmt"
+	"reflect"
+	"sync"
+	"sync/atomic"
+	"unsafe"
+)
+
+// ExprVM is the stack-based virtual machine for executing bytecode.
+type ExprVM struct {
+	stack        []any
+	sp           int
+	fs           uint32
+	ident        *[]Variable
+	midentFS     uint32
+	pool         []any
+	namespace    string
+	withEnumName string
+}
+
+// vmPool reuses VM instances to avoid allocation overhead in hot loops.
+var vmPool = sync.Pool{
+	New: func() any {
+		return &ExprVM{
+			stack: make([]any, 1024),
+		}
+	},
+}
+
+func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int) (any, error) {
+	vm := vmPool.Get().(*ExprVM)
+	vm.sp = 0
+	vm.fs = fs
+	vm.ident = ident
+	vm.midentFS = midentFS
+	vm.pool = pool
+	vm.namespace = "main"
+	vm.withEnumName = withEnumName
+	var result any
+
+	defer func() {
+		if r := recover(); r != nil {
+			vmPool.Put(vm)
+			// Convert panic to exception (like dparse() does)
+			var errVal error
+			switch v := r.(type) {
+			case error:
+				errVal = v
+			default:
+				errVal = fmt.Errorf("%v", r)
+			}
+			var stackTraceCopy []stackFrame
+			if fs < uint32(len(calltable)) {
+				stackTraceCopy = generateStackTrace(calltable[fs].fs, fs, int16(sourceLine))
+			}
+			// Use try block's default category if set (e.g. try throws "database")
+			var category any = "error"
+			if fs < uint32(len(calltable)) {
+				calllock.RLock()
+				defaultCategory := calltable[fs].defaultExceptionCategory
+				calllock.RUnlock()
+				if defaultCategory != nil {
+					category = defaultCategory
+				}
+			}
+			excInfo := &exceptionInfo{
+				category:   category,
+				message:    errVal.Error(),
+				line:       sourceLine,
+				function:   calltable[fs].fs,
+				fs:         fs,
+				stackTrace: stackTraceCopy,
+			}
+			atomic.StorePointer(&calltable[fs].activeException, unsafe.Pointer(excInfo))
+			// Don't re-panic - let the main execution loop detect the active exception
+			// and route it to try/catch blocks (matching dparse() behaviour)
+		}
+	}()
+
+	for pc := 0; pc < len(code); pc++ {
+		instr := code[pc]
+
+		switch instr.Op {
+		case OpLoadConstInt:
+			vm.push(pool[instr.Arg1])
+		case OpLoadConstFloat:
+			vm.push(pool[instr.Arg1])
+		case OpLoadConstString:
+			vm.push(pool[instr.Arg1])
+		case OpLoadLocal:
+			bin := uint64(instr.Arg1)
+			if bin < uint64(len(*vm.ident)) && (*vm.ident)[bin].declared {
+				vm.push((*vm.ident)[bin].IValue)
+			} else {
+				vmPool.Put(vm)
+				return nil, fmt.Errorf("uninitialised local")
+			}
+		case OpLoadGlobal:
+			bin := uint64(instr.Arg1)
+			if bin < uint64(len(mident)) && mident[bin].declared {
+				vm.push(mident[bin].IValue)
+			} else {
+				vmPool.Put(vm)
+				return nil, fmt.Errorf("uninitialised global")
+			}
+		case OpLoadIdent:
+			name := vm.pool[instr.Arg1].(string)
+			if instr.Arg2 != 0 && vm.ident != nil {
+				bin := uint64(instr.Arg2 - 1)
+				if bin < uint64(len(*vm.ident)) && (*vm.ident)[bin].declared && (*vm.ident)[bin].IName == name {
+					vm.push((*vm.ident)[bin].IValue)
+					continue
+				}
+			}
+			val, ok := vm.resolveIdent(name)
+			if !ok {
+				vmPool.Put(vm)
+				return nil, fmt.Errorf("'%s' is uninitialised", name)
+			}
+			vm.push(val)
+		case OpStoreLocal:
+			val := vm.pop()
+			bin := uint64(instr.Arg1)
+			if bin >= uint64(len(*vm.ident)) {
+				newIdent := make([]Variable, bin+identGrowthSize)
+				copy(newIdent, *vm.ident)
+				*vm.ident = newIdent
+			}
+			(*vm.ident)[bin].IName = ""
+			(*vm.ident)[bin].declared = true
+			(*vm.ident)[bin].IValue = val
+		case OpPop:
+			vm.pop()
+		case OpDup:
+			vm.push(vm.peek())
+		case OpAddInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a + b)
+		case OpAddFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a + b)
+		case OpAddString:
+			b := vm.pop().(string)
+			a := vm.pop().(string)
+			vm.push(a + b)
+		case OpAddGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_add(a, b))
+		case OpSubInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a - b)
+		case OpSubFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a - b)
+		case OpSubGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_sub(a, b))
+		case OpMulInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a * b)
+		case OpMulFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a * b)
+		case OpMulGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_mul(a, b))
+		case OpDivFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a / b)
+		case OpDivGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_div(a, b))
+		case OpModInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a % b)
+		case OpModGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_mod(a, b))
+		case OpEqInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a == b)
+		case OpEqFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a == b)
+		case OpEqString:
+			b := vm.pop().(string)
+			a := vm.pop().(string)
+			vm.push(a == b)
+		case OpEqGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(deepEqual(a, b))
+		case OpLtInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a < b)
+		case OpLtFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a < b)
+		case OpLtGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(compare(a, b, SYM_LT))
+		case OpLeInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a <= b)
+		case OpLeFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a <= b)
+		case OpLeGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(compare(a, b, SYM_LE))
+		case OpGtInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a > b)
+		case OpGtFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a > b)
+		case OpGtGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(compare(a, b, SYM_GT))
+		case OpGeInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a >= b)
+		case OpGeFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a >= b)
+		case OpGeGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(compare(a, b, SYM_GE))
+		case OpNeInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			vm.push(a != b)
+		case OpNeFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(a != b)
+		case OpNeString:
+			b := vm.pop().(string)
+			a := vm.pop().(string)
+			vm.push(a != b)
+		case OpNeGeneric:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(!deepEqual(a, b))
+		case OpNot:
+			a := vm.pop()
+			vm.push(!asBool(a))
+		case OpNegInt:
+			a := vm.pop().(int)
+			vm.push(-a)
+		case OpNegFloat:
+			a := vm.pop().(float64)
+			vm.push(-a)
+		case OpNegGeneric:
+			a := vm.pop()
+			switch v := a.(type) {
+			case int:
+				vm.push(-v)
+			case float64:
+				vm.push(-v)
+			default:
+				vmPool.Put(vm)
+				return nil, fmt.Errorf("cannot negate type %T", a)
+			}
+		case OpAnd:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(asBool(a) && asBool(b))
+		case OpOr:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(asBool(a) || asBool(b))
+		case OpIndexGet:
+			idx := vm.pop()
+			container := vm.pop()
+			vm.push(accessArray(vm.ident, container, idx))
+		case OpIndexSet:
+			// Not used in v1 expression-only mode
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("IndexSet not supported in expression mode")
+		case OpFieldGet:
+			fieldName := vm.pool[instr.Arg1].(string)
+			obj := vm.pop()
+			vm.push(accessField(obj, fieldName))
+		case OpFieldSet:
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("FieldSet not supported in expression mode")
+		case OpArrayNew:
+			count := int(instr.Arg1)
+			ary := make([]any, count)
+			for i := count - 1; i >= 0; i-- {
+				ary[i] = vm.pop()
+			}
+			vm.push(ary)
+		case OpMapNew:
+			vm.push(make(map[string]any))
+		case OpCallStd:
+			// Not supported in v1
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("CallStd not supported in bytecode v1")
+		case OpCallUser:
+			// Not supported in v1
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("CallUser not supported in bytecode v1")
+		case OpJumpIfFalse:
+			cond := vm.pop()
+			if !asBool(cond) {
+				pc += int(int16(instr.Arg1)) - 1 // -1 because loop will increment
+			}
+		case OpJump:
+			pc += int(int16(instr.Arg1)) - 1
+		case OpTernaryCond:
+			// Not supported in v1
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("TernaryCond not supported in bytecode v1")
+		case OpEnd:
+			if vm.sp == 0 {
+				result = nil
+			} else {
+				result = vm.pop()
+			}
+			if bcDebugExec {
+				bcDumpExec(vm, pc, instr, result, nil)
+			}
+			vmPool.Put(vm)
+			return result, nil
+		default:
+			vmPool.Put(vm)
+			return nil, fmt.Errorf("unknown opcode %d", instr.Op)
+		}
+
+		if bcDebugExec {
+			bcDumpExec(vm, pc, instr, nil, nil)
+		}
+	}
+
+	vmPool.Put(vm)
+	return nil, fmt.Errorf("bytecode did not end with OpEnd")
+}
+
+func (vm *ExprVM) push(v any) {
+	if vm.sp >= len(vm.stack) {
+		panic("stack overflow")
+	}
+	vm.stack[vm.sp] = v
+	vm.sp++
+}
+
+func (vm *ExprVM) pop() any {
+	if vm.sp <= 0 {
+		panic("stack underflow")
+	}
+	vm.sp--
+	v := vm.stack[vm.sp]
+	vm.stack[vm.sp] = nil
+	return v
+}
+
+func (vm *ExprVM) peek() any {
+	if vm.sp <= 0 {
+		panic("stack empty")
+	}
+	return vm.stack[vm.sp-1]
+}
+
+func (vm *ExprVM) resolveIdent(name string) (any, bool) {
+	// Try local first
+	bin := bind_int(vm.fs, name)
+	if bin < uint64(len(*vm.ident)) && (*vm.ident)[bin].declared && (*vm.ident)[bin].IName == name {
+		return (*vm.ident)[bin].IValue, true
+	}
+	// Try global
+	gbin := bind_int(vm.midentFS, name)
+	if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == name {
+		return mident[gbin].IValue, true
+	}
+	// Try module constants (current namespace first, then USE chain)
+	moduleConstantsLock.RLock()
+	if constMap, exists := moduleConstants[vm.namespace]; exists {
+		if val, found := constMap[name]; found {
+			moduleConstantsLock.RUnlock()
+			return val, true
+		}
+	}
+	moduleConstantsLock.RUnlock()
+	// Check USE chain for module constants
+	if _, val, found := uc_match_constant(name); found {
+		return val, true
+	}
+	// Try WITH ENUM context: resolve unqualified enum member names
+	if vm.withEnumName != "" {
+		fullEnumName := vm.namespace + "::" + vm.withEnumName
+		if enumDef, exists := enum[fullEnumName]; exists {
+			if memberVal, memberExists := enumDef.members[name]; memberExists {
+				return memberVal, true
+			}
+		}
+	}
+	// Try enums
+	ename := vm.namespace + "::" + name
+	if enum[ename] != nil {
+		return nil, true
+	}
+	return nil, false
+}
+
+func accessField(obj any, fieldName string) any {
+	if obj == nil {
+		return nil
+	}
+	val := reflect.ValueOf(obj)
+	if val.Kind() == reflect.Map {
+		key := reflect.ValueOf(fieldName)
+		mapVal := val.MapIndex(key)
+		if mapVal.IsValid() {
+			return mapVal.Interface()
+		}
+		return nil
+	}
+	if val.Kind() == reflect.Struct {
+		field := val.FieldByName(renameSF(fieldName))
+		if field.IsValid() {
+			return field.Interface()
+		}
+		return nil
+	}
+	return nil
+}
+
+
+func isExpressionStart(tok Token) bool {
+	// Returns true if a phrase beginning with this token is an expression
+	// that can be compiled to bytecode.
+	switch tok.tokType {
+	case NumericLiteral, StringLiteral, Identifier,
+		O_Minus, O_Plus, SYM_Not, LParen, LeftSBrace, T_Map:
+		return true
+	default:
+		return false
+	}
+}
+
+// findAssignment scans tokens for an assignment operator (O_Assign, SYM_PLE, etc.)
+// and returns the position of the first one found, or -1 if none.
+// It also returns whether a comma exists in the tokens (for multi-assign detection).
+func findAssignment(tks []Token) (pos int, hasComma bool) {
+	for k, t := range tks {
+		if t.tokType == O_Comma {
+			hasComma = true
+		}
+		if t.tokType == O_Assign {
+			return k, hasComma
+		}
+	}
+	return -1, hasComma
+}

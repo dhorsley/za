@@ -1,8 +1,0 @@
-
-define gval()
-    return "this is a test"
-end
-
-println "* ",gval().tokens.tokens
-println "# ",gval().tokens.types
-
