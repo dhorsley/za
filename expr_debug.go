@@ -103,12 +103,16 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("MulFloat")
 	case OpMulGeneric:
 		sb.WriteString("MulGeneric")
+	case OpDivInt:
+		sb.WriteString("DivInt")
 	case OpDivFloat:
 		sb.WriteString("DivFloat")
 	case OpDivGeneric:
 		sb.WriteString("DivGeneric")
 	case OpModInt:
 		sb.WriteString("ModInt")
+	case OpModFloat:
+		sb.WriteString("ModFloat")
 	case OpModGeneric:
 		sb.WriteString("ModGeneric")
 	case OpEqInt:
@@ -163,6 +167,32 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("And")
 	case OpOr:
 		sb.WriteString("Or")
+	case OpPow:
+		sb.WriteString("Pow")
+	case OpRange:
+		sb.WriteString("Range")
+	case OpIn:
+		sb.WriteString("In")
+	case OpBitAnd:
+		sb.WriteString("BitAnd")
+	case OpBitOr:
+		sb.WriteString("BitOr")
+	case OpBitXor:
+		sb.WriteString("BitXor")
+	case OpLShift:
+		sb.WriteString("LShift")
+	case OpRShift:
+		sb.WriteString("RShift")
+	case OpStrLower:
+		sb.WriteString("StrLower")
+	case OpStrUpper:
+		sb.WriteString("StrUpper")
+	case OpStrTitle:
+		sb.WriteString("StrTitle")
+	case OpStrTrimLeft:
+		sb.WriteString("StrTrimLeft")
+	case OpStrTrimRight:
+		sb.WriteString("StrTrimRight")
 	case OpIndexGet:
 		sb.WriteString("IndexGet")
 	case OpIndexSet:

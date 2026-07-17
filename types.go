@@ -49,9 +49,11 @@ const (
     OpMulInt
     OpMulFloat
     OpMulGeneric
+    OpDivInt
     OpDivFloat
     OpDivGeneric
     OpModInt
+    OpModFloat
     OpModGeneric
     OpEqInt
     OpEqFloat

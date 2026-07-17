@@ -483,10 +483,10 @@ func (c *exprCompiler) emitBinary(op int64) {
 		} else if left.hint == hintFloat && right.hint == hintFloat {
 			c.emit(floatOp)
 			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
-		} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
-			c.emit(floatOp)
-			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
-		} else if left.hint == hintString && right.hint == hintString && op == O_Plus {
+	} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
+		c.emit(genericOp)
+		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+	} else if left.hint == hintString && right.hint == hintString && op == O_Plus {
 			c.emit(stringOp)
 			c.pushValue(compileValue{hint: hintString, constVal: nil, instrIdx: -1})
 		} else {
@@ -503,9 +503,9 @@ func (c *exprCompiler) emitBinary(op int64) {
 	case O_Multiply:
 		choose(OpMulInt, OpMulFloat, 0, OpMulGeneric)
 	case O_Divide:
-		choose(OpDivGeneric, OpDivFloat, 0, OpDivGeneric)
+		choose(OpDivInt, OpDivFloat, 0, OpDivGeneric)
 	case O_Percent:
-		choose(OpModInt, OpModGeneric, 0, OpModGeneric)
+		choose(OpModInt, OpModFloat, 0, OpModGeneric)
 	case SYM_POW:
 		c.emit(OpPow)
 		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
@@ -532,7 +532,7 @@ func (c *exprCompiler) emitComparison(op int64) {
 		} else if left.hint == hintFloat && right.hint == hintFloat {
 			c.emit(floatOp)
 		} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
-			c.emit(floatOp)
+			c.emit(genericOp)
 		} else if left.hint == hintString && right.hint == hintString {
 			c.emit(stringOp)
 		} else {

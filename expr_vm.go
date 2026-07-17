@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"sync"
@@ -176,6 +177,13 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop()
 			a := vm.pop()
 			vm.push(ev_mul(a, b))
+		case OpDivInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			if b == 0 {
+				panic("divide by zero")
+			}
+			vm.push(a / b)
 		case OpDivFloat:
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
@@ -188,6 +196,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(int)
 			a := vm.pop().(int)
 			vm.push(a % b)
+		case OpModFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(math.Mod(a, b))
 		case OpModGeneric:
 			b := vm.pop()
 			a := vm.pop()
