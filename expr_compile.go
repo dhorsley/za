@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/big"
+	"strings"
 )
 
 // typeHint tracks what we know about a value at compile time.
@@ -21,6 +23,15 @@ const (
 	hintBigFloat
 )
 
+// compileValue tracks both the type hint and, for constants, the actual value.
+// instrIdx is the index of the first instruction that produced this value, or -1
+// if the value is not a simple constant load (e.g., result of a generic operation).
+type compileValue struct {
+	hint     typeHint
+	constVal any // nil if not a compile-time constant
+	instrIdx int // index of the first instruction for this value, or -1
+}
+
 // exprCompiler holds the state for compiling a single expression.
 type exprCompiler struct {
 	tokens    []Token
@@ -30,9 +41,9 @@ type exprCompiler struct {
 	namespace string
 
 	// output
-	code  []Instr
-	pool  []any
-	hints []typeHint // type hint stack, parallel to vm stack during compilation
+	code   []Instr
+	pool   []any
+	values []compileValue // value stack, parallel to vm stack during compilation
 }
 
 func compileExpr(tokens []Token, fs uint32, ident *[]Variable, namespace string) ([]Instr, []any, error) {
@@ -44,7 +55,7 @@ func compileExpr(tokens []Token, fs uint32, ident *[]Variable, namespace string)
 		namespace: namespace,
 		code:      make([]Instr, 0, len(tokens)),
 		pool:      make([]any, 0, 8),
-		hints:     make([]typeHint, 0, 8),
+		values:    make([]compileValue, 0, 8),
 	}
 	// reserve pool[0] as nil
 	c.pool = append(c.pool, nil)
@@ -70,24 +81,37 @@ func (c *exprCompiler) emit(op OpCode, args ...uint16) {
 	c.code = append(c.code, instr)
 }
 
+func (c *exprCompiler) pushValue(v compileValue) {
+	c.values = append(c.values, v)
+}
+
+func (c *exprCompiler) popValue() compileValue {
+	if len(c.values) == 0 {
+		return compileValue{hint: hintUnknown, instrIdx: -1}
+	}
+	v := c.values[len(c.values)-1]
+	c.values = c.values[:len(c.values)-1]
+	return v
+}
+
+func (c *exprCompiler) peekValue() compileValue {
+	if len(c.values) == 0 {
+		return compileValue{hint: hintUnknown, instrIdx: -1}
+	}
+	return c.values[len(c.values)-1]
+}
+
+// Backward-compatible hint wrappers (used by non-constant-aware paths)
 func (c *exprCompiler) pushHint(h typeHint) {
-	c.hints = append(c.hints, h)
+	c.pushValue(compileValue{hint: h, constVal: nil, instrIdx: -1})
 }
 
 func (c *exprCompiler) popHint() typeHint {
-	if len(c.hints) == 0 {
-		return hintUnknown
-	}
-	h := c.hints[len(c.hints)-1]
-	c.hints = c.hints[:len(c.hints)-1]
-	return h
-	}
+	return c.popValue().hint
+}
 
 func (c *exprCompiler) peekHint() typeHint {
-	if len(c.hints) == 0 {
-		return hintUnknown
-	}
-	return c.hints[len(c.hints)-1]
+	return c.peekValue().hint
 }
 
 func (c *exprCompiler) next() Token {
@@ -141,32 +165,50 @@ func (c *exprCompiler) nud(tok Token) error {
 	case StringLiteral:
 		idx := c.poolIndex(tok.tokText)
 		c.emit(OpLoadConstString, idx)
-		c.pushHint(hintString)
+		c.pushValue(compileValue{hint: hintString, constVal: tok.tokText, instrIdx: len(c.code) - 1})
 	case Identifier:
 		return c.compileIdentifier(tok)
 	case SYM_Not:
+		startInstr := len(c.code)
 		if err := c.expression(24); err != nil {
 			return err
 		}
+		val := c.popValue()
+		if val.constVal != nil {
+			if result, ok := foldNot(val.constVal); ok {
+				c.code = c.code[:startInstr]
+				c.emitLoadConst(result)
+				c.pushValue(compileValueFromResult(result, len(c.code)-1))
+				return nil
+			}
+		}
 		c.emit(OpNot)
-		c.popHint()
-		c.pushHint(hintBool)
+		c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
 	case O_Minus:
+		startInstr := len(c.code)
 		if err := c.expression(38); err != nil {
 			return err
 		}
+		val := c.popValue()
+		if val.constVal != nil {
+			if result, ok := foldNeg(val.constVal); ok {
+				c.code = c.code[:startInstr]
+				c.emitLoadConst(result)
+				c.pushValue(compileValueFromResult(result, len(c.code)-1))
+				return nil
+			}
+		}
 		// unary minus: emit dedicated negation opcode based on operand type
-		hint := c.popHint()
-		switch hint {
+		switch val.hint {
 		case hintFloat:
 			c.emit(OpNegFloat)
-			c.pushHint(hintFloat)
+			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
 		case hintInt:
 			c.emit(OpNegInt)
-			c.pushHint(hintInt)
+			c.pushValue(compileValue{hint: hintInt, constVal: nil, instrIdx: -1})
 		default:
 			c.emit(OpNegGeneric)
-			c.pushHint(hintUnknown)
+			c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 		}
 	case O_Plus:
 		if err := c.expression(38); err != nil {
@@ -185,6 +227,33 @@ func (c *exprCompiler) nud(tok Token) error {
 		return c.compileArrayLiteral()
 	case T_Map:
 		return c.compileMapLiteral()
+	case O_Slc, O_Suc, O_Sst, O_Slt, O_Srt:
+		startInstr := len(c.code)
+		if err := c.expression(38); err != nil {
+			return err
+		}
+		val := c.popValue()
+		if val.constVal != nil {
+			if result, ok := foldStringCase(tok.tokType, val.constVal); ok {
+				c.code = c.code[:startInstr]
+				c.emitLoadConst(result)
+				c.pushValue(compileValueFromResult(result, len(c.code)-1))
+				return nil
+			}
+		}
+		switch tok.tokType {
+		case O_Slc:
+			c.emit(OpStrLower)
+		case O_Suc:
+			c.emit(OpStrUpper)
+		case O_Sst:
+			c.emit(OpStrTitle)
+		case O_Slt:
+			c.emit(OpStrTrimLeft)
+		case O_Srt:
+			c.emit(OpStrTrimRight)
+		}
+		c.pushValue(compileValue{hint: hintString, constVal: nil, instrIdx: -1})
 	default:
 		return fmt.Errorf("cannot compile nud for token %s", tokNames[tok.tokType])
 	}
@@ -203,6 +272,26 @@ func (c *exprCompiler) led(tok Token, prec int8) error {
 			return err
 		}
 		c.emitComparison(tok.tokType)
+	case SYM_POW:
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emitBinary(tok.tokType)
+	case SYM_RANGE:
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emitRange()
+	case C_In:
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emitIn()
+	case SYM_BAND, SYM_BOR, SYM_Caret, SYM_LSHIFT, SYM_RSHIFT:
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emitBitwise(tok.tokType)
 	case SYM_LAND, SYM_LOR:
 		// The VM does not support short-circuiting or truthy/falsy value
 		// semantics for &&/||.  dparse() handles both correctly.
@@ -227,27 +316,27 @@ func (c *exprCompiler) compileLiteral(tok Token) error {
 	case int:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstInt, idx)
-		c.pushHint(hintInt)
+		c.pushValue(compileValue{hint: hintInt, constVal: v, instrIdx: len(c.code) - 1})
 	case float64:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstFloat, idx)
-		c.pushHint(hintFloat)
+		c.pushValue(compileValue{hint: hintFloat, constVal: v, instrIdx: len(c.code) - 1})
 	case *big.Int:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstInt, idx)
-		c.pushHint(hintBigInt)
+		c.pushValue(compileValue{hint: hintBigInt, constVal: v, instrIdx: len(c.code) - 1})
 	case *big.Float:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstFloat, idx)
-		c.pushHint(hintBigFloat)
+		c.pushValue(compileValue{hint: hintBigFloat, constVal: v, instrIdx: len(c.code) - 1})
 	case bool:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstInt, idx)
-		c.pushHint(hintBool)
+		c.pushValue(compileValue{hint: hintBool, constVal: v, instrIdx: len(c.code) - 1})
 	case string:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstString, idx)
-		c.pushHint(hintString)
+		c.pushValue(compileValue{hint: hintString, constVal: v, instrIdx: len(c.code) - 1})
 	default:
 		return fmt.Errorf("unknown literal type %T", val)
 	}
@@ -265,7 +354,7 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 		bin := tok.bindpos
 		if bin < uint64(len(*c.ident)) && (*c.ident)[bin].declared && (*c.ident)[bin].IName == tok.tokText {
 			c.emit(OpLoadLocal, uint16(bin))
-			c.pushHint(c.typeToHint((*c.ident)[bin].IValue))
+			c.pushValue(compileValue{hint: c.typeToHint((*c.ident)[bin].IValue), constVal: nil, instrIdx: -1})
 			return nil
 		}
 	}
@@ -280,7 +369,7 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 	gbin := bind_int(midentFS, tok.tokText)
 	if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == tok.tokText {
 		c.emit(OpLoadGlobal, uint16(gbin))
-		c.pushHint(c.typeToHint(mident[gbin].IValue))
+		c.pushValue(compileValue{hint: c.typeToHint(mident[gbin].IValue), constVal: nil, instrIdx: -1})
 		return nil
 	}
 
@@ -291,7 +380,7 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 	} else {
 		c.emit(OpLoadIdent, idx)
 	}
-	c.pushHint(hintUnknown)
+	c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 	return nil
 }
 
@@ -322,25 +411,35 @@ func (c *exprCompiler) typeToHint(v any) typeHint {
 }
 
 func (c *exprCompiler) emitBinary(op int64) {
-	right := c.popHint()
-	left := c.popHint()
+	right := c.popValue()
+	left := c.popValue()
+
+	// Try constant folding first
+	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
+		if result, ok := foldBinary(op, left.constVal, right.constVal); ok {
+			c.code = c.code[:left.instrIdx]
+			c.emitLoadConst(result)
+			c.pushValue(compileValueFromResult(result, len(c.code)-1))
+			return
+		}
+	}
 
 	choose := func(intOp, floatOp, stringOp, genericOp OpCode) {
-		if left == hintInt && right == hintInt {
+		if left.hint == hintInt && right.hint == hintInt {
 			c.emit(intOp)
-			c.pushHint(hintInt)
-		} else if left == hintFloat && right == hintFloat {
+			c.pushValue(compileValue{hint: hintInt, constVal: nil, instrIdx: -1})
+		} else if left.hint == hintFloat && right.hint == hintFloat {
 			c.emit(floatOp)
-			c.pushHint(hintFloat)
-		} else if (left == hintInt || left == hintFloat) && (right == hintInt || right == hintFloat) {
+			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
+		} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
 			c.emit(floatOp)
-			c.pushHint(hintFloat)
-		} else if left == hintString && right == hintString && op == O_Plus {
+			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
+		} else if left.hint == hintString && right.hint == hintString && op == O_Plus {
 			c.emit(stringOp)
-			c.pushHint(hintString)
+			c.pushValue(compileValue{hint: hintString, constVal: nil, instrIdx: -1})
 		} else {
 			c.emit(genericOp)
-			c.pushHint(hintUnknown)
+			c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 		}
 	}
 
@@ -351,25 +450,38 @@ func (c *exprCompiler) emitBinary(op int64) {
 		choose(OpSubInt, OpSubFloat, 0, OpSubGeneric)
 	case O_Multiply:
 		choose(OpMulInt, OpMulFloat, 0, OpMulGeneric)
-    case O_Divide:
-        choose(OpDivGeneric, OpDivFloat, 0, OpDivGeneric)
+	case O_Divide:
+		choose(OpDivGeneric, OpDivFloat, 0, OpDivGeneric)
 	case O_Percent:
 		choose(OpModInt, OpModGeneric, 0, OpModGeneric)
+	case SYM_POW:
+		c.emit(OpPow)
+		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 	}
 }
 
 func (c *exprCompiler) emitComparison(op int64) {
-	right := c.popHint()
-	left := c.popHint()
+	right := c.popValue()
+	left := c.popValue()
+
+	// Try constant folding first
+	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
+		if result, ok := foldComparison(op, left.constVal, right.constVal); ok {
+			c.code = c.code[:left.instrIdx]
+			c.emitLoadConst(result)
+			c.pushValue(compileValue{hint: hintBool, constVal: result, instrIdx: len(c.code) - 1})
+			return
+		}
+	}
 
 	choose := func(intOp, floatOp, stringOp, genericOp OpCode) {
-		if left == hintInt && right == hintInt {
+		if left.hint == hintInt && right.hint == hintInt {
 			c.emit(intOp)
-		} else if left == hintFloat && right == hintFloat {
+		} else if left.hint == hintFloat && right.hint == hintFloat {
 			c.emit(floatOp)
-		} else if (left == hintInt || left == hintFloat) && (right == hintInt || right == hintFloat) {
+		} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
 			c.emit(floatOp)
-		} else if left == hintString && right == hintString {
+		} else if left.hint == hintString && right.hint == hintString {
 			c.emit(stringOp)
 		} else {
 			c.emit(genericOp)
@@ -392,29 +504,94 @@ func (c *exprCompiler) emitComparison(op int64) {
 	default:
 		c.emit(OpEqGeneric)
 	}
-	c.pushHint(hintBool)
+	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
 }
 
 func (c *exprCompiler) emitLogical(op int64) {
-	c.popHint()
-	c.popHint()
+	c.popValue()
+	c.popValue()
 	if op == SYM_LAND {
 		c.emit(OpAnd)
 	} else {
 		c.emit(OpOr)
 	}
-	c.pushHint(hintBool)
+	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
+}
+
+func (c *exprCompiler) emitRange() {
+	right := c.popValue()
+	left := c.popValue()
+
+	// Try constant folding
+	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
+		if result, ok := foldRange(left.constVal, right.constVal); ok {
+			c.code = c.code[:left.instrIdx]
+			c.emitLoadConst(result)
+			c.pushValue(compileValueFromResult(result, len(c.code)-1))
+			return
+		}
+	}
+
+	c.emit(OpRange)
+	c.pushValue(compileValue{hint: hintSlice, constVal: nil, instrIdx: -1})
+}
+
+func (c *exprCompiler) emitIn() {
+	right := c.popValue()
+	left := c.popValue()
+
+	// Try constant folding
+	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
+		if result, ok := foldIn(left.constVal, right.constVal); ok {
+			c.code = c.code[:left.instrIdx]
+			c.emitLoadConst(result)
+			c.pushValue(compileValueFromResult(result, len(c.code)-1))
+			return
+		}
+	}
+
+	c.emit(OpIn)
+	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
+}
+
+func (c *exprCompiler) emitBitwise(op int64) {
+	right := c.popValue()
+	left := c.popValue()
+
+	// Try constant folding (integer-only)
+	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
+		if result, ok := foldBitwise(op, left.constVal, right.constVal); ok {
+			c.code = c.code[:left.instrIdx]
+			c.emitLoadConst(result)
+			c.pushValue(compileValueFromResult(result, len(c.code)-1))
+			return
+		}
+	}
+
+	switch op {
+	case SYM_BAND:
+		c.emit(OpBitAnd)
+	case SYM_BOR:
+		c.emit(OpBitOr)
+	case SYM_Caret:
+		c.emit(OpBitXor)
+	case SYM_LSHIFT:
+		c.emit(OpLShift)
+	case SYM_RSHIFT:
+		c.emit(OpRShift)
+	}
+	c.pushValue(compileValue{hint: hintInt, constVal: nil, instrIdx: -1})
 }
 
 func (c *exprCompiler) compileTernary() error {
 	// condition is already on stack/hint
-	c.popHint()
+	c.popValue()
 
 	// false branch
 	if err := c.expression(0); err != nil {
 		return err
 	}
-	_ = c.peekHint()
+	_ = c.peekValue()
 
 	if c.peek().tokType != SYM_COLON {
 		return fmt.Errorf("expected : in ternary")
@@ -425,7 +602,7 @@ func (c *exprCompiler) compileTernary() error {
 	if err := c.expression(0); err != nil {
 		return err
 	}
-	_ = c.peekHint()
+	_ = c.peekValue()
 
 	// We can't easily do short-circuit with stack-based VM without jumps.
 	// For v1, evaluate both branches and then select. This is NOT short-circuit.
@@ -456,7 +633,7 @@ func (c *exprCompiler) compileArrayLiteral() error {
 	}
 	c.next()
 	c.emit(OpArrayNew, count)
-	c.pushHint(hintSlice)
+	c.pushValue(compileValue{hint: hintSlice, constVal: nil, instrIdx: -1})
 	return nil
 }
 
@@ -477,10 +654,10 @@ func (c *exprCompiler) compileIndexGet() error {
 		return fmt.Errorf("expected ]")
 	}
 	c.next()
-	c.popHint()
-	c.popHint()
+	c.popValue()
+	c.popValue()
 	c.emit(OpIndexGet)
-	c.pushHint(hintUnknown)
+	c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 	return nil
 }
 
@@ -502,3 +679,441 @@ func (c *exprCompiler) poolIndex(v any) uint16 {
 	c.pool = append(c.pool, v)
 	return uint16(idx)
 }
+
+// emitLoadConst emits the appropriate load instruction for a constant value.
+func (c *exprCompiler) emitLoadConst(v any) {
+	switch val := v.(type) {
+	case int:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstInt, idx)
+	case float64:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstFloat, idx)
+	case string:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstString, idx)
+	case bool:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstInt, idx)
+	case *big.Int:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstInt, idx)
+	case *big.Float:
+		idx := c.poolIndex(val)
+		c.emit(OpLoadConstFloat, idx)
+	default:
+		// Fallback: generic load via int pool
+		idx := c.poolIndex(v)
+		c.emit(OpLoadConstInt, idx)
+	}
+}
+
+// compileValueFromResult creates a compileValue from a computed result.
+func compileValueFromResult(v any, instrIdx int) compileValue {
+	switch val := v.(type) {
+	case int:
+		return compileValue{hint: hintInt, constVal: val, instrIdx: instrIdx}
+	case float64:
+		return compileValue{hint: hintFloat, constVal: val, instrIdx: instrIdx}
+	case string:
+		return compileValue{hint: hintString, constVal: val, instrIdx: instrIdx}
+	case bool:
+		return compileValue{hint: hintBool, constVal: val, instrIdx: instrIdx}
+	case *big.Int:
+		return compileValue{hint: hintBigInt, constVal: val, instrIdx: instrIdx}
+	case *big.Float:
+		return compileValue{hint: hintBigFloat, constVal: val, instrIdx: instrIdx}
+	default:
+		return compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1}
+	}
+}
+
+// foldBinary performs compile-time evaluation of binary operations on constants.
+// It matches the runtime promotion rules used by ev_add, ev_sub, etc.
+func foldBinary(op int64, left, right any) (any, bool) {
+	switch op {
+	case O_Plus:
+		return foldAdd(left, right)
+	case O_Minus:
+		return foldSub(left, right)
+	case O_Multiply:
+		return foldMul(left, right)
+	case O_Divide:
+		return foldDiv(left, right)
+	case O_Percent:
+		return foldMod(left, right)
+	case SYM_POW:
+		return foldPow(left, right)
+	}
+	return nil, false
+}
+
+func foldAdd(left, right any) (any, bool) {
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return l + r, true
+		case float64:
+			return float64(l) + r, true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return l + float64(r), true
+		case float64:
+			return l + r, true
+		}
+	case string:
+		if r, ok := right.(string); ok {
+			return l + r, true
+		}
+	case *big.Int:
+		if r, ok := right.(*big.Int); ok {
+			result := new(big.Int).Add(l, r)
+			return result, true
+		}
+	case *big.Float:
+		if r, ok := right.(*big.Float); ok {
+			result := new(big.Float).Add(l, r)
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+func foldSub(left, right any) (any, bool) {
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return l - r, true
+		case float64:
+			return float64(l) - r, true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return l - float64(r), true
+		case float64:
+			return l - r, true
+		}
+	case *big.Int:
+		if r, ok := right.(*big.Int); ok {
+			result := new(big.Int).Sub(l, r)
+			return result, true
+		}
+	case *big.Float:
+		if r, ok := right.(*big.Float); ok {
+			result := new(big.Float).Sub(l, r)
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+func foldMul(left, right any) (any, bool) {
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return l * r, true
+		case float64:
+			return float64(l) * r, true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return l * float64(r), true
+		case float64:
+			return l * r, true
+		}
+	case *big.Int:
+		if r, ok := right.(*big.Int); ok {
+			result := new(big.Int).Mul(l, r)
+			return result, true
+		}
+	case *big.Float:
+		if r, ok := right.(*big.Float); ok {
+			result := new(big.Float).Mul(l, r)
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+func foldDiv(left, right any) (any, bool) {
+	// Division by zero: do not fold, let runtime handle it
+	switch r := right.(type) {
+	case int:
+		if r == 0 {
+			return nil, false
+		}
+	case float64:
+		if r == 0.0 {
+			return nil, false
+		}
+	}
+
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return float64(l) / float64(r), true
+		case float64:
+			return float64(l) / r, true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return l / float64(r), true
+		case float64:
+			return l / r, true
+		}
+	case *big.Int:
+		if r, ok := right.(*big.Int); ok {
+			result := new(big.Float).SetInt(l)
+			result.Quo(result, new(big.Float).SetInt(r))
+			return result, true
+		}
+	case *big.Float:
+		if r, ok := right.(*big.Float); ok {
+			result := new(big.Float).Quo(l, r)
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+func foldMod(left, right any) (any, bool) {
+	// Modulo by zero: do not fold, let runtime handle it
+	switch r := right.(type) {
+	case int:
+		if r == 0 {
+			return nil, false
+		}
+	}
+
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return l % r, true
+		}
+	case float64:
+		switch r := right.(type) {
+		case float64:
+			return math.Mod(l, r), true
+		case int:
+			return math.Mod(l, float64(r)), true
+		}
+	}
+	return nil, false
+}
+
+// foldComparison performs compile-time comparison of constants.
+func foldComparison(op int64, left, right any) (any, bool) {
+	// Handle equality/inequality directly — compareInt/compareFloat/compareString
+	// only support ordering comparisons (<, <=, >, >=) and panic on ==/!=.
+	if op == SYM_EQ {
+		return left == right, true
+	}
+	if op == SYM_NE {
+		return left != right, true
+	}
+
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return compareInt(l, r, op), true
+		case float64:
+			return compareFloat(float64(l), r, op), true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return compareFloat(l, float64(r), op), true
+		case float64:
+			return compareFloat(l, r, op), true
+		}
+	case string:
+		if r, ok := right.(string); ok {
+			return compareString(l, r, op), true
+		}
+	}
+	return nil, false
+}
+
+// foldNeg performs compile-time negation.
+func foldNeg(v any) (any, bool) {
+	switch val := v.(type) {
+	case int:
+		return -val, true
+	case float64:
+		return -val, true
+	case *big.Int:
+		return new(big.Int).Neg(val), true
+	case *big.Float:
+		return new(big.Float).Neg(val), true
+	}
+	return nil, false
+}
+
+// foldNot performs compile-time logical negation.
+func foldNot(v any) (any, bool) {
+	switch val := v.(type) {
+	case bool:
+		return !val, true
+	case int:
+		return val == 0, true
+	case float64:
+		return val == 0.0, true
+	case string:
+		return val == "", true
+	}
+	return nil, false
+}
+
+// foldPow performs compile-time power evaluation.
+func foldPow(left, right any) (any, bool) {
+	switch l := left.(type) {
+	case int:
+		switch r := right.(type) {
+		case int:
+			return intPow(l, r), true
+		case float64:
+			return math.Pow(float64(l), r), true
+		}
+	case float64:
+		switch r := right.(type) {
+		case int:
+			return math.Pow(l, float64(r)), true
+		case float64:
+			return math.Pow(l, r), true
+		}
+	}
+	return nil, false
+}
+
+// intPow computes integer power with fast paths for common exponents.
+func intPow(base, exp int) int {
+	switch exp {
+	case 0:
+		return 1
+	case 1:
+		return base
+	case 2:
+		return base * base
+	case 3:
+		return base * base * base
+	}
+	result := 1
+	for exp > 0 {
+		if exp&1 == 1 {
+			result *= base
+		}
+		base *= base
+		exp >>= 1
+	}
+	return result
+}
+
+// foldRange performs compile-time range generation.
+func foldRange(left, right any) (any, bool) {
+	a, ok1 := left.(int)
+	b, ok2 := right.(int)
+	if !ok1 || !ok2 {
+		return nil, false
+	}
+	if a > b {
+		return []any{}, true
+	}
+	result := make([]any, b-a+1)
+	for i := a; i <= b; i++ {
+		result[i-a] = i
+	}
+	return result, true
+}
+
+// foldIn performs compile-time membership testing.
+func foldIn(left, right any) (any, bool) {
+	switch container := right.(type) {
+	case string:
+		if s, ok := left.(string); ok {
+			return strings.Contains(container, s), true
+		}
+	case []any:
+		for _, v := range container {
+			if deepEqual(v, left) {
+				return true, true
+			}
+		}
+		return false, true
+	case []int:
+		if l, ok := left.(int); ok {
+			for _, v := range container {
+				if v == l {
+					return true, true
+				}
+			}
+			return false, true
+		}
+	case []string:
+		if l, ok := left.(string); ok {
+			for _, v := range container {
+				if v == l {
+					return true, true
+				}
+			}
+			return false, true
+		}
+	}
+	return nil, false
+}
+
+// foldBitwise performs compile-time bitwise operations on integers.
+func foldBitwise(op int64, left, right any) (any, bool) {
+	a, ok1 := left.(int)
+	b, ok2 := right.(int)
+	if !ok1 || !ok2 {
+		return nil, false
+	}
+	switch op {
+	case SYM_BAND:
+		return a & b, true
+	case SYM_BOR:
+		return a | b, true
+	case SYM_Caret:
+		return a ^ b, true
+	case SYM_LSHIFT:
+		return a << b, true
+	case SYM_RSHIFT:
+		return a >> b, true
+	}
+	return nil, false
+}
+
+// foldStringCase performs compile-time string case transformations.
+func foldStringCase(op int64, v any) (any, bool) {
+	s, ok := v.(string)
+	if !ok {
+		return nil, false
+	}
+	switch op {
+	case O_Slc:
+		return strings.ToLower(s), true
+	case O_Suc:
+		return strings.ToUpper(s), true
+	case O_Sst:
+		return strings.Trim(s, " \t\n\r"), true
+	case O_Slt:
+		return strings.TrimLeft(s, " \t\n\r"), true
+	case O_Srt:
+		return strings.TrimRight(s, " \t\n\r"), true
+	}
+	return nil, false
+}
+
+// Note: compareInt, compareFloat, and compareString are defined in eval_ops.go
+// and are reused here for compile-time constant folding.

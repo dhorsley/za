@@ -79,6 +79,19 @@ const (
     OpNegGeneric
     OpAnd
     OpOr
+    OpPow
+    OpRange
+    OpIn
+    OpBitAnd
+    OpBitOr
+    OpBitXor
+    OpLShift
+    OpRShift
+    OpStrLower
+    OpStrUpper
+    OpStrTitle
+    OpStrTrimLeft
+    OpStrTrimRight
     OpIndexGet
     OpIndexSet
     OpFieldGet

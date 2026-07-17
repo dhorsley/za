@@ -97,6 +97,26 @@ interpreter/vm changes
       - new opcodes: OpNegInt, OpNegFloat, OpNegGeneric (unary minus), OpGeInt/OpGeFloat/
         OpGeGeneric (>=), OpNeInt/OpNeFloat/OpNeString/OpNeGeneric (!=)
 
+  * added compile-time constant folding for arithmetic and comparison operators
+      - foldAdd, foldSub, foldMul, foldDiv, foldMod, foldComparison, foldNeg, foldNot
+      - division and modulo by zero are NOT folded (runtime handles exception semantics)
+      - string equality uses Go ==/!= directly (compareString only handles ordering)
+      - compileValue struct tracks hint, constVal, and instrIdx for safe backtracking
+
+  * expanded bytecode compiler to cover more expression operators (v1.5 quick wins)
+      - power operator: ** (SYM_POW) -> OpPow with foldPow constant folding
+      - range operator: .. (SYM_RANGE) -> OpRange with foldRange constant folding
+      - membership operator: in (C_In) -> OpIn with foldIn constant folding
+      - bitwise operators: & | ^ << >> -> OpBitAnd/OpBitOr/OpBitXor/OpLShift/OpRShift
+        with foldBitwise constant folding (integer-only)
+      - string case operators: $lc $uc $st $lt $rt -> OpStrLower/OpStrUpper/OpStrTitle/
+        OpStrTrimLeft/OpStrTrimRight with foldStringCase constant folding
+      - all new operators support constant folding: e.g. 2**3 -> LoadConstInt 8,
+        1..3 -> LoadConstInt [1 2 3], "ell" in "hello" -> LoadConstInt true,
+        5 & 3 -> LoadConstInt 1, $lc "HELLO" -> LoadConstString "hello"
+      - VM execution uses existing runtime functions (ev_pow, ev_range, ev_in,
+        strings.ToLower/ToUpper/Title/TrimSpace)
+
   * extracted VM execution blocks in actor.go Call() into helper functions
       - evalExprOrVM, evalWhileCond, evalEndwhileCond, evalForAmend, evalForCond,
         evalDefaultCase - reduces Call() stack frame size for deep recursion

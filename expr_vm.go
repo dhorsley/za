@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"unsafe"
@@ -299,6 +300,53 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop()
 			a := vm.pop()
 			vm.push(asBool(a) || asBool(b))
+		case OpPow:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_pow(a, b))
+		case OpRange:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_range(a, b))
+		case OpIn:
+			b := vm.pop()
+			a := vm.pop()
+			vm.push(ev_in(a, b))
+		case OpBitAnd:
+			b := vm.vmPopInt()
+			a := vm.vmPopInt()
+			vm.push(a & b)
+		case OpBitOr:
+			b := vm.vmPopInt()
+			a := vm.vmPopInt()
+			vm.push(a | b)
+		case OpBitXor:
+			b := vm.vmPopInt()
+			a := vm.vmPopInt()
+			vm.push(a ^ b)
+		case OpLShift:
+			b := vm.vmPopInt()
+			a := vm.vmPopInt()
+			vm.push(a << b)
+		case OpRShift:
+			b := vm.vmPopInt()
+			a := vm.vmPopInt()
+			vm.push(a >> b)
+		case OpStrLower:
+			a := vm.pop().(string)
+			vm.push(strings.ToLower(a))
+		case OpStrUpper:
+			a := vm.pop().(string)
+			vm.push(strings.ToUpper(a))
+		case OpStrTitle:
+			a := vm.pop().(string)
+			vm.push(strings.Title(a))
+		case OpStrTrimLeft:
+			a := vm.pop().(string)
+			vm.push(strings.TrimLeft(a, " \t\n\r"))
+		case OpStrTrimRight:
+			a := vm.pop().(string)
+			vm.push(strings.TrimRight(a, " \t\n\r"))
 		case OpIndexGet:
 			idx := vm.pop()
 			container := vm.pop()
@@ -390,6 +438,37 @@ func (vm *ExprVM) peek() any {
 		panic("stack empty")
 	}
 	return vm.stack[vm.sp-1]
+}
+
+// vmPopInt coerces any integer type (int, uint, int64, uint64, etc.) to int.
+// Used by bitwise opcodes that may receive C FFI constants as uint64/uint32/etc.
+func (vm *ExprVM) vmPopInt() int {
+	v := vm.pop()
+	switch val := v.(type) {
+	case int:
+		return val
+	case int64:
+		return int(val)
+	case int32:
+		return int(val)
+	case int16:
+		return int(val)
+	case int8:
+		return int(val)
+	case uint:
+		return int(val)
+	case uint64:
+		return int(val)
+	case uint32:
+		return int(val)
+	case uint16:
+		return int(val)
+	case uint8:
+		return int(val)
+	case float64:
+		return int(val)
+	}
+	panic(fmt.Errorf("expected integer, got %T", v))
 }
 
 func (vm *ExprVM) resolveIdent(name string) (any, bool) {
