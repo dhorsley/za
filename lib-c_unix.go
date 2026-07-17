@@ -388,6 +388,19 @@ func LoadCLibraryWithAlias(path string, alias string) (*CLibrary, error) {
     return lib, nil
 }
 
+// CanResolveSymbol checks if a named symbol can actually be resolved at runtime
+// via dlsym on the loaded library handle. This filters out versioned, local,
+// or header-only symbols that appear in the ELF dynamic symbol table but are
+// not callable at runtime.
+func CanResolveSymbol(lib *CLibrary, name string) bool {
+    if lib == nil || lib.Handle == nil {
+        return false
+    }
+    nameC := C.CString(name)
+    defer C.free(unsafe.Pointer(nameC))
+    return C.dlsym(lib.Handle, nameC) != nil
+}
+
 // DiscoverLibrarySymbols discovers symbols from a loaded C library using ELF parsing
 func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
     file, err := elf.Open(libPath)
@@ -431,6 +444,10 @@ func DiscoverLibrarySymbols(lib *CLibrary, libPath string) error {
             // STT_GNU_IFUNC (10) = indirect function (used by glibc for optimized math functions)
             if symType == elf.STT_FUNC || symType == elf.SymType(10) {
                 // Function symbol (regular or IFUNC)
+                // Verify dlsym can actually resolve it at runtime
+                if !CanResolveSymbol(lib, cleanName) {
+                    continue
+                }
                 // Use lib.Alias if set, otherwise fall back to lib.Name for backwards compatibility
                 libraryIdentifier := lib.Alias
                 if libraryIdentifier == "" {

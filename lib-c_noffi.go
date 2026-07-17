@@ -39,6 +39,11 @@ func shouldProcessSymbol(name string) bool {
     return false
 }
 
+// CanResolveSymbol - FFI disabled in this build
+func CanResolveSymbol(lib *CLibrary, name string) bool {
+    return false
+}
+
 // createFunctionSymbolWithAlias - FFI disabled in this build
 func createFunctionSymbolWithAlias(name string, alias string) *CSymbol {
     return nil

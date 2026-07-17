@@ -154,6 +154,16 @@ fixes
       - updated handbook Section 24 and Appendix F.5/F.11.10 to reflect the new
         resolution order: explicit > user-defined > USE chain > stdlib > fallback
 
+  * fixed AUTO-discovered C library symbols shadowing Za built-ins when unresolvable
+      - C header parsing (AUTO clause) extracts function declarations from included
+        headers transitively, which may declare symbols not actually exported by the .so
+      - e.g., libpci 3.15.0 on Arch Linux auto-discovered 'format' from a transitive
+        header, which blocked the Za stdlib format() function in unqualified calls
+      - added CanResolveSymbol() helper (dlsym verification) to filter both ELF-
+        discovered and AUTO-discovered symbols before registration
+      - symbols that dlsym cannot resolve at load time are skipped entirely with a
+        ZA_WARN_AUTO message, preventing runtime dispatch errors
+
 
 Now considered supported
 ------------------------

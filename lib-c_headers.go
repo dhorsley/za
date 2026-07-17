@@ -5809,6 +5809,17 @@ func parseFunctionSignatures(text string, alias string) error {
            }
         */
 
+        // Verify the symbol is actually resolvable at runtime before registering it
+        if lib, exists := loadedCLibraries[alias]; exists {
+            if !CanResolveSymbol(lib, funcName) {
+                if warnAuto {
+                    msg := fmt.Sprintf("Warning: skipped auto-discovered function '%s::%s': not resolvable in library", alias, funcName)
+                    addMessageToCurrentProgress(msg)
+                }
+                continue
+            }
+        }
+
         // Store in global function registry
         DeclareCFunction(
             alias,

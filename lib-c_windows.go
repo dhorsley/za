@@ -49,6 +49,11 @@ func callCFunctionPlatform(ctx context.Context, lib *CLibrary, functionName stri
     return nil, []string{"FFI is not supported on Windows. Za's FFI feature is only available on Linux and BSD platforms."}
 }
 
+// CanResolveSymbol returns false on Windows (FFI is not supported)
+func CanResolveSymbol(lib *CLibrary, name string) bool {
+    return false
+}
+
 // shouldProcessSymbol checks if a symbol should be processed
 func shouldProcessSymbol(name string) bool {
     // Skip common unwanted symbols
