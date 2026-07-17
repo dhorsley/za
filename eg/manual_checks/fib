@@ -20,10 +20,10 @@ end
 
 # main
 
-memo["calls"]=0
-memo[0]=0
-memo[1]=1
-memo[2]=1
+memo["calls"]=0n
+memo[0]=0n
+memo[1]=1n
+memo[2]=1n
 
 input x param 1
 println fib(x)

@@ -776,6 +776,7 @@ func help(ns string, hargs string) {
     [#4]-S[#-] : Disable the co-process shell
     [#4]-s[#-] : Provide an alternative path for the co-process shell
     [#4]-i[#-] : Interactive mode (default if no script provided)
+    [#4]-E[#-] : Show Za environmental variable help
     [#4]-b[#-] : Bypass startup script
     [#4]-c[#-] : Ignore colour code macros at startup
     [#4]-C[#-] : Enable colour code macros at startup

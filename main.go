@@ -737,6 +737,7 @@ func main() {
     var a_scriptBypass = flag.Bool("b", false, "bypass startup script")
     var a_debug = flag.Bool("d", false, "set debug mode")
     var a_lineDebug = flag.Bool("D", false, "enable line debug")
+    var a_showEnv = flag.Bool("E", false, "show available environmental variables")
     var a_profile = flag.Bool("p", false, "enable profiler")
     // var a_trace          =   flag.Bool("P",false,"enable trace capture")
     var a_test = flag.Bool("t", false, "enable tests")
@@ -935,6 +936,31 @@ func main() {
 
     if *a_lineDebug {
         lineDebug = *a_lineDebug
+    }
+
+    if *a_showEnv {
+        helppage:=`
+    [#1]System[#-]
+    ZA_MODPATH                          string      [#6]Override the Za import module path[#-]
+    [#1]Debug[#-]
+    ZA_DEBUG_BYTECODE                   string      [#6]Enable 'compile' and/or 'exec' or 'all' expression debug info[#-]
+    [#1]Database[#-]
+    ZA_DB_(HOST|ENGINE|PORT|USER|PASS)  string      [#6]Set database connection details external to program[#-]
+    [#1]FFI[#-]
+    ZA_WARN_AUTO                        string      [#6]Enable stderr output for FFI warnings if var not empty[#-]
+    ZA_DEBUG_AUTO                       string      [#6]Enable stderr output for FFI debug info if var not empty[#-]
+    ZA_NO_PROGRESS                      string      [#6]Disable FFI auto import progress bar if var not empty[#-]
+    [#1]Logging[#-]
+    ZA_LOG_LEVEL                        string|int  [#6]Set override level for logging (level name or number)[#-]
+    ZA_LOG_QUEUE_SIZE                   int         [#6]Set log request queue size (request count)[#-]
+    [#1]Metrics[#-]
+    ZA_PROMETHEUS                       string      [#6]Enable prometheus exporter if var not empty[#-]
+    ZA_PROMETHEUS_BIND                  int         [#6]Metrics listener TCP bind port[#-]
+    ZA_PROMETHEUS_CIDR                  list        [#6]Metrics listener CIDR allow list[#-]
+    ZA_PROMETHEUS_(DISK|FS|NET)_INCLUDE list        [#6]Enable normally disabled devices[#-]
+`
+        gpf("main", helppage)
+        os.Exit(0)
     }
 
     // max co-proc command timeout

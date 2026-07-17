@@ -52,11 +52,7 @@ if allPaths.len>0
     infilename=join([newPath,vim9?"autoload/dist":"",vfname],"/")
     infile=infilename.read_file()
 
-    if line_match(infile,"ft=za")
-        println "stanza found"
-    else
-        println "In '{infilename}' insert this stanza manually:\n{zahandler}\n"
-    ei
+    println line_match(infile,"ft=za") ? "stanza found" : "In '{infilename}' insert this stanza manually:\n{zahandler}\n"
 
     | sudo cp -f za.vim {newPath}/ftplugin/
     | sudo cp -f za.vim {newPath}/syntax/
