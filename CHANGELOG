@@ -163,6 +163,9 @@ fixes
         discovered and AUTO-discovered symbols before registration
       - symbols that dlsym cannot resolve at load time are skipped entirely with a
         ZA_WARN_AUTO message, preventing runtime dispatch errors
+      - cached AUTO-discovered signatures are also filtered through CanResolveSymbol
+        at cache load time, preventing stale caches from reintroducing phantom symbols
+        after library updates or fixes
 
 
 Now considered supported

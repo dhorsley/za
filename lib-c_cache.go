@@ -368,6 +368,20 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
             declaredSignatures[alias] = make(map[string]CFunctionSignature)
         }
         for funcName, sig := range data.DeclaredSignatures[alias] {
+            // Skip cached AUTO-discovered signatures that are no longer resolvable
+            // in the library. This handles stale caches after library updates or
+            // when previously auto-discovered symbols were actually unresolvable.
+            if sig.Source != SourceManual {
+                if lib, exists := loadedCLibraries[alias]; exists {
+                    if !CanResolveSymbol(lib, funcName) {
+                        if os.Getenv("ZA_DEBUG_AUTO") != "" {
+                            fmt.Fprintf(os.Stderr, "[AUTO] Cache: skipping unresolvable function '%s::%s'\n", alias, funcName)
+                        }
+                        continue
+                    }
+                }
+            }
+
             // Only restore the signature if:
             // 1. It doesn't exist yet, OR
             // 2. The existing one is not manual (can overwrite AUTO with AUTO)
