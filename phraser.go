@@ -24,6 +24,10 @@ var tryBlockRegistry = make(map[int]*tryBlockInfo)
 var tryBlockCounter int = 0
 var tryBlockRegistryLock = &sync.RWMutex{}
 
+// per-function type hints from VAR/def/for declarations, used by bytecode compiler
+var fnTypeHints = make(map[uint32]map[string]typeHint)
+var fnTypeHintsLock = &sync.RWMutex{}
+
 // DOC statement metadata storage
 type docInfo struct {
     content string
@@ -292,7 +296,6 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                         // Set base to tryFS so try block executes its own code
                         calllock.Lock()
                         calltable[tryFS].base = tryFS
-                        // fmt.Printf("[DEBUG] Set calltable[%d].base = %d (so it executes its own code)\n", tryFS, tryFS)
                         calllock.Unlock()
 
                         // Set up fileMap entry for try block function space
@@ -507,7 +510,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                     if tryNest == 0 || phrase.Tokens[0].tokType == C_Try || phrase.Tokens[0].tokType == C_Endtry || phrase.Tokens[0].tokType == C_Doc {
                         // Attempt to compile bare expressions to bytecode.
                         if phrase.bc == nil && isExpressionStart(phrase.Tokens[0]) {
-                            code, pool, err := compileExpr(phrase.Tokens, lmv, nil, currentModule)
+                            code, pool, err := compileExpr(phrase.Tokens, lmv, nil, fnTypeHints[lmv], currentModule)
                             if err == nil {
                                 phrase.bc = &phraseBytecode{
                                     code:     code,
@@ -521,7 +524,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                                 // Check if it's an assignment; try compiling the RHS.
                                 assignPos, hasComma := findAssignment(phrase.Tokens)
                                 if assignPos >= 0 && !hasComma && assignPos+1 < len(phrase.Tokens) {
-                                    rhsCode, rhsPool, rhsErr := compileExpr(phrase.Tokens[assignPos+1:], lmv, nil, currentModule)
+                                    rhsCode, rhsPool, rhsErr := compileExpr(phrase.Tokens[assignPos+1:], lmv, nil, fnTypeHints[lmv], currentModule)
                                     if rhsErr == nil {
                                         phrase.bc = &phraseBytecode{
                                             code:      rhsCode,
@@ -556,7 +559,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                             switch phrase.Tokens[0].tokType {
                             case C_If, C_While:
                                 if len(phrase.Tokens) > 1 {
-                                    condCode, condPool, condErr := compileExpr(phrase.Tokens[1:], lmv, nil, currentModule)
+                                    condCode, condPool, condErr := compileExpr(phrase.Tokens[1:], lmv, nil, fnTypeHints[lmv], currentModule)
                                     if condErr == nil {
                                         phrase.bc = &phraseBytecode{
                                             code:     condCode,
@@ -577,6 +580,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                                 }
                             }
                         }
+                        extractTypeHints(phrase, lmv)
                         fspacelock.Lock()
                         functionspaces[lmv] = append(functionspaces[lmv], phrase)
                         basecode[lmv] = append(basecode[lmv], base)
@@ -663,6 +667,169 @@ func registerTryBlock(functionSpace uint32, startLine int16, endLine int16, pare
     }
 
     return tryInfo
+}
+
+// extractTypeHints parses VAR/def/for/assignment phrases and adds type hints to
+// fnTypeHints for use by the bytecode compiler.  This is parse-time type inference
+// only; runtime type info from the ident table is handled separately in expr_compile.go.
+func extractTypeHints(phrase Phrase, fs uint32) {
+    if len(phrase.Tokens) == 0 {
+        return
+    }
+    switch phrase.Tokens[0].tokType {
+    case C_Var:
+        extractVarTypeHints(phrase, fs)
+    case C_For:
+        extractForTypeHints(phrase, fs)
+    case Identifier:
+        // Assignment like a=0 or a = 0
+        if len(phrase.Tokens) >= 3 && phrase.Tokens[1].tokType == O_Assign {
+            extractAssignTypeHints(phrase, fs)
+        }
+    }
+}
+
+// extractVarTypeHints parses  var a [, b, ...] [ [] ] type  declarations.
+// It mirrors the C_Var parser in actor.go: identifiers are names until we
+// expect a comma and see something else, then the remaining tokens are the type.
+func extractVarTypeHints(phrase Phrase, fs uint32) {
+    if len(phrase.Tokens) < 3 {
+        return
+    }
+
+    names := []string{}
+    expectingComma := false
+    c := 1
+
+    for ; c < len(phrase.Tokens); c++ {
+        tok := phrase.Tokens[c]
+        switch tok.tokType {
+        case Identifier:
+            if expectingComma {
+                break // end of name list
+            }
+            names = append(names, tok.tokText)
+        case O_Comma:
+            if !expectingComma {
+                return // malformed, abort
+            }
+            // continue collecting names
+        default:
+            break // end of name list
+        }
+        if expectingComma && tok.tokType != O_Comma {
+            break
+        }
+        expectingComma = !expectingComma
+    }
+
+    if len(names) == 0 {
+        return
+    }
+
+    // Build type string from remaining tokens (type section).
+    typeStr := ""
+    for i := c; i < len(phrase.Tokens); i++ {
+        tok := phrase.Tokens[i]
+        switch tok.tokType {
+        case Identifier, T_Int, T_String, T_Float, T_Bool, T_Any:
+            typeStr += tok.tokText
+        case LeftSBrace:
+            typeStr += "[]"
+        }
+    }
+
+    hint := kindOverrideToHint(typeStr)
+    if hint == hintUnknown {
+        return
+    }
+
+    fnTypeHintsLock.Lock()
+    if fnTypeHints[fs] == nil {
+        fnTypeHints[fs] = make(map[string]typeHint)
+    }
+    for _, name := range names {
+        fnTypeHints[fs][name] = hint
+    }
+    fnTypeHintsLock.Unlock()
+}
+
+// extractForTypeHints records that a standard FOR loop variable is an int.
+func extractForTypeHints(phrase Phrase, fs uint32) {
+    if len(phrase.Tokens) < 2 {
+        return
+    }
+    // Standard FOR:  for name = start to end [ step step ]
+    if phrase.Tokens[1].tokType == Identifier {
+        fnTypeHintsLock.Lock()
+        if fnTypeHints[fs] == nil {
+            fnTypeHints[fs] = make(map[string]typeHint)
+        }
+        fnTypeHints[fs][phrase.Tokens[1].tokText] = hintInt
+        fnTypeHintsLock.Unlock()
+    }
+}
+
+// extractAssignTypeHints infers the type of a variable from a literal RHS assignment.
+// Only simple literals are handled (int, float, string, bool, array literal); complex
+// expressions are ignored to avoid incorrect inference.
+func extractAssignTypeHints(phrase Phrase, fs uint32) {
+    if len(phrase.Tokens) < 3 {
+        return
+    }
+    varName := phrase.Tokens[0].tokText
+    rhs := phrase.Tokens[2:]
+
+    if len(rhs) == 0 {
+        return
+    }
+
+    var hint typeHint
+
+    switch rhs[0].tokType {
+    case NumericLiteral:
+        // Infer int vs float from the literal's Go value.
+        switch rhs[0].tokVal.(type) {
+        case int:
+            hint = hintInt
+        case float64:
+            hint = hintFloat
+        default:
+            return
+        }
+    case StringLiteral:
+        hint = hintString
+    case Identifier:
+        // Only infer from true/false/nil builtins (handled as constants by compiler).
+        if rhs[0].subtype == subtypeConst {
+            switch rhs[0].tokText {
+            case "true", "false":
+                hint = hintBool
+            case "nil":
+                hint = hintUnknown
+            default:
+                return
+            }
+        } else {
+            return
+        }
+    case LeftSBrace:
+        // Array literal: a = [1, 2, 3]
+        hint = hintSlice
+    default:
+        return
+    }
+
+    if hint == hintUnknown {
+        return
+    }
+
+    fnTypeHintsLock.Lock()
+    if fnTypeHints[fs] == nil {
+        fnTypeHints[fs] = make(map[string]typeHint)
+    }
+    fnTypeHints[fs][varName] = hint
+    fnTypeHintsLock.Unlock()
 }
 
 // Helper function to check if a character is alphanumeric

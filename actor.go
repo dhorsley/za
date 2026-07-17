@@ -3456,13 +3456,13 @@ tco_reentry:
                 var condBC *phraseBytecode
                 var amendBC *phraseBytecode
                 if len(iterCondition) > 0 {
-                    code, pool, err := compileExpr(iterCondition, ifs, ident, currentModule)
+                    code, pool, err := compileExpr(iterCondition, ifs, ident, nil, currentModule)
                     if err == nil {
                         condBC = &phraseBytecode{compiled: true, code: code, pool: pool}
                     }
                 }
                 if len(iterAmendment) > 0 {
-                    code, pool, err := compileExpr(iterAmendment, ifs, ident, currentModule)
+                    code, pool, err := compileExpr(iterAmendment, ifs, ident, nil, currentModule)
                     if err == nil {
                         amendBC = &phraseBytecode{compiled: true, code: code, pool: pool}
                     }

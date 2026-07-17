@@ -39,6 +39,7 @@ type exprCompiler struct {
 	fs        uint32
 	ident     *[]Variable
 	namespace string
+	typeHints map[string]typeHint // parse-time type hints from VAR/def/for declarations
 
 	// output
 	code   []Instr
@@ -46,13 +47,14 @@ type exprCompiler struct {
 	values []compileValue // value stack, parallel to vm stack during compilation
 }
 
-func compileExpr(tokens []Token, fs uint32, ident *[]Variable, namespace string) ([]Instr, []any, error) {
+func compileExpr(tokens []Token, fs uint32, ident *[]Variable, typeHints map[string]typeHint, namespace string) ([]Instr, []any, error) {
 	c := &exprCompiler{
 		tokens:    tokens,
 		pos:       -1,
 		fs:        fs,
 		ident:     ident,
 		namespace: namespace,
+		typeHints: typeHints,
 		code:      make([]Instr, 0, len(tokens)),
 		pool:      make([]any, 0, 8),
 		values:    make([]compileValue, 0, 8),
@@ -353,8 +355,14 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 	if c.ident != nil {
 		bin := tok.bindpos
 		if bin < uint64(len(*c.ident)) && (*c.ident)[bin].declared && (*c.ident)[bin].IName == tok.tokText {
+			var hint typeHint
+			if (*c.ident)[bin].ITyped {
+				hint = kindOverrideToHint((*c.ident)[bin].Kind_override)
+			} else {
+				hint = c.typeToHint((*c.ident)[bin].IValue)
+			}
 			c.emit(OpLoadLocal, uint16(bin))
-			c.pushValue(compileValue{hint: c.typeToHint((*c.ident)[bin].IValue), constVal: nil, instrIdx: -1})
+			c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
 			return nil
 		}
 	}
@@ -368,12 +376,32 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 	}
 	gbin := bind_int(midentFS, tok.tokText)
 	if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == tok.tokText {
+		var hint typeHint
+		if mident[gbin].ITyped {
+			hint = kindOverrideToHint(mident[gbin].Kind_override)
+		} else {
+			hint = c.typeToHint(mident[gbin].IValue)
+		}
 		c.emit(OpLoadGlobal, uint16(gbin))
-		c.pushValue(compileValue{hint: c.typeToHint(mident[gbin].IValue), constVal: nil, instrIdx: -1})
+		c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
 		return nil
 	}
 
-	// Fallback: runtime resolution
+	// Fallback: parse-time type hints from VAR/def/for declarations
+	if c.typeHints != nil {
+		if hint, ok := c.typeHints[tok.tokText]; ok {
+			idx := c.poolIndex(tok.tokText)
+			if tok.bindpos < 65535 {
+				c.emit(OpLoadIdent, idx, uint16(tok.bindpos+1))
+			} else {
+				c.emit(OpLoadIdent, idx)
+			}
+			c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
+			return nil
+		}
+	}
+
+	// Final fallback: runtime resolution
 	idx := c.poolIndex(tok.tokText)
 	if tok.bindpos < 65535 {
 		c.emit(OpLoadIdent, idx, uint16(tok.bindpos+1))
@@ -382,6 +410,30 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 	}
 	c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
 	return nil
+}
+
+// kindOverrideToHint maps a Kind_override type string to a typeHint.
+func kindOverrideToHint(s string) typeHint {
+	switch s {
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		return hintInt
+	case "float64", "float32":
+		return hintFloat
+	case "string":
+		return hintString
+	case "bool":
+		return hintBool
+	case "[]int", "[]string", "[]float64", "[]bool", "[]any":
+		return hintSlice
+	default:
+		if strings.HasPrefix(s, "[]") {
+			return hintSlice
+		}
+		if strings.HasPrefix(s, "struct<") || strings.HasPrefix(s, "map[") {
+			return hintStruct
+		}
+		return hintUnknown
+	}
 }
 
 func (c *exprCompiler) typeToHint(v any) typeHint {
