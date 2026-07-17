@@ -2327,6 +2327,127 @@ func (p *leparser) interpolateStringArgs(args []any) []any {
     return args
 }
 
+func (p *leparser) callUserDefinedFunction(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any, hasError bool, method_result any, errVal error) {
+	lmv, _ := fnlookup.lmget(name)
+
+	// don't lock in space allocator on recursive calls
+	var do_lock bool
+	evname, _ := numlookup.lmget(evalfs)
+	if len(evname) >= len(name) && evname[:len(name)] != name {
+		do_lock = true
+	}
+
+	loc, _ := GetNextFnSpace(do_lock, name+"@", call_s{prepared: true, base: lmv, caller: evalfs})
+
+	localIdent := make([]Variable, identInitialSize)
+
+	var rcount uint8
+	var callErr error
+
+	atomic.StoreInt32(&calltable[loc].callLine, int32(p.line))
+
+	if enableProfiling {
+		startTime := time.Now()
+		rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &localIdent, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
+		recordPhase(p.ctx, name, time.Since(startTime))
+	} else {
+		rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &localIdent, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
+	}
+	if callErr != nil {
+		return nil, true, method_result, callErr
+	}
+
+	calllock.Lock()
+	res = calltable[loc].retvals
+	calltable[loc].gcShyness = 100
+	calltable[loc].gc = true
+	calllock.Unlock()
+	var hasExceptionState bool
+	if loc < uint32(len(calltable)) {
+		exceptionPtr := atomic.LoadPointer(&calltable[loc].activeException)
+		hasExceptionState = exceptionPtr != nil
+	}
+
+	if res != nil && hasExceptionState {
+		if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
+			if status, ok := retArray[0].(int); ok {
+				switch status {
+				case EXCEPTION_THROWN:
+					var category any = "unknown"
+					var message string = "unknown error"
+
+					if len(retArray) >= 4 {
+						if excPtr, ok := retArray[3].(*exceptionInfo); ok {
+							atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excPtr))
+						} else {
+							category = retArray[1]
+							message = GetAsString(retArray[2])
+							excInfo := &exceptionInfo{
+								category:   category,
+								message:    message,
+								line:       0,
+								function:   name,
+								fs:         evalfs,
+								stackTrace: nil,
+							}
+							atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
+						}
+					} else if len(retArray) >= 3 {
+						category = retArray[1]
+						message = GetAsString(retArray[2])
+						if evalfs < uint32(len(calltable)) {
+							currentExceptionPtr := atomic.LoadPointer(&calltable[evalfs].activeException)
+							currentException := (*exceptionInfo)(currentExceptionPtr)
+							var stackTraceCopy []stackFrame
+							if currentException != nil && len(currentException.stackTrace) > 0 {
+								stackTraceCopy = make([]stackFrame, len(currentException.stackTrace))
+								copy(stackTraceCopy, currentException.stackTrace)
+							} else {
+								stackTrace := generateStackTrace(name, evalfs, 0)
+								stackTraceCopy = make([]stackFrame, len(stackTrace))
+								copy(stackTraceCopy, stackTrace)
+							}
+							excInfo := &exceptionInfo{
+								category:   category,
+								message:    message,
+								line:       0,
+								function:   name,
+								fs:         evalfs,
+								stackTrace: stackTraceCopy,
+							}
+							atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
+						}
+					}
+					return retArray, false, method_result, nil
+				case EXCEPTION_HANDLED:
+					if len(retArray) >= 2 {
+						return retArray[1], false, method_result, nil
+					}
+					return nil, false, method_result, nil
+				case EXCEPTION_RETURN:
+					if len(retArray) >= 2 {
+						return retArray[1], false, method_result, nil
+					}
+					return nil, false, method_result, nil
+				}
+			}
+		}
+	}
+
+	switch rcount {
+	case 0:
+		return nil, false, method_result, nil
+	case 1:
+		switch res.(type) {
+		case []any:
+			return res.([]any)[0], false, method_result, nil
+		}
+		return nil, false, method_result, nil
+	default:
+		return res, false, method_result, nil
+	}
+}
+
 func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string, method bool, method_value any, kind_override string, arg_names []string, args []any) (res any, hasError bool, method_result any, errVal error) {
 
     // pf("(cfe) kind_override -> %s\n",kind_override)
@@ -2338,157 +2459,56 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
         bareName = name[idx+2:]
     }
 
-    lmv, isFunc := fnlookup.lmget(name)
+    _, isFunc := fnlookup.lmget(name)
 
     // check if exists in user defined function space first (allow shadowing stdlib)
     if isFunc {
+        return p.callUserDefinedFunction(evalfs, ident, name, method, method_value, kind_override, arg_names, args)
+    }
 
-        // make Za function call
+    if str.Contains(name, "::") {
+        // Explicit namespace: bypass stdlib and USE chain
+        parts := str.SplitN(name, "::", 2)
+        if len(parts) == 2 {
+            libraryName := parts[0]
+            functionName := parts[1]
 
-        // don't lock in space allocator on recursive calls
-        var do_lock bool
-        evname, _ := numlookup.lmget(evalfs)
-        if len(evname) >= len(name) && evname[:len(name)] != name {
-            do_lock = true
+            result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
+            if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
+                return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
+            }
+            return result, false, nil, nil
         }
-        // pf("(in call) do_lock %v - name %v - evalfs_name %v\n",do_lock,name,evname)
+    }
 
-        loc, _ := GetNextFnSpace(do_lock, name+"@", call_s{prepared: true, base: lmv, caller: evalfs})
-
-        // Try blocks are now handled directly during phraseParse()
-
-        var ident = make([]Variable, identInitialSize)
-
-        var rcount uint8
-        var callErr error
-
-        // Set the callLine field in the calltable entry before calling the function
-        atomic.StoreInt32(&calltable[loc].callLine, int32(p.line))
-
-        if enableProfiling {
-            startTime := time.Now()
-            rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
-            recordPhase(p.ctx, name, time.Since(startTime))
-        } else {
-            rcount, _, method_result, _, callErr = Call(p.ctx, MODE_NEW, &ident, loc, ciEval, method, method_value, kind_override, arg_names, nil, args...)
+    if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
+        // USE chain: explicitly declared C function
+        result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
+        if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
+            return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
         }
-        if callErr != nil {
-            return nil, true, method_result, callErr
-            // panic(errors.New(sf("call error in function call %s",id)))
+        return result, false, nil, nil
+    }
+
+    if foundNamespace := uc_match_func(name); foundNamespace != "" {
+        // USE chain: discovered C library symbol or user-defined function
+        qualifiedName := foundNamespace + "::" + name
+        if _, isFunc := fnlookup.lmget(qualifiedName); isFunc {
+            return p.callUserDefinedFunction(evalfs, ident, qualifiedName, method, method_value, kind_override, arg_names, args)
         }
-
-        // handle the returned result, if present.
-        calllock.Lock()
-        res = calltable[loc].retvals
-        calltable[loc].gcShyness = 100
-        calltable[loc].gc = true
-        calllock.Unlock()
-        // Check if function returned with exception - only if the called function has exception state
-        var hasExceptionState bool
-        if loc < uint32(len(calltable)) {
-            exceptionPtr := atomic.LoadPointer(&calltable[loc].activeException)
-            hasExceptionState = exceptionPtr != nil
-        }
-
-        if res != nil && hasExceptionState {
-            if retArray, ok := res.([]any); ok && len(retArray) >= 1 {
-                if status, ok := retArray[0].(int); ok {
-                    switch status {
-                    case EXCEPTION_THROWN:
-                        // Function returned with unhandled exception - propagate it up
-                        // Set exception state in current context
-                        var category any = "unknown"
-                        var message string = "unknown error"
-
-                        if len(retArray) >= 4 {
-                            // Check if we have the full exception info preserved
-                            if excPtr, ok := retArray[3].(*exceptionInfo); ok {
-                                // Use the preserved exception info with original stack trace
-                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excPtr))
-                            } else {
-                                // Fallback: extract basic info
-                                category = retArray[1]
-                                message = GetAsString(retArray[2])
-
-                                // Create new exception info (shouldn't happen with new format)
-                                excInfo := &exceptionInfo{
-                                    category:   category,
-                                    message:    message,
-                                    line:       0, // We don't have line info in eval context
-                                    function:   name,
-                                    fs:         evalfs,
-                                    stackTrace: nil, // No stack trace in fallback
-                                }
-                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
-                            }
-                        } else if len(retArray) >= 3 {
-                            // Legacy format - extract basic info
-                            category = retArray[1]
-                            message = GetAsString(retArray[2])
-
-                            // Set exception state in the calling function's context (async-safe)
-                            if evalfs < uint32(len(calltable)) {
-                                // Check if there's already an active exception with a stack trace
-                                currentExceptionPtr := atomic.LoadPointer(&calltable[evalfs].activeException)
-                                currentException := (*exceptionInfo)(currentExceptionPtr)
-
-                                var stackTraceCopy []stackFrame
-                                if currentException != nil && len(currentException.stackTrace) > 0 {
-                                    // Preserve the existing stack trace from the original exception
-                                    stackTraceCopy = make([]stackFrame, len(currentException.stackTrace))
-                                    copy(stackTraceCopy, currentException.stackTrace)
-                                } else {
-                                    // Generate new stack trace if none exists
-                                    stackTrace := generateStackTrace(name, evalfs, 0) // We don't have line info in eval context
-                                    stackTraceCopy = make([]stackFrame, len(stackTrace))
-                                    copy(stackTraceCopy, stackTrace)
-                                }
-
-                                excInfo := &exceptionInfo{
-                                    category:   category,
-                                    message:    message,
-                                    line:       0, // We don't have line info in eval context
-                                    function:   name,
-                                    fs:         evalfs,
-                                    stackTrace: stackTraceCopy,
-                                }
-                                atomic.StorePointer(&calltable[evalfs].activeException, unsafe.Pointer(excInfo))
-                            }
-                        }
-
-                        // Return the exception information so the calling statement can handle it
-                        return retArray, false, method_result, nil
-                    case EXCEPTION_HANDLED:
-                        // Exception was handled - return the actual result
-                        if len(retArray) >= 2 {
-                            return retArray[1], false, method_result, nil
-                        }
-                        return nil, false, method_result, nil
-                    case EXCEPTION_RETURN:
-                        // Function returned from within try block - return the actual result
-                        if len(retArray) >= 2 {
-                            return retArray[1], false, method_result, nil
-                        }
-                        return nil, false, method_result, nil
-                    }
+        if lib, exists := loadedCLibraries[foundNamespace]; exists {
+            if _, symbolExists := lib.Symbols[name]; symbolExists {
+                result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
+                if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
+                    return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
                 }
+                return result, false, nil, nil
             }
         }
+        // Not found in matched namespace — fall through to stdlib
+    }
 
-        switch rcount {
-        case 0:
-            return nil, false, method_result, nil
-        case 1:
-            switch res.(type) {
-            case []any:
-                return res.([]any)[0], false, method_result, nil
-            }
-            return nil, false, method_result, nil
-        default:
-            return res, false, method_result, nil
-        }
-
-    } else if f, ok := stdlib[bareName]; ok {
+    if f, ok := stdlib[bareName]; ok {
 
         // call standard library function
         p.std_call = true
@@ -2607,35 +2627,8 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
             return res, err != nil, method_result, nil
         }
 
-    } else {
-
-        // Check for C library functions as final fallback
-        if str.Contains(name, "::") {
-            parts := str.SplitN(name, "::", 2)
-            if len(parts) == 2 {
-                libraryName := parts[0]
-                functionName := parts[1]
-
-                result, notes := CallCFunction(p.ctx, libraryName, functionName, args)
-                if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                    return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
-                }
-                return result, false, nil, nil
-            }
-        } else {
-            if foundNamespace := uc_match_c_func(name); foundNamespace != "" {
-                result, notes := CallCFunction(p.ctx, foundNamespace, name, args)
-                if len(notes) > 0 && (str.Contains(notes[0], "ERROR:") || str.Contains(notes[0], "[ERROR:")) {
-                    return nil, true, nil, fmt.Errorf("%s",str.Join(notes, "; "))
-                }
-                return result, false, nil, nil
-            }
-            if foundNamespace := uc_match_func(name); foundNamespace != "" {
-            }
-
-            return nil, true, nil, nil
-        }
     }
+
     return nil, true, nil, nil
 }
 

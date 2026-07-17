@@ -143,6 +143,17 @@ fixes
       - example: a script defining now() that returns epoch_nano_time() now works
         correctly instead of calling the stdlib now() which returns seconds
 
+  * fixed C library (FFI) functions being blocked by stdlib and phantom namespace lookup
+      - interpreter checked stdlib before the USE chain, so C library functions loaded
+        via MODULE / USE +alias were shadowed by Za built-ins with the same name
+      - restructured dispatch in eval_ops.go so USE chain (both user-defined and
+        declared/discovered C library functions) shadows stdlib
+      - fixed buildStructOrFunction in eval.go constructing phantom qualified names
+        (e.g., main::c_alloc) which caused C library dispatch errors when calling
+        stdlib functions from within a namespace
+      - updated handbook Section 24 and Appendix F.5/F.11.10 to reflect the new
+        resolution order: explicit > user-defined > USE chain > stdlib > fallback
+
 
 Now considered supported
 ------------------------

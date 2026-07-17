@@ -1334,6 +1334,9 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         // Fallback to stdlib using the bare name (stdlib functions have no prefix)
         if !isFunc {
             _, isFunc = stdlib[bareName]
+            if isFunc {
+                name = bareName
+            }
         }
 
         // Check for C functions as fallback (before panic)

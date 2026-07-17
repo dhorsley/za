@@ -1464,9 +1464,11 @@ The use_chain array will be consulted, when not empty, on function calls, enum r
 matches ahead of the default behaviour, if no explicit name is supplied:
 
 	1. explicit namespace (name::)
-	2. use_chain match
-	3. current namespace (no :: ref), then
-	4. main:: (global namespace)
+	2. user-defined function in the current namespace (exact match)
+	3. use_chain match (user-defined functions, declared C functions, or discovered C library symbols)
+	4. stdlib (built-in functions)
+	5. current namespace (no :: ref) as fallback
+	6. main:: (global namespace) as fallback
 
 Example:
 
@@ -1482,12 +1484,12 @@ Example:
 
 	string_date()           # check if string_date() exists in tm namespace and call it if found.
 
-							# if not found (even though this one would be) then try to call it in current namespace (main::)
-							#  which should error as undefined.
+							# if not found (even though this one would be) then falls through to stdlib,
+							# current namespace (main::), and finally global namespace.
 
 							# whenever there are conflicting names then the first match takes precedence.
 							#  i.e.
-							# explicit name > use_chain > current namespace > main
+							# explicit name > user-defined > use_chain > stdlib > current namespace > main
 
 ```
 
@@ -6156,17 +6158,20 @@ Once declared with `LIB`, C functions are called using `namespace::function(args
 
 **Without namespace qualifier:** Za performs lookup in this order:
 
-1. USE chain (if `USE +alias` was called)
-2. Current namespace
-3. main:: (global namespace)
+1. User-defined function (exact match in `fnlookup`)
+2. Explicit namespace qualifier (`name::`)
+3. USE chain: explicitly declared C functions (`LIB` declarations)
+4. USE chain: discovered C library symbols or user-defined functions
+5. stdlib (built-in functions)
+6. Current namespace / main:: (global namespace) fallback
 
 **With namespace qualifier:** Za calls the explicitly specified version:
 ```za
 c::strlen(str)     # Always calls libc version
-strlen(str)        # May call Za built-in or libc, depending on USE chain
+strlen(str)        # Calls libc version if c is in USE chain and LIB is declared
 ```
 
-**Best practice:** Always use explicit namespace qualifiers for C library functions (see F.11.10 for common conflicts).
+**Best practice:** Use explicit namespace qualifiers when you need a specific version. C library functions declared via `LIB` and loaded into the USE chain will shadow Za built-ins of the same name.
 
 #### Examples
 
@@ -8051,14 +8056,20 @@ use +c
 LIB c::fopen(filename:string, mode:string) -> pointer
 LIB c::fclose(stream:pointer) -> int
 
-# WITHOUT namespace qualifier - calls Za's built-in fopen!
-fp = fopen("/tmp/file", "w")      # ❌ Returns pfile, not FILE*
-result = fclose(fp)                # ❌ Returns void, not int
+# WITHOUT namespace qualifier - calls C library version (libc is in USE chain)
+fp = fopen("/tmp/file", "w")      # Returns FILE* pointer, not Za pfile
+result = fclose(fp)                # Returns int, not void
 ```
 
-**Solution - Use explicit namespace:**
+If you need the **Za built-in** version instead, remove the library from the USE chain or use an explicit namespace qualifier for the Za version (if available):
 ```za
-# WITH namespace qualifier - calls C library version
+# Call Za built-in fopen explicitly (if a za:: prefix is supported)
+fp = za::fopen("/tmp/file", "w")   # Returns pfile (Za built-in)
+```
+
+**Best practice:** Use explicit namespace qualifiers when you need a specific version:
+```za
+# WITH namespace qualifier - calls C library version explicitly
 fp = c::fopen("/tmp/file", "w")   # ✓ Returns FILE* pointer
 result = c::fclose(fp)             # ✓ Returns int error code
 assert result == 0, "fclose failed"
@@ -8066,7 +8077,7 @@ assert result == 0, "fclose failed"
 
 #### Best Practices
 
-1. **Use explicit namespace qualifiers** for FFI calls: `c::fopen()`, not `fopen()`
+1. **Use explicit namespace qualifiers** when you need a specific variant: `c::fopen()` for C library, `fopen()` for Za built-in (if not shadowed by USE chain)
 2. **Prefer Za helpers** (`c_fopen`) over direct FFI for most C library usage
 3. **Check return types** - if function returns unexpected type, you're calling wrong version
 4. **Consult help** - use `help find fopen` to see all available versions
