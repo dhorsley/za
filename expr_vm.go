@@ -15,7 +15,6 @@ import (
 type ExprVM struct {
 	stack        []any
 	sp           int
-	maxSp        int
 	fs           uint32
 	ident        *[]Variable
 	midentFS     uint32
@@ -33,21 +32,15 @@ var vmPool = sync.Pool{
 	},
 }
 
-func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int) (any, error) {
+func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int) (result any, retErr error) {
 	vm := vmPool.Get().(*ExprVM)
-	// Reset any stale references from a prior execution before reusing the stack.
-	for i := 0; i < vm.maxSp; i++ {
-		vm.stack[i] = nil
-	}
 	vm.sp = 0
-	vm.maxSp = 0
 	vm.fs = fs
 	vm.ident = ident
 	vm.midentFS = midentFS
 	vm.pool = pool
 	vm.namespace = "main"
 	vm.withEnumName = withEnumName
-	var result any
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -83,8 +76,8 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 				stackTrace: stackTraceCopy,
 			}
 			atomic.StorePointer(&calltable[fs].activeException, unsafe.Pointer(excInfo))
-			// Don't re-panic - let the main execution loop detect the active exception
-			// and route it to try/catch blocks (matching dparse() behaviour)
+			// Don't set retErr — let the statement loop detect activeException
+			// and route to catch blocks (matching dparse's behaviour at eval.go:206)
 		}
 	}()
 
@@ -98,6 +91,8 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			vm.push(pool[instr.Arg1])
 		case OpLoadConstString:
 			vm.push(pool[instr.Arg1])
+		case OpLoadConstBool:
+			vm.push(instr.Arg1 != 0)
 		case OpLoadConstSmallInt:
 			vm.push(int(int16(instr.Arg1)))
 		case OpLoadNil:
@@ -200,6 +195,9 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 		case OpModInt:
 			b := vm.pop().(int)
 			a := vm.pop().(int)
+			if b == 0 {
+				panic("divide by zero")
+			}
 			vm.push(a % b)
 		case OpModFloat:
 			b := vm.pop().(float64)
@@ -317,7 +315,21 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop()
 			a := vm.pop()
 			vm.push(asBool(a) || asBool(b))
-		case OpPow:
+		case OpPowInt:
+			b := vm.pop().(int)
+			a := vm.pop().(int)
+			if b < 0 {
+				vm.push(math.Pow(float64(a), float64(b)))
+			} else if result, overflow := intPow(a, b); !overflow {
+				vm.push(result)
+			} else {
+				vm.push(math.Pow(float64(a), float64(b)))
+			}
+		case OpPowFloat:
+			b := vm.pop().(float64)
+			a := vm.pop().(float64)
+			vm.push(math.Pow(a, b))
+		case OpPowGeneric:
 			b := vm.pop()
 			a := vm.pop()
 			vm.push(ev_pow(a, b))
@@ -355,9 +367,9 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 		case OpStrUpper:
 			a := vm.pop().(string)
 			vm.push(strings.ToUpper(a))
-		case OpStrTitle:
+		case OpStrTrim:
 			a := vm.pop().(string)
-			vm.push(strings.Title(a))
+			vm.push(strings.Trim(a, " \t\n\r"))
 		case OpStrTrimLeft:
 			a := vm.pop().(string)
 			vm.push(strings.TrimLeft(a, " \t\n\r"))
@@ -372,10 +384,6 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			// Not used in v1 expression-only mode
 			vmPool.Put(vm)
 			return nil, fmt.Errorf("IndexSet not supported in expression mode")
-		case OpFieldGet:
-			fieldName := vm.pool[instr.Arg1].(string)
-			obj := vm.pop()
-			vm.push(accessField(obj, fieldName))
 		case OpFieldSet:
 			vmPool.Put(vm)
 			return nil, fmt.Errorf("FieldSet not supported in expression mode")
@@ -407,6 +415,31 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			// Not supported in v1
 			vmPool.Put(vm)
 			return nil, fmt.Errorf("TernaryCond not supported in bytecode v1")
+		case OpLand:
+			left := vm.peek()
+			if !asBool(left) {
+				vm.pop()
+				vm.push(false)
+				pc += int(int16(instr.Arg1)) - 1
+			}
+		case OpLor:
+			left := vm.peek()
+			if lstr, ok := left.(string); ok && lstr != "" {
+				pc += int(int16(instr.Arg1)) - 1
+			} else if asBool(left) {
+				vm.pop()
+				vm.push(true)
+				pc += int(int16(instr.Arg1)) - 1
+			}
+		case OpToBool:
+			vm.push(asBool(vm.pop()))
+		case OpLorResult:
+			a := vm.pop()
+			if lstr, ok := a.(string); ok {
+				vm.push(lstr)
+			} else {
+				vm.push(asBool(a))
+			}
 		case OpEnd:
 			if vm.sp == 0 {
 				result = nil
@@ -438,9 +471,6 @@ func (vm *ExprVM) push(v any) {
 	}
 	vm.stack[vm.sp] = v
 	vm.sp++
-	if vm.sp > vm.maxSp {
-		vm.maxSp = vm.sp
-	}
 }
 
 func (vm *ExprVM) pop() any {
@@ -448,7 +478,9 @@ func (vm *ExprVM) pop() any {
 		panic("stack underflow")
 	}
 	vm.sp--
-	return vm.stack[vm.sp]
+	v := vm.stack[vm.sp]
+	vm.stack[vm.sp] = nil
+	return v
 }
 
 func (vm *ExprVM) peek() any {
@@ -528,29 +560,6 @@ func (vm *ExprVM) resolveIdent(name string) (any, bool) {
 		return nil, true
 	}
 	return nil, false
-}
-
-func accessField(obj any, fieldName string) any {
-	if obj == nil {
-		return nil
-	}
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Map {
-		key := reflect.ValueOf(fieldName)
-		mapVal := val.MapIndex(key)
-		if mapVal.IsValid() {
-			return mapVal.Interface()
-		}
-		return nil
-	}
-	if val.Kind() == reflect.Struct {
-		field := val.FieldByName(renameSF(fieldName))
-		if field.IsValid() {
-			return field.Interface()
-		}
-		return nil
-	}
-	return nil
 }
 
 

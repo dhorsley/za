@@ -34,6 +34,7 @@ const (
     OpLoadConstInt OpCode = iota
     OpLoadConstFloat
     OpLoadConstString
+    OpLoadConstBool
     OpLoadLocal
     OpLoadGlobal
     OpLoadIdent
@@ -82,7 +83,9 @@ const (
     OpNegGeneric
     OpAnd
     OpOr
-    OpPow
+    OpPowInt
+    OpPowFloat
+    OpPowGeneric
     OpRange
     OpIn
     OpBitAnd
@@ -92,12 +95,11 @@ const (
     OpRShift
     OpStrLower
     OpStrUpper
-    OpStrTitle
+    OpStrTrim
     OpStrTrimLeft
     OpStrTrimRight
     OpIndexGet
     OpIndexSet
-    OpFieldGet
     OpFieldSet
     OpArrayNew
     OpMapNew
@@ -108,6 +110,10 @@ const (
     OpTernaryCond
     OpLoadConstSmallInt
     OpLoadNil
+    OpLand
+    OpLor
+    OpToBool
+    OpLorResult
     OpEnd
 )
 

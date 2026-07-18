@@ -518,6 +518,7 @@ func main() {
     default_prectable[O_Suc] = 1          // dummy value to stop reject in dparse()
     default_prectable[O_Sst] = 1          // dummy value to stop reject in dparse()
     default_prectable[O_Slt] = 1          // dummy value to stop reject in dparse()
+    default_prectable[O_Srt] = 1          // dummy value to stop reject in dparse()
     default_prectable[O_Pb] = 1           // dummy value to stop reject in dparse()
     default_prectable[O_Pa] = 1           // dummy value to stop reject in dparse()
     default_prectable[O_Pn] = 1           // dummy value to stop reject in dparse()

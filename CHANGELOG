@@ -91,7 +91,7 @@ interpreter/vm changes
         without calling bind_int()
       - v1 scope: bare expressions, assignment RHS, if/while conditions, for loop custom
         conditions and amendments. function calls, field access, enum members, methods,
-        &&/|| short-circuiting, and ternary conditionals fall back to interpreter
+        and ternary conditionals fall back to interpreter
       - resolveIdent() supports withEnumName context and uc_match_constant() for USE-chain
         module constant lookups without fallback
       - new opcodes: OpNegInt, OpNegFloat, OpNegGeneric (unary minus), OpGeInt/OpGeFloat/
@@ -109,7 +109,7 @@ interpreter/vm changes
       - membership operator: in (C_In) -> OpIn with foldIn constant folding
       - bitwise operators: & | ^ << >> -> OpBitAnd/OpBitOr/OpBitXor/OpLShift/OpRShift
         with foldBitwise constant folding (integer-only)
-      - string case operators: $lc $uc $st $lt $rt -> OpStrLower/OpStrUpper/OpStrTitle/
+      - string case operators: $lc $uc $st $lt $rt -> OpStrLower/OpStrUpper/OpStrTrim/
         OpStrTrimLeft/OpStrTrimRight with foldStringCase constant folding
       - all new operators support constant folding: e.g. 2**3 -> LoadConstInt 8,
         1..3 -> LoadConstInt [1 2 3], "ell" in "hello" -> LoadConstInt true,
@@ -131,10 +131,11 @@ interpreter/vm changes
         into Arg1; used for small int literals and folded small-int results
       - OpLoadNil: no-argument opcode for nil literals; removes pool[0] indirection
 
-  * deferred VM stack zeroing to amortise GC-clear cost
-      - removed vm.stack[vm.sp] = nil from vm.pop() (was one write per pop)
-      - added maxSp tracking in vm.push(); zeros only the touched cells on VM reuse
-      - eliminates ~40M nil-writes per addition_loop benchmark run
+  * restored nil-on-pop in VM, removed bulk stack zeroing
+      - vm.pop() now nils the slot after reading (same cache line, next store)
+      - removed maxSp tracking and O(maxSp) bulk zero on VM reuse
+      - GC benefits: stale references released immediately on pop instead of
+        surviving until next runExprVM call
 
   * added constant-folding debug output
       - ZA_DEBUG_BYTECODE=fold (or =all) emits [BC-FOLDING] lines to stderr
@@ -161,6 +162,27 @@ interpreter/vm changes
       - actor.go evalDefaultCase has vmAssigned branch: runs VM and skips doAssign()
       - disassembler shows StoreLocal <bin> "<name>"
       - addition_loop benchmark (var a int) now hits full VM path for a = a + f
+
+  * added short-circuit && and || compilation to bytecode (OpLand/OpLor)
+      - new opcodes: OpLand, OpLor, OpToBool, OpLorResult
+      - compileLand()/compileLor() methods in expr_compile.go with backpatching
+      - OpLand/OpLor use peek semantics; OpPop handles discard on fall-through path
+      - preserves Za || string-fallback semantics: "" || "fallback" returns "fallback"
+      - or keyword (C_Or) now compiles to bytecode instead of falling back to interpreter
+      - test coverage: za_tests/test_vm.za section 19
+
+  * added OpLoadConstBool opcode — bools encoded directly in instruction arg
+      - eliminates pool lookup for boolean constants (true/false)
+      - Arg1 = 0 for false, 1 for true; VM pushes bool(Arg1 != 0)
+
+  * added OpPowInt/OpPowFloat type-specialised power opcodes
+      - OpPowInt: int**int with intPow fast path; overflow promotes to float64
+      - OpPowFloat: float64**float64 via math.Pow
+      - follows the existing pattern of OpMulInt/OpMulFloat/OpMulGeneric
+
+  * removed dead code: accessField() function and OpFieldGet opcode
+      - OpFieldGet was never emitted (compileFieldGet always returned error)
+      - removed from types.go, expr_vm.go, and expr_debug.go
 
 
 fixes
@@ -207,6 +229,22 @@ fixes
       - cached AUTO-discovered signatures are also filtered through CanResolveSymbol
         at cache load time, preventing stale caches from reintroducing phantom symbols
         after library updates or fixes
+
+  * fixed constant-folding integer overflow — foldAdd/foldSub/foldMul now detect
+    overflow via math/bits and defer to runtime
+      - foldAdd: bits.Add64 overflow check
+      - foldSub: bits.Sub64 overflow check
+      - foldMul: bits.Mul64 high-word check
+      - foldNeg: guards MinInt64 (promotes to *big.Int)
+      - prevents silent wraparound for large int literals (e.g. 999999999999999 * 2)
+
+  * fixed intPow overflow — returns (int, bool) using bits.Mul64
+      - callers (foldPow, OpPowInt, ev_pow) fall back to math.Pow(float64) on overflow
+      - prevents silent wraparound for large power results (e.g. 1000000 ** 2)
+
+  * fixed foldDiv returning float64 for int/int division
+      - was: foldDiv(7, 2) = 3.5 (float64), but OpDivInt does 7/2 = 3 (int)
+      - now: foldDiv(7, 2) = 3 (int), matching runtime semantics
 
 
 Now considered supported

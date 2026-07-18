@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"math/bits"
 	"reflect"
 	"strings"
 )
@@ -109,10 +110,7 @@ func compileSimpleAssign(tokens []Token, fs uint32, ident *[]Variable, typeHints
 		return nil, nil, fmt.Errorf("unexpected token %s after expression", tokNames[c.tokens[c.pos+1].tokType])
 	}
 
-	rhs := c.popValue()
-	if rhs.hint == hintString {
-		return nil, nil, fmt.Errorf("string assignment not supported in bytecode")
-	}
+	c.popValue() // pop RHS from value stack
 
 	lhs := tokens[0]
 	nameIdx := c.poolIndex(lhs.tokText)
@@ -219,6 +217,9 @@ func (c *exprCompiler) nud(tok Token) error {
 		c.pushValue(compileValue{hint: hintString, constVal: tok.tokText, instrIdx: len(c.code) - 1})
 	case Identifier:
 		return c.compileIdentifier(tok)
+	case T_Nil:
+		c.emitLoadConst(nil)
+		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: len(c.code) - 1})
 	case SYM_Not:
 		startInstr := len(c.code)
 		if err := c.expression(24); err != nil {
@@ -307,7 +308,7 @@ func (c *exprCompiler) nud(tok Token) error {
 		case O_Suc:
 			c.emit(OpStrUpper)
 		case O_Sst:
-			c.emit(OpStrTitle)
+			c.emit(OpStrTrim)
 		case O_Slt:
 			c.emit(OpStrTrimLeft)
 		case O_Srt:
@@ -352,10 +353,10 @@ func (c *exprCompiler) led(tok Token, prec int8) error {
 			return err
 		}
 		c.emitBitwise(tok.tokType)
-	case SYM_LAND, SYM_LOR:
-		// The VM does not support short-circuiting or truthy/falsy value
-		// semantics for &&/||.  dparse() handles both correctly.
-		return fmt.Errorf("logical operators not supported in bytecode v1")
+	case SYM_LAND:
+		return c.compileLand()
+	case SYM_LOR, C_Or:
+		return c.compileLor()
 	case O_Query:
 		return c.compileTernary()
 	case LeftSBrace:
@@ -395,8 +396,7 @@ func (c *exprCompiler) compileLiteral(tok Token) error {
 		c.emit(OpLoadConstFloat, idx)
 		c.pushValue(compileValue{hint: hintBigFloat, constVal: v, instrIdx: len(c.code) - 1})
 	case bool:
-		idx := c.poolIndex(v)
-		c.emit(OpLoadConstInt, idx)
+		c.emit(OpLoadConstBool, boolToUint16(v))
 		c.pushValue(compileValue{hint: hintBool, constVal: v, instrIdx: len(c.code) - 1})
 	case string:
 		idx := c.poolIndex(v)
@@ -576,8 +576,7 @@ func (c *exprCompiler) emitBinary(op int64) {
 	case O_Percent:
 		choose(OpModInt, OpModFloat, 0, OpModGeneric)
 	case SYM_POW:
-		c.emit(OpPow)
-		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+		choose(OpPowInt, OpPowFloat, 0, OpPowGeneric)
 	}
 }
 
@@ -627,17 +626,6 @@ func (c *exprCompiler) emitComparison(op int64) {
 		choose(OpGeInt, OpGeFloat, 0, OpGeGeneric)
 	default:
 		c.emit(OpEqGeneric)
-	}
-	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
-}
-
-func (c *exprCompiler) emitLogical(op int64) {
-	c.popValue()
-	c.popValue()
-	if op == SYM_LAND {
-		c.emit(OpAnd)
-	} else {
-		c.emit(OpOr)
 	}
 	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
 }
@@ -802,6 +790,56 @@ func (c *exprCompiler) compileFieldGet() error {
 	return fmt.Errorf("field access not supported in bytecode v1")
 }
 
+func (c *exprCompiler) compileLand() error {
+	c.popValue()
+
+	// Emit OpLand with placeholder offset.
+	// OpLand pops left; if falsy pushes false and jumps past right side.
+	// If truthy falls through (stack empty, right side runs next).
+	jumpIdx := len(c.code)
+	c.emit(OpLand, 0)
+
+	// Left was truthy: discard it, compile right side.
+	c.emit(OpPop)
+	if err := c.expression(16); err != nil {
+		return err
+	}
+
+	// Coerce right side to boolean.
+	c.emit(OpToBool)
+
+	// Patch: Arg1 = distance from OpLand to here.
+	c.code[jumpIdx].Arg1 = uint16(int16(len(c.code) - jumpIdx))
+
+	c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
+	return nil
+}
+
+func (c *exprCompiler) compileLor() error {
+	c.popValue()
+
+	// Emit OpLor with placeholder offset.
+	// OpLor pops left; if truthy/string pushes result and jumps.
+	// If falsy falls through (stack empty, right side runs next).
+	jumpIdx := len(c.code)
+	c.emit(OpLor, 0)
+
+	// Left was falsy: discard it, compile right side.
+	c.emit(OpPop)
+	if err := c.expression(16); err != nil {
+		return err
+	}
+
+	// Coerce right side: string passthrough, else asBool().
+	c.emit(OpLorResult)
+
+	// Patch: Arg1 = distance from OpLor to here.
+	c.code[jumpIdx].Arg1 = uint16(int16(len(c.code) - jumpIdx))
+
+	c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+	return nil
+}
+
 func (c *exprCompiler) poolIndex(v any) uint16 {
 	// Fast path: map lookup for hashable types (int, float64, string, bool, etc.)
 	if reflect.TypeOf(v).Comparable() {
@@ -841,8 +879,7 @@ func (c *exprCompiler) emitLoadConst(v any) {
 		idx := c.poolIndex(val)
 		c.emit(OpLoadConstString, idx)
 	case bool:
-		idx := c.poolIndex(val)
-		c.emit(OpLoadConstInt, idx)
+		c.emit(OpLoadConstBool, boolToUint16(val))
 	case *big.Int:
 		idx := c.poolIndex(val)
 		c.emit(OpLoadConstInt, idx)
@@ -903,9 +940,23 @@ func foldAdd(left, right any) (any, bool) {
 	case int:
 		switch r := right.(type) {
 		case int:
-			return l + r, true
+			sum, carry := bits.Add64(uint64(l), uint64(r), 0)
+			// Check for signed overflow
+			overflow := carry != 0 || (l >= 0 && int64(sum) < 0) || (l < 0 && int64(sum) > 0)
+			if overflow {
+				return nil, false
+			}
+			return int(sum), true
 		case float64:
 			return float64(l) + r, true
+		case *big.Int:
+			result := new(big.Int).SetInt64(int64(l))
+			result.Add(result, r)
+			return result, true
+		case *big.Float:
+			result := new(big.Float).SetInt64(int64(l))
+			result.Add(result, r)
+			return result, true
 		}
 	case float64:
 		switch r := right.(type) {
@@ -913,19 +964,35 @@ func foldAdd(left, right any) (any, bool) {
 			return l + float64(r), true
 		case float64:
 			return l + r, true
+		case *big.Float:
+			result := new(big.Float).SetFloat64(l)
+			result.Add(result, r)
+			return result, true
 		}
 	case string:
 		if r, ok := right.(string); ok {
 			return l + r, true
 		}
 	case *big.Int:
-		if r, ok := right.(*big.Int); ok {
-			result := new(big.Int).Add(l, r)
+		switch r := right.(type) {
+		case *big.Int:
+			return new(big.Int).Add(l, r), true
+		case int:
+			result := new(big.Int).Set(l)
+			result.Add(result, new(big.Int).SetInt64(int64(r)))
 			return result, true
 		}
 	case *big.Float:
-		if r, ok := right.(*big.Float); ok {
-			result := new(big.Float).Add(l, r)
+		switch r := right.(type) {
+		case *big.Float:
+			return new(big.Float).Add(l, r), true
+		case int:
+			result := new(big.Float).Set(l)
+			result.Add(result, new(big.Float).SetInt64(int64(r)))
+			return result, true
+		case float64:
+			result := new(big.Float).Set(l)
+			result.Add(result, new(big.Float).SetFloat64(r))
 			return result, true
 		}
 	}
@@ -937,9 +1004,23 @@ func foldSub(left, right any) (any, bool) {
 	case int:
 		switch r := right.(type) {
 		case int:
-			return l - r, true
+			diff, borrow := bits.Sub64(uint64(l), uint64(r), 0)
+			// Check for signed overflow
+			overflow := borrow != 0 || (l >= 0 && r < 0 && int64(diff) < 0) || (l < 0 && r > 0 && int64(diff) > 0)
+			if overflow {
+				return nil, false
+			}
+			return int(diff), true
 		case float64:
 			return float64(l) - r, true
+		case *big.Int:
+			result := new(big.Int).SetInt64(int64(l))
+			result.Sub(result, r)
+			return result, true
+		case *big.Float:
+			result := new(big.Float).SetInt64(int64(l))
+			result.Sub(result, r)
+			return result, true
 		}
 	case float64:
 		switch r := right.(type) {
@@ -947,15 +1028,31 @@ func foldSub(left, right any) (any, bool) {
 			return l - float64(r), true
 		case float64:
 			return l - r, true
+		case *big.Float:
+			result := new(big.Float).SetFloat64(l)
+			result.Sub(result, r)
+			return result, true
 		}
 	case *big.Int:
-		if r, ok := right.(*big.Int); ok {
-			result := new(big.Int).Sub(l, r)
+		switch r := right.(type) {
+		case *big.Int:
+			return new(big.Int).Sub(l, r), true
+		case int:
+			result := new(big.Int).Set(l)
+			result.Sub(result, new(big.Int).SetInt64(int64(r)))
 			return result, true
 		}
 	case *big.Float:
-		if r, ok := right.(*big.Float); ok {
-			result := new(big.Float).Sub(l, r)
+		switch r := right.(type) {
+		case *big.Float:
+			return new(big.Float).Sub(l, r), true
+		case int:
+			result := new(big.Float).Set(l)
+			result.Sub(result, new(big.Float).SetInt64(int64(r)))
+			return result, true
+		case float64:
+			result := new(big.Float).Set(l)
+			result.Sub(result, new(big.Float).SetFloat64(r))
 			return result, true
 		}
 	}
@@ -967,9 +1064,21 @@ func foldMul(left, right any) (any, bool) {
 	case int:
 		switch r := right.(type) {
 		case int:
-			return l * r, true
+			hi, lo := bits.Mul64(uint64(l), uint64(r))
+			if hi != 0 {
+				return nil, false
+			}
+			return int(lo), true
 		case float64:
 			return float64(l) * r, true
+		case *big.Int:
+			result := new(big.Int).SetInt64(int64(l))
+			result.Mul(result, r)
+			return result, true
+		case *big.Float:
+			result := new(big.Float).SetInt64(int64(l))
+			result.Mul(result, r)
+			return result, true
 		}
 	case float64:
 		switch r := right.(type) {
@@ -977,15 +1086,31 @@ func foldMul(left, right any) (any, bool) {
 			return l * float64(r), true
 		case float64:
 			return l * r, true
+		case *big.Float:
+			result := new(big.Float).SetFloat64(l)
+			result.Mul(result, r)
+			return result, true
 		}
 	case *big.Int:
-		if r, ok := right.(*big.Int); ok {
-			result := new(big.Int).Mul(l, r)
+		switch r := right.(type) {
+		case *big.Int:
+			return new(big.Int).Mul(l, r), true
+		case int:
+			result := new(big.Int).Set(l)
+			result.Mul(result, new(big.Int).SetInt64(int64(r)))
 			return result, true
 		}
 	case *big.Float:
-		if r, ok := right.(*big.Float); ok {
-			result := new(big.Float).Mul(l, r)
+		switch r := right.(type) {
+		case *big.Float:
+			return new(big.Float).Mul(l, r), true
+		case int:
+			result := new(big.Float).Set(l)
+			result.Mul(result, new(big.Float).SetInt64(int64(r)))
+			return result, true
+		case float64:
+			result := new(big.Float).Set(l)
+			result.Mul(result, new(big.Float).SetFloat64(r))
 			return result, true
 		}
 	}
@@ -1009,7 +1134,7 @@ func foldDiv(left, right any) (any, bool) {
 	case int:
 		switch r := right.(type) {
 		case int:
-			return float64(l) / float64(r), true
+			return l / r, true
 		case float64:
 			return float64(l) / r, true
 		}
@@ -1049,6 +1174,8 @@ func foldMod(left, right any) (any, bool) {
 		switch r := right.(type) {
 		case int:
 			return l % r, true
+		case float64:
+			return math.Mod(float64(l), r), true
 		}
 	case float64:
 		switch r := right.(type) {
@@ -1061,15 +1188,62 @@ func foldMod(left, right any) (any, bool) {
 	return nil, false
 }
 
+// foldEqual performs compile-time equality testing, handling big types and NaN
+// correctly (unlike Go's == operator which does pointer comparison for big.Int).
+func foldEqual(left, right any) (bool, bool) {
+	if left == nil && right == nil {
+		return true, true
+	}
+	if left == nil || right == nil {
+		return false, true
+	}
+	switch l := left.(type) {
+	case int:
+		if r, ok := right.(int); ok {
+			return l == r, true
+		}
+	case float64:
+		if r, ok := right.(float64); ok {
+			if math.IsNaN(l) && math.IsNaN(r) {
+				return true, true
+			}
+			return l == r, true
+		}
+	case string:
+		if r, ok := right.(string); ok {
+			return l == r, true
+		}
+	case bool:
+		if r, ok := right.(bool); ok {
+			return l == r, true
+		}
+	case *big.Int:
+		if r, ok := right.(*big.Int); ok {
+			return l.Cmp(r) == 0, true
+		}
+	case *big.Float:
+		if r, ok := right.(*big.Float); ok {
+			return l.Cmp(r) == 0, true
+		}
+	}
+	return false, false
+}
+
 // foldComparison performs compile-time comparison of constants.
 func foldComparison(op int64, left, right any) (any, bool) {
-	// Handle equality/inequality directly — compareInt/compareFloat/compareString
-	// only support ordering comparisons (<, <=, >, >=) and panic on ==/!=.
+	// Handle equality/inequality with proper type-aware comparison.
+	// compareInt/compareFloat/compareString only support ordering (<, <=, >, >=).
 	if op == SYM_EQ {
-		return left == right, true
+		if result, ok := foldEqual(left, right); ok {
+			return result, true
+		}
+		return nil, false
 	}
 	if op == SYM_NE {
-		return left != right, true
+		if result, ok := foldEqual(left, right); ok {
+			return !result, true
+		}
+		return nil, false
 	}
 
 	switch l := left.(type) {
@@ -1099,6 +1273,9 @@ func foldComparison(op int64, left, right any) (any, bool) {
 func foldNeg(v any) (any, bool) {
 	switch val := v.(type) {
 	case int:
+		if val == math.MinInt64 {
+			return nil, false
+		}
 		return -val, true
 	case float64:
 		return -val, true
@@ -1112,6 +1289,9 @@ func foldNeg(v any) (any, bool) {
 
 // foldNot performs compile-time logical negation.
 func foldNot(v any) (any, bool) {
+	if v == nil {
+		return true, true
+	}
 	switch val := v.(type) {
 	case bool:
 		return !val, true
@@ -1121,6 +1301,10 @@ func foldNot(v any) (any, bool) {
 		return val == 0.0, true
 	case string:
 		return val == "", true
+	case *big.Int:
+		return val.Cmp(new(big.Int)) == 0, true
+	case *big.Float:
+		return val.Cmp(new(big.Float)) == 0, true
 	}
 	return nil, false
 }
@@ -1131,7 +1315,13 @@ func foldPow(left, right any) (any, bool) {
 	case int:
 		switch r := right.(type) {
 		case int:
-			return intPow(l, r), true
+			if r < 0 {
+				return math.Pow(float64(l), float64(r)), true
+			}
+			if result, overflow := intPow(l, r); !overflow {
+				return result, true
+			}
+			return math.Pow(float64(l), float64(r)), true
 		case float64:
 			return math.Pow(float64(l), r), true
 		}
@@ -1147,26 +1337,42 @@ func foldPow(left, right any) (any, bool) {
 }
 
 // intPow computes integer power with fast paths for common exponents.
-func intPow(base, exp int) int {
+// Returns (result, false) on success; (0, true) on overflow.
+func intPow(base, exp int) (int, bool) {
 	switch exp {
 	case 0:
-		return 1
+		return 1, false
 	case 1:
-		return base
+		return base, false
 	case 2:
-		return base * base
+		hi, lo := bits.Mul64(uint64(base), uint64(base))
+		return int(lo), hi != 0
 	case 3:
-		return base * base * base
+		hi, lo := bits.Mul64(uint64(base), uint64(base))
+		if hi != 0 {
+			return 0, true
+		}
+		hi2, lo2 := bits.Mul64(lo, uint64(base))
+		return int(lo2), hi2 != 0
 	}
-	result := 1
+	result := uint64(1)
 	for exp > 0 {
 		if exp&1 == 1 {
-			result *= base
+			hi, lo := bits.Mul64(result, uint64(base))
+			if hi != 0 {
+				return 0, true
+			}
+			result = lo
 		}
-		base *= base
-		exp >>= 1
+		if exp >>= 1; exp > 0 {
+			hi, lo := bits.Mul64(uint64(base), uint64(base))
+			if hi != 0 {
+				return 0, true
+			}
+			base = int(lo)
+		}
 	}
-	return result
+	return int(result), false
 }
 
 // foldRange performs compile-time range generation.
@@ -1267,3 +1473,10 @@ func foldStringCase(op int64, v any) (any, bool) {
 
 // Note: compareInt, compareFloat, and compareString are defined in eval_ops.go
 // and are reused here for compile-time constant folding.
+
+func boolToUint16(b bool) uint16 {
+	if b {
+		return 1
+	}
+	return 0
+}

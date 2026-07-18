@@ -67,6 +67,8 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		} else {
 			fmt.Fprintf(&sb, "LoadConstString #%d", instr.Arg1)
 		}
+	case OpLoadConstBool:
+		fmt.Fprintf(&sb, "LoadConstBool %v", instr.Arg1 != 0)
 	case OpLoadLocal:
 		fmt.Fprintf(&sb, "LoadLocal %d", instr.Arg1)
 	case OpLoadGlobal:
@@ -171,8 +173,12 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("And")
 	case OpOr:
 		sb.WriteString("Or")
-	case OpPow:
-		sb.WriteString("Pow")
+	case OpPowInt:
+		sb.WriteString("PowInt")
+	case OpPowFloat:
+		sb.WriteString("PowFloat")
+	case OpPowGeneric:
+		sb.WriteString("PowGeneric")
 	case OpRange:
 		sb.WriteString("Range")
 	case OpIn:
@@ -191,8 +197,8 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("StrLower")
 	case OpStrUpper:
 		sb.WriteString("StrUpper")
-	case OpStrTitle:
-		sb.WriteString("StrTitle")
+	case OpStrTrim:
+		sb.WriteString("StrTrim")
 	case OpStrTrimLeft:
 		sb.WriteString("StrTrimLeft")
 	case OpStrTrimRight:
@@ -201,8 +207,6 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("IndexGet")
 	case OpIndexSet:
 		sb.WriteString("IndexSet")
-	case OpFieldGet:
-		sb.WriteString("FieldGet")
 	case OpFieldSet:
 		sb.WriteString("FieldSet")
 	case OpArrayNew:
@@ -223,6 +227,14 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		fmt.Fprintf(&sb, "LoadConstSmallInt %d", int16(instr.Arg1))
 	case OpLoadNil:
 		sb.WriteString("LoadNil")
+	case OpLand:
+		fmt.Fprintf(&sb, "Land %+d", int16(instr.Arg1))
+	case OpLor:
+		fmt.Fprintf(&sb, "Lor %+d", int16(instr.Arg1))
+	case OpToBool:
+		sb.WriteString("ToBool")
+	case OpLorResult:
+		sb.WriteString("LorResult")
 	case OpEnd:
 		sb.WriteString("End")
 	default:

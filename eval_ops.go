@@ -66,6 +66,8 @@ func asBool(val any) (b bool) {
     switch v := val.(type) {
     case bool:
         b = v
+    case nil:
+        b = false
     case string:
         b = v != ""
     case int, int64, uint, uint64:
@@ -253,6 +255,11 @@ func ev_in(val1 any, val2 any) bool {
                 return true
             }
         }
+    case string:
+        if needle, ok := val1.(string); ok {
+            return str.Contains(vl, needle)
+        }
+        panic(fmt.Errorf("IN string operator requires a string needle, got %T", val1))
     default:
         panic(fmt.Errorf("IN operator requires a list to search"))
     }
@@ -1077,9 +1084,15 @@ func ev_mod(val1 any, val2 any) any {
     }
 
     if intInOne && intInTwo {
+        if val2.(int) == 0 {
+            panic(fmt.Errorf("divide by zero"))
+        }
         return val1.(int) % val2.(int)
     }
     if i641 && i642 {
+        if val2.(int64) == 0 {
+            panic(fmt.Errorf("divide by zero"))
+        }
         return val1.(int64) % val2.(int64)
     }
 
@@ -1165,7 +1178,13 @@ func ev_pow(val1 any, val2 any) any {
     }
 
     if intInOne && intInTwo {
-        return int(math.Pow(float64(int1), float64(int2)))
+        if int2 < 0 {
+            return math.Pow(float64(int1), float64(int2))
+        }
+        if result, overflow := intPow(int1, int2); !overflow {
+            return result
+        }
+        return math.Pow(float64(int1), float64(int2))
     }
 
     if bint1 || bint2 {
@@ -1271,12 +1290,7 @@ func ev_shift_right(left, right any) any {
 }
 
 func unaryNegate(val any) any {
-    switch i := val.(type) {
-    case bool:
-        // pf("returning negative\n")
-        return !i
-    }
-    panic(fmt.Errorf("cannot negate a non-bool"))
+    return !asBool(val)
 }
 
 func unaryPlus(val any) any {
@@ -1407,17 +1421,131 @@ func deepEqual(val1 any, val2 any) bool {
 
     case []any:
 
-        typ2, ok := val2.([]any)
-        if !ok || len(typ1) != len(typ2) {
+        switch typ2 := val2.(type) {
+        case []any:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if !deepEqual(typ1[idx], typ2[idx]) {
+                    return false
+                }
+            }
+            return true
+        case []int:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if !deepEqual(typ1[idx], typ2[idx]) {
+                    return false
+                }
+            }
+            return true
+        case []float64:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if !deepEqual(typ1[idx], typ2[idx]) {
+                    return false
+                }
+            }
+            return true
+        case []string:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if typ1[idx] != typ2[idx] {
+                    return false
+                }
+            }
+            return true
+        default:
             return false
         }
 
-        for idx := range typ1 {
-            if !deepEqual(typ1[idx], typ2[idx]) {
+    case []int:
+
+        switch typ2 := val2.(type) {
+        case []int:
+            if len(typ1) != len(typ2) {
                 return false
             }
+            for idx := range typ1 {
+                if typ1[idx] != typ2[idx] {
+                    return false
+                }
+            }
+            return true
+        case []any:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if !deepEqual(typ1[idx], typ2[idx]) {
+                    return false
+                }
+            }
+            return true
+        default:
+            return false
         }
-        return true
+
+    case []float64:
+
+        switch typ2 := val2.(type) {
+        case []float64:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if typ1[idx] != typ2[idx] {
+                    return false
+                }
+            }
+            return true
+        case []any:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if !deepEqual(typ1[idx], typ2[idx]) {
+                    return false
+                }
+            }
+            return true
+        default:
+            return false
+        }
+
+    case []string:
+
+        switch typ2 := val2.(type) {
+        case []string:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if typ1[idx] != typ2[idx] {
+                    return false
+                }
+            }
+            return true
+        case []any:
+            if len(typ1) != len(typ2) {
+                return false
+            }
+            for idx := range typ1 {
+                if typ1[idx] != typ2[idx] {
+                    return false
+                }
+            }
+            return true
+        default:
+            return false
+        }
 
     case map[string]any:
         typ2, ok := val2.(map[string]any)

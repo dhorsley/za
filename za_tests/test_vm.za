@@ -1,0 +1,299 @@
+#!/usr/bin/za
+
+# VM Math Correctness Test Suite
+# Tests bytecode compilation, constant folding, type specialization,
+# and all fixes applied to the expression bytecode system.
+
+@passed = 0
+@failed = 0
+
+def check(name, actual, expected)
+    if actual == expected
+        println "  PASS: " + name
+        @passed = passed + 1
+    else
+        println "  FAIL: " + name + " (got " + as_string(actual) + ", expected " + as_string(expected) + ")"
+        @failed = failed + 1
+    endif
+end
+
+def check_kind(name, val, expected_kind)
+    if kind(val) == expected_kind
+        println "  PASS: " + name + " kind=" + kind(val)
+        @passed = passed + 1
+    else
+        println "  FAIL: " + name + " kind=" + kind(val) + ", expected " + expected_kind
+        @failed = failed + 1
+    endif
+end
+
+println "=== Section 1: Integer Arithmetic ==="
+check("int add", 2 + 3, 5)
+check("int sub", 10 - 7, 3)
+check("int mul", 6 * 7, 42)
+check("int div", 20 / 4, 5)
+check("int mod", 17 % 5, 2)
+check("int pow", 2 ** 10, 1024)
+check("int neg", -(-5), 5)
+check("int add neg", 3 + (-2), 1)
+check("int sub neg", 3 - (-2), 5)
+check("int zero", 0 + 0, 0)
+
+println "\n=== Section 2: Float Arithmetic ==="
+check("float add", 1.5 + 2.5, 4.0)
+check("float sub", 3.14 - 1.0, 2.14)
+check("float mul", 2.0 * 3.0, 6.0)
+check("float div", 10.0 / 4.0, 2.5)
+check("float mod", 7.5 % 2.5, 0.0)
+check("float pow", 2.0 ** 3.0, 8.0)
+check("float neg", -3.14 < 0, true)
+
+println "\n=== Section 3: Cross-Type int/float ==="
+check("int+float", 1 + 2.5, 3.5)
+check("float+int", 2.5 + 1, 3.5)
+check("int-float", 5 - 0.5, 4.5)
+check("float-int", 5.5 - 3, 2.5)
+check("int*float", 3 * 0.5, 1.5)
+check("int/float", 10 / 4.0, 2.5)
+
+println "\n=== Section 4: String Operations ==="
+check("str concat", "hello" + " " + "world", "hello world")
+check("str lower", "HELLO".lower, "hello")
+check("str upper", "hello".upper, "HELLO")
+check("str $st trim", $st "  hello  ", "hello")
+check("str $lt trim", $lt "  hello  ", "hello  ")
+check("str $rt trim", $rt "  hello  ", "  hello")
+check("str eq", "abc" == "abc", true)
+check("str ne", "abc" != "xyz", true)
+
+println "\n=== Section 5: Comparison Operators ==="
+check("eq int", 5 == 5, true)
+check("ne int", 5 != 3, true)
+check("lt", 3 < 5, true)
+check("gt", 5 > 3, true)
+check("le", 5 <= 5, true)
+check("le false", 6 <= 5, false)
+check("ge", 5 >= 5, true)
+check("ge false", 4 >= 5, false)
+check("eq str", "abc" == "abc", true)
+check("eq float", 1.5 == 1.5, true)
+check("ne float", 1.5 != 1.6, true)
+check("lt float", 1.5 < 2.0, true)
+check("gt float", 2.0 > 1.5, true)
+
+println "\n=== Section 6: Boolean and Nil ==="
+check("bool true", true, true)
+check("bool not", !true, false)
+check("not false", !false, true)
+check("not empty str", !"", true)
+check("not nonempty", !"x", false)
+check("nil == nil", nil == nil, true)
+check("nil != nil", nil != nil, false)
+check("not nil", !nil, true)
+
+println "\n=== Section 7: Bitwise Operators ==="
+check("bitand", 0xFF & 0x0F, 0x0F)
+check("bitor", 0xF0 | 0x0F, 0xFF)
+check("bitxor", 0xFF ^ 0x0F, 0xF0)
+check("lshift", 1 << 8, 256)
+check("rshift", 256 >> 4, 16)
+check("lshift 1", 1 << 1, 2)
+check("rshift 1", 8 >> 1, 4)
+
+println "\n=== Section 8: Range and In ==="
+check("range 1..3", list_int(1..3), list_int([1, 2, 3]))
+check("range 0..2", list_int(0..2), list_int([0, 1, 2]))
+arr = [1, 2, 3]
+check("in array", 3 in arr, true)
+check("in not found", 5 in arr, false)
+check("in string", "l" in "hello", true)
+check("in string not", "x" in "hello", false)
+check("in substring", "ell" in "hello", true)
+
+println "\n=== Section 9: BigInt/BigFloat Cross-Type (Fix #5) ==="
+check("int + bigi", 5 + 1000000000000000000n, 1000000000000000005n)
+check("bigi + int", 1000000000000000000n + 5, 1000000000000000005n)
+check("int * bigi", 3 * 1000000000000000000n, 3000000000000000000n)
+check("bigi - int", 1000000000000000010n - 10, 1000000000000000000n)
+check("int + bigf", 1 + 2.5n, 3.5n)
+check("bigf + int", 2.5n + 1, 3.5n)
+
+println "\n=== Section 10: BigInt/BigFloat Equality (Fix #1) ==="
+check("bigi eq same", 1000000000000000000n == 1000000000000000000n, true)
+check("bigi ne diff", 1000000000000000000n != 1000000000000000001n, true)
+check("bigi ne same", 1000000000000000000n != 1000000000000000000n, false)
+check("bigf eq same", 3.14n == 3.14n, true)
+check("bigf ne diff", 3.14n != 3.15n, true)
+check("bigf ne same", 3.14n != 3.14n, false)
+
+println "\n=== Section 11: Power Negative Exponents ==="
+check("2 ** -1", 2 ** -1, 0.5)
+check("4 ** -0.5", 4 ** -0.5, 0.5)
+check("5 ** 0", 5 ** 0, 1)
+check("1 ** -100", 1 ** -100, 1.0)
+check("2.0 ** -1", 2.0 ** -1, 0.5)
+
+println "\n=== Section 12: Modulo Mixed Types (Fix #4) ==="
+check("int % float64", 7 % 2.0, 1.0)
+check("float64 % int", 7.0 % 2, 1.0)
+check("float64 % float64", 7.5 % 2.5, 0.0)
+
+println "\n=== Section 13: Nil Handling (Fix #6) ==="
+check("not nil", !nil, true)
+check("nil eq nil", nil == nil, true)
+check("nil ne nil", nil != nil, false)
+
+println "\n=== Section 14: String Assignment (Fix #7) ==="
+vm_str_test = "hello"
+check("str assign", vm_str_test, "hello")
+vm_str_test = "world"
+check("str reassign", vm_str_test, "world")
+vm_str_concat = "a" + "b"
+check("str assign concat", vm_str_concat, "ab")
+
+println "\n=== Section 15: Complex Expressions ==="
+check("precedence mul/add", 2 + 3 * 4, 14)
+check("paren precedence", (2 + 3) * 4, 20)
+check("chained add", 1 + 2 + 3 + 4, 10)
+check("chained mul", 2 * 3 * 4, 24)
+check("mixed add mul div", 10 + 4 * 2 - 6 / 3, 16)
+check("nested parens", ((2 + 3) * (4 - 1)), 15)
+check("pow before mul", 2 * 3 ** 2, 18)
+check("neg before pow", -3 ** 2, 9)
+check("sub assoc", 10 - 5 - 3, 2)
+check("div assoc", 120 / 2 / 3, 20)
+
+println "\n=== Section 16: Design Improvement Tests ==="
+
+# OpLoadConstBool: verify booleans have correct kind
+check_kind("bool kind", true, "bool")
+check_kind("false kind", false, "bool")
+check("bool eq", true == true, true)
+check("bool ne", true != false, true)
+check("bool not", !false, true)
+
+# Typed pow: verify int pow stays int, float pow stays float
+check("int pow result", 2 ** 3, 8)
+check_kind("int pow kind", 2 ** 3, "int")
+check("float pow result", 2.0 ** 3.0, 8.0)
+check_kind("float pow kind", 2.0 ** 3.0, "float")
+
+# Type hints for known variables
+typed_a = 42
+check("typed int eq", typed_a, 42)
+typed_b = 3.14
+check("typed float eq", typed_b, 3.14)
+typed_c = "hello"
+check("typed string eq", typed_c, "hello")
+typed_d = true
+check("typed bool eq", typed_d, true)
+
+# Mixed expressions with known types
+check("typed int expr", typed_a + 8, 50)
+check("typed float expr", typed_b + 0.86, 4.0)
+
+println "\n=== Section 17: Array Literals ==="
+check("empty array", len([]), 0)
+check("int array", [1, 2, 3][0], 1)
+check("int array len", len([1, 2, 3, 4, 5]), 5)
+check("str array", ["a", "b", "c"][1], "b")
+check("nested array", [[1, 2], [3, 4]][0][1], 2)
+
+println "\n=== Section 18: Zero Guard Errors ==="
+try
+    result = 10 % 0
+    println "  FAIL: mod by zero should have thrown (got " + as_string(result) + ")"
+catch err
+    println "  PASS: mod by zero throws clean error"
+endtry
+
+try
+    result = 10 / 0
+    println "  FAIL: div by zero should have thrown (got " + as_string(result) + ")"
+catch err
+    println "  PASS: div by zero throws clean error"
+endtry
+
+println "\n=== Section 19: Short-Circuit && and || ==="
+
+# Basic boolean &&
+assert (true && true) == true, "true && true"
+assert (true && false) == false, "true && false"
+assert (false && true) == false, "false && true"
+assert (false && false) == false, "false && false"
+
+# Basic boolean ||
+assert (true || true) == true, "true || true"
+assert (true || false) == true, "true || false"
+assert (false || true) == true, "false || true"
+assert (false || false) == false, "false || false"
+
+# asBool coercion in &&
+assert (1 && true) == true, "int truthy && bool"
+assert (0 && true) == false, "int falsy && bool"
+assert ("x" && true) == true, "string truthy && bool"
+assert ("" && true) == false, "string falsy && bool"
+
+# asBool coercion in ||
+assert (0 || 42) == true, "int falsy || int truthy"
+assert (42 || 0) == true, "int truthy || int falsy"
+assert ("" || "fallback") == "fallback", "string empty || string nonempty"
+assert ("hello" || "") == "hello", "string nonempty || string empty"
+
+# || string fallback semantics (result is the string, not true)
+assert ("hello" || "world") == "hello", "|| returns string left"
+assert ("" || "fallback") == "fallback", "|| returns string right"
+
+# Short-circuit: right side NOT evaluated when left determines result
+try
+    result = false && (1/0)
+    assert result == false, "short-circuit && skips right side"
+catch err
+    assert false, "short-circuit && should have skipped division"
+endtry
+
+try
+    result = true || (1/0)
+    assert result == true, "short-circuit || skips right side"
+catch err
+    assert false, "short-circuit || should have skipped division"
+endtry
+
+# Left evaluated, right NOT (short-circuit)
+try
+    result = true && (1/0)
+    assert false, "&& left truthy: right should have thrown"
+catch err
+    # expected
+endtry
+
+try
+    result = false || (1/0)
+    assert false, "|| left falsy: right should have thrown"
+catch err
+    # expected
+endtry
+
+# Mixed precedence
+assert (true && true || false) == true, "true && true || false"
+assert (false || true && true) == true, "false || true && true"
+assert ((false || true) && true) == true, "(false || true) && true"
+
+# nil coercion
+assert (nil && true) == false, "nil && true"
+assert (nil || true) == true, "nil || true"
+assert (nil || false) == false, "nil || false"
+
+# or keyword
+assert (false or true) == true, "false or true"
+assert (true or false) == true, "true or false"
+assert ("" or "fallback") == "fallback", "or string fallback"
+
+println "\n=== Results ==="
+println "Passed: " + as_string(passed)
+println "Failed: " + as_string(failed)
+if failed > 0
+    println "SOME TESTS FAILED"
+else
+    println "ALL TESTS PASSED"
+endif
