@@ -81,8 +81,6 @@ const (
     OpNegInt
     OpNegFloat
     OpNegGeneric
-    OpAnd
-    OpOr
     OpPowInt
     OpPowFloat
     OpPowGeneric
@@ -99,15 +97,12 @@ const (
     OpStrTrimLeft
     OpStrTrimRight
     OpIndexGet
-    OpIndexSet
-    OpFieldSet
     OpArrayNew
     OpMapNew
     OpCallStd
     OpCallUser
     OpJumpIfFalse
     OpJump
-    OpTernaryCond
     OpLoadConstSmallInt
     OpLoadNil
     OpLand

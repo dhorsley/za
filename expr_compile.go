@@ -354,9 +354,9 @@ func (c *exprCompiler) led(tok Token, prec int8) error {
 		}
 		c.emitBitwise(tok.tokType)
 	case SYM_LAND:
-		return c.compileLand()
+		return c.compileLand(prec)
 	case SYM_LOR, C_Or:
-		return c.compileLor()
+		return c.compileLor(prec)
 	case O_Query:
 		return c.compileTernary()
 	case LeftSBrace:
@@ -705,34 +705,41 @@ func (c *exprCompiler) emitBitwise(op int64) {
 }
 
 func (c *exprCompiler) compileTernary() error {
-	// condition is already on stack/hint
-	c.popValue()
+	// condition is already on stack from nud/left side
 
-	// false branch
+	// Emit OpJumpIfFalse with placeholder to jump to false branch.
+	// Consumes the condition value.
+	jumpFalseIdx := len(c.code)
+	c.emit(OpJumpIfFalse, 0)
+
+	// True branch: compile and leave result on stack.
 	if err := c.expression(0); err != nil {
 		return err
 	}
-	_ = c.peekValue()
 
+	// After true branch, emit OpJump to skip false branch.
+	jumpPastIdx := len(c.code)
+	c.emit(OpJump, 0)
+
+	// Patch OpJumpIfFalse to jump here (false branch start).
+	c.code[jumpFalseIdx].Arg1 = uint16(int16(len(c.code) - jumpFalseIdx))
+
+	// Consume the colon.
 	if c.peek().tokType != SYM_COLON {
 		return fmt.Errorf("expected : in ternary")
 	}
 	c.next()
 
-	// true branch
+	// False branch: compile and leave result on stack.
 	if err := c.expression(0); err != nil {
 		return err
 	}
-	_ = c.peekValue()
 
-	// We can't easily do short-circuit with stack-based VM without jumps.
-	// For v1, evaluate both branches and then select. This is NOT short-circuit.
-	// This is a correctness issue for side effects, but for v1 we accept it.
-	// A proper implementation would use OpJumpIfFalse.
+	// Patch OpJump to jump past false branch.
+	c.code[jumpPastIdx].Arg1 = uint16(int16(len(c.code) - jumpPastIdx))
 
-	// Actually, let's use a proper jump-based approach for ternary.
-	// But that requires backpatching. Let's keep it simple: generic fallback.
-	return fmt.Errorf("ternary not supported in bytecode v1")
+	c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+	return nil
 }
 
 func (c *exprCompiler) compileArrayLiteral() error {
@@ -790,18 +797,43 @@ func (c *exprCompiler) compileFieldGet() error {
 	return fmt.Errorf("field access not supported in bytecode v1")
 }
 
-func (c *exprCompiler) compileLand() error {
-	c.popValue()
+func (c *exprCompiler) compileLand(prec int8) error {
+	left := c.popValue()
+
+	// Constant folding: if left is a known constant, we can sometimes skip the right side.
+	if left.constVal != nil && left.instrIdx >= 0 {
+		if !asBool(left.constVal) {
+			// false && anything → false (short-circuit: right side never evaluated)
+			if bcDebugFolding {
+				bcDumpFold("Land", []any{left.constVal}, false)
+			}
+			c.code = c.code[:left.instrIdx]
+			c.emit(OpLoadConstBool, boolToUint16(false))
+			c.pushValue(compileValue{hint: hintBool, constVal: false, instrIdx: len(c.code) - 1})
+			return nil
+		}
+		// true && X → X (coerce to bool, skip the jump machinery)
+		if bcDebugFolding {
+			bcDumpFold("Land", []any{left.constVal}, nil)
+		}
+		c.code = c.code[:left.instrIdx]
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emit(OpToBool)
+		c.pushValue(compileValue{hint: hintBool, constVal: nil, instrIdx: -1})
+		return nil
+	}
 
 	// Emit OpLand with placeholder offset.
-	// OpLand pops left; if falsy pushes false and jumps past right side.
+	// OpLand peeks left; if falsy pushes false and jumps past right side.
 	// If truthy falls through (stack empty, right side runs next).
 	jumpIdx := len(c.code)
 	c.emit(OpLand, 0)
 
 	// Left was truthy: discard it, compile right side.
 	c.emit(OpPop)
-	if err := c.expression(16); err != nil {
+	if err := c.expression(prec + 1); err != nil {
 		return err
 	}
 
@@ -815,18 +847,60 @@ func (c *exprCompiler) compileLand() error {
 	return nil
 }
 
-func (c *exprCompiler) compileLor() error {
-	c.popValue()
+func (c *exprCompiler) compileLor(prec int8) error {
+	left := c.popValue()
+
+	// Constant folding: if left is a known constant, we can sometimes skip the right side.
+	if left.constVal != nil && left.instrIdx >= 0 {
+		switch v := left.constVal.(type) {
+		case string:
+			if v != "" {
+				// non-empty string || anything → string (short-circuit)
+				if bcDebugFolding {
+					bcDumpFold("Lor", []any{left.constVal}, v)
+				}
+				c.code = c.code[:left.instrIdx]
+				idx := c.poolIndex(v)
+				c.emit(OpLoadConstString, idx)
+				c.pushValue(compileValue{hint: hintString, constVal: v, instrIdx: len(c.code) - 1})
+				return nil
+			}
+			// "" || X → X (empty string is falsy, result is right side)
+		default:
+			if asBool(left.constVal) {
+				// truthy non-string || anything → true (short-circuit)
+				if bcDebugFolding {
+					bcDumpFold("Lor", []any{left.constVal}, true)
+				}
+				c.code = c.code[:left.instrIdx]
+				c.emit(OpLoadConstBool, boolToUint16(true))
+				c.pushValue(compileValue{hint: hintBool, constVal: true, instrIdx: len(c.code) - 1})
+				return nil
+			}
+			// falsy non-string || X → X (evaluate right)
+		}
+		// Left is falsy: fall through to compile right side without the jump machinery.
+		if bcDebugFolding {
+			bcDumpFold("Lor", []any{left.constVal}, nil)
+		}
+		c.code = c.code[:left.instrIdx]
+		if err := c.expression(prec + 1); err != nil {
+			return err
+		}
+		c.emit(OpLorResult)
+		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+		return nil
+	}
 
 	// Emit OpLor with placeholder offset.
-	// OpLor pops left; if truthy/string pushes result and jumps.
+	// OpLor peeks left; if truthy/string pushes result and jumps.
 	// If falsy falls through (stack empty, right side runs next).
 	jumpIdx := len(c.code)
 	c.emit(OpLor, 0)
 
 	// Left was falsy: discard it, compile right side.
 	c.emit(OpPop)
-	if err := c.expression(16); err != nil {
+	if err := c.expression(prec + 1); err != nil {
 		return err
 	}
 
@@ -841,8 +915,11 @@ func (c *exprCompiler) compileLor() error {
 }
 
 func (c *exprCompiler) poolIndex(v any) uint16 {
-	// Fast path: map lookup for hashable types (int, float64, string, bool, etc.)
-	if reflect.TypeOf(v).Comparable() {
+	// Fast path: type-switch for common comparable constants.
+	// avoids reflect.TypeOf() overhead for int, float64, string, bool,
+	// *big.Int and *big.Float (all hashable as map keys).
+	switch v.(type) {
+	case int, float64, string, bool, *big.Int, *big.Float:
 		if idx, ok := c.poolMap[v]; ok {
 			return idx
 		}

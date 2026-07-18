@@ -73,9 +73,9 @@ func asBool(val any) (b bool) {
     case int, int64, uint, uint64:
         b = v != 0
     case *big.Int:
-        b = v.Cmp(GetAsBigInt(0)) != 0
+        b = v.Sign() != 0
     case *big.Float:
-        b = v.Cmp(GetAsBigFloat(0)) != 0
+        b = v.Sign() != 0
     default:
         panic(fmt.Errorf("type error: required bool'able, but was %s", typeOf(v)))
     }

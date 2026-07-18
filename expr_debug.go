@@ -169,10 +169,6 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("NegFloat")
 	case OpNegGeneric:
 		sb.WriteString("NegGeneric")
-	case OpAnd:
-		sb.WriteString("And")
-	case OpOr:
-		sb.WriteString("Or")
 	case OpPowInt:
 		sb.WriteString("PowInt")
 	case OpPowFloat:
@@ -205,10 +201,6 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("StrTrimRight")
 	case OpIndexGet:
 		sb.WriteString("IndexGet")
-	case OpIndexSet:
-		sb.WriteString("IndexSet")
-	case OpFieldSet:
-		sb.WriteString("FieldSet")
 	case OpArrayNew:
 		fmt.Fprintf(&sb, "ArrayNew %d", instr.Arg1)
 	case OpMapNew:
@@ -221,8 +213,6 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		fmt.Fprintf(&sb, "JumpIfFalse %+d", int16(instr.Arg1))
 	case OpJump:
 		fmt.Fprintf(&sb, "Jump %+d", int16(instr.Arg1))
-	case OpTernaryCond:
-		fmt.Fprintf(&sb, "TernaryCond %+d", int16(instr.Arg1))
 	case OpLoadConstSmallInt:
 		fmt.Fprintf(&sb, "LoadConstSmallInt %d", int16(instr.Arg1))
 	case OpLoadNil:

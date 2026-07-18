@@ -289,6 +289,64 @@ assert (false or true) == true, "false or true"
 assert (true or false) == true, "true or false"
 assert ("" or "fallback") == "fallback", "or string fallback"
 
+println "\n=== Section 20: Ternary Operator ==="
+
+# basic ternary
+assert (true ? "yes" : "no") == "yes", "true ? yes : no"
+assert (false ? "yes" : "no") == "no", "false ? yes : no"
+
+# ternary with numeric results
+assert (1 > 0 ? 10 : 20) == 10, "1>0 ? 10 : 20"
+assert (1 < 0 ? 10 : 20) == 20, "1<0 ? 10 : 20"
+
+# ternary with expressions
+x = 5
+assert (x > 3 ? x * 2 : x + 1) == 10, "ternary with expr true"
+assert (x < 3 ? x * 2 : x + 1) == 6, "ternary with expr false"
+
+# nested ternary
+assert (true ? (false ? "a" : "b") : "c") == "b", "nested ternary inner"
+assert (false ? "a" : (true ? "b" : "c")) == "b", "nested ternary outer"
+
+# ternary with nil
+assert (true ? nil : "x") == nil, "ternary true nil"
+assert (false ? nil : "x") == "x", "ternary false not nil"
+
+# ternary result used in further expressions
+assert (true ? 1 : 0) + (false ? 0 : 1) == 2, "ternary in arithmetic"
+assert ((true ? 3 : 0) > 2), "ternary in comparison"
+
+println "\n=== Section 21: Constant Folding && and || ==="
+
+# && with known false left (short-circuit: right never evaluated)
+assert (false && true) == false, "false && true = false"
+assert (false && false) == false, "false && false = false"
+assert (false && 42) == false, "false && truthy = false"
+
+# && with known true left (result is right side coerced to bool)
+assert (true && true) == true, "true && true = true"
+assert (true && false) == false, "true && false = false"
+assert (true && 42) == true, "true && truthy = true"
+assert (true && 0) == false, "true && falsy = false"
+
+# || with known true left (short-circuit: right never evaluated)
+assert (true || true) == true, "true || true = true"
+assert (true || false) == true, "true || false = true"
+assert (true || 0) == true, "true || falsy = true"
+
+# || with known false left (result is right side)
+assert (false || true) == true, "false || true = true"
+assert (false || false) == false, "false || false = false"
+assert (false || 42) == true, "false || truthy = true"
+
+# || string folding
+assert ("hello" || "world") == "hello", "nonempty || any = left"
+assert ("" || "fallback") == "fallback", "empty || right = right"
+
+# &&/|| precedence with folding
+assert (false && true || true) == true, "false && true || true"
+assert (true || false && false) == true, "true || false && false"
+
 println "\n=== Results ==="
 println "Passed: " + as_string(passed)
 println "Failed: " + as_string(failed)

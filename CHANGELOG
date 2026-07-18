@@ -171,6 +171,20 @@ interpreter/vm changes
       - or keyword (C_Or) now compiles to bytecode instead of falling back to interpreter
       - test coverage: za_tests/test_vm.za section 19
 
+  * changed && and || precedence to match C: && (prec 16) binds tighter than || (prec 14)
+      - previously both were at prec 15, which caused short-circuit skip to eat ||/&& incorrectly
+      - interpreter skip loop now respects operator precedence (stops at lower-prec operators)
+      - bytecode compiler compileLand/compileLor use prec+1 for right-side parsing
+      - test coverage: za_tests/test_vm.za sections 19 and 21
+
+  * asBool() optimised for *big.Int / *big.Float — uses .Sign() instead of .Cmp(GetAsBigInt(0))
+      - eliminates heap allocation per boolean coercion of big types
+      - thread-safe: no shared mutable state (GetAsBigInt(0) returned an escaped local)
+
+  * poolIndex() fast path avoids reflect.TypeOf() for common constant types
+      - type-switch on int, float64, string, bool, *big.Int, *big.Float
+      - falls back to reflect.TypeOf().Comparable() only for slices/maps/etc
+
   * added OpLoadConstBool opcode — bools encoded directly in instruction arg
       - eliminates pool lookup for boolean constants (true/false)
       - Arg1 = 0 for false, 1 for true; VM pushes bool(Arg1 != 0)

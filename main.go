@@ -546,10 +546,10 @@ func main() {
     default_prectable[O_Filter] = 9
     default_prectable[O_Try] = 10 // ?? operator - higher than assignment, lower than logical operators
 
-    // booleans @note: and/or + &&/|| tokenisation needs tidying
-    default_prectable[SYM_LOR] = 15  // L13
-    default_prectable[C_Or] = 15     // L13
-    default_prectable[SYM_LAND] = 15 // L12
+    // booleans — &&/and binds tighter than ||/or (matches C precedence)
+    default_prectable[SYM_LAND] = 16 // L12 — tighter than ||
+    default_prectable[SYM_LOR] = 14  // L13 — looser than &&
+    default_prectable[C_Or] = 14     // L13 — synonym for ||
 
     // bit-wise
     default_prectable[SYM_BAND] = 20   // L07

@@ -223,20 +223,29 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
         brace_level := 0
     skiploop1:
         for {
-            switch p.peek().tokType {
+            peek := p.peek()
+            switch peek.tokType {
             case LParen:
                 brace_level += 1
             case RParen:
                 if brace_level == 0 {
-                    // pf("[skip breaking on token %v] ",tokNames[p.peek().tokType])
                     break skiploop1
                 }
                 brace_level -= 1
             case O_Comma, SYM_COLON, EOF:
-                // pf("[skip breaking on token %v] ",tokNames[p.peek().tokType])
                 break skiploop1
+            default:
+                // Stop at binary operators outside nested parens that
+                // wouldn't be in the right-side at the current precedence
+                // level.  Tokens with prec 1 are operands/atoms (always
+                // consumed); prec > 1 are real operators.
+                if brace_level == 0 {
+                    pp := p.prectable[peek.tokType]
+                    if pp > 1 && prec >= pp {
+                        break skiploop1
+                    }
+                }
             }
-            // pf("[skip token %+v] ",p.peek())
             p.next()
         }
         return left, err

@@ -14,9 +14,9 @@ func initDefaultPrecedence() {
     default_prectable[O_Assign] = 5 // L09
     default_prectable[O_Map] = 7
     default_prectable[O_Filter] = 9
-    default_prectable[SYM_LOR] = 15    // L13
-    default_prectable[C_Or] = 15       // L13
-    default_prectable[SYM_LAND] = 15   // L12
+    default_prectable[SYM_LAND] = 16   // L12 — tighter than ||
+    default_prectable[SYM_LOR] = 14    // L13 — looser than &&
+    default_prectable[C_Or] = 14       // L13 — synonym for ||
     default_prectable[SYM_BAND] = 20   // L07
     default_prectable[SYM_BOR] = 20    // L07
     default_prectable[SYM_Caret] = 20  // L07

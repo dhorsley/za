@@ -307,14 +307,6 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 				vmPool.Put(vm)
 				return nil, fmt.Errorf("cannot negate type %T", a)
 			}
-		case OpAnd:
-			b := vm.pop()
-			a := vm.pop()
-			vm.push(asBool(a) && asBool(b))
-		case OpOr:
-			b := vm.pop()
-			a := vm.pop()
-			vm.push(asBool(a) || asBool(b))
 		case OpPowInt:
 			b := vm.pop().(int)
 			a := vm.pop().(int)
@@ -380,13 +372,6 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			idx := vm.pop()
 			container := vm.pop()
 			vm.push(accessArray(vm.ident, container, idx))
-		case OpIndexSet:
-			// Not used in v1 expression-only mode
-			vmPool.Put(vm)
-			return nil, fmt.Errorf("IndexSet not supported in expression mode")
-		case OpFieldSet:
-			vmPool.Put(vm)
-			return nil, fmt.Errorf("FieldSet not supported in expression mode")
 		case OpArrayNew:
 			count := int(instr.Arg1)
 			ary := make([]any, count)
@@ -411,10 +396,6 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			}
 		case OpJump:
 			pc += int(int16(instr.Arg1)) - 1
-		case OpTernaryCond:
-			// Not supported in v1
-			vmPool.Put(vm)
-			return nil, fmt.Errorf("TernaryCond not supported in bytecode v1")
 		case OpLand:
 			left := vm.peek()
 			if !asBool(left) {
