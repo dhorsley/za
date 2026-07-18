@@ -275,7 +275,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                 tryEndLine = curLine + 1
 
                 // Extract and process try block content
-                if tryStartOffset > 0 && tryContentStart >= 0 {
+                if tryStartOffset >= 0 && tryContentStart >= 0 {
                     if tryContentStart < pos {
                         tryBlockContent := input[tryContentStart:pos]
                         // pf("DEBUG: phraseParse try block - content length=%d\n", len(tryBlockContent))

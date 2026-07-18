@@ -21,6 +21,12 @@ type ExprVM struct {
 	pool         []any
 	namespace    string
 	withEnumName string
+	// Conditional-block tracking for assignment-time type correction
+	ifDepth    int32
+	onDoAction bool
+
+	// sourceBase holds the original functionspace index where the bytecode was parsed.
+	sourceBase uint32
 }
 
 // vmPool reuses VM instances to avoid allocation overhead in hot loops.
@@ -32,7 +38,7 @@ var vmPool = sync.Pool{
 	},
 }
 
-func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int) (result any, retErr error) {
+func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int, ifDepth int32, onDoAction bool, sourceBase uint32) (result any, retErr error) {
 	vm := vmPool.Get().(*ExprVM)
 	vm.sp = 0
 	vm.fs = fs
@@ -41,6 +47,9 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 	vm.pool = pool
 	vm.namespace = "main"
 	vm.withEnumName = withEnumName
+	vm.ifDepth = ifDepth
+	vm.onDoAction = onDoAction
+	vm.sourceBase = sourceBase
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -559,6 +568,11 @@ func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
 	}
 
 	target := &(*vm.ident)[bin]
+
+	// Assignment-time type correction inside conditional blocks (loops may reassign)
+	if vm.ifDepth > 0 || vm.onDoAction {
+		val = maybeCorrectAssignmentType(name, val, vm.sourceBase)
+	}
 
 	if !target.declared {
 		target.IName = name

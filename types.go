@@ -191,21 +191,24 @@ func (t Token) String() string {
 
 // holds the details of a function call.
 type call_s struct {
-    caller     uint32 // the thing which made the call
-    base       uint32 // the original functionspace location of the source
-    retvals    any    // returned values from the call
-    fs         string // the text name of the calling party
-    gcShyness  uint32 // how many turns of the allocator before final disposal
-    prepared   bool   // some fields pre-filled by caller
-    gc         bool   // marked by Call() when disposable
-    disposable bool
-    filename   string // source file name
-    callLine   int32  // atomic: source line number where this call was made
-    isTryBlock bool   // true if this function space is a try block
-    // Exception state - async-safe per-call exception context
-    activeException          unsafe.Pointer // atomic pointer to exceptionInfo - current exception in this call context
-    currentCatchMatched      int32          // atomic: 1 if current exception was caught, 0 if not
-    defaultExceptionCategory any            // default exception category from try throws clause (can be string or enum value)
+	caller     uint32 // the thing which made the call
+	base       uint32 // the original functionspace location of the source
+	retvals    any    // returned values from the call
+	fs         string // the text name of the calling party
+	gcShyness  uint32 // how many turns of the allocator before final disposal
+	prepared   bool   // some fields pre-filled by caller
+	gc         bool   // marked by Call() when disposable
+	disposable bool
+	filename   string // source file name
+	callLine   int32  // atomic: source line number where this call was made
+	isTryBlock bool   // true if this function space is a try block
+	// Exception state - async-safe per-call exception context
+	activeException          unsafe.Pointer // atomic pointer to exceptionInfo - current exception in this call context
+	currentCatchMatched      int32          // atomic: 1 if current exception was caught, 0 if not
+	defaultExceptionCategory any            // default exception category from try throws clause (can be string or enum value)
+	// sourceBase holds the original functionspace index where the bytecode was parsed,
+	// used to look up fnTypeHints at the correct parse-time index.
+	sourceBase uint32
 }
 
 func (cs call_s) String() string {

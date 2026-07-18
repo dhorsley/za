@@ -49,7 +49,7 @@ func showIdent(ident *[]Variable) {
 // Returns (result, error). Used for IF conditions.
 func evalExprOrVM(bc *phraseBytecode, tokens []Token, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16, label string) (any, error) {
     if bc != nil && bc.compiled && !bc.isAssign {
-        result, err := runExprVM(bc.code, bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        result, err := runExprVM(bc.code, bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         if bcDebugExec {
             if err != nil {
                 fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d %s error: %v\n", ifs, sourceLine, label, err)
@@ -66,7 +66,7 @@ func evalExprOrVM(bc *phraseBytecode, tokens []Token, parser *leparser, ifs uint
 // Returns (result bool, ok bool, condBC *phraseBytecode).
 func evalWhileCond(inbound *Phrase, etoks []Token, parser *leparser, ifs uint32, ident *[]Variable) (bool, bool, *phraseBytecode) {
     if inbound.bc != nil && inbound.bc.compiled && !inbound.bc.isAssign {
-        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         if bcDebugExec {
             if err != nil {
                 fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d while-condition error: %v\n", ifs, inbound.SourceLine, err)
@@ -96,7 +96,7 @@ func evalWhileCond(inbound *Phrase, etoks []Token, parser *leparser, ifs uint32,
 // Returns (result bool, ok bool).
 func evalEndwhileCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) (bool, bool) {
     if cond.repeatCondBC != nil && cond.repeatCondBC.compiled && !cond.repeatCondBC.isAssign {
-        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         if bcDebugExec {
             if err != nil {
                 fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d endwhile-condition error: %v\n", ifs, sourceLine, err)
@@ -126,7 +126,7 @@ func evalEndwhileCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variab
 // Returns true on success, false on error.
 func evalForAmend(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) bool {
     if cond.repeatAmendmentBC != nil && cond.repeatAmendmentBC.compiled && !cond.repeatAmendmentBC.isAssign {
-        _, err := runExprVM(cond.repeatAmendmentBC.code, cond.repeatAmendmentBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        _, err := runExprVM(cond.repeatAmendmentBC.code, cond.repeatAmendmentBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         if bcDebugExec {
             if err != nil {
                 fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-amendment error: %v\n", ifs, sourceLine, err)
@@ -144,7 +144,7 @@ func evalForAmend(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, 
 // Returns (result bool, ok bool).
 func evalForCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, sourceLine int16) (bool, bool) {
     if cond.repeatCondBC != nil && cond.repeatCondBC.compiled && !cond.repeatCondBC.isAssign {
-        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine))
+        result, err := runExprVM(cond.repeatCondBC.code, cond.repeatCondBC.pool, ifs, ident, parser.mident, parser.with_enum_name, int(sourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         if bcDebugExec {
             if err != nil {
                 fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d for-condition error: %v\n", ifs, sourceLine, err)
@@ -172,9 +172,9 @@ func evalForCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, s
 
 // evalDefaultCase evaluates a bare expression or assignment using bytecode VM or parser fallback.
 func evalDefaultCase(inbound *Phrase, parser *leparser, ifs uint32, ident *[]Variable) ExpressionCarton {
-    if inbound.bc != nil && inbound.bc.compiled {
+	if inbound.bc != nil && inbound.bc.compiled {
         if inbound.bc.vmAssigned {
-            _, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+            _, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
             we := ExpressionCarton{}
             if err != nil {
                 we.evalError = true
@@ -193,7 +193,7 @@ func evalDefaultCase(inbound *Phrase, parser *leparser, ifs uint32, ident *[]Var
             return we
         }
         if inbound.bc.isAssign {
-            result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+            result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
             we := ExpressionCarton{}
             if err != nil {
                 we.evalError = true
@@ -216,7 +216,7 @@ func evalDefaultCase(inbound *Phrase, parser *leparser, ifs uint32, ident *[]Var
             }
             return we
         }
-        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+        result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine), parser.ifDepth, parser.onDoAction, parser.sourceBase)
         we := ExpressionCarton{}
         if err != nil {
             we.evalError = true
@@ -1647,6 +1647,8 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     // where the tokens are:
     source_base = calltable[csloc].base
 
+    parser.sourceBase = source_base
+
     currentModule = basemodmap[source_base]
     parser.namespace = currentModule
     interparse.namespace = currentModule
@@ -1654,6 +1656,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     // the uint32 id attached to fs name
     ifs, _ := fnlookup.lmget(fs)
+
     calllock.Unlock()
 
     fname, exists := fileMap.Load(calltable[source_base].base)
@@ -1834,6 +1837,7 @@ tco_reentry:
     var we ExpressionCarton // pre-allocated for general expression results eval
     var expr any            // pre-allocated for wrapped expression results eval
     var err error
+    var ifDepth int32       // nested IF block depth for assignment-time type correction
 
     typeInvalid := false // used during struct building for indicating type validity.
     statement := Error
@@ -4736,6 +4740,9 @@ tco_reentry:
                                 // action!
                                 inbound = &p
                                 basecode_entry = &b
+                                parser.onDoAction = true
+                                ifDepth += 1
+                                parser.ifDepth = ifDepth
                                 goto ondo_reenter
 
                             }
@@ -7560,6 +7567,9 @@ tco_reentry:
 
         case C_If:
 
+            ifDepth += 1
+            parser.ifDepth = ifDepth
+
             // lookahead
             var elsefound, endfound, er bool
             var elsedistance, enddistance int16
@@ -7621,6 +7631,10 @@ tco_reentry:
         case C_Endif:
 
             // ENDIF *should* just be an end-of-block marker
+            if ifDepth > 0 {
+                ifDepth -= 1
+                parser.ifDepth = ifDepth
+            }
 
         case C_Debug:
             // "debug on|off|break"
@@ -7834,12 +7848,12 @@ tco_reentry:
 
                                         // Jump to first catch block - look in the current function space, not the try block function space
                                         // Start looking from after the inner try block (pc+2 to skip the inner endtry)
-                                        catchFound, catchDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+                                        catchFound, catchDistance, err := lookahead(source_base, parser.pc+2, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
                                         if catchFound {
                                         }
                                         if err || !catchFound {
                                             // No catch blocks found - look for endtry
-                                            endtryFound, endtryDistance, err := lookahead(ifs, parser.pc+2, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+                                            endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+2, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
                                             if endtryFound {
                                             }
                                             if err || !endtryFound {
@@ -8632,6 +8646,13 @@ tco_reentry:
             }
 
         } // end-statements-case
+
+        // Decrement ifDepth after ON..DO action has been processed
+        if parser.onDoAction {
+            ifDepth -= 1
+            parser.ifDepth = ifDepth
+            parser.onDoAction = false
+        }
 
     } // end-pc-loop
 

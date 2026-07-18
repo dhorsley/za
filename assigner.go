@@ -550,6 +550,9 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
         la := len(assignee)
 
         if la == 1 { // a = val
+            if p.ifDepth > 0 || p.onDoAction {
+                value = maybeCorrectAssignmentType(assignee[0].tokText, value, p.sourceBase)
+            }
             vset(&assignee[0], lfs, lident, assignee[0].tokText, value)
             return
         }

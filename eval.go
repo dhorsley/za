@@ -82,6 +82,13 @@ type leparser struct {
     inside_with_enum   bool
     with_struct_name   string
     with_enum_name     string
+
+    // Conditional-block tracking for assignment-time type correction
+    ifDepth     int32
+    onDoAction  bool
+
+    // sourceBase holds the original functionspace index where the bytecode was parsed.
+    sourceBase uint32
 }
 
 func (p *leparser) next() Token {
@@ -2645,6 +2652,42 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
     }
 
     return
+}
+
+// maybeCorrectAssignmentType converts a value to match the compiler's inferred
+// type when the assignment happens inside a conditional block (IF/ELSE or ON..DO).
+// This prevents type-mismatch panics when one branch assigns a different type
+// than the compiler inferred from another branch.
+func maybeCorrectAssignmentType(name string, value any, sourceBase uint32) any {
+    fnTypeHintsLock.RLock()
+    hint, exists := fnTypeHints[sourceBase][name]
+    fnTypeHintsLock.RUnlock()
+
+    if !exists {
+        return value
+    }
+
+    switch hint {
+    case hintFloat:
+        if v, ok := value.(int); ok {
+            return float64(v)
+        }
+        if v, ok := value.(int64); ok {
+            return float64(v)
+        }
+        if v, ok := value.(uint); ok {
+            return float64(v)
+        }
+        if v, ok := value.(uint64); ok {
+            return float64(v)
+        }
+    case hintInt:
+        if v, ok := value.(float64); ok {
+            return int(v)
+        }
+    }
+
+    return value
 }
 
 func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bool) {
