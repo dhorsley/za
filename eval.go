@@ -2555,13 +2555,13 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
         case kbigi:
             switch value.(type) {
             case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-                (*ident)[bin].IValue.(*big.Int).Set(GetAsBigInt(value))
+                GetAsBigIntInto((*ident)[bin].IValue.(*big.Int), value)
                 ok = true
             }
         case kbigf:
             switch value.(type) {
             case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-                (*ident)[bin].IValue.(*big.Float).Set(GetAsBigFloat(value))
+                GetAsBigFloatInto((*ident)[bin].IValue.(*big.Float), value)
                 ok = true
             }
 
@@ -3002,7 +3002,11 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
             copy(newar, (*ident)[bin].IValue.([]*big.Int))
             (*ident)[bin].IValue = newar
         }
-        (*ident)[bin].IValue.([]*big.Int)[numel] = GetAsBigInt(value)
+        if slot := (*ident)[bin].IValue.([]*big.Int)[numel]; slot != nil {
+            GetAsBigIntInto(slot, value)
+        } else {
+            (*ident)[bin].IValue.([]*big.Int)[numel] = GetAsBigInt(value)
+        }
 
     case []*big.Float:
         sz := cap((*ident)[bin].IValue.([]*big.Float))
@@ -3022,7 +3026,11 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
             copy(newar, (*ident)[bin].IValue.([]*big.Float))
             (*ident)[bin].IValue = newar
         }
-        (*ident)[bin].IValue.([]*big.Float)[numel] = GetAsBigFloat(value)
+        if slot := (*ident)[bin].IValue.([]*big.Float)[numel]; slot != nil {
+            GetAsBigFloatInto(slot, value)
+        } else {
+            (*ident)[bin].IValue.([]*big.Float)[numel] = GetAsBigFloat(value)
+        }
 
     case []any:
         sz := cap((*ident)[bin].IValue.([]any))

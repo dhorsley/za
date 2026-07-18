@@ -586,18 +586,18 @@ func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
 			_, ok = val.(uint8)
 		case kstring:
 			_, ok = val.(string)
-		case kbigi:
-			switch val.(type) {
-			case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-				target.IValue.(*big.Int).Set(GetAsBigInt(val))
-				ok = true
-			}
-		case kbigf:
-			switch val.(type) {
-			case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
-				target.IValue.(*big.Float).Set(GetAsBigFloat(val))
-				ok = true
-			}
+        case kbigi:
+            switch val.(type) {
+            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+                GetAsBigIntInto(target.IValue.(*big.Int), val)
+                ok = true
+            }
+        case kbigf:
+            switch val.(type) {
+            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+                GetAsBigFloatInto(target.IValue.(*big.Float), val)
+                ok = true
+            }
 		case kmap:
 			_, ok = val.(map[string]any)
 		case kpointer:

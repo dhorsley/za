@@ -185,6 +185,21 @@ interpreter/vm changes
       - type-switch on int, float64, string, bool, *big.Int, *big.Float
       - falls back to reflect.TypeOf().Comparable() only for slices/maps/etc
 
+  * bind_int() uses RLock for read-only lookup path (phraser.go)
+      - most common case is "already bound" — now reads in parallel under contention
+      - write lock (Lock) only taken when inserting a new binding
+      - double-check after upgrading to prevent lost inserts
+
+  * added GetAsBigIntInto / GetAsBigFloatInto (actor.go) — zero-allocation big conversions
+      - writes directly into an existing *big.Int / *big.Float instead of heap-allocating
+      - used in VM storeLocal (kbigi/kbigf) and interpreter big-type assignments
+      - eliminates the allocation waste where .Set() copied and immediately discarded it
+
+  * big array slot reuse in interpreter big-type element assignment (eval.go)
+      - when writing to an existing non-nil slot in []*big.Int or []*big.Float array
+      - reuses the existing slot via GetAsBigIntInto / GetAsBigFloatInto instead of allocating new
+      - only allocates when the slot is nil (first write or after append growth)
+
   * added OpLoadConstBool opcode — bools encoded directly in instruction arg
       - eliminates pool lookup for boolean constants (true/false)
       - Arg1 = 0 for false, 1 for true; VM pushes bool(Arg1 != 0)

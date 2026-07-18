@@ -50,18 +50,30 @@ func bind_int(fs uint32, name string) (i uint64) {
 
     // fmt.Printf("Bind request for %s (fs:%d)\n",name,fs)
 
+    // Fast path: read-only lookup (most common case)
+    bindlock.RLock()
+    if bindings[fs] != nil {
+        var present bool
+        i, present = bindings[fs][name]
+        if present {
+            bindlock.RUnlock()
+            return
+        }
+    }
+    bindlock.RUnlock()
+
+    // Slow path: may create map or insert new binding
     bindlock.Lock()
+    defer bindlock.Unlock()
 
     if bindings[fs] == nil {
         bindings[fs] = make(map[string]uint64)
-        // fmt.Printf("** CLEANED BINDINGS FOR FS %d\n",fs)
     }
 
+    // Re-check (another goroutine may have inserted while we upgraded)
     var present bool
     i, present = bindings[fs][name]
     if present {
-        // fmt.Printf("present @ %d\n",i)
-        bindlock.Unlock()
         return
     }
 
@@ -84,7 +96,6 @@ func bind_int(fs uint32, name string) (i uint64) {
 
     bindings[fs][name] = i
     // fmt.Printf("new binding @ %d\n",i)
-    bindlock.Unlock()
     return
 }
 

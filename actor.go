@@ -559,6 +559,61 @@ func GetAsBigFloat(i any) *big.Float {
     return &r
 }
 
+// GetAsBigIntInto converts a variety of types into an existing *big.Int
+// without allocating a new one. Use this when the destination already exists
+// and you just need to copy the converted value into it.
+func GetAsBigIntInto(dst *big.Int, i any) {
+    switch v := i.(type) {
+    case uint8:
+        dst.SetInt64(int64(v))
+    case int64:
+        dst.SetInt64(v)
+    case uint32:
+        dst.SetUint64(uint64(v))
+    case uint:
+        dst.SetUint64(uint64(v))
+    case uint64:
+        dst.SetUint64(v)
+    case int:
+        dst.SetInt64(int64(v))
+    case float64:
+        dst.SetInt64(int64(v))
+    case *big.Int:
+        dst.Set(v)
+    case *big.Float:
+        v.Int(dst)
+    case string:
+        dst.SetString(v, 0)
+    }
+}
+
+// GetAsBigFloatInto converts a variety of types into an existing *big.Float
+// without allocating a new one.
+func GetAsBigFloatInto(dst *big.Float, i any) {
+    switch v := i.(type) {
+    case uint8:
+        dst.SetFloat64(float64(v))
+    case int64:
+        dst.SetFloat64(float64(v))
+    case uint32:
+        dst.SetFloat64(float64(v))
+    case uint:
+        dst.SetFloat64(float64(v))
+    case uint64:
+        dst.SetFloat64(float64(v))
+    case int:
+        dst.SetFloat64(float64(v))
+    case float64:
+        dst.SetFloat64(v)
+    case *big.Int:
+        dst.SetInt(v)
+    case *big.Float:
+        dst.Copy(v)
+    case string:
+        dst.SetString(v)
+    }
+}
+
 // GetAsFloat : converts a variety of types to a float
 func GetAsFloat(unk any) (float64, bool) {
     switch i := unk.(type) {
