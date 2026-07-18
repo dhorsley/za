@@ -121,6 +121,47 @@ interpreter/vm changes
       - evalExprOrVM, evalWhileCond, evalEndwhileCond, evalForAmend, evalForCond,
         evalDefaultCase - reduces Call() stack frame size for deep recursion
 
+  * added constant pool deduplication via hash map (O(1) instead of O(n) scan)
+      - expr_compile.go: poolMap map[any]uint16 eliminates linear search for every
+        constant emission; significant speedup for expressions with many literals
+      - exact pointer/string dedup semantics preserved for *big.Int and *big.Float
+
+  * added immediate-value opcodes to avoid pool indirection for common constants
+      - OpLoadConstSmallInt: packs signed 16-bit integers (-32768..32767) directly
+        into Arg1; used for small int literals and folded small-int results
+      - OpLoadNil: no-argument opcode for nil literals; removes pool[0] indirection
+
+  * deferred VM stack zeroing to amortise GC-clear cost
+      - removed vm.stack[vm.sp] = nil from vm.pop() (was one write per pop)
+      - added maxSp tracking in vm.push(); zeros only the touched cells on VM reuse
+      - eliminates ~40M nil-writes per addition_loop benchmark run
+
+  * added constant-folding debug output
+      - ZA_DEBUG_BYTECODE=fold (or =all) emits [BC-FOLDING] lines to stderr
+      - shows compile-time fold operations: op, before values, after result
+      - instrumented at every fold site: arithmetic, comparison, bitwise, unary,
+        string transforms, range, and membership
+
+  * added full simple-assignment bytecode (vmAssigned) — VM stores the value
+      - compileSimpleAssign() in expr_compile.go compiles "identifier = expr" end-to-end:
+        RHS expression + OpStoreLocal instead of RHS-only + doAssign()/vset() fallback
+      - scope: single untyped or typed scalar identifier on LHS; rejects strings
+        (interpolation runtime flag), complex LHS (field/index/multi-assign),
+        and compound assignments (+=, -=, etc.)
+      - OpStoreLocal fixed: removed IName = "" bug that broke resolveIdent()
+      - added storeLocal() helper in expr_vm.go replicating full vset() semantics:
+          * concurrent vlock when fs < 3 and concurrent_funcs > 0
+          * ident array growth with identGrowthSize
+          * auto-vivification for undeclared variables (sets IName, declared, ITyped)
+          * runtime typed validation for all IKind values (kint..kpointer, all slice
+            kinds, kdynamic with reflect.AssignableTo, kbigi/kbigf with .Set mutation)
+          * panic on type mismatch matching existing vset() "invalid assignation" message
+      - phraser.go tries compileSimpleAssign first; falls back to existing RHS-only
+        compilation on any failure
+      - actor.go evalDefaultCase has vmAssigned branch: runs VM and skips doAssign()
+      - disassembler shows StoreLocal <bin> "<name>"
+      - addition_loop benchmark (var a int) now hits full VM path for a = a + f
+
 
 fixes
 -----

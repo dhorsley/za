@@ -173,6 +173,25 @@ func evalForCond(cond s_loop, parser *leparser, ifs uint32, ident *[]Variable, s
 // evalDefaultCase evaluates a bare expression or assignment using bytecode VM or parser fallback.
 func evalDefaultCase(inbound *Phrase, parser *leparser, ifs uint32, ident *[]Variable) ExpressionCarton {
     if inbound.bc != nil && inbound.bc.compiled {
+        if inbound.bc.vmAssigned {
+            _, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
+            we := ExpressionCarton{}
+            if err != nil {
+                we.evalError = true
+                we.errVal = err
+            } else {
+                we.evalError = false
+                we.assign = true
+            }
+            if bcDebugExec {
+                if err != nil {
+                    fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d vm-assigned error: %v\n", ifs, inbound.SourceLine, err)
+                } else {
+                    fmt.Fprintf(os.Stderr, "[BC-EXEC] fs=%d line=%d vm-assigned ok\n", ifs, inbound.SourceLine)
+                }
+            }
+            return we
+        }
         if inbound.bc.isAssign {
             result, err := runExprVM(inbound.bc.code, inbound.bc.pool, ifs, ident, parser.mident, parser.with_enum_name, int(inbound.SourceLine))
             we := ExpressionCarton{}

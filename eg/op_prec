@@ -42,7 +42,7 @@ test9 = truthy ? 1 : 0 == 1
 println "test9 (ternary looser than ==): {test9}"
 
 # 9. Shift vs bitwise
-test10 = 1 << 2 | 1 == 5  # (1 << 2) = 4, 4 | 1 = 5
+test10 = (1 << 2 | 1) == 5  # (1 << 2) = 4, 4 | 1 = 5
 println "test10 (<< before |): {test10}"
 
 # 10. And vs or

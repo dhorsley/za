@@ -19,12 +19,13 @@ type Phrase struct {
 }
 
 type phraseBytecode struct {
-    code      []Instr
-    pool      []any
-    compiled  bool
-    fallback  bool
-    isAssign  bool
-    assignPos int
+    code       []Instr
+    pool       []any
+    compiled   bool
+    fallback   bool
+    isAssign   bool
+    assignPos  int
+    vmAssigned bool
 }
 
 type OpCode uint8
@@ -105,6 +106,8 @@ const (
     OpJumpIfFalse
     OpJump
     OpTernaryCond
+    OpLoadConstSmallInt
+    OpLoadNil
     OpEnd
 )
 

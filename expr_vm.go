@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 type ExprVM struct {
 	stack        []any
 	sp           int
+	maxSp        int
 	fs           uint32
 	ident        *[]Variable
 	midentFS     uint32
@@ -33,7 +35,12 @@ var vmPool = sync.Pool{
 
 func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS uint32, withEnumName string, sourceLine int) (any, error) {
 	vm := vmPool.Get().(*ExprVM)
+	// Reset any stale references from a prior execution before reusing the stack.
+	for i := 0; i < vm.maxSp; i++ {
+		vm.stack[i] = nil
+	}
 	vm.sp = 0
+	vm.maxSp = 0
 	vm.fs = fs
 	vm.ident = ident
 	vm.midentFS = midentFS
@@ -91,6 +98,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			vm.push(pool[instr.Arg1])
 		case OpLoadConstString:
 			vm.push(pool[instr.Arg1])
+		case OpLoadConstSmallInt:
+			vm.push(int(int16(instr.Arg1)))
+		case OpLoadNil:
+			vm.push(nil)
 		case OpLoadLocal:
 			bin := uint64(instr.Arg1)
 			if bin < uint64(len(*vm.ident)) && (*vm.ident)[bin].declared {
@@ -125,14 +136,8 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 		case OpStoreLocal:
 			val := vm.pop()
 			bin := uint64(instr.Arg1)
-			if bin >= uint64(len(*vm.ident)) {
-				newIdent := make([]Variable, bin+identGrowthSize)
-				copy(newIdent, *vm.ident)
-				*vm.ident = newIdent
-			}
-			(*vm.ident)[bin].IName = ""
-			(*vm.ident)[bin].declared = true
-			(*vm.ident)[bin].IValue = val
+			name := vm.pool[instr.Arg2].(string)
+			vm.storeLocal(bin, name, val)
 		case OpPop:
 			vm.pop()
 		case OpDup:
@@ -433,6 +438,9 @@ func (vm *ExprVM) push(v any) {
 	}
 	vm.stack[vm.sp] = v
 	vm.sp++
+	if vm.sp > vm.maxSp {
+		vm.maxSp = vm.sp
+	}
 }
 
 func (vm *ExprVM) pop() any {
@@ -440,9 +448,7 @@ func (vm *ExprVM) pop() any {
 		panic("stack underflow")
 	}
 	vm.sp--
-	v := vm.stack[vm.sp]
-	vm.stack[vm.sp] = nil
-	return v
+	return vm.stack[vm.sp]
 }
 
 func (vm *ExprVM) peek() any {
@@ -547,6 +553,109 @@ func accessField(obj any, fieldName string) any {
 	return nil
 }
 
+
+// storeLocal replicates the full vset() semantics inside the VM.
+func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
+	needLock := vm.fs < 3 && atomic.LoadInt32(&concurrent_funcs) > 0
+	if needLock {
+		vlock.Lock()
+		defer vlock.Unlock()
+	}
+
+	if bin >= uint64(len(*vm.ident)) {
+		newIdent := make([]Variable, bin+identGrowthSize)
+		copy(newIdent, *vm.ident)
+		*vm.ident = newIdent
+	}
+
+	target := &(*vm.ident)[bin]
+
+	if !target.declared {
+		target.IName = name
+		target.declared = true
+		target.ITyped = false
+		target.IKind = 0
+	}
+
+	if target.ITyped {
+		var ok bool
+		switch target.IKind {
+		case kint:
+			_, ok = val.(int)
+		case kfloat:
+			_, ok = val.(float64)
+		case kbool:
+			_, ok = val.(bool)
+		case kuint:
+			_, ok = val.(uint)
+		case kuint64:
+			_, ok = val.(uint64)
+		case kint64:
+			_, ok = val.(int64)
+		case kbyte:
+			_, ok = val.(uint8)
+		case kstring:
+			_, ok = val.(string)
+		case kbigi:
+			switch val.(type) {
+			case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+				target.IValue.(*big.Int).Set(GetAsBigInt(val))
+				ok = true
+			}
+		case kbigf:
+			switch val.(type) {
+			case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+				target.IValue.(*big.Float).Set(GetAsBigFloat(val))
+				ok = true
+			}
+		case kmap:
+			_, ok = val.(map[string]any)
+		case kpointer:
+			_, ok = val.(*CPointerValue)
+			if !ok && val == nil {
+				ok = true
+			}
+		case ksint:
+			_, ok = val.([]int)
+		case ksint64:
+			_, ok = val.([]int64)
+		case ksuint:
+			_, ok = val.([]uint)
+		case ksuint64:
+			_, ok = val.([]uint64)
+		case ksfloat:
+			_, ok = val.([]float64)
+		case ksstring:
+			_, ok = val.([]string)
+		case ksbool:
+			_, ok = val.([]bool)
+		case ksbyte:
+			_, ok = val.([]uint8)
+		case ksbigi:
+			_, ok = val.([]*big.Int)
+		case ksbigf:
+			_, ok = val.([]*big.Float)
+		case ksany:
+			_, ok = val.([]any)
+		case kdynamic:
+			if target.IValue != nil {
+				targetType := reflect.TypeOf(target.IValue)
+				valueType := reflect.TypeOf(val)
+				if valueType != nil && valueType.AssignableTo(targetType) {
+					ok = true
+				}
+			}
+		}
+
+		if !ok {
+			panic(fmt.Errorf("invalid assignation : to type [%T] of [%T]", target.IValue, val))
+		}
+	}
+
+	if !target.ITyped || (target.IKind != kbigi && target.IKind != kbigf) {
+		target.IValue = val
+	}
+}
 
 func isExpressionStart(tok Token) bool {
 	// Returns true if a phrase beginning with this token is an expression

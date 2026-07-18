@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"strings"
 )
 
@@ -42,9 +43,10 @@ type exprCompiler struct {
 	typeHints map[string]typeHint // parse-time type hints from VAR/def/for declarations
 
 	// output
-	code   []Instr
-	pool   []any
-	values []compileValue // value stack, parallel to vm stack during compilation
+	code    []Instr
+	pool    []any
+	poolMap map[any]uint16
+	values  []compileValue // value stack, parallel to vm stack during compilation
 }
 
 func compileExpr(tokens []Token, fs uint32, ident *[]Variable, typeHints map[string]typeHint, namespace string) ([]Instr, []any, error) {
@@ -57,10 +59,12 @@ func compileExpr(tokens []Token, fs uint32, ident *[]Variable, typeHints map[str
 		typeHints: typeHints,
 		code:      make([]Instr, 0, len(tokens)),
 		pool:      make([]any, 0, 8),
-		values:    make([]compileValue, 0, 8),
+		poolMap:   make(map[any]uint16, 8),
+		values:    make([]compileValue, 0, len(tokens)),
 	}
 	// reserve pool[0] as nil
 	c.pool = append(c.pool, nil)
+	c.poolMap[nil] = 0
 
 	if err := c.expression(0); err != nil {
 		return nil, nil, err
@@ -68,6 +72,51 @@ func compileExpr(tokens []Token, fs uint32, ident *[]Variable, typeHints map[str
 	if c.pos+1 < len(c.tokens) {
 		return nil, nil, fmt.Errorf("unexpected token %s after expression", tokNames[c.tokens[c.pos+1].tokType])
 	}
+	c.emit(OpEnd)
+	return c.code, c.pool, nil
+}
+
+// compileSimpleAssign compiles a simple identifier = expr assignment to bytecode
+// where the VM performs both the RHS evaluation and the store.
+func compileSimpleAssign(tokens []Token, fs uint32, ident *[]Variable, typeHints map[string]typeHint, namespace string) ([]Instr, []any, error) {
+	assignPos, hasComma := findAssignment(tokens)
+	if assignPos < 0 || hasComma || assignPos == 0 || assignPos+1 >= len(tokens) {
+		return nil, nil, fmt.Errorf("not a simple assignment")
+	}
+	if tokens[0].tokType != Identifier || assignPos != 1 {
+		return nil, nil, fmt.Errorf("LHS is not a simple identifier")
+	}
+
+	c := &exprCompiler{
+		tokens:    tokens,
+		pos:       1, // position on '=' so expression() starts at RHS
+		fs:        fs,
+		ident:     ident,
+		namespace: namespace,
+		typeHints: typeHints,
+		code:      make([]Instr, 0, len(tokens)),
+		pool:      make([]any, 0, 8),
+		poolMap:   make(map[any]uint16, 8),
+		values:    make([]compileValue, 0, len(tokens)),
+	}
+	c.pool = append(c.pool, nil)
+	c.poolMap[nil] = 0
+
+	if err := c.expression(0); err != nil {
+		return nil, nil, err
+	}
+	if c.pos+1 < len(c.tokens) {
+		return nil, nil, fmt.Errorf("unexpected token %s after expression", tokNames[c.tokens[c.pos+1].tokType])
+	}
+
+	rhs := c.popValue()
+	if rhs.hint == hintString {
+		return nil, nil, fmt.Errorf("string assignment not supported in bytecode")
+	}
+
+	lhs := tokens[0]
+	nameIdx := c.poolIndex(lhs.tokText)
+	c.emit(OpStoreLocal, uint16(lhs.bindpos), nameIdx)
 	c.emit(OpEnd)
 	return c.code, c.pool, nil
 }
@@ -178,6 +227,9 @@ func (c *exprCompiler) nud(tok Token) error {
 		val := c.popValue()
 		if val.constVal != nil {
 			if result, ok := foldNot(val.constVal); ok {
+				if bcDebugFolding {
+					bcDumpFold("Not", []any{val.constVal}, result)
+				}
 				c.code = c.code[:startInstr]
 				c.emitLoadConst(result)
 				c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -194,6 +246,9 @@ func (c *exprCompiler) nud(tok Token) error {
 		val := c.popValue()
 		if val.constVal != nil {
 			if result, ok := foldNeg(val.constVal); ok {
+				if bcDebugFolding {
+					bcDumpFold("Neg", []any{val.constVal}, result)
+				}
 				c.code = c.code[:startInstr]
 				c.emitLoadConst(result)
 				c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -237,6 +292,9 @@ func (c *exprCompiler) nud(tok Token) error {
 		val := c.popValue()
 		if val.constVal != nil {
 			if result, ok := foldStringCase(tok.tokType, val.constVal); ok {
+				if bcDebugFolding {
+					bcDumpFold(tokNames[tok.tokType], []any{val.constVal}, result)
+				}
 				c.code = c.code[:startInstr]
 				c.emitLoadConst(result)
 				c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -316,6 +374,11 @@ func (c *exprCompiler) compileLiteral(tok Token) error {
 	val := tok.tokVal
 	switch v := val.(type) {
 	case int:
+		if v >= -32768 && v <= 32767 {
+			c.emit(OpLoadConstSmallInt, uint16(int16(v)))
+			c.pushValue(compileValue{hint: hintInt, constVal: v, instrIdx: len(c.code) - 1})
+			return nil
+		}
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstInt, idx)
 		c.pushValue(compileValue{hint: hintInt, constVal: v, instrIdx: len(c.code) - 1})
@@ -339,6 +402,9 @@ func (c *exprCompiler) compileLiteral(tok Token) error {
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstString, idx)
 		c.pushValue(compileValue{hint: hintString, constVal: v, instrIdx: len(c.code) - 1})
+	case nil:
+		c.emit(OpLoadNil)
+		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: len(c.code) - 1})
 	default:
 		return fmt.Errorf("unknown literal type %T", val)
 	}
@@ -469,6 +535,9 @@ func (c *exprCompiler) emitBinary(op int64) {
 	// Try constant folding first
 	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
 		if result, ok := foldBinary(op, left.constVal, right.constVal); ok {
+			if bcDebugFolding {
+				bcDumpFold(tokNames[op], []any{left.constVal, right.constVal}, result)
+			}
 			c.code = c.code[:left.instrIdx]
 			c.emitLoadConst(result)
 			c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -519,6 +588,9 @@ func (c *exprCompiler) emitComparison(op int64) {
 	// Try constant folding first
 	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
 		if result, ok := foldComparison(op, left.constVal, right.constVal); ok {
+			if bcDebugFolding {
+				bcDumpFold(tokNames[op], []any{left.constVal, right.constVal}, result)
+			}
 			c.code = c.code[:left.instrIdx]
 			c.emitLoadConst(result)
 			c.pushValue(compileValue{hint: hintBool, constVal: result, instrIdx: len(c.code) - 1})
@@ -577,6 +649,9 @@ func (c *exprCompiler) emitRange() {
 	// Try constant folding
 	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
 		if result, ok := foldRange(left.constVal, right.constVal); ok {
+			if bcDebugFolding {
+				bcDumpFold("Range", []any{left.constVal, right.constVal}, result)
+			}
 			c.code = c.code[:left.instrIdx]
 			c.emitLoadConst(result)
 			c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -595,6 +670,9 @@ func (c *exprCompiler) emitIn() {
 	// Try constant folding
 	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
 		if result, ok := foldIn(left.constVal, right.constVal); ok {
+			if bcDebugFolding {
+				bcDumpFold("In", []any{left.constVal, right.constVal}, result)
+			}
 			c.code = c.code[:left.instrIdx]
 			c.emitLoadConst(result)
 			c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -613,6 +691,9 @@ func (c *exprCompiler) emitBitwise(op int64) {
 	// Try constant folding (integer-only)
 	if left.constVal != nil && right.constVal != nil && left.instrIdx >= 0 {
 		if result, ok := foldBitwise(op, left.constVal, right.constVal); ok {
+			if bcDebugFolding {
+				bcDumpFold(tokNames[op], []any{left.constVal, right.constVal}, result)
+			}
 			c.code = c.code[:left.instrIdx]
 			c.emitLoadConst(result)
 			c.pushValue(compileValueFromResult(result, len(c.code)-1))
@@ -722,8 +803,19 @@ func (c *exprCompiler) compileFieldGet() error {
 }
 
 func (c *exprCompiler) poolIndex(v any) uint16 {
+	// Fast path: map lookup for hashable types (int, float64, string, bool, etc.)
+	if reflect.TypeOf(v).Comparable() {
+		if idx, ok := c.poolMap[v]; ok {
+			return idx
+		}
+		idx := len(c.pool)
+		c.pool = append(c.pool, v)
+		c.poolMap[v] = uint16(idx)
+		return uint16(idx)
+	}
+	// Slow path: linear scan with DeepEqual for non-hashable types (slices, maps)
 	for i, p := range c.pool {
-		if p == v {
+		if reflect.DeepEqual(p, v) {
 			return uint16(i)
 		}
 	}
@@ -736,6 +828,10 @@ func (c *exprCompiler) poolIndex(v any) uint16 {
 func (c *exprCompiler) emitLoadConst(v any) {
 	switch val := v.(type) {
 	case int:
+		if val >= -32768 && val <= 32767 {
+			c.emit(OpLoadConstSmallInt, uint16(int16(val)))
+			return
+		}
 		idx := c.poolIndex(val)
 		c.emit(OpLoadConstInt, idx)
 	case float64:
@@ -753,6 +849,8 @@ func (c *exprCompiler) emitLoadConst(v any) {
 	case *big.Float:
 		idx := c.poolIndex(val)
 		c.emit(OpLoadConstFloat, idx)
+	case nil:
+		c.emit(OpLoadNil)
 	default:
 		// Fallback: generic load via int pool
 		idx := c.poolIndex(v)

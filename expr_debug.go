@@ -78,7 +78,11 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 			fmt.Fprintf(&sb, "LoadIdent #%d", instr.Arg1)
 		}
 	case OpStoreLocal:
-		fmt.Fprintf(&sb, "StoreLocal %d", instr.Arg1)
+		if int(instr.Arg2) < len(pool) {
+			fmt.Fprintf(&sb, "StoreLocal %d %q", instr.Arg1, pool[instr.Arg2])
+		} else {
+			fmt.Fprintf(&sb, "StoreLocal %d", instr.Arg1)
+		}
 	case OpPop:
 		sb.WriteString("Pop")
 	case OpDup:
@@ -215,12 +219,32 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		fmt.Fprintf(&sb, "Jump %+d", int16(instr.Arg1))
 	case OpTernaryCond:
 		fmt.Fprintf(&sb, "TernaryCond %+d", int16(instr.Arg1))
+	case OpLoadConstSmallInt:
+		fmt.Fprintf(&sb, "LoadConstSmallInt %d", int16(instr.Arg1))
+	case OpLoadNil:
+		sb.WriteString("LoadNil")
 	case OpEnd:
 		sb.WriteString("End")
 	default:
 		fmt.Fprintf(&sb, "Unknown(%d)", instr.Op)
 	}
 	return sb.String()
+}
+
+func bcDumpFold(op string, before []any, after any) {
+	if !bcDebugFolding {
+		return
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "[BC-FOLDING] op=%s before=[", op)
+	for i, v := range before {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		fmt.Fprintf(&sb, "%v", v)
+	}
+	fmt.Fprintf(&sb, "] after=%v\n", after)
+	os.Stderr.WriteString(sb.String())
 }
 
 func bcDumpStack(vm *ExprVM) string {

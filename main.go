@@ -38,9 +38,11 @@ import (
 // up to two levels of depth (e.g., `a.b.c` or `a[i].b`) are permitted.
 var F_EnableComplexAssignments = true
 
-// bcDebugCompile and bcDebugExec control bytecode debug output via ZA_DEBUG_BYTECODE env var.
+// bcDebugCompile, bcDebugExec, and bcDebugFolding control bytecode debug output
+// via the ZA_DEBUG_BYTECODE env var.
 var bcDebugCompile bool
 var bcDebugExec bool
+var bcDebugFolding bool
 
 func initBytecodeDebug() {
     v := os.Getenv("ZA_DEBUG_BYTECODE")
@@ -52,10 +54,13 @@ func initBytecodeDebug() {
         case "all", "1", "yes", "true":
             bcDebugCompile = true
             bcDebugExec = true
+            bcDebugFolding = true
         case "exec":
             bcDebugExec = true
         case "compile":
             bcDebugCompile = true
+        case "fold":
+            bcDebugFolding = true
         }
     }
 }
