@@ -3148,6 +3148,26 @@ func isNumber(expr any) bool {
 
 /////////////////////////////////////////
 
+// isValidVarName reports whether s is a simple identifier suitable for
+// brace interpolation (e.g. {foo}). Za variable names must start with a
+// letter or underscore and contain only letters, digits and underscores.
+func isValidVarName(s string) bool {
+    if len(s) == 0 {
+        return false
+    }
+    c := s[0]
+    if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+        return false
+    }
+    for i := 1; i < len(s); i++ {
+        c = s[i]
+        if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+            return false
+        }
+    }
+    return true
+}
+
 func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
     if !interpolation || len(s) == 0 {
         return s
@@ -3178,7 +3198,18 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
 
         for _, v := range matches {
             kn := v[1]
+            if len(kn) == 0 {
+                continue
+            }
             if kn[0] == '=' {
+                continue
+            }
+            // Only interpolate valid simple variable names (alphanumeric
+            // plus underscore, starting with a letter or underscore). This
+            // prevents interpolate() from accidentally consuming blocks of
+            // text that happen to be wrapped in braces (e.g. JSON bodies or
+            // pretty-printed map output) as variable names.
+            if !isValidVarName(kn) {
                 continue
             }
 

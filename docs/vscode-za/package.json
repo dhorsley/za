@@ -1,25 +1,58 @@
 {
   "name": "za-language",
   "displayName": "ZA Language",
-  "description": "Syntax highlighting for ZA programming language",
-  "version": "0.0.1",
+  "description": "Syntax highlighting and LSP support for ZA programming language",
+  "version": "0.1.1",
   "publisher": "za-language",
   "engines": {
     "vscode": "^1.60.0"
   },
-  "categories": ["Programming Languages"],
-  "keywords": ["za", "language", "syntax"],
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "za",
+    "language",
+    "lsp"
+  ],
+  "activationEvents": [
+    "onLanguage:za"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
-    "languages": [{
-      "id": "za",
-      "aliases": ["ZA", "za"],
-      "extensions": [".za"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "za",
-      "scopeName": "source.za",
-      "path": "./syntaxes/za.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "za",
+        "aliases": [
+          "ZA",
+          "za"
+        ],
+        "extensions": [
+          ".za"
+        ],
+        "firstLine": "^#!.*\\bza\\b",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "za",
+        "scopeName": "source.za",
+        "path": "./syntaxes/za.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.60.0",
+    "typescript": "^5.0.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.0"
   }
-} 
+}

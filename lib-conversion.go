@@ -207,33 +207,33 @@ func convertValue(value any, targetTypeStr string) (any, error) {
 
 // Helper function for pretty printing
 func pp(input any, maxDepth int, indent string) (string, error) {
-    // Define colour codes using ZA's sparkle system
-    colours := map[string]string{
-        "key":         "[#5]", // map keys
-        "string":      "[#4]", // string values
-        "number":      "[#6]", // numeric values
-        "boolean":     "[#3]", // boolean values
-        "null":        "[#2]", // null values and errors
-        "map_start":   "[#1]", // map braces
-        "slice_start": "[#1]", // slice brackets
-        "reset":       "[#-]",
-    }
+	// Define colour codes using ZA's sparkle system
+	colours := map[string]string{
+		"key":         "[#5]", // map keys
+		"string":      "[#4]", // string values
+		"number":      "[#6]", // numeric values
+		"boolean":     "[#3]", // boolean values
+		"null":        "[#2]", // null values and errors
+		"map_start":   "[#1]", // map braces
+		"slice_start": "[#1]", // slice brackets
+		"reset":       "[#-]",
+	}
 
-    // Use reflection to handle all types dynamically
-    val := reflect.ValueOf(input)
-    if !val.IsValid() {
-        return sparkle(colours["null"] + "null" + colours["reset"]), nil
-    }
+	// Use reflection to handle all types dynamically
+	val := reflect.ValueOf(input)
+	if !val.IsValid() {
+		return sparkle(colours["null"] + "null" + colours["reset"]), nil
+	}
 
-    // Ensure we have an addressable value for unsafe operations
-    if !val.CanAddr() && val.Kind() != reflect.Ptr && val.Kind() != reflect.Interface {
-        addrCopy := reflect.New(val.Type()).Elem()
-        addrCopy.Set(val)
-        val = addrCopy
-    }
+	// Ensure we have an addressable value for unsafe operations
+	if !val.CanAddr() && val.Kind() != reflect.Ptr && val.Kind() != reflect.Interface {
+		addrCopy := reflect.New(val.Type()).Elem()
+		addrCopy.Set(val)
+		val = addrCopy
+	}
 
-    result := prettyPrintValue(val, "", 0, maxDepth, indent, colours)
-    return result, nil
+	result := prettyPrintValue(val, "", 0, maxDepth, indent, colours)
+	return result, nil
 }
 
 // Recursive pretty printer that works with any reflected type
@@ -1270,7 +1270,7 @@ func buildConversionLib() {
     categories["conversion"] = []string{
         "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
-        "json_decode", "json_format", "json_query", "pp",
+        "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi",
     }
@@ -1566,6 +1566,18 @@ func buildConversionLib() {
 
         return v, nil
 
+    }
+
+    slhelp["json_encode"] = LibHelp{in: "any", out: "string", action: "Convert value to a JSON string."}
+    stdlib["json_encode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("json_encode", args, 1, "1", "any"); !ok {
+            return nil, err
+        }
+        b, err := json.Marshal(args[0])
+        if err != nil {
+            return "", errors.New(sf("could not encode value in json_encode(): %v", err))
+        }
+        return string(b), nil
     }
 
     slhelp["json_format"] = LibHelp{in: "string", out: "string", action: "Return a formatted JSON representation of [#i1]string[#i0], or an empty string on error."}

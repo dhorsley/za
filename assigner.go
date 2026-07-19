@@ -538,24 +538,24 @@ func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varTok
 }
 
 func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *[]Variable, tks []Token, expr *ExpressionCarton, eqPos int, hasComma bool) {
-    // --- Path A: Single Assignment ---
-    if !hasComma {
-        assignee := tks[:eqPos]
-        value := expr.result
-        switch value.(type) {
-        case string:
-            value = interpolate(p.namespace, rfs, rident, value.(string))
-        }
+	// --- Path A: Single Assignment ---
+	if !hasComma {
+		assignee := tks[:eqPos]
+		value := expr.result
+		switch value.(type) {
+		case string:
+			value = interpolate(p.namespace, rfs, rident, value.(string))
+		}
 
-        la := len(assignee)
+		la := len(assignee)
 
-        if la == 1 { // a = val
-            if p.ifDepth > 0 || p.onDoAction {
-                value = maybeCorrectAssignmentType(assignee[0].tokText, value, p.sourceBase)
-            }
-            vset(&assignee[0], lfs, lident, assignee[0].tokText, value)
-            return
-        }
+		if la == 1 { // a = val
+			if p.ifDepth > 0 || p.onDoAction {
+				value = maybeCorrectAssignmentType(assignee[0].tokText, value, p.sourceBase)
+			}
+			vset(&assignee[0], lfs, lident, assignee[0].tokText, value)
+			return
+		}
         if la == 3 && assignee[1].tokType == SYM_DOT { // a.f = val
             err := handleFieldAssignment(lfs, rfs, lident, assignee[0], assignee[2].tokText, value)
             if err != nil {

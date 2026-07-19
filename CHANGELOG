@@ -8,6 +8,11 @@ CHANGE LOG
 library changes
 ---------------
 
+  * added json_encode() to lib-conversion.go
+      - converts any Za value to a JSON string
+      - used by docs/lsp/main.go for robust metadata loading
+      - alternative to pp().stripcc which was brittle with brace patterns
+
   * added native UUID library (lib-uuid.go) - no external dependencies
       - uuid_generate() -> string - generates RFC 4122 version 4 UUIDs
       - uuid_parse(string) -> string - normalizes UUID strings (accepts with/without
@@ -214,6 +219,29 @@ interpreter/vm changes
       - removed from types.go, expr_vm.go, and expr_debug.go
 
 
+UX / editor support
+-------------------
+
+  * added Language Server Protocol (LSP) server and VS Code: extension
+      - docs/lsp/main.go: standalone LSP server using Za introspection
+          * completion: all 634 stdlib functions + local variables + keywords
+          * hover: function signatures and documentation
+          * go-to-definition: for local def/struct/enum definitions
+          * document symbols: outline panel support
+          * signature help: parameter tooltips inside function calls
+          * diagnostics:
+              - structural: unmatched braces, unclosed strings, unclosed blocks
+                (instant, while typing, with 500ms debounce)
+              - subprocess: syntax-check via za -K (on save, zero execution)
+      - docs/vscode-za/: VS Code: extension with syntax highlighting + LSP client
+          * auto-activates on .za files and #!/usr/bin/env za shebang files
+          * bundled za-lsp binary for zero-config setup
+      - docs/lsp/install.sh: one-command installer
+          * checks prerequisites, builds server + extension, installs to VS Code:
+          * includes Neovim setup instructions for nvim-lspconfig
+      - test coverage: manual integration testing with VS Code: + Python LSP client
+
+
 fixes
 -----
 
@@ -274,6 +302,16 @@ fixes
   * fixed foldDiv returning float64 for int/int division
       - was: foldDiv(7, 2) = 3.5 (float64), but OpDivInt does 7/2 = 3 (int)
       - now: foldDiv(7, 2) = 3 (int), matching runtime semantics
+
+  * fixed interpolate() consuming JSON/pretty-printed output as variable names
+      - brace interpolation regex {([^{}]*)} matched entire JSON bodies or
+        pretty-printed map output when no nested braces existed inside values
+      - vget() called bind_int() as side-effect, creating new bindings that
+        aliased existing variables and replaced the output string
+      - added isValidVarName() guard: only simple identifiers (alphanumeric + _)
+        are interpolated; blocks with whitespace or punctuation are skipped
+      - affected: pp(), json_encode(), and any function returning braced text
+        in -e (expression) mode where interpolation is enabled
 
 
 Now considered supported
