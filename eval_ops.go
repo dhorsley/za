@@ -3097,6 +3097,14 @@ func (p *leparser) accessFieldOrFunc(obj any, field string) (any, bool) {
                     }
                 }
             }
+            // Special case: if enum not found in current namespace and pre_name is "keycodes", try main namespace
+            if pre_name == "keycodes" {
+                if _, exists := enum[ename]; !exists {
+                    if _, mainExists := enum["main::keycodes"]; mainExists {
+                        ename = "main::keycodes"
+                    }
+                }
+            }
         }
     }
 

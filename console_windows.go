@@ -293,6 +293,10 @@ func setupDynamicCalls() {
 // / get a keypress
 func wrappedGetCh(p int, disp bool) (k int) {
 
+    if tt == nil {
+        return 27 // ESC - no terminal available
+    }
+
     c, tout, _, _ := getch(p)
 
     if !tout {
@@ -325,6 +329,10 @@ func wrappedGetCh(p int, disp bool) (k int) {
                 k = 15 // replaces Shift In (SI)
             case bytes.Equal(c, []byte{27, 91, 54, 126}): // pgdown
                 k = 14 // replaces Shift Out (SO)
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
+                k = 16
+            case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
+                k = 17
             case bytes.Equal(c, []byte{0x01}): // ESCAPE
                 k = 27
             case bytes.Equal(c, []byte{13}):

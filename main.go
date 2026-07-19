@@ -653,6 +653,9 @@ func main() {
     // - this must come after buildStandardLib() so categories[] is populated
     initializeExceptionEnum()
 
+    // initialize the global keycodes enum
+    initializeKeycodesEnum()
+
     // create lookup list for keywords
     // - this must come before any use of vset()
     keywordset = make(map[string]struct{})

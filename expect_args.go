@@ -128,6 +128,11 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     n += 1
                     continue
                 }
+            case []dirent:
+                if types[p] == "[]dirent" || types[p] == "[]any" {
+                    n += 1
+                    continue
+                }
             }
             // Check for struct types (including anonymous structs)
             if types[p] == "struct" {

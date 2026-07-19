@@ -2797,7 +2797,7 @@ func help_plugin_batch(functionNames []string) {
         }
 
         // Use \r to update in place with clear-to-end-of-line
-        pf(sf("\r[#dim][%d/%d] (%d%%%%) Processing: %s...[#CTE][#-]", progress, total, percentage, displayName))
+        pf("\r[#dim][%d/%d] (%d%%) Processing: %s...[#CTE][#-]", progress, total, percentage, displayName)
 
         // Parse qualified function name
         targetLibrary, actualFunctionName := parseQualifiedFunctionName(funcName)

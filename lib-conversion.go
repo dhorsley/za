@@ -1272,7 +1272,7 @@ func buildConversionLib() {
         "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
         "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
-        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi",
+        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi", "human_size",
     }
 
     slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
@@ -2035,6 +2035,39 @@ func buildConversionLib() {
             return "", errors.New(sf("url_decode: invalid encoded string: %v", err))
         }
         return s, nil
+    }
+
+    slhelp["human_size"] = LibHelp{in: "number", out: "string", action: "Converts a byte count to a human-readable string (B, KB, MB, GB, TB)."}
+    stdlib["human_size"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("human_size", args, 1, "1", "number"); !ok {
+            return nil, err
+        }
+        var n float64
+        switch v := args[0].(type) {
+        case int:
+            n = float64(v)
+        case int64:
+            n = float64(v)
+        case uint64:
+            n = float64(v)
+        case float64:
+            n = v
+        default:
+            return nil, errors.New(sf("human_size: unsupported type %T", v))
+        }
+        if n < 0 {
+            n = 0
+        }
+        units := []string{"B", "KB", "MB", "GB", "TB"}
+        idx := 0
+        for n >= 1024 && idx < len(units)-1 {
+            n /= 1024
+            idx++
+        }
+        if idx == 0 {
+            return sf("%.0f %s", n, units[idx]), nil
+        }
+        return sf("%.1f %s", n, units[idx]), nil
     }
 
 }

@@ -1,0 +1,399 @@
+#!/usr/bin/za
+
+# TUI Disk Inspector
+# Demonstrates: tui_table_select, tui_menu, tui_pager with search,
+#               human_size, keycodes enum, disk_usage with inodes
+
+trap("int","sig_cleanup()")
+
+def sig_cleanup()
+    tui_screen(0)
+    cursoron()
+    exit
+end
+
+# --- helpers ---
+
+def usage_bar(pct)
+    bar_width = 10
+    filled = (pct * bar_width / 100).as_int
+    on filled > bar_width do filled = bar_width
+    empty = bar_width - filled
+    bar = "█" * filled
+    on empty > 0 do bar += "░" * empty
+    return bar
+end
+
+def trunc(s, n)
+    on len(s) > n do return s[0:n-3] + "..."
+    return s
+end
+
+# --- structs for table display ---
+
+struct fsrow
+    device    string
+    mount     string
+    size      string
+    avail     string
+    bar       string
+es
+
+struct drow
+    name      string
+    size      string
+    mode      string
+es
+
+struct durow
+    size      string
+    path      string
+    full_path string
+es
+
+# --- screens ---
+
+def show_filesystems()
+    disks = disk_usage()
+
+    rows = []
+    has_inodes = false
+    foreach d in disks
+        on d.inodes_total > 0 do has_inodes = true
+        pct_val = d.usage_percent
+        bar = usage_bar(pct_val)
+        append_to(ref rows, fsrow(
+            .device trunc(d.path, 16),
+            .mount trunc(d.mounted_path, 22),
+            .size human_size(d.size),
+            .avail human_size(d.available),
+            .bar bar
+        ))
+    endfor
+
+    cls
+    at 1, 1
+    print "[#b1][#6]  Disk Inspector - Filesystems  [##][#-]"
+    at 2, 1
+    print "[#3]Enter=details  Q=quit  B=back[##][#-]"
+
+    t = map(.format "aos", .data rows, .headers true, .row 3, .col 2, .height term_h()-6, .width term_w()-4)
+    t["display"] = [0, 1, 2, 3, 4]
+    # 5 columns, total ~78 chars with borders, fits in 80-col terminals:
+    # device=16, mount=22, size/avail=8, bar=10
+    t["sizes"] = [16, 22, 8, 8, 10]
+
+    s = map(
+        .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+        .hi_bg "[#b1]", .hi_fg "[#6]",
+        .select_bg "1", .select_fg "7",
+        .list ["", "[#1]", "", "[#2]", ""]
+    )
+
+    res = tui_table_select(t, s)
+    return res
+end
+
+def mount_menu(mount_path)
+    cls
+    at 1, 1
+    print "[#b1][#6]  {mount_path}  [##][#-]"
+
+    opts = ["Browse Directories", "Top Space Hogs", "Back"]
+    # check if inodes are available on this mount
+    disks = disk_usage()
+    has_inodes = false
+    foreach d in disks
+        on d.mounted_path == mount_path && d.inodes_total > 0 do has_inodes = true
+    endfor
+    on has_inodes do opts = ["Browse Directories", "Top Space Hogs", "Top Inode Hogs", "Back"]
+
+    m = map(.row 4, .col 4, .title "actions", .height 8, .width 32,
+            .options opts, .prompt "Select action:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
+    ms = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, ms)
+    on menu.Back do return 0, true
+    return menu.Result, menu.Cancel
+end
+
+def browse_dir(path, mount_path)
+    while true
+        d = dir(path, "^.*$", map(.depth 0, .absolute false))
+
+        # sort by size descending
+        d = ssort(d, "size", true)
+
+        rows = []
+        # add ".." parent directory entry at top
+        append_to(ref rows, drow(.name "..", .size "<up>", .mode "D"))
+        foreach f in d
+            sz = human_size(f.size)
+            mode_str = "F"
+            on f.is_dir do mode_str = "D"
+            on f.is_dir do sz = "<dir>"
+            append_to(ref rows, drow(
+                .name f.name,
+                .size sz,
+                .mode mode_str
+            ))
+        endfor
+
+        cls
+        at 1, 1
+        print "[#b1][#6]  {path}  [##][#-]"
+        at 2, 1
+        print "[#3]BS/B=up  Enter=into  S=space  I=inode  Q=back[##][#-]"
+
+        t = map(.format "aos", .data rows, .headers true, .row 4, .col 2, .height term_h()-8, .width term_w()-4)
+        t["display"] = [0, 1, 2]
+
+        s = map(
+            .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+            .hi_bg "[#b1]", .hi_fg "[#6]",
+            .select_bg "1", .select_fg "7",
+            .list ["", "[#2]", "[#4]"]
+        )
+
+        res = tui_table_select(t, s)
+        if res.Back
+            path = $pp path
+            continue
+        endif
+        on res.Cancel do return
+
+        sel = res.Result.as_int
+        on sel < 0 || sel >= len(rows) do return
+
+        if sel == 0
+            path = $pp path
+            continue
+        endif
+
+        chosen = d[sel-1]
+
+        # prompt for action on selected item
+        cls
+        at term_h()/2, term_w()/2-20
+        print "[#b1][#6]{=chosen.name}[##][#-]"
+        at term_h()/2+1, term_w()/2-20
+        print "[#3]Enter=open  BS/B=up  S=space  I=inode  Q=back[##][#-]"
+
+        k = keypress()
+
+        case k
+        is keycodes.ENTER
+            on chosen.is_dir do path = path + "/" + chosen.name
+        has k in [keycodes.BACKSPACE, 98, 66]
+            path = $pp path
+        has k in [115, 83]
+            show_space_hogs(path)
+        has k in [105, 73]
+            show_inode_hogs(path)
+        has k in [keycodes.ESC, 113, 81]
+            return
+        has k in [3]
+            return
+        endcase
+    endwhile
+end
+
+def show_space_hogs(path)
+    while true
+        cls
+        at 1, 1
+        print "[#b1][#6]  Space Hogs: {path}  [##][#-]"
+
+        # Format du output as CSV for easy parsing
+        raw =|du -d 1 -h {path} 2>/dev/null | awk '{print $1 "," $2}'
+        if raw.out == ""
+            at 3, 1
+            print "[#1]No data from du. Is it installed, or is {path} unreadable?[##][#-]"
+            keypress()
+            return
+        endif
+
+        lines = split(raw.out, "\n")
+        rows = []
+        # add ".." parent entry at top
+        append_to(ref rows, durow(.size "", .path "..", .full_path $pp path))
+        foreach line in lines
+            line = replace(line, "^\\s+|\\s+$", "")
+            on line == "" do continue
+            parts = split(line, ",")
+            on len(parts) < 2 do continue
+            # truncate path to fit in terminal
+            ppath = parts[1]
+            on ppath == path do ppath = "."
+            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+        endfor
+
+        t = map(.format "aos", .data rows, .headers true, .row 3, .col 2, .height term_h()-6, .width term_w()-4)
+        t["display"] = [0, 1]
+        # explicit sizes: size=6 for du -h max width, path=40, full_path=0 (hidden)
+        t["sizes"] = [6, 40, 0]
+
+        s = map(
+            .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+            .hi_bg "[#b1]", .hi_fg "[#6]",
+            .select_bg "1", .select_fg "7",
+            .list ["[#2]", ""]
+        )
+
+        res = tui_table_select(t, s)
+        if res.Back
+            path = $pp path
+            continue
+        endif
+        on res.Cancel do return
+
+        sel = res.Result.as_int
+        on sel < 0 || sel >= len(rows) do return
+        if sel == 0
+            path = $pp path
+            continue
+        endif
+
+        sel_path = rows[sel].full_path
+        on sel_path == path do return
+        path = sel_path
+    endwhile
+end
+
+def show_inode_hogs(path)
+    while true
+        cls
+        at 1, 1
+        print "[#b1][#6]  Inode Hogs: {path}  [##][#-]"
+
+        # Try du --inodes (GNU coreutils)
+        raw =|du --inodes -d 1 {path} 2>/dev/null | awk '{print $1 "," $2}'
+        if raw.out == ""
+            # Fallback: use find + sort
+            at 3, 1
+            print "[#3]du --inodes not available, using find fallback...[##][#-]"
+            raw =|find {path} -maxdepth 1 -printf "%i,%p\n" 2>/dev/null | sort -t, -k1 -rn | head -20
+            if raw.out == ""
+                at 5, 1
+                print "[#1]Failed to gather inode info.[##][#-]"
+                keypress()
+                return
+            endif
+            lines = split(raw.out, "\n")
+            rows = []
+            append_to(ref rows, durow(.size "", .path "..", .full_path $pp path))
+            foreach line in lines
+                line = replace(line, "^\\s+|\\s+$", "")
+                on line == "" do continue
+                parts = split(line, ",")
+                on len(parts) < 2 do continue
+                ppath = parts[1]
+                on ppath == path do ppath = "."
+                append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+            endfor
+
+            t = map(.format "aos", .data rows, .headers true, .row 5, .col 2, .height term_h()-8, .width term_w()-4)
+            t["display"] = [0, 1]
+            t["sizes"] = [6, 40, 0]
+
+            s = map(
+                .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+                .hi_bg "[#b1]", .hi_fg "[#6]",
+                .select_bg "1", .select_fg "7",
+                .list ["[#2]", ""]
+            )
+            res = tui_table_select(t, s)
+            if res.Back
+                path = $pp path
+                continue
+            endif
+            on res.Cancel do return
+            sel = res.Result.as_int
+            on sel < 0 || sel >= len(rows) do return
+            if sel == 0
+                path = $pp path
+                continue
+            endif
+            sel_path = rows[sel].full_path
+            on sel_path == path do return
+            path = sel_path
+            continue
+        endif
+
+        lines = split(raw.out, "\n")
+        rows = []
+        append_to(ref rows, durow(.size "", .path "..", .full_path $pp path))
+        foreach line in lines
+            line = replace(line, "^\\s+|\\s+$", "")
+            continue if line == ""
+            parts = split(line, ",")
+            continue if len(parts) < 2
+            ppath = parts[1]
+            on ppath == path do ppath = "."
+            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+        endfor
+
+        t = map(.format "aos", .data rows, .headers true, .row 3, .col 2, .height term_h()-6, .width term_w()-4)
+        t["display"] = [0, 1]
+        t["sizes"] = [6, 40, 0]
+
+        s = map(
+            .border map(.ih "", .iv "│", .tl "╒", .tr "╕", .bl "╘", .br "╛", .tm "═", .bm "═", .lm "│", .rm "│"),
+            .hi_bg "[#b1]", .hi_fg "[#6]",
+            .select_bg "1", .select_fg "7",
+            .list ["[#2]", ""]
+        )
+
+        res = tui_table_select(t, s)
+        if res.Back
+            path = $pp path
+            continue
+        endif
+        on res.Cancel do return
+        sel = res.Result.as_int
+        on sel < 0 || sel >= len(rows) do return
+        if sel == 0
+            path = $pp path
+            continue
+        endif
+        sel_path = rows[sel].full_path
+        on sel_path == path do return
+        path = sel_path
+    endwhile
+end
+
+# --- main ---
+
+tui_screen(1)
+
+while true
+    cursoroff()
+    res = show_filesystems()
+    if res.Back
+        continue
+    endif
+    break if res.Cancel
+
+    disks = disk_usage()
+    mount_path = disks[res.Result].mounted_path
+
+    action, cancelled = mount_menu(mount_path)
+    continue if cancelled
+
+    case action
+    is 1
+        browse_dir(mount_path, mount_path)
+    is 2
+        show_space_hogs(mount_path)
+    is 3
+        show_inode_hogs(mount_path)
+    is 4
+        # back - do nothing, loop continues
+    endcase
+endwhile
+
+tui_screen(0)
+cursoron()
+at term_h(),1
+

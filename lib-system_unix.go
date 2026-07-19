@@ -1487,6 +1487,10 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             usagePercent = float64(used) / float64(total) * 100.0
         }
 
+        inodesTotal := stat.Files
+        inodesFree := stat.Ffree
+        inodesUsed := inodesTotal - inodesFree
+
         diskInfo := map[string]interface{}{
             "path":          device,
             "size":          total,
@@ -1495,6 +1499,9 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             "usage_percent": usagePercent,
             "mounted_path":  mountPoint,
             "fstype":        filesystem,
+            "inodes_total":  inodesTotal,
+            "inodes_free":   inodesFree,
+            "inodes_used":   inodesUsed,
         }
 
         result = append(result, diskInfo)

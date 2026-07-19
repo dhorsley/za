@@ -1302,7 +1302,8 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
     var result []map[string]interface{}
 
     // Use df command for reliable disk usage information on BSD
-    cmd := exec.Command("df", "-k")
+    // df -i provides both block and inode information
+    cmd := exec.Command("df", "-i")
     output, err := cmd.Output()
     if err != nil {
         return result, fmt.Errorf("no such file or directory")
@@ -1316,7 +1317,7 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
         }
 
         fields := strings.Fields(line)
-        if len(fields) < 6 {
+        if len(fields) < 9 {
             continue
         }
 
@@ -1326,7 +1327,9 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
         availableKB, _ := strconv.ParseUint(fields[3], 10, 64)
         usagePercentStr := strings.TrimSuffix(fields[4], "%")
         usagePercent, _ := strconv.ParseFloat(usagePercentStr, 64)
-        mountPoint := fields[5]
+        iused, _ := strconv.ParseUint(fields[5], 10, 64)
+        ifree, _ := strconv.ParseUint(fields[6], 10, 64)
+        mountPoint := fields[8]
 
         // Convert KB to bytes
         total := totalKB * 1024
@@ -1353,6 +1356,9 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
             "available":     available,
             "usage_percent": usagePercent,
             "mounted_path":  mountPoint,
+            "inodes_total":  iused + ifree,
+            "inodes_free":   ifree,
+            "inodes_used":   iused,
         }
 
         result = append(result, diskInfo)

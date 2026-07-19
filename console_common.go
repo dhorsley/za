@@ -1880,7 +1880,13 @@ func printWithWrap(s string) {
 // generic vararg print handler. also moves cursor in interactive mode
 func pf(s string, va ...any) {
 
-    ns := sf(sparkle(s), va...)
+    s = sparkle(s)
+    var ns string
+    if len(va) > 0 {
+        ns = sf(s, va...)
+    } else {
+        ns = s
+    }
     sna := Strip(ns)
 
     if interactive {

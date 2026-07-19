@@ -261,6 +261,48 @@ func initializeExceptionEnum() {
     eregister("unknown", "error") // Default severity for unknown exceptions
 }
 
+// initializeKeycodesEnum - sets up the global keycodes enum at startup
+func initializeKeycodesEnum() {
+    globlock.Lock()
+    defer globlock.Unlock()
+
+    enumName := "main::keycodes"
+    enum[enumName] = &enum_s{
+        members:   make(map[string]any),
+        ordered:   []string{},
+        namespace: "main",
+    }
+
+    kc := map[string]int{
+        "CTRL_B":      2,
+        "CTRL_C":      3,
+        "CTRL_D":      4,
+        "SHIFT_TAB":   6,
+        "TAB":         7,
+        "LEFT":        8,
+        "RIGHT":       9,
+        "DOWN":        10,
+        "UP":          11,
+        "CTRL_L":      12,
+        "ENTER":       13,
+        "PGDN":        14,
+        "PGUP":        15,
+        "HOME":        16,
+        "END":         17,
+        "ESC":         27,
+        "BACKSPACE":   127,
+        "SHIFT_LEFT":  208,
+        "SHIFT_RIGHT": 209,
+        "SHIFT_DOWN":  210,
+        "SHIFT_UP":    211,
+    }
+
+    for name, val := range kc {
+        enum[enumName].members[name] = val
+        enum[enumName].ordered = append(enum[enumName].ordered, name)
+    }
+}
+
 // GetAst(): returns a representation of the tokenised
 // phrases in a function. this is not an ast, but serves
 // the same purpose for us.

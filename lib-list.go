@@ -1833,11 +1833,12 @@ func buildListLib() {
 
     slhelp["ssort"] = LibHelp{in: "list,field_name[,bool_reverse]", out: "[]any", action: "Sorts a [#i1]list[#i0] of structs, on a given field name, in ascending (true) or descending (false) order."}
     stdlib["ssort"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("ssort", args, 4,
+        if ok, err := expect_args("ssort", args, 5,
             "3", "[]any", "[]string", "[]bool",
             "3", "[]any", "string", "bool",
             "2", "[]any", "[]string",
-            "2", "[]any", "string"); !ok {
+            "2", "[]any", "string",
+            "2", "[]dirent", "string"); !ok {
             return nil, err
         }
 

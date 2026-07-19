@@ -14,15 +14,24 @@ import (
 )
 
 func startRaw(timeo int) {
+    if tt == nil {
+        return
+    }
     term.RawMode(tt)
     timeoutRaw(timeo)
 }
 
 func endRaw() {
+    if tt == nil {
+        return
+    }
     tt.Restore()
 }
 
 func timeoutRaw(timeo int) {
+    if tt == nil {
+        return
+    }
     tt.SetOption(term.ReadTimeout(time.Duration(timeo) * time.Millisecond))
 }
 
@@ -82,6 +91,9 @@ func GetWinInfo(fd int) (i int) {
 func wrappedGetCh(p int, disp bool) (i int) {
 
     if runtime.GOOS != "windows" {
+        if tt == nil {
+            return 27 // ESC - no tty available
+        }
         startRaw(0)
         defer endRaw()
     }
@@ -122,6 +134,18 @@ func wrappedGetCh(p int, disp bool) (i int) {
                     k = 15 // replaces Shift In (SI)
                 case bytes.Equal(c, []byte{27, 91, 54, 126}): // pgdown
                     k = 14 // replaces Shift Out (SO)
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x48}): // HOME
+                    k = 16
+                case bytes.Equal(c, []byte{0x1B, 0x4F, 0x48}): // HOME (rxvt)
+                    k = 16
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x7E}): // HOME
+                    k = 16
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x46}): // END
+                    k = 17
+                case bytes.Equal(c, []byte{0x1B, 0x4F, 0x46}): // END (rxvt)
+                    k = 17
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x34, 0x7E}): // END
+                    k = 17
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3b, 0x32, 0x41}): // SHIFT-UP
                     k = 211
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3b, 0x32, 0x42}): // SHIFT-DOWN
@@ -180,6 +204,10 @@ func getch(timeo int) ([]byte, bool, bool, string) {
 
     if runtime.GOOS != "windows" {
         timeoutRaw(timeo)
+    }
+
+    if tt == nil {
+        return nil, true, false, ""
     }
 
     var numRead int

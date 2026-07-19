@@ -7,6 +7,7 @@ import (
     "reflect"
     "regexp"
     str "strings"
+    "unicode/utf8"
 )
 
 type tui struct {
@@ -32,6 +33,7 @@ type tui struct {
     Sep       string
     Result    any
     Cancel    bool
+    Back      bool
     Multi     bool
     Reset     bool
     Headers   bool
@@ -40,14 +42,25 @@ type tui struct {
 }
 
 type tui_style struct {
-    bg     string
-    fg     string
-    border map[string]string
-    fill   bool
-    wrap   bool
-    hi_bg  string
-    hi_fg  string
-    list   []string
+	bg        string
+	fg        string
+	border    map[string]string
+	fill      bool
+	wrap      bool
+	hi_bg     string
+	hi_fg     string
+	list      []string
+	select_bg string
+	select_fg string
+}
+
+type tableData struct {
+	aaos       [][]string
+	fieldNames []string
+	cw         []int
+	selected   []bool
+	colMax     int
+	hasHeader  bool
 }
 
 func delimitedSplit(s string, sep string) (os []string) {
@@ -74,301 +87,544 @@ func delimitedSplit(s string, sep string) (os []string) {
     return os
 }
 
+func buildTableData(t tui) (td tableData, err error) {
+	// read data
+	sep := ","
+	lineMethod := ""
+	switch str.ToLower(t.Format) {
+	case "csv":
+		sep = ","
+		lineMethod = "regex"
+	case "tsv":
+		sep = "\t"
+		lineMethod = "regex"
+	case "ssv":
+		sep = " "
+		lineMethod = "regex"
+	case "psv":
+		sep = "|"
+		lineMethod = "regex"
+	case "custom":
+		sep = t.Sep
+		lineMethod = "regex"
+	case "aos":
+		lineMethod = "struct"
+	default:
+		return td, fmt.Errorf("Unknown separator type in tui_table() [%s]", t.Format)
+	}
+
+	td.hasHeader = t.Headers
+	var aaos [][]string
+	var aos []string
+	var maxSize int
+	var colMax int
+	var fieldNames []string
+
+	switch lineMethod {
+	case "regex":
+		aos = str.Split(t.Data.(string), "\n")
+		maxSize = len(aos)
+	case "struct":
+		maxSize = len(t.Data.([]any)) + 1 // 0 element is headers
+	}
+	aaos = make([][]string, maxSize)
+
+	switch lineMethod {
+	case "regex":
+		var first bool = true
+		for i, v := range aos {
+			cols := delimitedSplit(v, sep)
+			if first {
+				colMax = len(cols)
+				aaos[0] = make([]string, colMax)
+			}
+			aaos[i+1] = make([]string, colMax)
+			if len(cols) != colMax {
+				return td, fmt.Errorf("Column count mismatch (%d,%d) in tui_table() at .Data line %d", len(cols), colMax, i)
+			}
+			for j, c := range cols {
+				l := len(c)
+				c = stripDoubleQuotes(c)
+				if l != len(c) {
+					c = stripSingleQuotes(c)
+				}
+				if first && td.hasHeader {
+					aaos[0][j] = c
+				}
+				cols[j] = c
+			}
+			if !(first && td.hasHeader) {
+				aaos[i] = cols
+			}
+			first = false
+		}
+
+	case "struct":
+		isArray := (reflect.TypeOf(t.Data).Kind() == reflect.Array || reflect.TypeOf(t.Data).Kind() == reflect.Slice)
+		if !isArray {
+			return td, fmt.Errorf(".Data not an array (%#v)", reflect.TypeOf(t.Data).Kind().String())
+		}
+
+		var first bool = true
+		var refstruct reflect.Value
+		for i := 0; i < len(t.Data.([]any)); i += 1 {
+			switch refstruct = reflect.ValueOf(t.Data.([]any)[i]); refstruct.Kind() {
+			case reflect.Struct:
+			default:
+				return td, fmt.Errorf(".Data element %d not a struct", i)
+			}
+			rvalue := reflect.ValueOf(t.Data.([]any)[i])
+			if first {
+				colMax = rvalue.NumField()
+				fieldNames = make([]string, colMax)
+				aaos[0] = make([]string, colMax)
+				for j := 0; j < colMax; j += 1 {
+					rname := rvalue.Type().Field(j).Name
+					fieldNames[j] = rname
+					aaos[0][j] = rname
+				}
+				first = false
+			}
+			if rvalue.NumField() != colMax {
+				return td, fmt.Errorf("Column count mismatch in tui_table() at .Data line %d", i)
+			}
+			aaos[i+1] = make([]string, colMax)
+			for j := 0; j < colMax; j += 1 {
+				field_value := refstruct.FieldByName(aaos[0][j])
+				aaos[i+1][j] = sf("%v", field_value)
+			}
+		}
+		td.hasHeader = true
+	}
+
+	if lineMethod != "struct" && td.hasHeader {
+		fieldNames = make([]string, colMax)
+		fieldNames = aaos[0]
+	}
+
+	if len(t.Options) > 0 {
+		if lineMethod != "struct" {
+			if len(t.Options) != colMax {
+				return td, fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
+			}
+			fieldNames = make([]string, len(t.Options))
+			if len(t.Options) != 0 {
+				copy(fieldNames, t.Options)
+				td.hasHeader = true
+			}
+		}
+	}
+
+	var selected []bool
+	selected = make([]bool, colMax)
+
+	if len(t.Display) > 0 {
+		for _, v := range t.Display {
+			selected[v] = true
+		}
+	} else {
+		for j := 0; j < colMax; j += 1 {
+			selected[j] = true
+		}
+	}
+
+	cw := make([]int, colMax)
+
+	if len(t.Sizes) == colMax {
+		cw = t.Sizes
+	} else {
+		for _, l := range aaos {
+			for j, v := range l {
+				if len(v) > cw[j] {
+					cw[j] = len(v)
+				}
+			}
+		}
+	}
+
+	td.aaos = aaos
+	td.fieldNames = fieldNames
+	td.cw = cw
+	td.selected = selected
+	td.colMax = colMax
+	return td, nil
+}
+
 func tui_table(t tui, s tui_style) (os string, err error) {
+	// Draw border if requested
+	if t.Border {
+		tui_box(tui{Title: t.Title, Row: t.Row - 1, Width: t.Width + 2, Col: t.Col - 1, Height: t.Height + 2}, s)
+	}
 
-    // Draw border if requested
-    if t.Border {
-        tui_box(tui{Title: t.Title, Row: t.Row - 1, Width: t.Width + 2, Col: t.Col - 1, Height: t.Height + 2}, s)
-    }
+	td, err := buildTableData(t)
+	if err != nil {
+		return "", err
+	}
 
-    // Options []string     // Field Headers
-    // Sizes   []int        // Field Display Widths
-    // Display []int        // Toggle display for columns
-    // Content string       // final output
-    // Data    any          // input data (either array of struct or a string
-    // Format  string       // to specify input data type
-    // Sep     string       // to specify the regex to use as a field separator
-    /* style fields:
-       border["iv"] // inner-vertical
-       border["ih"] // inner-horizontal
-       hi_bg   string
-       hi_fg   string
-       list    []string
-    */
+	iv := ""
+	ih := ""
+	if s.border != nil {
+		iv = s.border["iv"]
+		ih = s.border["ih"]
+	}
+	hb := s.hi_bg
+	hf := s.hi_fg
 
-    // read data
-    sep := ","
-    lineMethod := ""
-    switch str.ToLower(t.Format) {
-    case "csv":
-        sep = ","
-        lineMethod = "regex"
-    case "tsv":
-        sep = "\t"
-        lineMethod = "regex"
-    case "ssv":
-        sep = " "
-        lineMethod = "regex"
-    case "psv":
-        sep = "|"
-        lineMethod = "regex"
-    case "custom":
-        sep = t.Sep
-        lineMethod = "regex"
-    case "aos":
-        lineMethod = "struct"
-    default:
-        return "", fmt.Errorf("Unknown separator type in tui_table() [%s]", t.Format)
-    }
+	table_width := 5
+	dispColCount := 0
+	for j := range td.cw {
+		if td.selected[j] {
+			table_width += 2 + td.cw[j]
+			dispColCount += 1
+		}
+	}
+	if iv == "" {
+		table_width -= dispColCount
+	}
 
-    var hasHeader bool
-    var aaos [][]string
-    var aos []string
-    var maxSize int
-    var colMax int
-    var fieldNames []string
+	cllen := len(s.list)
+	if cllen > 0 && cllen != td.colMax {
+		return "", fmt.Errorf("Column count does not match provided colour list length in tui_table() style .list field")
+	}
 
-    if t.Headers {
-        hasHeader = true
-    }
+	// header display
+	if td.hasHeader {
+		if ih != "" {
+			os += rep(ih, table_width) + "\n"
+		}
+		os += iv
+		for e := 0; e < len(td.fieldNames); e += 1 {
+			if td.selected[e] {
+				os += sf("%s %-*s [##][#-]%s", hb+hf, td.cw[e], td.fieldNames[e], iv)
+			}
+		}
+		if ih != "" {
+			os += "\n" + rep(ih, table_width) + "\n"
+		} else {
+			os += "\n"
+		}
+	}
 
-    switch lineMethod {
-    case "regex":
-        aos = str.Split(t.Data.(string), "\n")
-        maxSize = len(aos)
-    case "struct":
-        maxSize = len(t.Data.([]any)) + 1 // 0 element is headers
-    }
-    aaos = make([][]string, maxSize)
+	// data display
+	for trow := 1; trow < len(td.aaos); trow += 1 {
+		line := td.aaos[trow]
+		if s.bg != "" {
+			os += "[#b" + s.bg + "]"
+		}
+		if s.fg != "" {
+			os += "[#" + s.fg + "]"
+		}
+		os += iv
+		for j, v := range line {
+			field_colour := ""
+			if cllen > 0 {
+				field_colour = s.list[j]
+			}
+			if td.selected[j] {
+				os += sf("%s %-*s [##][#-]%s", field_colour, td.cw[j], v, iv)
+			}
+		}
+		if ih != "" {
+			os += "\n" + rep(ih, table_width) + "\n"
+		} else {
+			os += "\n"
+		}
+	}
 
-    switch lineMethod {
-    case "regex":
-        // convert to array of strings, newline separated
-        var first bool = true
-        for i, v := range aos {
-            cols := delimitedSplit(v, sep)
-            if first {
-                colMax = len(cols)
-                aaos[0] = make([]string, colMax)
-            }
-            aaos[i+1] = make([]string, colMax)
-            if len(cols) != colMax {
-                return "", fmt.Errorf("Column count mismatch (%d,%d) in tui_table() at .Data line %d", len(cols), colMax, i)
-            }
-            for j, c := range cols {
-                l := len(c)
-                c = stripDoubleQuotes(c)
-                if l != len(c) {
-                    c = stripSingleQuotes(c)
-                }
-                if first && hasHeader {
-                    aaos[0][j] = c
-                    // append(aaos[0],c)
-                }
-                cols[j] = c
-            }
-            if !(first && hasHeader) {
-                aaos[i] = cols
-            }
-            first = false
-        }
+	if t.TableSend != "" {
+		t.Content = os
+		switch str.ToLower(t.TableSend) {
+		case "pager":
+			t.Width = table_width + 2
+			tui_pager(t, s)
+		}
+	}
 
-    case "struct":
-        // convert to array of strings, from array of struct (reflect on each field)
-        isArray := (reflect.TypeOf(t.Data).Kind() == reflect.Array || reflect.TypeOf(t.Data).Kind() == reflect.Slice)
-        if !isArray {
-            return "", fmt.Errorf(".Data not an array (%#v)", reflect.TypeOf(t.Data).Kind().String())
-        }
+	return os, nil
+}
 
-        var first bool = true
-        var refstruct reflect.Value
-        // pf("report: t.data.len : %d\n",len(t.Data.([]any)))
-        for i := 0; i < len(t.Data.([]any)); i += 1 {
-            // pf("report: i # %d : v %#v\n",i,t.Data.([]any)[i])
-            switch refstruct = reflect.ValueOf(t.Data.([]any)[i]); refstruct.Kind() {
-            case reflect.Struct:
-            default:
-                return "", fmt.Errorf(".Data element %d not a struct", i)
-            }
-            // get each field value, append to aaos
-            rvalue := reflect.ValueOf(t.Data.([]any)[i])
-            if first { // set header field names also
-                colMax = rvalue.NumField()
-                fieldNames = make([]string, colMax)
-                aaos[0] = make([]string, colMax)
-                for j := 0; j < colMax; j += 1 {
-                    rname := rvalue.Type().Field(j).Name
-                    fieldNames[j] = rname
-                    aaos[0][j] = rname
-                }
-                first = false
-            }
-            if rvalue.NumField() != colMax {
-                return "", fmt.Errorf("Column count mismatch in tui_table() at .Data line %d", i)
-            }
-            aaos[i+1] = make([]string, colMax)
-            for j := 0; j < colMax; j += 1 {
-                field_value := refstruct.FieldByName(aaos[0][j])
-                aaos[i+1][j] = sf("%v", field_value) // .String()
-            }
-        }
-        hasHeader = true
-    }
+func tui_table_select(t tui, s tui_style) tui {
+	td, err := buildTableData(t)
+	if err != nil {
+		t.Cancel = true
+		return t
+	}
 
-    // get field headers from either options array (manually provided), or from field names
-    // if reading data from an array of structs
+	iv := ""
+	ih := ""
+	if s.border != nil {
+		iv = s.border["iv"]
+		ih = s.border["ih"]
+	}
+	hb := s.hi_bg
+	hf := s.hi_fg
 
-    if lineMethod != "struct" && hasHeader { // user instructed to take header names from data line 0
-        fieldNames = make([]string, colMax)
-        fieldNames = aaos[0]
-    }
+	table_width := 5
+	dispColCount := 0
+	for j := range td.cw {
+		if td.selected[j] {
+			table_width += 2 + td.cw[j]
+			dispColCount += 1
+		}
+	}
+	if iv == "" {
+		table_width -= dispColCount
+	}
 
-    if len(t.Options) > 0 {
-        if lineMethod != "struct" {
-            if len(t.Options) != colMax {
-                return "", fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
-            }
-            fieldNames = make([]string, len(t.Options))
-            if len(t.Options) != 0 { // user provided list of header names from tui struct
-                copy(fieldNames, t.Options)
-                hasHeader = true
-            }
-        }
-    }
+	innerWidth := t.Width - 2
+	if innerWidth < 1 {
+		innerWidth = 1
+	}
 
-    /*
-       pf("Row Max    %d\n",len(aaos))
-       pf("Column Max %d\n",colMax)
-       pf("Field Names : %+v\n",fieldNames)
-       pf("Has Header  : %+v\n",hasHeader)
-    */
+	ivWidth := 0
+	if iv != "" {
+		ivWidth = utf8.RuneCountInString(iv)
+	}
 
-    // set which columns will be displayed, and set user width preferences
-    var selected []bool
-    selected = make([]bool, colMax)
+	cllen := len(s.list)
 
-    if len(t.Display) > 0 {
-        for _, v := range t.Display {
-            selected[v] = true
-        }
-    } else { // display all
-        for j := 0; j < colMax; j += 1 {
-            selected[j] = true
-        }
-    }
+	selBg := s.select_bg
+	selFg := s.select_fg
+	if selBg == "" && selFg == "" {
+		selBg = "[#invert]"
+		selFg = ""
+	} else {
+		if selBg != "" {
+			selBg = "[#b" + selBg + "]"
+		}
+		if selFg != "" {
+			selFg = "[#" + selFg + "]"
+		}
+	}
 
-    // do some thing to calculate max column width for each column, to use in the formatter afterwards
-    cw := make([]int, colMax)
+	addbg := ""
+	addfg := ""
+	if s.bg != "" {
+		addbg = "[#b" + s.bg + "]"
+	}
+	if s.fg != "" {
+		addfg = "[#" + s.fg + "]"
+	}
 
-    if len(t.Sizes) == colMax {
-        cw = t.Sizes
-    } else {
-        for _, l := range aaos {
-            for j, v := range l {
-                if len(v) > cw[j] {
-                    cw[j] = len(v)
-                }
-            }
-        }
-    }
+	// Draw border if requested
+	if t.Border {
+		tui_box(tui{Title: t.Title, Row: t.Row - 1, Width: t.Width + 2, Col: t.Col - 1, Height: t.Height + 2}, s)
+	}
 
-    // formatter
+	hideCursor()
 
-    iv := s.border["iv"]
-    ih := s.border["ih"]
-    hb := s.hi_bg
-    hf := s.hi_fg
+	dataRows := len(td.aaos) - 1
+	if dataRows < 0 {
+		dataRows = 0
+	}
 
-    table_width := 5
-    dispColCount := 0
-    for j := range cw {
-        if selected[j] {
-            table_width += 2 + cw[j]
-            dispColCount += 1
-        }
-    }
-    if iv == "" {
-        table_width -= dispColCount
-    }
+	dataStart := 1
+	if td.hasHeader {
+		dataStart = 2
+		if ih != "" {
+			dataStart = 3
+		}
+	}
 
-    cllen := len(s.list)
+	scrollOffset := 0
+	selectedRow := 0
+	visibleHeight := t.Height - dataStart
+	if visibleHeight < 1 {
+		visibleHeight = dataRows
+	}
+	if visibleHeight > dataRows {
+		visibleHeight = dataRows
+	}
 
-    if cllen > 0 && cllen != colMax {
-        return "", fmt.Errorf("Column count does not match provided colour list length in tui_table() style .list field")
-    }
+	render := func() {
+		for k := 0; k < visibleHeight; k++ {
+			absat(t.Row+dataStart+k, t.Col+1)
+			pf("[#-]")
+			absClearChars(t.Row+dataStart+k, t.Col+1, innerWidth)
+			absat(t.Row+dataStart+k, t.Col+1)
+			dataIdx := scrollOffset + k
+			if dataIdx >= dataRows {
+				continue
+			}
+			line := td.aaos[dataIdx+1]
+			isSelected := dataIdx == selectedRow
+			rowPrefix := ""
+			rowSuffix := "[##][#-]"
+			if isSelected {
+				rowPrefix = selBg + selFg
+			} else {
+				if addbg != "" || addfg != "" {
+					rowPrefix = addbg + addfg
+				}
+			}
+			pf(rowPrefix)
+			pf(iv)
+			rowContentWidth := ivWidth
+			for j, v := range line {
+				field_colour := ""
+				if cllen > 0 {
+					field_colour = s.list[j]
+				}
+				if td.selected[j] {
+					cellWidth := 2 + td.cw[j] + ivWidth
+					if iv == "" {
+						cellWidth = 2 + td.cw[j]
+					}
+					rowContentWidth += cellWidth
+					if isSelected {
+						pf(sf("%s %-*s %s", field_colour, td.cw[j], v, iv))
+					} else {
+						pf(sf("%s %-*s [##][#-]%s", field_colour, td.cw[j], v, iv))
+					}
+				}
+			}
+			// Reset colors and pad to end of row to prevent highlight bleed
+			pf(rowSuffix)
+			if rowContentWidth < innerWidth {
+				pf(str.Repeat(" ", innerWidth-rowContentWidth))
+			}
+		}
+		for k := visibleHeight; k < t.Height-dataStart; k++ {
+			absat(t.Row+dataStart+k, t.Col+1)
+			pf("[#-]")
+			absClearChars(t.Row+dataStart+k, t.Col+1, innerWidth)
+		}
+	}
 
-    // header display
-    if hasHeader {
-        if ih != "" {
-            os += rep(ih, table_width) + "\n"
-        }
-        os += iv
-        ansiLine := ""
-        for e := 0; e < len(fieldNames); e += 1 {
-            if selected[e] {
-                section := sf("%s %-*s [##][#-]%s", hb+hf, cw[e], fieldNames[e], iv)
-                ansiLine += section
-                os += section
-            }
-        }
+	// render header
+	if td.hasHeader {
+		if ih != "" {
+			absat(t.Row, t.Col+1)
+			pf(rep(ih, innerWidth))
+		}
+		absat(t.Row+1, t.Col+1)
+		pf("[#-]")
+		absClearChars(t.Row+1, t.Col+1, innerWidth)
+		absat(t.Row+1, t.Col+1)
+		pf(hb + hf)
+		pf(iv)
+		headerWidth := ivWidth
+		for e := 0; e < len(td.fieldNames); e += 1 {
+			if td.selected[e] {
+				cellWidth := 2 + td.cw[e] + ivWidth
+				if iv == "" {
+					cellWidth = 2 + td.cw[e]
+				}
+				headerWidth += cellWidth
+				pf(sf(" %-*s [##][#-]%s", td.cw[e], td.fieldNames[e], iv))
+			}
+		}
+		pf("[##][#-]")
+		if headerWidth < innerWidth {
+			pf(str.Repeat(" ", innerWidth-headerWidth))
+		}
+		if ih != "" {
+			absat(t.Row+2, t.Col+1)
+			pf(rep(ih, innerWidth))
+		}
+	}
 
-        if ih != "" {
-            os += "\n" + rep(ih, table_width) + "\n"
-        } else {
-            os += "\n"
-        }
-    }
+	render()
 
-    // data display
-    for trow := 1; trow < len(aaos); trow += 1 {
-        line := aaos[trow]
+	t.Cancel = false
+	finished := false
+	prevMW, prevMH := MW, MH
+	for !finished {
+		k := wrappedGetCh(100, false)
+		if k == 0 {
+			if MW != prevMW || MH != prevMH {
+				prevMW, prevMH = MW, MH
+				visibleHeight = t.Height - dataStart
+				if visibleHeight < 1 {
+					visibleHeight = dataRows
+				}
+				if visibleHeight > dataRows {
+					visibleHeight = dataRows
+				}
+				if selectedRow >= dataRows {
+					selectedRow = dataRows - 1
+				}
+				if scrollOffset+visibleHeight > dataRows {
+					scrollOffset = dataRows - visibleHeight
+					if scrollOffset < 0 {
+						scrollOffset = 0
+					}
+				}
+				render()
+			}
+			continue
+		}
+		switch k {
+		case 10: // down
+			if selectedRow < dataRows-1 {
+				selectedRow++
+				if selectedRow >= scrollOffset+visibleHeight {
+					scrollOffset++
+				}
+			}
+		case 11: // up
+			if selectedRow > 0 {
+				selectedRow--
+				if selectedRow < scrollOffset {
+					scrollOffset--
+				}
+			}
+		case 14, ' ': // pgdown
+			selectedRow += visibleHeight
+			if selectedRow >= dataRows {
+				selectedRow = dataRows - 1
+			}
+			scrollOffset = selectedRow - visibleHeight + 1
+			if scrollOffset < 0 {
+				scrollOffset = 0
+			}
+		case 15: // pgup
+			selectedRow -= visibleHeight
+			if selectedRow < 0 {
+				selectedRow = 0
+			}
+			scrollOffset = selectedRow
+		case 16, 'g': // home
+			selectedRow = 0
+			scrollOffset = 0
+		case 17, 'G': // end
+			selectedRow = dataRows - 1
+			scrollOffset = dataRows - visibleHeight
+			if scrollOffset < 0 {
+				scrollOffset = 0
+			}
+		case 13: // enter
+			t.Result = selectedRow
+			finished = true
+		case 'q', 'Q', 27: // q, escape
+			t.Cancel = true
+			finished = true
+		case 'b', 'B': // back
+			t.Back = true
+			t.Cancel = true
+			finished = true
+		case 3: // ctrl-c
+			t.Cancel = true
+			finished = true
+			lastlock.Lock()
+			sig_int = true
+			lastlock.Unlock()
+		}
+		render()
+	}
 
-        if s.bg != "" {
-            os += "[#b" + s.bg + "]"
-        }
-        if s.fg != "" {
-            os += "[#" + s.fg + "]"
-        }
+	// remove border box
+	if t.Border {
+		border := empty_border_map
+		tui_box(
+			tui{Title: t.Title, Row: t.Row - 1, Width: t.Width + 2, Col: t.Col - 1, Height: t.Height + 2},
+			tui_style{border: border},
+		)
+		tui_clear(t, s)
+	}
 
-        os += iv
-        ansiLine := ""
-        for j, v := range line {
-            field_colour := ""
-            if cllen > 0 {
-                field_colour = s.list[j]
-            }
-
-            if selected[j] {
-                ansiLine = sf("%s %-*s [##][#-]%s", field_colour, cw[j], v, iv)
-                os += ansiLine
-            }
-        }
-
-        if ih != "" {
-            os += "\n" + rep(ih, table_width) + "\n"
-        } else {
-            os += "\n"
-        }
-    }
-
-    // pass through to pager/other
-    // Row     int          // Passed through to pager
-    // Col     int          // Passed through to pager
-    // Height  int          // Passed through to pager
-    // Width   int          // Passed through to pager
-    // Border  bool         // Passed through to pager
-    // Title   string       // Passed through to pager
-
-    if t.TableSend != "" {
-        t.Content = os
-        switch str.ToLower(t.TableSend) {
-        case "pager":
-            t.Width = table_width + 2
-            tui_pager(t, s)
-        }
-    }
-
-    return os, nil
+	t.Index = selectedRow
+	return t
 }
 
 // switch to secondary buffer
@@ -605,7 +861,7 @@ func tui_radio(t tui, s tui_style) any {
             if cpos > 0 {
                 cpos -= 1
             }
-        case 13, 'q', 'Q', 27: // enter, q or escape
+        case 13, 'q', 'Q', 'b', 'B', 27: // enter, q, b or escape
             if key != 13 {
                 // discard changes
                 copy(t.Selected, orig)
@@ -628,6 +884,12 @@ func tui_radio(t tui, s tui_style) any {
                     selCount = 1
                 }
             }
+        case 3: // ctrl-c
+            copy(t.Selected, orig)
+            t.Cancel = true
+            lastlock.Lock()
+            sig_int = true
+            lastlock.Unlock()
         }
     }
 
@@ -762,6 +1024,10 @@ func tui_pager(t tui, s tui_style) {
     if len(ra) > 0 {
         t.Cancel = false
         omax := t.Height - 1
+        searchQuery := ""
+        searchMode := false
+        lastMatch := -1
+        prevMW, prevMH := MW, MH
         for !t.Cancel {
             max := omax
             if cpos+t.Height-1 > len(ra) {
@@ -778,11 +1044,74 @@ func tui_pager(t tui, s tui_style) {
             }
             pf("[##][#-]")
             // scroll position
-            scroll_pos := int(float64(cpos) * float64(t.Height-1) / float64(len(ra)))
-            absat(t.Row+1+scroll_pos, t.Col+t.Width-2)
-            pf("[#invert]*[##][#-]")
+            if len(ra) > 0 {
+                scroll_pos := int(float64(cpos) * float64(t.Height-1) / float64(len(ra)))
+                absat(t.Row+1+scroll_pos, t.Col+t.Width-2)
+                pf("[#invert]*[##][#-]")
+            }
+            // search status line
+            if searchMode {
+                absat(t.Row+t.Height, t.Col+1)
+                pf("[#b1][#6]/" + searchQuery + str.Repeat(" ", t.Width-3-len(searchQuery)-1) + "[##][#-]")
+            }
             // process keypresses
-            k := wrappedGetCh(0, false)
+            k := wrappedGetCh(100, false)
+            if k == 0 {
+                if MW != prevMW || MH != prevMH {
+                    prevMW, prevMH = MW, MH
+                    omax = t.Height - 1
+                    if cpos+omax > len(ra) {
+                        cpos = len(ra) - omax
+                        if cpos < 0 {
+                            cpos = 0
+                        }
+                    }
+                    // redraw
+                    for k := max - 1; k < omax; k++ {
+                        absClearChars(t.Row+k+1, t.Col+1, t.Width-1)
+                    }
+                    pf("[##][#-]")
+                    if len(ra) > 0 {
+                        scroll_pos := int(float64(cpos) * float64(t.Height-1) / float64(len(ra)))
+                        absat(t.Row+1+scroll_pos, t.Col+t.Width-2)
+                        pf("[#invert]*[##][#-]")
+                    }
+                    if searchMode {
+                        absat(t.Row+t.Height, t.Col+1)
+                        pf("[#b1][#6]/" + searchQuery + str.Repeat(" ", t.Width-3-len(searchQuery)-1) + "[##][#-]")
+                    }
+                }
+                continue
+            }
+            if searchMode {
+                switch k {
+                case 13: // enter - execute search
+                    searchMode = false
+                    lastMatch = -1
+                    for i := cpos; i < len(ra); i++ {
+                        if str.Contains(str.ToLower(ra[i]), str.ToLower(searchQuery)) {
+                            cpos = i
+                            lastMatch = i
+                            break
+                        }
+                    }
+                    absat(t.Row+t.Height, t.Col+1)
+                    absClearChars(t.Row+t.Height, t.Col+1, t.Width-2)
+                case 127: // backspace
+                    if len(searchQuery) > 0 {
+                        searchQuery = searchQuery[:len(searchQuery)-1]
+                    }
+                case 27: // escape
+                    searchMode = false
+                    absat(t.Row+t.Height, t.Col+1)
+                    absClearChars(t.Row+t.Height, t.Col+1, t.Width-2)
+                default:
+                    if k > 31 && k < 127 {
+                        searchQuery += string(rune(k))
+                    }
+                }
+                continue
+            }
             switch k {
             case 10: //down
                 if cpos < len(ra)-t.Height {
@@ -794,7 +1123,15 @@ func tui_pager(t tui, s tui_style) {
                 }
             case 'q', 'Q', 27:
                 t.Cancel = true
-            case 'b', 15:
+            case 'b', 'B':
+                t.Back = true
+                t.Cancel = true
+            case 3: // ctrl-c
+                t.Cancel = true
+                lastlock.Lock()
+                sig_int = true
+                lastlock.Unlock()
+            case 15:
                 cpos -= t.Height - 1
                 if cpos < 0 {
                     cpos = 0
@@ -802,6 +1139,37 @@ func tui_pager(t tui, s tui_style) {
             case ' ', 14:
                 if cpos+max < len(ra)-1 {
                     cpos += t.Height - 1
+                }
+            case 16, 'g': // home
+                cpos = 0
+            case 17, 'G': // end
+                cpos = len(ra) - t.Height
+                if cpos < 0 {
+                    cpos = 0
+                }
+            case '/':
+                searchMode = true
+                searchQuery = ""
+                lastMatch = -1
+            case 'n':
+                if lastMatch >= 0 && searchQuery != "" {
+                    for i := lastMatch + 1; i < len(ra); i++ {
+                        if str.Contains(str.ToLower(ra[i]), str.ToLower(searchQuery)) {
+                            cpos = i
+                            lastMatch = i
+                            break
+                        }
+                    }
+                }
+            case 'N':
+                if lastMatch >= 0 && searchQuery != "" {
+                    for i := lastMatch - 1; i >= 0; i-- {
+                        if str.Contains(str.ToLower(ra[i]), str.ToLower(searchQuery)) {
+                            cpos = i
+                            lastMatch = i
+                            break
+                        }
+                    }
                 }
             }
         }
@@ -1072,31 +1440,86 @@ func tui_menu(t tui, s tui_style) tui {
 
     sel := t.Index
 
+    // determine if scrolling is needed
+    visibleCount := len(t.Options)
+    scrollOffset := 0
+    useScroll := false
+    if t.Height > 0 && len(t.Options) > t.Height {
+        visibleCount = t.Height
+        useScroll = true
+    }
+
+    // display visible menu items
+    redraw := func() {
+        if useScroll {
+            // clear previous visible area
+            for k := 0; k < visibleCount; k++ {
+                absClearChars(row+offset+k, col+4, t.Width-5)
+            }
+            for k := 0; k < visibleCount; k++ {
+                idx := scrollOffset + k
+                if idx >= len(t.Options) {
+                    break
+                }
+                absat(row+offset+k, col+6)
+                pf(t.Options[idx])
+            }
+        }
+    }
+
     // display menu
     for k, p := range t.Options {
-        absat(row+offset+k, col+6)
-        pf(p)
+        if !useScroll || k < visibleCount {
+            absat(row+offset+k, col+6)
+            pf(p)
+        }
     }
 
     // input loop
     finished := false
     t.Cancel = false
+    prevMW, prevMH := MW, MH
 
     for !finished {
 
-        absat(row+offset+sel, col+4)
+        absat(row+offset+sel-scrollOffset, col+4)
         pf(cursor)
-        absat(row+offset+sel, col+6)
+        absat(row+offset+sel-scrollOffset, col+6)
         pf(addhibg + addhifg + t.Options[sel] + "[##][#-]")
-        k := wrappedGetCh(0, false)
-        absat(row+offset+sel, col+4)
+        k := wrappedGetCh(100, false)
+        absat(row+offset+sel-scrollOffset, col+4)
         pf(addbg)
         pf(addfg)
         pf(" ")
-        absat(row+offset+sel, col+6)
+        absat(row+offset+sel-scrollOffset, col+6)
         pf(t.Options[sel])
 
+        if k == 0 {
+            if MW != prevMW || MH != prevMH {
+                prevMW, prevMH = MW, MH
+                if useScroll {
+                    visibleCount = t.Height
+                    if visibleCount > len(t.Options) {
+                        visibleCount = len(t.Options)
+                    }
+                    if sel >= scrollOffset+visibleCount {
+                        scrollOffset = sel - visibleCount + 1
+                    }
+                    if scrollOffset < 0 {
+                        scrollOffset = 0
+                    }
+                    redraw()
+                }
+            }
+            continue
+        }
+
         if k == 'q' || k == 'Q' {
+            t.Cancel = true
+            break
+        }
+        if k == 'b' || k == 'B' {
+            t.Back = true
             t.Cancel = true
             break
         }
@@ -1105,10 +1528,39 @@ func tui_menu(t tui, s tui_style) tui {
         case 11:
             if sel > 0 {
                 sel--
+                if useScroll && sel < scrollOffset {
+                    scrollOffset = sel
+                    redraw()
+                }
             }
         case 10:
             if sel < len(t.Options)-1 {
                 sel++
+                if useScroll && sel >= scrollOffset+visibleCount {
+                    scrollOffset = sel - visibleCount + 1
+                    redraw()
+                }
+            }
+        case 14, ' ':
+            if useScroll {
+                sel += visibleCount
+                if sel >= len(t.Options) {
+                    sel = len(t.Options) - 1
+                }
+                scrollOffset = sel - visibleCount + 1
+                if scrollOffset < 0 {
+                    scrollOffset = 0
+                }
+                redraw()
+            }
+        case 15:
+            if useScroll {
+                sel -= visibleCount
+                if sel < 0 {
+                    sel = 0
+                }
+                scrollOffset = sel
+                redraw()
             }
         case 13:
             t.Result = sel + 1
@@ -1210,7 +1662,8 @@ func buildTuiLib() {
     features["tui"] = Feature{version: 1, category: "io"}
     categories["tui"] = []string{
         "tui_new", "tui_new_style", "tui", "tui_box", "tui_screen", "tui_text", "tui_pager", "tui_menu",
-        "tui_progress", "tui_progress_reset", "tui_input", "tui_clear", "tui_template", "tui_table", "editor",
+        "tui_progress", "tui_progress_reset", "tui_input", "tui_clear", "tui_template", "tui_table",
+        "tui_table_select", "editor",
     }
 
     slhelp["editor"] = LibHelp{
@@ -1309,6 +1762,8 @@ func buildTuiLib() {
             stdlib["tui_radio"](ns, evalfs, ident, args[0], s)
         case "progress":
             stdlib["tui_progress"](ns, evalfs, ident, args[0], s)
+        case "table_select":
+            stdlib["tui_table_select"](ns, evalfs, ident, args[0], s)
         }
         return "", err
     }
@@ -1359,6 +1814,19 @@ func buildTuiLib() {
             s = mapToTuiStyle(args[1].(map[string]any))
         }
         return tui_table(t, s)
+    }
+
+    slhelp["tui_table_select"] = LibHelp{in: "map[,map]", out: "tui_result", action: "interactive table row selector. Returns .Result=selected row index, .Cancel=true if aborted. Supports select_bg/select_fg in style."}
+    stdlib["tui_table_select"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("tui_table_select", args, 2, "1", "map", "2", "map", "map"); !ok {
+            return nil, err
+        }
+        t := mapToTui(args[0].(map[string]any))
+        s := default_tui_style
+        if len(args) == 2 {
+            s = mapToTuiStyle(args[1].(map[string]any))
+        }
+        return tui_table_select(t, s), nil
     }
 
     slhelp["tui_radio"] = LibHelp{in: "map[,map]", out: "", action: "checkbox selector"}
@@ -1770,6 +2238,16 @@ func mapToTuiStyle(m map[string]any) tui_style {
                 }
             }
             s.list = list
+        }
+    }
+    if v, ok := m["select_bg"]; ok {
+        if str, ok := v.(string); ok {
+            s.select_bg = str
+        }
+    }
+    if v, ok := m["select_fg"]; ok {
+        if str, ok := v.(string); ok {
+            s.select_fg = str
         }
     }
     return s
