@@ -519,88 +519,91 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                     // but DO include try/endtry statements themselves for execution
                     // Include endtry in both parent and try block function spaces
                     if tryNest == 0 || phrase.Tokens[0].tokType == C_Try || phrase.Tokens[0].tokType == C_Endtry || phrase.Tokens[0].tokType == C_Doc {
-                        // Attempt full simple-assignment compilation (VM performs the store).
-                        if phrase.bc == nil && phrase.Tokens[0].tokType == Identifier {
-                            code, pool, err := compileSimpleAssign(phrase.Tokens, lmv, nil, fnTypeHints[lmv], currentModule)
-                            if err == nil {
-                                phrase.bc = &phraseBytecode{
-                                    code:       code,
-                                    pool:       pool,
-                                    compiled:   true,
-                                    vmAssigned: true,
-                                }
-                                if bcDebugCompile {
-                                    bcDumpCompile(&phrase, base.Original, code, pool, true, "")
-                                }
-                            }
-                        }
-                        // Attempt to compile bare expressions to bytecode.
-                        if phrase.bc == nil && isExpressionStart(phrase.Tokens[0]) {
-                            code, pool, err := compileExpr(phrase.Tokens, lmv, nil, fnTypeHints[lmv], currentModule)
-                            if err == nil {
-                                phrase.bc = &phraseBytecode{
-                                    code:     code,
-                                    pool:     pool,
-                                    compiled: true,
-                                }
-                                if bcDebugCompile {
-                                    bcDumpCompile(&phrase, base.Original, code, pool, true, "")
-                                }
-                            } else {
-                                // Check if it's an assignment; try compiling the RHS.
-                                assignPos, hasComma := findAssignment(phrase.Tokens)
-                                if assignPos >= 0 && !hasComma && assignPos+1 < len(phrase.Tokens) {
-                                    rhsCode, rhsPool, rhsErr := compileExpr(phrase.Tokens[assignPos+1:], lmv, nil, fnTypeHints[lmv], currentModule)
-                                    if rhsErr == nil {
-                                        phrase.bc = &phraseBytecode{
-                                            code:      rhsCode,
-                                            pool:      rhsPool,
-                                            compiled:  true,
-                                            isAssign:  true,
-                                            assignPos: assignPos,
-                                        }
-                                        if bcDebugCompile {
-                                            bcDumpCompile(&phrase, base.Original, rhsCode, rhsPool, true, "")
-                                        }
-                                    } else {
-                                        phrase.bc = &phraseBytecode{
-                                            fallback: true,
-                                        }
-                                        if bcDebugCompile {
-                                            bcDumpCompile(&phrase, base.Original, nil, nil, false, rhsErr.Error())
-                                        }
-                                    }
-                                } else {
+                        // Attempt bytecode compilation (skip if ZA_BYTECODE=0).
+                        if bcEnabled {
+                            // Attempt full simple-assignment compilation (VM performs the store).
+                            if phrase.bc == nil && phrase.Tokens[0].tokType == Identifier {
+                                code, pool, err := compileSimpleAssign(phrase.Tokens, lmv, nil, fnTypeHints[lmv], currentModule)
+                                if err == nil {
                                     phrase.bc = &phraseBytecode{
-                                        fallback: true,
+                                        code:       code,
+                                        pool:       pool,
+                                        compiled:   true,
+                                        vmAssigned: true,
                                     }
                                     if bcDebugCompile {
-                                        bcDumpCompile(&phrase, base.Original, nil, nil, false, err.Error())
+                                        bcDumpCompile(&phrase, base.Original, code, pool, true, "")
                                     }
                                 }
                             }
-                        }
-                        // Attempt to compile IF/WHILE conditions.
-                        if phrase.bc == nil {
-                            switch phrase.Tokens[0].tokType {
-                            case C_If, C_While:
-                                if len(phrase.Tokens) > 1 {
-                                    condCode, condPool, condErr := compileExpr(phrase.Tokens[1:], lmv, nil, fnTypeHints[lmv], currentModule)
-                                    if condErr == nil {
-                                        phrase.bc = &phraseBytecode{
-                                            code:     condCode,
-                                            pool:     condPool,
-                                            compiled: true,
-                                        }
-                                        if bcDebugCompile {
-                                            bcDumpCompile(&phrase, base.Original, condCode, condPool, true, "")
+                            // Attempt to compile bare expressions to bytecode.
+                            if phrase.bc == nil && isExpressionStart(phrase.Tokens[0]) {
+                                code, pool, err := compileExpr(phrase.Tokens, lmv, nil, fnTypeHints[lmv], currentModule)
+                                if err == nil {
+                                    phrase.bc = &phraseBytecode{
+                                        code:     code,
+                                        pool:     pool,
+                                        compiled: true,
+                                    }
+                                    if bcDebugCompile {
+                                        bcDumpCompile(&phrase, base.Original, code, pool, true, "")
+                                    }
+                                } else {
+                                    // Check if it's an assignment; try compiling the RHS.
+                                    assignPos, hasComma := findAssignment(phrase.Tokens)
+                                    if assignPos >= 0 && !hasComma && assignPos+1 < len(phrase.Tokens) {
+                                        rhsCode, rhsPool, rhsErr := compileExpr(phrase.Tokens[assignPos+1:], lmv, nil, fnTypeHints[lmv], currentModule)
+                                        if rhsErr == nil {
+                                            phrase.bc = &phraseBytecode{
+                                                code:      rhsCode,
+                                                pool:      rhsPool,
+                                                compiled:  true,
+                                                isAssign:  true,
+                                                assignPos: assignPos,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, rhsCode, rhsPool, true, "")
+                                            }
+                                        } else {
+                                            phrase.bc = &phraseBytecode{
+                                                fallback: true,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, nil, nil, false, rhsErr.Error())
+                                            }
                                         }
                                     } else {
                                         phrase.bc = &phraseBytecode{
                                             fallback: true,
                                         }
                                         if bcDebugCompile {
-                                            bcDumpCompile(&phrase, base.Original, nil, nil, false, condErr.Error())
+                                            bcDumpCompile(&phrase, base.Original, nil, nil, false, err.Error())
+                                        }
+                                    }
+                                }
+                            }
+                            // Attempt to compile IF/WHILE conditions.
+                            if phrase.bc == nil {
+                                switch phrase.Tokens[0].tokType {
+                                case C_If, C_While:
+                                    if len(phrase.Tokens) > 1 {
+                                        condCode, condPool, condErr := compileExpr(phrase.Tokens[1:], lmv, nil, fnTypeHints[lmv], currentModule)
+                                        if condErr == nil {
+                                            phrase.bc = &phraseBytecode{
+                                                code:     condCode,
+                                                pool:     condPool,
+                                                compiled: true,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, condCode, condPool, true, "")
+                                            }
+                                        } else {
+                                            phrase.bc = &phraseBytecode{
+                                                fallback: true,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, nil, nil, false, condErr.Error())
+                                            }
                                         }
                                     }
                                 }

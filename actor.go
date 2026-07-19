@@ -3552,16 +3552,18 @@ tco_reentry:
                 // Compile condition and amendment expressions for bytecode VM
                 var condBC *phraseBytecode
                 var amendBC *phraseBytecode
-                if len(iterCondition) > 0 {
-                    code, pool, err := compileExpr(iterCondition, ifs, ident, nil, currentModule)
-                    if err == nil {
-                        condBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                if bcEnabled {
+                    if len(iterCondition) > 0 {
+                        code, pool, err := compileExpr(iterCondition, ifs, ident, nil, currentModule)
+                        if err == nil {
+                            condBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                        }
                     }
-                }
-                if len(iterAmendment) > 0 {
-                    code, pool, err := compileExpr(iterAmendment, ifs, ident, nil, currentModule)
-                    if err == nil {
-                        amendBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                    if len(iterAmendment) > 0 {
+                        code, pool, err := compileExpr(iterAmendment, ifs, ident, nil, currentModule)
+                        if err == nil {
+                            amendBC = &phraseBytecode{compiled: true, code: code, pool: pool}
+                        }
                     }
                 }
 

@@ -44,7 +44,14 @@ var bcDebugCompile bool
 var bcDebugExec bool
 var bcDebugFolding bool
 
+// bcEnabled controls whether expressions are compiled to bytecode at parse time.
+// Set ZA_BYTECODE=0 to disable and fall back to the tree-walking evaluator (dparse).
+var bcEnabled = true
+
 func initBytecodeDebug() {
+    if v := os.Getenv("ZA_BYTECODE"); v == "0" || strings.EqualFold(v, "false") || strings.EqualFold(v, "off") {
+        bcEnabled = false
+    }
     v := os.Getenv("ZA_DEBUG_BYTECODE")
     if v == "" {
         return
