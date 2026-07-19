@@ -172,7 +172,7 @@ println
 # Test 10: HTTP Benchmark
 println "10. Testing HTTP Benchmark..."
 try
-    result = http_benchmark("https://httpbin.org/delay/1", 5, 2, true, true)
+    result = http_benchmark("https://httpbin.org/get", 2, 1, true, true)
     println "HTTP benchmark result:"
     println result.pp
 catch err

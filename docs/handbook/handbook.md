@@ -4189,10 +4189,10 @@ argmax, argmin, concatenate, det, det_big, find, flatten, identity, inverse, inv
 
 ## conversion
 
-**Functions (39):**
+**Functions (42):**
 
 
-as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, hex_decode, hex_encode, is_number, itob, json_decode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, table, to_typed, url_decode, url_encode, write_struct
+as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, hex_decode, hex_encode, is_number, itob, json_decode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed, type, typeof, url_decode, url_encode, write_struct
 
 
 **Commonly used (from examples/tests):**

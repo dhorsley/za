@@ -8612,6 +8612,11 @@ tco_reentry:
                 // We have an active exception - check if we're inside a try block
                 endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
                 if !endtryFound || err {
+                    // Check if warn/disabled mode allows continuation
+                    if exceptionStrictness == "warn" || exceptionStrictness == "disabled" {
+                        handleUnhandledException(excInfo, ifs)
+                        continue
+                    }
                     // We're not inside a try block - bubble exception up to parent function
                     if excInfo != nil {
                         retvalues = []any{EXCEPTION_THROWN, excInfo.category, excInfo.message, excInfo}

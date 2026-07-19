@@ -101,10 +101,9 @@ println "\n11. Testing error handling - invalid cron..."
 try
     invalid_cron = "invalid cron expression"
     result = cron_parse(invalid_cron)
-    on result is nil do throw "err-11"
     println "Unexpected success:", result
-catch err is "err-11"
-    println "Expected error:", err.pp
+catch err
+    println "Expected error:", err["message"]
 endtry
 
 # Test 12: Error handling - invalid Quartz
@@ -112,10 +111,9 @@ println "\n12. Testing error handling - invalid Quartz..."
 try
     invalid_quartz = "invalid quartz expression"
     result = quartz_to_cron(invalid_quartz)
-    on result is nil do throw "err-12"
     println "Unexpected success:", result
-catch err is "err-12"
-    println "Expected error:", err.pp
+catch err
+    println "Expected error:", err["message"]
 endtry
 
 # Test 13: Multiple next executions

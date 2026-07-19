@@ -142,15 +142,6 @@ assert len(result_big) == 2 && len(result_big[0]) == 2
 println "\ndet_big(2x2): "
 result_det_big = det_big(mat2a)
 println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
-println "\ndet_big(2x2): "
-result_det_big = det_big(mat2a)
-println "Result:\n" + result_det_big.as_string, " (expected: -2 with high precision)"
-
-# Test inverse_big with 2D matrices
-println "\ninverse_big(2x2): "
-result_big = inverse_big(mat2a)
-println "Result:\n" + result_big.as_string, " (expected: 2x2 matrix with high precision)"
-assert len(result_big) == 2 && len(result_big[0]) == 2
 
 # Test rank with 2D matrices
 println "\nrank(full rank 2x2): "

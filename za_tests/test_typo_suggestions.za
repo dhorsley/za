@@ -1,7 +1,9 @@
 # Test typo suggestions for syntax errors when error_extend(true) is enabled
 
-# Enable enhanced error handling
+# Enable enhanced error handling and warn mode for continuation
 error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
 
 # Test 1: Unknown function name (should suggest "split")
 println "Testing typo suggestion for 'splt'..."

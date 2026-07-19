@@ -8,6 +8,11 @@ CHANGE LOG
 library changes
 ---------------
 
+  * added type()/typeof() and str() aliases to lib-conversion.go
+      - type(var) -> string - alias for kind()
+      - typeof(var) -> string - alias for kind()
+      - str(value[,precision]) -> string - alias for as_string()
+
   * added json_encode() to lib-conversion.go
       - converts any Za value to a JSON string
       - used by docs/lsp/main.go for robust metadata loading

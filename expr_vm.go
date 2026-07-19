@@ -343,17 +343,29 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			a := vm.pop()
 			vm.push(ev_in(a, b))
 		case OpBitAnd:
-			b := vm.vmPopInt()
-			a := vm.vmPopInt()
-			vm.push(a & b)
+			b := vm.pop()
+			a := vm.pop()
+			if isMap(a) && isMap(b) {
+				vm.push(intersectMaps(a.(map[string]any), b.(map[string]any)))
+			} else {
+				vm.push(as_integer(a) & as_integer(b))
+			}
 		case OpBitOr:
-			b := vm.vmPopInt()
-			a := vm.vmPopInt()
-			vm.push(a | b)
+			b := vm.pop()
+			a := vm.pop()
+			if isMap(a) && isMap(b) {
+				vm.push(deepMergeMaps(a.(map[string]any), b.(map[string]any)))
+			} else {
+				vm.push(as_integer(a) | as_integer(b))
+			}
 		case OpBitXor:
-			b := vm.vmPopInt()
-			a := vm.vmPopInt()
-			vm.push(a ^ b)
+			b := vm.pop()
+			a := vm.pop()
+			if isMap(a) && isMap(b) {
+				vm.push(symmetricDifferenceMaps(a.(map[string]any), b.(map[string]any)))
+			} else {
+				vm.push(as_integer(a) ^ as_integer(b))
+			}
 		case OpLShift:
 			b := vm.vmPopInt()
 			a := vm.vmPopInt()

@@ -27,7 +27,7 @@ set bg&
 " Operators: {{{1
 " ==========
 syn match   Operator    "<<\|>>"        contained
-syn match   Operator    "[!&;|]"        contained
+syn match   Operator    "[!&;|^]"       contained
 syn match   Operator    "\[[[^:]\|\]]"  contained
 
 
@@ -111,6 +111,9 @@ syntax match conversion_functions "\(^|.\|\s*\)as_bool\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_float\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_string\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)kind\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)type\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)typeof\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)str\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)is_number\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)char\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)asc\s*("he=e-1

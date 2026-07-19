@@ -48,7 +48,7 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
         for p = next; p < (next + nc); p += 1 {
             switch args[n].(type) {
             case nil:
-                if types[p] == "nil" {
+                if types[p] == "nil" || types[p] == "any" {
                     n += 1
                     continue
                 }

@@ -29,7 +29,7 @@ contexts:
       captures:
         1: punctuation.definition.comment.za
   expr:
-    - match: (\|\||&&|==(\?|#)?|(!|>|<)=(#|\?)?|(=|!)~(#|\?)?|(>|<)(#|\?)|\.|\*|\\|%)
+    - match: (\|\||&&|==(\?|#)?|(!|>|<)=(#|\?)?|(=|!)~(#|\?)?|(>|<)(#|\?)|\.|\*|\\|%|\^)
       scope: storage.function.za
   function:
     - match: \b(de(f|fine)?|en(d|ddef)?)\b

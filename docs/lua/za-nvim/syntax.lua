@@ -530,6 +530,9 @@ local za_functions = {
     "as_float",
     "as_bool",
     "as_string",
+    "type",
+    "typeof",
+    "str",
     "maxuint",
     "char",
     "asc",
@@ -820,6 +823,9 @@ local za_functions = {
     "is_subset",
     "is_superset",
     "kind",
+    "type",
+    "typeof",
+    "str",
     "log_exception",
     "log_exception_with_stack",
     "log_sanitise",
@@ -1208,7 +1214,7 @@ local function highlight_line(buf, line_num, line)
     end
 
     -- Highlight operators
-    local operators = { "<<", ">>", "!", "&", ";", "|", "[", "]" }
+    local operators = { "<<", ">>", "!", "&", ";", "|", "^", "[", "]" }
     for _, op in ipairs(operators) do
         local start_pos = line:find(op, 1, true)
         while start_pos do

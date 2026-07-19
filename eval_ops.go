@@ -499,6 +499,11 @@ func ev_add(val1 any, val2 any) (r any) {
 
 func ev_sub(val1 any, val2 any) any {
 
+    // Handle map difference
+    if isMap(val1) && isMap(val2) {
+        return differenceMaps(val1.(map[string]any), val2.(map[string]any))
+    }
+
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
         return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {

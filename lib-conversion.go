@@ -1525,10 +1525,19 @@ func buildConversionLib() {
         // is koutparam here. The caller (eval_ops.go:2509) has special handling to detect
         // koutparam variables before evaluation and return "mut" directly.
 
+        if args[0] == nil {
+            return "nil", nil
+        }
         repl := str.Replace(sf("%T", args[0]), "float64", "float", -1)
         repl = str.Replace(repl, "interface {}", "any", -1)
         return repl, nil
     }
+
+    // Aliases for kind()
+    slhelp["type"] = LibHelp{in: "var", out: "string", action: "Alias for [#i1]kind()[#i0]. Return a string indicating the type of the variable."}
+    stdlib["type"] = stdlib["kind"]
+    slhelp["typeof"] = LibHelp{in: "var", out: "string", action: "Alias for [#i1]kind()[#i0]. Return a string indicating the type of the variable."}
+    stdlib["typeof"] = stdlib["kind"]
 
     slhelp["base64e"] = LibHelp{in: "string", out: "string", action: "Return a string of the base64 encoding of [#i1]string[#i0]"}
     stdlib["base64e"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1891,6 +1900,10 @@ func buildConversionLib() {
         }
         return i, nil
     }
+
+    // Alias for as_string()
+    slhelp["str"] = LibHelp{in: "value[,precision]", out: "string", action: "Alias for [#i1]as_string()[#i0]. Converts a value to a string."}
+    stdlib["str"] = stdlib["as_string"]
 
     slhelp["is_number"] = LibHelp{in: "expression", out: "bool", action: "Returns true if [#i1]expression[#i0] can evaluate to a numeric value."}
     stdlib["is_number"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
