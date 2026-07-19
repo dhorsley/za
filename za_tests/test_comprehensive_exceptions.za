@@ -12,7 +12,8 @@ try
     throw "test_error"
     println "This should not print"
 catch err is "test_error"
-    println "Caught test_error:", err
+    println "Caught test_error:"
+    println err.pp
 catch err is "other_error"
     println "This should not print"
 endtry
@@ -26,7 +27,8 @@ try
 catch err is "network_error"
     println "Network error handler (should not execute)"
 catch err is "database_error"
-    println "Database error handler executed:", err
+    println "Database error handler executed:"
+    println err.pp
 catch err is "file_error"
     println "File error handler (should not execute)"
 endtry
@@ -41,7 +43,8 @@ try
     println "Throwing enum exception"
     throw ex.network_timeout
 catch err is ex.network_timeout
-    println "Caught network timeout:", err
+    println "Caught network timeout:"
+    println err.pp
 catch err is ex.database_connection
     println "Database connection error (should not execute)"
 endtry
@@ -59,7 +62,8 @@ try
     endtry
     println "This should not print either"
 catch err is "bubbling_error"
-    println "Outer catch handled bubbled exception:", err
+    println "Outer catch handled bubbled exception:"
+    println err.pp
 endtry
 
 # Test 5: Exception with contains matching
@@ -68,7 +72,8 @@ try
     println "Throwing detailed error message"
     throw "Database connection failed: timeout after 30 seconds"
 catch err contains "connection"
-    println "Caught error containing 'connection':", err
+    println "Caught error containing 'connection':"
+    println err.pp
 catch err contains "timeout"
     println "This should not execute (already caught)"
 endtry
@@ -82,7 +87,8 @@ def test_function_exception()
         throw "function_error"
         println "Should not print"
     catch err is "function_error"
-        println "Function caught error:", err
+        println "Function caught error:"
+        println err.pp
     endtry
     println "Function completed normally"
 end
@@ -105,7 +111,8 @@ try
     println "Calling function that throws unhandled exception"
     throw_unhandled()
 catch err is "unhandled_error"
-    println "Caller caught unhandled exception:", err
+    println "Caller caught unhandled exception:"
+    println err.pp
 endtry
 
 # Test 8: Exception with return statement in try block
@@ -150,7 +157,8 @@ def level3_function()
         println "Level 3 try"
         throw "level3_error"
     catch err is "level3_error"
-        println "Level 3 caught:", err
+        println "Level 3 caught:"
+        println err.pp
         throw "level3_rethrow"  # Re-throw different error
     endtry
 end
@@ -162,7 +170,8 @@ def level2_function()
         level3_function()
         println "Level 2 after level3 call"
     catch err is "level3_rethrow"
-        println "Level 2 caught rethrown error:", err
+        println "Level 2 caught rethrown error:"
+        println err.pp
         throw "level2_final"  # Transform and re-throw
     endtry
 end
@@ -172,7 +181,8 @@ try
     level2_function()
     println "Level 1 after level2 call"
 catch err is "level2_final"
-    println "Level 1 caught final error:", err
+    println "Level 1 caught final error:"
+    println err.pp
 endtry
 
 # Test 11: Exception with different data types
@@ -181,14 +191,16 @@ try
     println "Throwing integer exception"
     throw 42
 catch err is 42
-    println "Caught integer exception:", err
+    println "Caught integer exception:"
+    println err.pp
 endtry
 
 try
     println "Throwing string exception with number"
     throw "3.14"
 catch err is "3.14"
-    println "Caught string exception:", err
+    println "Caught string exception:"
+    println err.pp
 endtry
 
 # Test 12: Exception stress test with many nested levels
@@ -204,7 +216,8 @@ def deeply_nested()
     try
         deeply_nested()  # Remove the argument
     catch err is "deep_error"
-        println "Caught at level", level, ":", err
+        println "Caught at level", level, ":"
+        println err.pp
         if level > 3
             throw "bubbling_up"  # Re-throw to test bubbling
         endif
@@ -215,6 +228,84 @@ try
     deeply_nested()
 catch err is "bubbling_up"
     println "Final catch of bubbled exception:", err.pp
+endtry
+
+# Test 13: Bare rethrow
+println "\nTest 13: Bare rethrow"
+def rethrow_function()
+    try
+        throw "original_error" with "something went wrong"
+    catch err is "original_error"
+        println "Caught in function, rethrowing bare..."
+        throw
+    endtry
+end
+
+try
+    rethrow_function()
+catch err is "original_error"
+    println "Caught bare rethrow:"
+    println "Stack trace:"
+    println format_stack_trace(err["stack_trace"])
+    println pp(err)
+endtry
+
+# Test 14: Exception chaining with cause
+println "\nTest 14: Exception chaining with cause"
+try
+    try
+        throw "db_error" with "connection lost"
+    catch err
+        throw "app_error" with "database unavailable"
+    endtry
+catch err is "app_error"
+    println "Caught wrapped error:"
+    println "Stack trace:"
+    println format_stack_trace(err["stack_trace"])
+    println "Cause:"
+    println "Cause stack trace:"
+    println format_stack_trace(err["cause"]["stack_trace"])
+    println pp(err)
+    println pp(err["cause"])
+endtry
+
+# Test 15: Nested cause chains via functions
+println "\nTest 15: Nested cause chains"
+def level3_thrower()
+    throw "level3_error" with "deepest"
+enddef
+
+def level2_rethrower()
+    try
+        level3_thrower()
+    catch err
+        throw "level2_error" with "middle"
+    endtry
+enddef
+
+def level1_rethrower()
+    try
+        level2_rethrower()
+    catch err
+        throw "level1_error" with "outermost"
+    endtry
+enddef
+
+try
+    level1_rethrower()
+catch err is "level1_error"
+    println "Caught level1:"
+    println "Stack trace:"
+    println format_stack_trace(err["stack_trace"])
+    println "Cause (level2):"
+    println "Cause stack trace:"
+    println format_stack_trace(err["cause"]["stack_trace"])
+    println "Cause of cause (level3):"
+    println "Cause of cause stack trace:"
+    println format_stack_trace(err["cause"]["cause"]["stack_trace"])
+    println pp(err)
+    println pp(err["cause"])
+    println pp(err["cause"]["cause"])
 endtry
 
 println "\n=== All comprehensive tests completed ==="

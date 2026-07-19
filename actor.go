@@ -1086,6 +1086,25 @@ func getExceptionSeverity(ifs uint32) (int, bool) {
     return 0, false
 }
 
+// exceptionInfoToMap converts an exceptionInfo to the user-visible err map, with recursive cause chain
+func exceptionInfoToMap(exc *exceptionInfo) map[string]any {
+    if exc == nil {
+        return nil
+    }
+    m := map[string]any{
+        "category":    exc.category,
+        "message":     exc.message,
+        "line":        int(exc.line),
+        "function":    exc.function,
+        "stack_trace": exc.stackTrace,
+        "source":      exc.source,
+    }
+    if exc.previous != nil {
+        m["cause"] = exceptionInfoToMap(exc.previous)
+    }
+    return m
+}
+
 // formatStackTrace formats a stack trace into a readable string with colours
 func formatStackTrace(stackTrace []stackFrame) string {
     if len(stackTrace) == 0 {
@@ -7847,13 +7866,13 @@ tco_reentry:
                                         }
 
                                         // Jump to first catch block - look in the current function space, not the try block function space
-                                        // Start looking from after the inner try block (pc+2 to skip the inner endtry)
-                                        catchFound, catchDistance, err := lookahead(source_base, parser.pc+2, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
+                                        // Start from pc (not pc+2) so balanced stale try/endtry pairs are counted correctly
+                                        catchFound, catchDistance, err := lookahead(source_base, parser.pc, 0, 0, C_Catch, []int64{C_Try}, []int64{C_Endtry})
                                         if catchFound {
                                         }
                                         if err || !catchFound {
                                             // No catch blocks found - look for endtry
-                                            endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+2, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
+                                            endtryFound, endtryDistance, err := lookahead(source_base, parser.pc, 0, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
                                             if endtryFound {
                                             }
                                             if err || !endtryFound {
@@ -7876,9 +7895,9 @@ tco_reentry:
                                                 // Don't clear exception state - let it bubble up
                                                 break
                                             }
-                                            parser.pc += endtryDistance + 1 // Jump to endtry (+1 because we looked from pc+2)
+                                            parser.pc += endtryDistance - 1 // Jump to endtry (-1 because loop will increment)
                                         } else {
-                                            parser.pc += catchDistance + 1 // Jump to first catch block (+1 because we looked from pc+2)
+                                            parser.pc += catchDistance - 1 // Jump to first catch block (-1 because loop will increment)
                                         }
                                     } else {
                                         parser.report(inbound.SourceLine, "Invalid exception return format")
@@ -8182,14 +8201,7 @@ tco_reentry:
                             }
 
                             // Create err variable with exception information
-                            errVar := map[string]any{
-                                "category":    catchExcPtr.category,
-                                "message":     catchExcPtr.message,
-                                "line":        int(catchExcPtr.line),
-                                "function":    catchExcPtr.function,
-                                "stack_trace": catchExcPtr.stackTrace,
-                                "source":      catchExcPtr.source,
-                            }
+                            errVar := exceptionInfoToMap(catchExcPtr)
 
                             // Set the err variable in the current scope
                             vset(nil, ifs, ident, errVarName, errVar)
@@ -8224,14 +8236,7 @@ tco_reentry:
                         }
 
                         // Create err variable with exception information
-                        errVar := map[string]any{
-                            "category":    catchExcPtr.category,
-                            "message":     catchExcPtr.message,
-                            "line":        int(catchExcPtr.line),
-                            "function":    catchExcPtr.function,
-                            "stack_trace": catchExcPtr.stackTrace,
-                            "source":      catchExcPtr.source,
-                        }
+                        errVar := exceptionInfoToMap(catchExcPtr)
 
                         // Set the err variable in the current scope
                         vset(nil, ifs, ident, errVarName, errVar)
@@ -8287,17 +8292,29 @@ tco_reentry:
 
                 // Evaluate the exception expression or use default category
                 var category any
+                var rethrowActive bool
                 if exceptionTokens == nil {
-                    // No exception specified - use default category from try throws clause
-                    calllock.RLock()
-                    defaultCategory := calltable[ifs].defaultExceptionCategory
-                    calllock.RUnlock()
-                    if defaultCategory == nil {
-                        parser.report(inbound.SourceLine, "throw requires an exception category or try throws clause")
-                        finish(false, ERR_EXCEPTION)
-                        break
+                    // No exception specified - check for bare rethrow first
+                    if atomic.LoadInt32(&calltable[ifs].currentCatchMatched) == 1 {
+                        exceptionPtr := atomic.LoadPointer(&calltable[ifs].activeException)
+                        if exceptionPtr != nil {
+                            activeExc := (*exceptionInfo)(exceptionPtr)
+                            rethrowActive = true
+                            category = activeExc.category
+                        }
                     }
-                    category = defaultCategory
+                    if !rethrowActive {
+                        // Fall back to default category from try throws clause
+                        calllock.RLock()
+                        defaultCategory := calltable[ifs].defaultExceptionCategory
+                        calllock.RUnlock()
+                        if defaultCategory == nil {
+                            parser.report(inbound.SourceLine, "throw requires an exception category or try throws clause")
+                            finish(false, ERR_EXCEPTION)
+                            break
+                        }
+                        category = defaultCategory
+                    }
                 } else {
                     // Evaluate the exception expression
                     if we = parser.wrappedEval(ifs, ident, ifs, ident, exceptionTokens); !we.evalError {
@@ -8324,17 +8341,34 @@ tco_reentry:
 
                 // Capture stack trace at throw time using full call chain
                 actualLine := inbound.SourceLine + 1
-                stackTraceCopy := generateStackTrace(fs, ifs, actualLine)
 
-                // Set up exception state atomically
-                excInfo := &exceptionInfo{
-                    category:   category,
-                    message:    message,
-                    line:       int(actualLine),
-                    function:   fs,
-                    fs:         ifs,
-                    stackTrace: stackTraceCopy,
-                    source:     "throw",
+                var excInfo *exceptionInfo
+                if rethrowActive {
+                    // Bare rethrow - reuse existing exceptionInfo, just reset catch matched
+                    excInfoPtr := atomic.LoadPointer(&calltable[ifs].activeException)
+                    excInfo = (*exceptionInfo)(excInfoPtr)
+                } else {
+                    stackTraceCopy := generateStackTrace(fs, ifs, actualLine)
+
+                    // Set up exception state atomically
+                    var prevExc *exceptionInfo
+                    if atomic.LoadInt32(&calltable[ifs].currentCatchMatched) == 1 {
+                        prevPtr := atomic.LoadPointer(&calltable[ifs].activeException)
+                        if prevPtr != nil {
+                            prevExc = (*exceptionInfo)(prevPtr)
+                        }
+                    }
+
+                    excInfo = &exceptionInfo{
+                        category:   category,
+                        message:    message,
+                        line:       int(actualLine),
+                        function:   fs,
+                        fs:         ifs,
+                        stackTrace: stackTraceCopy,
+                        source:     "throw",
+                        previous:   prevExc,
+                    }
                 }
 
                 // Stack trace is already correct - no need to modify
@@ -8612,8 +8646,8 @@ tco_reentry:
                 // We have an active exception - check if we're inside a try block
                 endtryFound, endtryDistance, err := lookahead(source_base, parser.pc+1, 1, 0, C_Endtry, []int64{C_Try}, []int64{C_Endtry})
                 if !endtryFound || err {
-                    // Check if warn/disabled mode allows continuation
-                    if exceptionStrictness == "warn" || exceptionStrictness == "disabled" {
+                    // At top level in warn/disabled mode: handle inline and continue
+                    if ifs < 3 && (exceptionStrictness == "warn" || exceptionStrictness == "disabled") {
                         handleUnhandledException(excInfo, ifs)
                         continue
                     }

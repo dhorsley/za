@@ -433,8 +433,9 @@ type exceptionInfo struct {
     line       int
     function   string
     fs         uint32
-    stackTrace []stackFrame // Automated stack trace
-    source     string       // Error source ("evaluator", "try_operator", "external", etc.)
+    stackTrace []stackFrame   // Automated stack trace
+    source     string         // Error source ("evaluator", "try_operator", "external", etc.)
+    previous   *exceptionInfo // Previous exception when rethrowing in catch (causes chain)
 }
 
 // Global exception variables removed - now using per-call state in call_s struct

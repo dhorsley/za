@@ -30,6 +30,7 @@ try
 endtry
 
 # Test 4: Basic ?? operator without try - comment out test 3 to reach this.
+exception_strictness("strict")
 println "\nTest 4: nil ?? (no etype, outside try/catch)"
 result = nil ??
 println "This should not be reached"
