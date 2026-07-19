@@ -2,3 +2,12 @@ za
 za.*
 za_test
 .*.swp
+
+# VS Code: extension build artifacts
+docs/vscode-za/node_modules/
+docs/vscode-za/*.vsix
+docs/vscode-za/out/
+
+# LSP server build artifacts
+docs/lsp/za-lsp
+docs/vscode-za/bin/
