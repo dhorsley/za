@@ -1,7 +1,7 @@
 #!/usr/bin/env za
 
 foreach f in dir(".","\.za$")
-    println f.name
+    println "\n[#4][#ul][#bold]{=f.name}[#boff][#-]\n"
     r={za {=f.name}}
     println r.out
     on not r.okay do println "-- [#2]failed on {=f.name} with code {=r.code}[#-]"
