@@ -237,11 +237,14 @@ def check_aws_cli()
     return result.okay
 end
 
-def aws_ce(args)
+def aws_ce(profile, args)
     cmd = "aws ce " + args + " --output json 2>&1"
+    on profile != "" do cmd = "AWS_PROFILE={profile} " + cmd
     result =| {cmd}
     if not result.okay
-        return nil, result.err
+        err_msg = result.err
+        on err_msg == "" do err_msg = trim(result.out)
+        return nil, err_msg
     endif
     return json_decode(result.out), nil
 end
@@ -274,13 +277,13 @@ def discover_regions(profile)
     if sm > cm
         sy = as_string(as_int(cy) - 1)
     endif
-    cmd = `aws ce get-dimension-values --dimension REGION --time-period Start={sy}-{=pad(as_string(sm), 1, 2, "0")}-01,End={cy}-{=pad(as_string(cm), 1, 2, "0")}-01 --output json 2>&1`
-    on profile != "" do cmd = "AWS_PROFILE={profile} " + cmd
-    result =| {cmd}
-    if not result.okay
-        return regions, "aws ce failed: " + trim(result.out)
+    start_str = `{sy}-{=pad(as_string(sm), 1, 2, "0")}-01`
+    end_str = `{cy}-{=pad(as_string(cm), 1, 2, "0")}-01`
+    args = `get-dimension-values --dimension REGION --time-period Start={start_str},End={end_str}`
+    data, err = aws_ce(profile, args)
+    if data == nil
+        return regions, "aws ce failed: " + err
     endif
-    data = json_decode(result.out)
     vals = data["DimensionValues"]
     on vals == nil do return regions, "No DimensionValues in AWS response"
     foreach v in vals
@@ -304,7 +307,7 @@ end
 def fetch_costs(profile, region, start, endt)
     args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity MONTHLY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
-    data, err = aws_ce(args)
+    data, err = aws_ce(profile, args)
     on data == nil do return nil, err
     results = data["ResultsByTime"]
     on results == nil do return nil, "No ResultsByTime in response"
@@ -341,7 +344,9 @@ def fetch_costs(profile, region, start, endt)
         on total > 0 do pct_val = (costs[i].cost / total * 1000.0)
         on total > 0 do pct_val = (pct_val / 10.0)
         costs[i].pct_val = pct_val
-        costs[i].pct = "{=as_string(pct_val.as_bigf, 3)}%"
+        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
+        on pct_str ~ "e-" do pct_str = "<0.001%"
+        costs[i].pct = pct_str
         costs[i].bar = usage_bar(pct_val)
     endfor
     sort_costs(costs, true)
@@ -351,7 +356,7 @@ end
 def fetch_forecast(profile, region, start, endt)
     args = "get-cost-forecast --time-period Start={start},End={endt} --metric AMORTIZED_COST --granularity MONTHLY"
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
-    data, err = aws_ce(args)
+    data, err = aws_ce(profile, args)
     on data == nil do return nil, err
     total = data["Total"]
     on total == nil do return nil, "No Total in forecast"
@@ -371,7 +376,9 @@ def show_profile_menu(profiles)
     endfor
     append_to(ref opts, "  [back]  ")
 
-    m = map(.row 4, .col 4, .title "AWS Profiles", .height 20, .width 40,
+    menu_height = len(opts) + 4
+    on menu_height > term_h() - 6 do menu_height = term_h() - 6
+    m = map(.row 4, .col 4, .title "AWS Profiles", .height menu_height, .width 40,
             .options opts, .prompt "Select profile:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -405,11 +412,13 @@ def show_region_menu(profile, current_region)
     foreach r in regions
         lbl = r["label"]
         on lbl == nil do lbl = r["code"]
-        append_to(ref opts, "  {=pad(lbl, 0, 30)}  ")
+        append_to(ref opts, "  {lbl}  ")
     endfor
     append_to(ref opts, "  [back]  ")
 
-    m = map(.row 4, .col 4, .title "AWS Regions", .height 20, .width 60,
+    menu_height = len(opts) + 4
+    on menu_height > term_h() - 6 do menu_height = term_h() - 6
+    m = map(.row 4, .col 4, .title "AWS Regions", .height menu_height, .width 50,
             .options opts, .prompt "Select region:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -418,7 +427,6 @@ def show_region_menu(profile, current_region)
     on menu.Cancel do return current_region, true
     idx = menu.Result - 1
     on idx < 0 || idx >= len(regions) do return current_region, true
-    on idx >= len(regions) do return current_region, true
     code = regions[idx]["code"]
     on code == nil do return current_region, true
     return code, false
@@ -439,7 +447,9 @@ def show_currency_menu(current_code)
     endfor
     append_to(ref opts, "  [back]  ")
 
-    m = map(.row 4, .col 4, .title "Currency", .height 20, .width 40,
+    menu_height = len(opts) + 4
+    on menu_height > term_h() - 6 do menu_height = term_h() - 6
+    m = map(.row 4, .col 4, .title "Currency", .height menu_height, .width 40,
             .options opts, .prompt "Select currency:", .cursor "[#b1][#6]>[##][#-]", .index selected_idx, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -541,7 +551,9 @@ def show_main_menu(sort_desc)
         "  Quit  "
     ]
 
-    m = map(.row 4, .col 4, .title "Actions", .height 14, .width 40,
+    menu_height = len(opts) + 4
+    on menu_height > term_h() - 6 do menu_height = term_h() - 6
+    m = map(.row 4, .col 4, .title "Actions", .height menu_height, .width 40,
             .options opts, .prompt "Select action:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -581,18 +593,12 @@ while true
     if len(profiles) == 1
         curr_profile = profiles[0]
     else
-        while true
-            curr_profile, cancelled = show_profile_menu(profiles)
-            break if not cancelled
-        endwhile
+        curr_profile, cancelled = show_profile_menu(profiles)
     endif
     break if curr_profile == ""
 
     curr_region = ""
-    while true
-        curr_region, cancelled = show_region_menu(curr_profile, curr_region)
-        break if not cancelled
-    endwhile
+    curr_region, cancelled = show_region_menu(curr_profile, curr_region)
 
     curr_code = "USD"
     load_rates()
@@ -617,40 +623,40 @@ while true
             action = show_main_menu(sort_desc)
             case action
             is "profile"
-                while true
-                    curr_profile, cancelled = show_profile_menu(profiles)
-                    break if not cancelled
-                endwhile
+                curr_profile, cancelled = show_profile_menu(profiles)
                 break if curr_profile == ""
-                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                continue if costs == nil
+                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                if new_costs == nil
+                    show_error("Failed to fetch costs: {err}")
+                    continue
+                endif
+                costs = new_costs
                 sort_costs(costs, sort_desc)
                 forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
             is "region"
-                while true
-                    curr_region, cancelled = show_region_menu(curr_profile, curr_region)
-                    break if not cancelled
-                endwhile
-                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                continue if costs == nil
+                curr_region, cancelled = show_region_menu(curr_profile, curr_region)
+                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                if new_costs == nil
+                    show_error("Failed to fetch costs: {err}")
+                    continue
+                endif
+                costs = new_costs
                 sort_costs(costs, sort_desc)
                 forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
             is "currency"
-                while true
-                    curr_code, cancelled = show_currency_menu(curr_code)
-                    break if not cancelled
-                endwhile
+                curr_code, cancelled = show_currency_menu(curr_code)
             is "sort"
                 sort_desc = not sort_desc
                 sort_costs(costs, sort_desc)
             is "forecast"
                 show_forecast_detail(forecast_val, curr_code, period_lbl)
             is "refresh"
-                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                if costs == nil
+                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                if new_costs == nil
                     show_error("Failed to fetch costs: {err}")
                     continue
                 endif
+                costs = new_costs
                 sort_costs(costs, sort_desc)
                 forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
             is "quit"
@@ -664,10 +670,7 @@ while true
             continue
         endif
         if res.Action == "c" || res.Action == "C"
-            while true
-                curr_code, cancelled = show_currency_menu(curr_code)
-                break if not cancelled
-            endwhile
+            curr_code, cancelled = show_currency_menu(curr_code)
             continue
         endif
         if res.Action == "f" || res.Action == "F"

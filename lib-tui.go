@@ -1474,6 +1474,10 @@ func tui_menu(t tui, s tui_style) tui {
         addhifg = "[#" + hi_fg + "]"
     }
 
+    if t.Height < 3 {
+        t.Height = 3
+    }
+
     // scroll if necessary — inner scroll handles overflow when useScroll is true
     if !(t.Height > 0 && len(t.Options) > t.Height) && row+len(t.Options)+6>MH {
         for ssize:=row+len(t.Options)+6; ssize>MH; ssize-=1 {
@@ -1492,18 +1496,19 @@ func tui_menu(t tui, s tui_style) tui {
 
     offset:=0
     if prompt!="" {
-        absat(row+2, col+2)
+        absat(row+1, col+2)
         pf(prompt)
-        offset+=4
+        offset+=3
     }
 
     // determine if scrolling is needed (must be after offset is known)
     visibleCount := len(t.Options)
     scrollOffset := 0
     useScroll := false
-    if t.Height > 0 && len(t.Options) > t.Height {
-        visibleCount = t.Height - offset
-        if visibleCount < 1 { visibleCount = 1 }
+    usable := t.Height - offset
+    if usable < 1 { usable = 1 }
+    if t.Height > 0 && len(t.Options) > usable {
+        visibleCount = usable
         useScroll = true
     }
 
@@ -1558,7 +1563,7 @@ func tui_menu(t tui, s tui_style) tui {
             if MW != prevMW || MH != prevMH {
                 prevMW, prevMH = MW, MH
                 if useScroll {
-                    visibleCount = t.Height
+                    visibleCount = usable
                     if visibleCount > len(t.Options) {
                         visibleCount = len(t.Options)
                     }
@@ -2026,21 +2031,29 @@ func mapToTui(m map[string]any) tui {
     if v, ok := m["row"]; ok {
         if i, ok := v.(int); ok {
             t.Row = i
+        } else if f, ok := v.(float64); ok {
+            t.Row = int(f)
         }
     }
     if v, ok := m["col"]; ok {
         if i, ok := v.(int); ok {
             t.Col = i
+        } else if f, ok := v.(float64); ok {
+            t.Col = int(f)
         }
     }
     if v, ok := m["height"]; ok {
         if i, ok := v.(int); ok {
             t.Height = i
+        } else if f, ok := v.(float64); ok {
+            t.Height = int(f)
         }
     }
     if v, ok := m["width"]; ok {
         if i, ok := v.(int); ok {
             t.Width = i
+        } else if f, ok := v.(float64); ok {
+            t.Width = int(f)
         }
     }
     if v, ok := m["action"]; ok {
