@@ -103,18 +103,24 @@ def spinner_clear()
     clear_line(3, 1)
 end
 
-def async_fetch(profile, region, start, endt, sort_desc)
-    costs, err = fetch_costs(profile, region, start, endt)
-    on costs == nil do return map(.costs nil, .forecast nil, .err err)
-    sort_costs(costs, sort_desc)
-    forecast, ferr = fetch_forecast(profile, region, start, endt)
-    return map(.costs costs, .forecast forecast, .err nil)
+def async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
+    if granularity == "DAILY"
+        costs, err = fetch_daily_costs(profile, region, cost_start, cost_endt)
+    else
+        costs, err = fetch_costs(profile, region, cost_start, cost_endt)
+    endif
+    on costs == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .err err)
+    sort_costs(costs, sort_mode)
+    forecast, ferr = fetch_forecast(profile, region, forecast_start, forecast_endt)
+    prev_start, prev_end = prev_period(cost_start)
+    prev_map, _ = fetch_prev_month_costs(profile, region, prev_start, prev_end)
+    return map(.costs costs, .forecast forecast, .prev_costs_map prev_map, .err nil)
 end
 
-def async_load(profile, region, start, endt, sort_desc)
+def async_load(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
     heading("Loading", "Please wait...")
     var h map
-    ASYNC h async_fetch(profile, region, start, endt, sort_desc) "result"
+    ASYNC h async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity) "result"
     while true
         spinner_show("Fetching cost data")
         res = await(ref h, false)
@@ -154,6 +160,41 @@ def prev_month_period()
     start = `{py}-{=pad(as_string(pm), 1, 2, "0")}-01`
     end_str = `{y}-{=pad(as_string(m), 1, 2, "0")}-01`
     return start, end_str
+end
+
+def forecast_period()
+    y = as_string(time_year())
+    m = pad(as_string(time_month()), 1, 2, "0")
+    d = pad(as_string(time_dom()), 1, 2, "0")
+    start = "{y}-{m}-{d}"
+    nm = time_month() + 1
+    ny = y
+    if nm > 12
+        nm = 1
+        ny = as_string(time_year() + 1)
+    endif
+    nms = pad(as_string(nm), 1, 2, "0")
+    end_str = "{ny}-{nms}-01"
+    return start, end_str
+end
+
+def prev_period(start)
+    y = as_int(substr(start, 0, 4))
+    m = as_int(substr(start, 5, 2))
+    m = m - 1
+    if m < 1
+        m = 12
+        y = y - 1
+    endif
+    ps = as_string(y) + "-" + pad(as_string(m), 1, 2, "0") + "-01"
+    nm = m + 1
+    ny = y
+    if nm > 12
+        nm = 1
+        ny = y + 1
+    endif
+    pe = as_string(ny) + "-" + pad(as_string(nm), 1, 2, "0") + "-01"
+    return ps, pe
 end
 
 def period_label(start, endt)
@@ -235,18 +276,24 @@ es
 
 # --- Sorting ---
 
-def sort_costs(costs, desc)
+def sort_costs(costs, mode)
     n = len(costs)
     on n < 2 do return
     for i = 0 to n - 2
         for j = 0 to n - i - 2
-            a = costs[j].sort_val
-            b = costs[j+1].sort_val
             swap = false
-            if desc
-                on a < b do swap = true
-            else
+            if mode == "name"
+                a = lower(costs[j].service)
+                b = lower(costs[j+1].service)
                 on a > b do swap = true
+            else
+                a = costs[j].sort_val
+                b = costs[j+1].sort_val
+                if mode == "cost_desc"
+                    on a < b do swap = true
+                else
+                    on a > b do swap = true
+                endif
             endif
             if swap
                 tmp = costs[j]
@@ -279,16 +326,32 @@ end
 def discover_profiles()
     profiles = []
     creds_path = home() + "/.aws/credentials"
-    on not is_file(creds_path) do return profiles
-    raw = $in creds_path
-    lines = split(raw, "\n")
-    foreach line in lines
-        line = replace(line, "^\s+|\s+$", "")
-        continue if not line ~ "^\["
-        name = replace(line, "^\[", "")
-        name = replace(name, "\]$", "")
-        append_to(ref profiles, name)
-    endfor
+    config_path = home() + "/.aws/config"
+    
+    if is_file(creds_path)
+        raw = $in creds_path
+        lines = split(raw, "\n")
+        foreach line in lines
+            line = replace(line, "^\s+|\s+$", "")
+            continue if not line ~ "^\["
+            name = replace(line, "^\[", "")
+            name = replace(name, "\]$", "")
+            on not name in profiles do append_to(ref profiles, name)
+        endfor
+    endif
+    
+    if is_file(config_path)
+        raw = $in config_path
+        lines = split(raw, "\n")
+        foreach line in lines
+            line = replace(line, "^\s+|\s+$", "")
+            continue if not line ~ "^\[profile\s"
+            name = replace(line, "^\[profile\s+", "")
+            name = replace(name, "\]$", "")
+            on not name in profiles do append_to(ref profiles, name)
+        endfor
+    endif
+    
     return profiles
 end
 
@@ -372,7 +435,51 @@ def fetch_costs(profile, region, start, endt)
         costs[i].pct = pct_str
         costs[i].bar = progress_bar(pct_val, 20, "\u2588", "\u2591")
     endfor
-    sort_costs(costs, true)
+    sort_costs(costs, "cost_desc")
+    return costs, nil
+end
+
+def fetch_daily_costs(profile, region, start, endt)
+    args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity DAILY --metrics AmortizedCost"
+    on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    data, err = aws_ce(profile, args)
+    on data == nil do return nil, err
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime in response"
+    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    costs = []
+    total = 0.0
+    max_cost = 0.0
+    foreach period in results
+        amount_str = period["Total"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        date_label = period["TimePeriod"]["Start"]
+        on date_label == nil do date_label = "Unknown"
+        append_to(ref costs, costrow(
+            .service date_label,
+            .cost amount,
+            .cost_str "",
+            .pct "",
+            .pct_val 0.0,
+            .sort_val amount,
+            .bar ""
+        ))
+        total = total + amount
+        on amount > max_cost do max_cost = amount
+    endfor
+    on len(costs) == 0 do return nil, "No cost data parsed"
+    for i = 0 to len(costs)-1
+        pct_val = 0.0
+        on total > 0 do pct_val = costs[i].cost / total * 100.0
+        costs[i].pct_val = pct_val
+        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
+        on pct_str ~ "e-" do pct_str = "<0.001%"
+        costs[i].pct = pct_str
+        bar_pct = 0.0
+        on max_cost > 0 do bar_pct = costs[i].cost / max_cost * 100.0
+        costs[i].bar = progress_bar(bar_pct, 20, "\u2588", "\u2591")
+    endfor
     return costs, nil
 end
 
@@ -386,6 +493,74 @@ def fetch_forecast(profile, region, start, endt)
     amount_str = total["Amount"]
     on amount_str == nil do return nil, "No Amount in forecast"
     return as_float(amount_str), nil
+end
+
+def fetch_prev_month_costs(profile, region, start, endt)
+    args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity MONTHLY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
+    on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    data, err = aws_ce(profile, args)
+    on data == nil do return nil, err
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime"
+    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    period = results[0]
+    groups = period["Groups"]
+    on groups == nil do return nil, "No Groups"
+    prev = map()
+    foreach g in groups
+        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        svc = g["Keys"][0]
+        on svc == nil do svc = "Unknown"
+        prev[svc] = as_float(amount_str)
+    endfor
+    return prev, nil
+end
+
+def anomaly_flag(cost, prev_cost)
+    on prev_cost == nil do return ""
+    on prev_cost == 0.0 do return ""
+    on cost > prev_cost * 1.5 do return " \u25b2"
+    return ""
+end
+
+def fetch_service_daily(profile, region, service_name, start, endt)
+    args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity DAILY --metrics AmortizedCost"
+    filter_expr = json_encode(map(.And [
+        map(.Dimensions map(.Key "REGION", .Values [region])),
+        map(.Dimensions map(.Key "SERVICE", .Values [service_name]))
+    ]))
+    on region != "" do args = args + " --filter '" + filter_expr + "'"
+    on region == "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "SERVICE", .Values [service_name]))) + "'"
+    data, err = aws_ce(profile, args)
+    on data == nil do return nil, err
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime"
+    days = []
+    max_cost = 0.0
+    foreach period in results
+        amount_str = period["Total"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        date_str = period["TimePeriod"]["Start"]
+        on date_str == nil do date_str = "?"
+        append_to(ref days, map(.date date_str, .cost amount))
+        on amount > max_cost do max_cost = amount
+    endfor
+    return days, max_cost, nil
+end
+
+def render_mini_chart(days, max_cost, curr_code)
+    if len(days) == 0
+        return "No daily data"
+    endif
+    lines = []
+    foreach d in days
+        bar = ""
+        on max_cost > 0 do bar = progress_bar(d.cost / max_cost * 100.0, 20, "\u2588", "\u2591")
+        append_to(ref lines, "  " + d.date + "  " + convert_and_fmt(d.cost, curr_code) + "  " + bar)
+    endfor
+    return join(lines, "\n")
 end
 
 # --- TUI screens ---
@@ -478,7 +653,39 @@ def show_currency_menu(current_code)
     return CURRENCIES[idx].code, false
 end
 
-def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val, desc)
+def show_topn_menu(current_top)
+    heading("Filter Services", "Enter=select  Q=cancel")
+
+    opts = [
+        "  All Services  ",
+        "  Top 10  ",
+        "  Top 20  ",
+        "  Top 30  ",
+        "  Top 40  ",
+        "  Top 50  ",
+        "  [back]  "
+    ]
+
+    selected_idx = current_top / 10
+    on selected_idx < 0 do selected_idx = 0
+    on selected_idx > 5 do selected_idx = 0
+
+    m = map(.row 4, .col 4, .title "Top-N Filter", .height 0, .width 40,
+            .options opts, .prompt "Show:", .cursor "[#b1][#6]>[##][#-]", .index selected_idx, .border true)
+    s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, s)
+    on menu.Cancel do return current_top, true
+    idx = menu.Result - 1
+    on idx < 0 || idx >= 6 do return current_top, true
+    if idx == 0
+        return 0, false
+    endif
+    return idx * 10, false
+end
+
+def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val, sort_mode, top_n, total_count, hide_zero, granularity, prev_costs_map)
     cls
     at 1, 1
     println "[#b1][#6]  AWS Billing  [##][#-]"
@@ -491,16 +698,26 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
 
     rows = []
     total_usd = 0.0
+    filtered = []
     foreach c in costs
+        on hide_zero && c.cost == 0.0 do continue
+        append_to(ref filtered, c)
         total_usd = total_usd + c.cost
     endfor
 
-    svc_w = max([20, term_w() - 67]).as_int
-    foreach c in costs
+    cost_w = 16
+    on curr_code != "USD" do cost_w = 30
+    svc_w = max([20, term_w() - 67 - (cost_w - 16)]).as_int
+    foreach c in filtered
+        cost_display = convert_and_fmt(c.cost, curr_code)
+        on curr_code != "USD" do cost_display = cost_display + " (" + format_currency(c.cost, "$") + ")"
+        anomaly = ""
+        on prev_costs_map != nil do anomaly = anomaly_flag(c.cost, prev_costs_map[c.service])
+        svc_name = c.service + anomaly
         append_to(ref rows, costrow(
-            .service trunc(c.service, svc_w, "…"),
+            .service trunc(svc_name, svc_w, "…"),
             .cost c.cost,
-            .cost_str convert_and_fmt(c.cost, curr_code),
+            .cost_str cost_display,
             .pct c.pct,
             .pct_val c.pct_val,
             .sort_val c.sort_val,
@@ -510,8 +727,12 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
 
     t = map(.format "aos", .data rows, .headers true, .row 4, .col 2, .height term_h()-8, .width term_w()-6)
     t["display"] = [0, 2, 3, 6]
-    t["sizes"] = [svc_w, 16, 10, 20]
-    t["options"] = ["Service", "Cost (" + curr_code + ")", "Share", "Usage"]
+    t["sizes"] = [svc_w, cost_w, 10, 20]
+    if granularity == "DAILY"
+        t["options"] = ["Date", "Cost (" + curr_code + ")", "Share", "Relative"]
+    else
+        t["options"] = ["Service", "Cost (" + curr_code + ")", "Share", "Usage"]
+    endif
 
     s = map(
         .border map(.ih "", .iv "\u2502", .tl "\u2554", .tr "\u2557", .bl "\u255a", .br "\u255d", .tm "\u2550", .bm "\u2550", .lm "\u2502", .rm "\u2502"),
@@ -520,10 +741,17 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
         .list ["", "", "[#2]", "[#3]", "", "", "[#4]"]
     )
 
+    filter_text = ""
+    on top_n > 0 do filter_text = "  (Top " + as_string(top_n) + " of " + as_string(total_count) + ")"
+    on hide_zero do filter_text = filter_text + "  (Hide $0)"
+    on granularity == "DAILY" do filter_text = filter_text + "  (Daily)"
+    sort_text = " [cost \u2193]"
+    on sort_mode == "cost_asc" do sort_text = " [cost \u2191]"
+    on sort_mode == "name" do sort_text = " [name A-Z]"
     at term_h()-3, 2
-    println "[#b1][#6]  Total: ", convert_and_fmt(total_usd, curr_code), "  Forecast: ", forecast_val != nil ? convert_and_fmt(forecast_val, curr_code) : "N/A", desc ? " [cost \u2193]" : " [cost \u2191]", "  [##][#-]"
+    println "[#b1][#6]  Total: ", convert_and_fmt(total_usd, curr_code), "  Forecast: ", forecast_val != nil ? convert_and_fmt(forecast_val, curr_code) : "N/A", sort_text, filter_text, "  [##][#-]"
     at term_h()-2, 2
-    println "[#3]  Enter=details  S=sort  C=currency  F=forecast  B=back  Q=quit[##][#-]"
+    println "[#3]  Enter=details  S=sort  C=currency  F=forecast  O=options  H=hide$0  T=topN  P=period  D=daily  I=info  Q=quit[##][#-]"
 
     return tui_table_select(t, s)
 end
@@ -543,6 +771,35 @@ def show_forecast_detail(forecast_val, curr_code, period_lbl)
     keypress()
 end
 
+def show_help()
+    heading("Keyboard Shortcuts", "")
+    at 4, 5
+    println "[#6]Enter     [#3]Service details[##]"
+    at 6, 5
+    println "[#6]S         [#3]Sort (cost \u2193 / cost \u2191 / name)[##]"
+    at 8, 5
+    println "[#6]C         [#3]Change currency[##]"
+    at 10, 5
+    println "[#6]F         [#3]Show forecast[##]"
+    at 12, 5
+    println "[#6]O         [#3]Options menu[##]"
+    at 14, 5
+    println "[#6]T         [#3]Top-N filter popup[##]"
+    at 16, 5
+    println "[#6]H         [#3]Toggle hide $0 services[##]"
+    at 18, 5
+    println "[#6]P         [#3]Toggle period (this/last month)[##]"
+    at 20, 5
+    println "[#6]D         [#3]Toggle daily/monthly granularity[##]"
+    at 22, 5
+    println "[#6]I         [#3]This help screen[##]"
+    at 24, 5
+    println "[#6]Q         [#3]Quit[##]"
+    at 26, 5
+    println "[#3]Press any key to return...[##][#-]"
+    keypress()
+end
+
 def show_error(msg)
     cls
     at term_h()/2 - 2, 4
@@ -552,19 +809,49 @@ def show_error(msg)
     keypress()
 end
 
-def show_main_menu(sort_desc)
-    heading("Actions", "Enter=select  Q=cancel")
+def export_costs(costs, profile, region, curr_code, period_lbl, path)
+    buf = "AWS Billing Report\n"
+    buf = buf + "Profile: " + profile + "  Region: " + region + "  Period: " + period_lbl + "\n"
+    buf = buf + "\n"
+    buf = buf + "Service,Cost (" + curr_code + "),Share\n"
+    foreach c in costs
+        buf = buf + "\"" + c.service + "\"," + convert_and_fmt(c.cost, curr_code) + "," + c.pct + "\n"
+    endfor
+    dir = replace(path, "/[^/]+$", "")
+    on dir != "" && dir != path do | mkdir -p {dir}
+    buf $out path
+end
 
-    sort_text = "Sort: Cost Descending"
-    on not sort_desc do sort_text = "Sort: Cost Ascending"
+def save_session(profile, region, curr_code, sort_mode, top_n, is_prev, hide_zero, granularity)
+    session = map(.profile profile, .region region, .currency curr_code, .sort_mode sort_mode, .top_n top_n, .is_prev is_prev, .hide_zero hide_zero, .granularity granularity)
+    ensure_cache_dir()
+    json_encode(session) $out CURR_CACHE + "session.json"
+end
+
+def load_session()
+    path = CURR_CACHE + "session.json"
+    on not is_file(path) do return nil
+    return json_decode($in path)
+end
+
+def profile_valid(profiles, name)
+    foreach p in profiles
+        on p == name do return true
+    endfor
+    return false
+end
+
+def show_main_menu(sort_mode, period_lbl, top_n)
+    heading("Actions", "Enter=select  Q=cancel")
 
     opts = [
         "  Switch Profile  ",
         "  Switch Region  ",
         "  Change Currency  ",
-        "  " + sort_text + "  ",
+        "  Switch Period  ",
         "  Show Forecast  ",
         "  Refresh Data  ",
+        "  Export Data  ",
         "  Quit  "
     ]
 
@@ -579,10 +866,11 @@ def show_main_menu(sort_desc)
     is 1 ; return "profile"
     is 2 ; return "region"
     is 3 ; return "currency"
-    is 4 ; return "sort"
+    is 4 ; return "period"
     is 5 ; return "forecast"
     is 6 ; return "refresh"
-    is 7 ; return "quit"
+    is 7 ; return "export"
+    is 8 ; return "quit"
     endcase
     return "quit"
 end
@@ -590,6 +878,25 @@ end
 # --- Main ---
 
 tui_screen(1)
+
+# Load session defaults
+session = load_session()
+curr_profile = ""
+curr_region = ""
+curr_code = "USD"
+sort_mode = "cost_desc"
+top_n = 0
+is_prev = false
+hide_zero = false
+granularity = "MONTHLY"
+on session != nil do curr_profile = session["profile"]
+on session != nil do curr_region = session["region"]
+on session != nil do curr_code = session["currency"]
+on session != nil do sort_mode = session["sort_mode"]
+on session != nil do top_n = session["top_n"]
+on session != nil do is_prev = session["is_prev"]
+on session != nil do hide_zero = session["hide_zero"]
+on session != nil do granularity = session["granularity"]
 
 while true
     cursoroff()
@@ -608,28 +915,33 @@ while true
     if len(profiles) == 1
         curr_profile = profiles[0]
     else
-        curr_profile, cancelled = show_profile_menu(profiles)
+        if curr_profile == "" || not profile_valid(profiles, curr_profile)
+            curr_profile, cancelled = show_profile_menu(profiles)
+        endif
     endif
     break if curr_profile == ""
 
-    curr_region = ""
-    curr_region, cancelled = show_region_menu(curr_profile, curr_region)
+    if curr_region == ""
+        curr_region, cancelled = show_region_menu(curr_profile, curr_region)
+    endif
 
-    curr_code = "USD"
     load_rates()
 
     start_t, end_t = this_month_period()
+    forecast_start, forecast_end = forecast_period()
     period_lbl = period_label(start_t, end_t)
+    is_prev = false
 
-    fetch_result = async_load(curr_profile, curr_region, start_t, end_t, true)
+    fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
     if fetch_result["costs"] == nil
         show_error("Failed to fetch costs: {=fetch_result["err"]}")
         break
     endif
-    costs = fetch_result["costs"]
+    all_costs = fetch_result["costs"]
+    costs = all_costs
     forecast_val = fetch_result["forecast"]
+    prev_costs_map = fetch_result["prev_costs_map"]
 
-    sort_desc = true
     prev_w = term_w()
     prev_h = term_h()
 
@@ -639,52 +951,101 @@ while true
             prev_w = term_w()
             prev_h = term_h()
         endif
-        res = show_cost_table(costs, curr_profile, curr_region, curr_code, period_lbl, forecast_val, sort_desc)
-        if res.Back
-            action = show_main_menu(sort_desc)
+        res = show_cost_table(costs, curr_profile, curr_region, curr_code, period_lbl, forecast_val, sort_mode, top_n, len(all_costs), hide_zero, granularity, prev_costs_map)
+        if res.Back || res.Action == "o" || res.Action == "O"
+            action = show_main_menu(sort_mode, period_lbl, top_n)
             case action
             is "profile"
                 curr_profile, cancelled = show_profile_menu(profiles)
                 break if curr_profile == ""
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = fetch_result["costs"]
+                all_costs = fetch_result["costs"]
+                costs = all_costs
+                on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
                 forecast_val = fetch_result["forecast"]
+                prev_costs_map = fetch_result["prev_costs_map"]
             is "region"
                 curr_region, cancelled = show_region_menu(curr_profile, curr_region)
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = fetch_result["costs"]
+                all_costs = fetch_result["costs"]
+                costs = all_costs
+                on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
                 forecast_val = fetch_result["forecast"]
+                prev_costs_map = fetch_result["prev_costs_map"]
             is "currency"
                 curr_code, cancelled = show_currency_menu(curr_code)
-            is "sort"
-                sort_desc = not sort_desc
-                sort_costs(costs, sort_desc)
+            is "period"
+                if not is_prev
+                    start_t, end_t = prev_month_period()
+                    is_prev = true
+                else
+                    start_t, end_t = this_month_period()
+                    is_prev = false
+                endif
+                period_lbl = period_label(start_t, end_t)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+                if fetch_result["costs"] == nil
+                    show_error("Failed to fetch costs: {=fetch_result["err"]}")
+                    continue
+                endif
+                all_costs = fetch_result["costs"]
+                costs = all_costs
+                on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
+                forecast_val = fetch_result["forecast"]
+                prev_costs_map = fetch_result["prev_costs_map"]
             is "forecast"
                 show_forecast_detail(forecast_val, curr_code, period_lbl)
             is "refresh"
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = fetch_result["costs"]
+                all_costs = fetch_result["costs"]
+                costs = all_costs
+                on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
                 forecast_val = fetch_result["forecast"]
+                prev_costs_map = fetch_result["prev_costs_map"]
+            is "export"
+                heading("Export Data", "Enter filename (or leave empty for default)")
+                default_name = "awsbilling_" + replace(period_lbl, " ", "_") + ".csv"
+                prompt filename "Filename: "
+                on filename == "" do filename = default_name
+                on filename ~ "^~" do filename = home() + substr(filename, 1, len(filename)-1)
+                if not filename ~ "^/"
+                    filename = home() + "/" + filename
+                endif
+                export_costs(costs, curr_profile, curr_region, curr_code, period_lbl, filename)
+                heading("Export Complete", "")
+                at 5, 5
+                println "[#3]Saved to: [#6]", filename, "[##][#-]"
+                at 7, 5
+                println "[#3]Press any key to return...[##][#-]"
+                keypress()
             is "quit"
                 break
             endcase
             continue
         endif
         if res.Action == "s" || res.Action == "S"
-            sort_desc = not sort_desc
-            sort_costs(costs, sort_desc)
+            if sort_mode == "cost_desc"
+                sort_mode = "cost_asc"
+            else
+                if sort_mode == "cost_asc"
+                    sort_mode = "name"
+                else
+                    sort_mode = "cost_desc"
+                endif
+            endif
+            sort_costs(costs, sort_mode)
             continue
         endif
         if res.Action == "c" || res.Action == "C"
@@ -695,23 +1056,126 @@ while true
             show_forecast_detail(forecast_val, curr_code, period_lbl)
             continue
         endif
+        if res.Action == "t" || res.Action == "T"
+            top_n, cancelled = show_topn_menu(top_n)
+            costs = all_costs
+            on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
+            continue
+        endif
+        if res.Action == "h" || res.Action == "H"
+            if hide_zero
+                hide_zero = false
+            else
+                hide_zero = true
+            endif
+            continue
+        endif
+        if res.Action == "p" || res.Action == "P"
+            if not is_prev
+                start_t, end_t = prev_month_period()
+                is_prev = true
+            else
+                start_t, end_t = this_month_period()
+                is_prev = false
+            endif
+            period_lbl = period_label(start_t, end_t)
+            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+            if fetch_result["costs"] == nil
+                show_error("Failed to fetch costs: {=fetch_result["err"]}")
+                continue
+            endif
+            all_costs = fetch_result["costs"]
+            costs = all_costs
+            on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
+            forecast_val = fetch_result["forecast"]
+            prev_costs_map = fetch_result["prev_costs_map"]
+            continue
+        endif
+        if res.Action == "d" || res.Action == "D"
+            if granularity == "MONTHLY"
+                granularity = "DAILY"
+            else
+                granularity = "MONTHLY"
+            endif
+            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+            if fetch_result["costs"] == nil
+                show_error("Failed to fetch costs: {=fetch_result["err"]}")
+                continue
+            endif
+            all_costs = fetch_result["costs"]
+            costs = all_costs
+            on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
+            forecast_val = fetch_result["forecast"]
+            prev_costs_map = fetch_result["prev_costs_map"]
+            continue
+        endif
+        if res.Action == "i" || res.Action == "I"
+            show_help()
+            continue
+        endif
         break if res.Cancel
 
         sel = res.Result.as_int
         continue if sel < 0 || sel >= len(costs)
         chosen = costs[sel]
 
-        heading("Service Details", "")
-        at 5, 5
-        println "[#3]Service: [#6]", chosen.service, "[##][#-]"
-        at 7, 5
-        println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
+        if granularity == "DAILY"
+            heading("Date Details", "")
+            at 5, 5
+            println "[#3]Date:  [#6]", trunc(chosen.service, term_w() - 14, "…"), "[##][#-]"
+        else
+            heading("Service Details", "")
+            at 5, 5
+            println "[#3]Service: [#6]", trunc(chosen.service, term_w() - 14, "…"), "[##][#-]"
+            at 7, 5
+            println "[#3]Rank:    [#6]", as_string(sel + 1), " of ", as_string(len(costs)), "[##][#-]"
+        endif
         at 9, 5
-        println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
+        println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
         at 11, 5
-        println "[#3]Press any key to return...[##][#-]"
+        println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
+        at 13, 5
+        println "[#3]Usage:   [#6]", chosen.bar, "[##][#-]"
+        
+        # Show previous month comparison if available
+        prev_cost = nil
+        on prev_costs_map != nil do prev_cost = prev_costs_map[chosen.service]
+        if prev_cost != nil
+            delta = ((chosen.cost - prev_cost) / prev_cost * 100.0)
+            delta_str = as_string(delta.as_bigf, 1) + "%"
+            at 15, 5
+            if delta > 0
+                println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25b2 +", delta_str, "][##][#-]"
+            else
+                if delta < 0
+                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25bc ", delta_str, "][##][#-]"
+                else
+                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [= 0%][##][#-]"
+                endif
+            endif
+        endif
+        
+        # Fetch and show 30-day mini-chart
+        if granularity == "MONTHLY"
+            days, max_day_cost, chart_err = fetch_service_daily(curr_profile, curr_region, chosen.service, start_t, end_t)
+            if chart_err == nil && len(days) > 0
+                at 17, 5
+                println "[#3]Daily trend:[##][#-]"
+                at 19, 5
+                println "[#2]", render_mini_chart(days, max_day_cost, curr_code), "[##][#-]"
+                at 21 + len(days), 5
+                println "[#3]Press any key to return...[##][#-]"
+            else
+                at 17, 5
+                println "[#3]Press any key to return...[##][#-]"
+            endif
+        else
+            at 15, 5
+            println "[#3]Press any key to return...[##][#-]"
+        endif
         keypress()
     endwhile
+    save_session(curr_profile, curr_region, curr_code, sort_mode, top_n, is_prev, hide_zero, granularity)
     break
 endwhile
 
