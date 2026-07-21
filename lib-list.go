@@ -206,7 +206,17 @@ func readUnexportedField(v reflect.Value) any {
 }
 
 // getFieldValue extracts the field value as interface, handling private fields via unsafe.
+// Supports both structs and maps (map[string]any).
 func getFieldValue(structVal reflect.Value, fieldName string) any {
+    // Handle maps — look up by key
+    if structVal.Kind() == reflect.Map {
+        key := structVal.MapIndex(reflect.ValueOf(fieldName))
+        if key.IsValid() {
+            return key.Interface()
+        }
+        return nil
+    }
+
     // Try exact match first
     field := structVal.FieldByName(fieldName)
     // If not found, try capitalized variant

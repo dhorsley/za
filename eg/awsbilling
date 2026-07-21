@@ -1,0 +1,700 @@
+#!/usr/bin/za
+
+# AWS Billing TUI
+
+trap("int","sig_cleanup()")
+
+def sig_cleanup()
+    tui_screen(0)
+    cursoron()
+    exit
+end
+
+# --- Currency definitions ---
+
+struct currdef
+    code    string
+    symbol  string
+    name    string
+es
+
+CURRENCIES = []
+append_to(ref CURRENCIES, currdef("USD", "$",   "US Dollar"))
+append_to(ref CURRENCIES, currdef("GBP", "\u00a3",   "British Pound"))
+append_to(ref CURRENCIES, currdef("EUR", "\u20ac",   "Euro"))
+append_to(ref CURRENCIES, currdef("JPY", "\u00a5", "Japanese Yen"))
+append_to(ref CURRENCIES, currdef("CAD", "C$", "Canadian Dollar"))
+append_to(ref CURRENCIES, currdef("AUD", "A$", "Australian Dollar"))
+append_to(ref CURRENCIES, currdef("CHF", "CHF", "Swiss Franc"))
+append_to(ref CURRENCIES, currdef("CNY", "\u00a5", "Chinese Yuan"))
+append_to(ref CURRENCIES, currdef("INR", "\u20b9", "Indian Rupee"))
+append_to(ref CURRENCIES, currdef("BRL", "R$", "Brazilian Real"))
+append_to(ref CURRENCIES, currdef("KRW", "\u20a9", "South Korean Won"))
+append_to(ref CURRENCIES, currdef("SEK", "kr", "Swedish Krona"))
+append_to(ref CURRENCIES, currdef("NOK", "kr", "Norwegian Krone"))
+append_to(ref CURRENCIES, currdef("NZD", "NZ$", "New Zealand Dollar"))
+append_to(ref CURRENCIES, currdef("MXN", "MX$", "Mexican Peso"))
+append_to(ref CURRENCIES, currdef("SGD", "S$", "Singapore Dollar"))
+append_to(ref CURRENCIES, currdef("HKD", "HK$", "Hong Kong Dollar"))
+append_to(ref CURRENCIES, currdef("ZAR", "R", "South African Rand"))
+append_to(ref CURRENCIES, currdef("AED", "AED", "UAE Dirham"))
+append_to(ref CURRENCIES, currdef("SAR", "SAR", "Saudi Riyal"))
+append_to(ref CURRENCIES, currdef("PLN", "z\u0142", "Polish Zloty"))
+append_to(ref CURRENCIES, currdef("TRY", "\u20ba", "Turkish Lira"))
+append_to(ref CURRENCIES, currdef("THB", "\u0e3f", "Thai Baht"))
+append_to(ref CURRENCIES, currdef("TWD", "NT$", "Taiwan Dollar"))
+append_to(ref CURRENCIES, currdef("IDR", "Rp", "Indonesian Rupiah"))
+append_to(ref CURRENCIES, currdef("MYR", "RM", "Malaysian Ringgit"))
+append_to(ref CURRENCIES, currdef("PHP", "\u20b1", "Philippine Peso"))
+append_to(ref CURRENCIES, currdef("CZK", "K\u010d", "Czech Koruna"))
+append_to(ref CURRENCIES, currdef("ILS", "\u20aa", "Israeli Shekel"))
+append_to(ref CURRENCIES, currdef("CLP", "CL$", "Chilean Peso"))
+append_to(ref CURRENCIES, currdef("ARS", "AR$", "Argentine Peso"))
+append_to(ref CURRENCIES, currdef("COP", "CO$", "Colombian Peso"))
+append_to(ref CURRENCIES, currdef("PEN", "S/", "Peruvian Sol"))
+append_to(ref CURRENCIES, currdef("EGP", "E\u00a3", "Egyptian Pound"))
+append_to(ref CURRENCIES, currdef("NGN", "\u20a6", "Nigerian Naira"))
+append_to(ref CURRENCIES, currdef("VND", "\u20ab", "Vietnamese Dong"))
+append_to(ref CURRENCIES, currdef("BDT", "\u09f3", "Bangladeshi Taka"))
+append_to(ref CURRENCIES, currdef("PKR", "\u20a8", "Pakistani Rupee"))
+append_to(ref CURRENCIES, currdef("UAH", "\u20b4", "Ukrainian Hryvnia"))
+append_to(ref CURRENCIES, currdef("RON", "lei", "Romanian Leu"))
+append_to(ref CURRENCIES, currdef("HUF", "Ft", "Hungarian Forint"))
+append_to(ref CURRENCIES, currdef("DKK", "kr", "Danish Krone"))
+append_to(ref CURRENCIES, currdef("JOD", "JD", "Jordanian Dinar"))
+append_to(ref CURRENCIES, currdef("KWD", "KD", "Kuwaiti Dinar"))
+append_to(ref CURRENCIES, currdef("BHD", "BD", "Bahraini Dinar"))
+append_to(ref CURRENCIES, currdef("OMR", "OMR", "Omani Rial"))
+append_to(ref CURRENCIES, currdef("QAR", "QR", "Qatari Riyal"))
+
+# --- TUI helpers ---
+
+def heading(subtitle, hint)
+    cls
+    at 1, 1
+    println "[#b1][#6]  AWS Billing - ", subtitle, "  [##][#-]"
+    at 2, 1
+    println "[#3]", hint, "[##][#-]"
+end
+
+def heading_err(subtitle, msg)
+    cls
+    at 1, 1
+    println "[#b1][#6]  AWS Billing - ", subtitle, "  [##][#-]"
+    at 3, 1
+    println "[#1]", msg, "[##][#-]"
+end
+
+# --- Date helpers ---
+
+def this_month_period()
+    y = as_string(time_year())
+    m = pad(as_string(time_month()), 1, 2, "0")
+    start = "{y}-{m}-01"
+    nm = time_month() + 1
+    ny = y
+    if nm > 12
+        nm = 1
+    endif
+    if nm == 1
+        ny = as_string(time_year() + 1)
+    endif
+    nms = pad(as_string(nm), 1, 2, "0")
+    end_str = "{ny}-{nms}-01"
+    return start, end_str
+end
+
+def prev_month_period()
+    cy = as_string(time_year())
+    cm = as_int(time_month())
+    pm = cm - 1
+    py = cy
+    if pm < 1
+        pm = pm + 12
+    endif
+    if pm > cm
+        py = as_string(as_int(cy) - 1)
+    endif
+    start = `{py}-{=pad(as_string(pm), 1, 2, "0")}-01`
+    end_str = `{cy}-{=pad(as_string(cm), 1, 2, "0")}-01`
+    return start, end_str
+end
+
+def period_label(start, endt)
+    parts = split(start, "-")
+    months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    return months[as_int(parts[1])] + " " + parts[0]
+end
+
+# --- Currency helpers ---
+
+RATES = nil
+CURR_CACHE = home() + "/.cache/za/awsbilling/"
+
+def ensure_cache_dir()
+    | mkdir -p {CURR_CACHE}
+end
+
+def load_rates()
+    today = `{=as_string(time_year())}-{=pad(as_string(time_month()), 1, 2, "0")}-{=pad(as_string(time_dom()), 1, 2, "0")}`
+    cache_file = CURR_CACHE + "rates_{today}.json"
+    if is_file(cache_file)
+        @RATES = json_decode($in cache_file)
+        return
+    endif
+    println "[#3]Fetching exchange rates...[##][#-]"
+    result =| curl -s "https://api.frankfurter.dev/v1/latest?base=USD"
+    if not result.okay
+        println "[#1]Failed to fetch exchange rates.[##][#-]"
+        println "[#1]", result.err, "[##][#-]"
+        return
+    endif
+    @RATES = json_decode(result.out)
+    ensure_cache_dir()
+    result.out $out cache_file
+end
+
+def get_rate(code)
+    on code == "USD" do return 1.0
+    on RATES == nil do return 1.0
+    rates_map = RATES["rates"]
+    on rates_map == nil do return 1.0
+    rate_val = rates_map[code]
+    on rate_val == nil do return 1.0
+    return as_float(rate_val)
+end
+
+def curr_symbol(code)
+    foreach c in CURRENCIES
+        on c.code == code do return c.symbol
+    endfor
+    return "$"
+end
+
+def convert_and_fmt(usd_amount, code)
+    return format_currency(usd_amount * get_rate(code), curr_symbol(code))
+end
+
+# --- Helpers ---
+
+def usage_bar(pct)
+    bar_width = 20
+    filled = (pct * bar_width / 100).as_int
+    on filled > bar_width do filled = bar_width
+    empty = bar_width - filled
+    bar = "\u2588" * filled
+    on empty > 0 do bar = bar + "\u2591" * empty
+    return bar
+end
+
+def trunc(s, n)
+    on len(s) > n do return s[0:n-3] + "..."
+    return s
+end
+
+# --- Structs for table display ---
+
+struct costrow
+    service     string
+    cost        float
+    cost_str    string
+    pct         string
+    pct_val     float
+    sort_val    float
+    bar         string
+    orig_idx    int
+es
+
+# --- Sorting ---
+
+def sort_costs(costs, desc)
+    n = len(costs)
+    on n < 2 do return
+    for i = 0 to n - 2
+        for j = 0 to n - i - 2
+            a = costs[j].sort_val
+            b = costs[j+1].sort_val
+            swap = false
+            if desc
+                on a < b do swap = true
+            else
+                on a > b do swap = true
+            endif
+            if swap
+                tmp = costs[j]
+                costs[j] = costs[j+1]
+                costs[j+1] = tmp
+            endif
+        endfor
+    endfor
+end
+
+# --- AWS helpers ---
+
+def check_aws_cli()
+    result =| aws --version 2>&1
+    return result.okay
+end
+
+def aws_ce(args)
+    cmd = "aws ce " + args + " --output json 2>&1"
+    result =| {cmd}
+    if not result.okay
+        return nil, result.err
+    endif
+    return json_decode(result.out), nil
+end
+
+def discover_profiles()
+    profiles = []
+    creds_path = home() + "/.aws/credentials"
+    on not is_file(creds_path) do return profiles
+    raw = $in creds_path
+    lines = split(raw, "\n")
+    foreach line in lines
+        line = replace(line, "^\s+|\s+$", "")
+        continue if not line ~ "^\["
+        name = replace(line, "^\[", "")
+        name = replace(name, "\]$", "")
+        append_to(ref profiles, name)
+    endfor
+    return profiles
+end
+
+def discover_regions(profile)
+    regions = []
+    cy = as_string(time_year())
+    cm = as_int(time_month())
+    sm = cm - 3
+    sy = cy
+    if sm < 1
+        sm = sm + 12
+    endif
+    if sm > cm
+        sy = as_string(as_int(cy) - 1)
+    endif
+    cmd = `aws ce get-dimension-values --dimension REGION --time-period Start={sy}-{=pad(as_string(sm), 1, 2, "0")}-01,End={cy}-{=pad(as_string(cm), 1, 2, "0")}-01 --output json 2>&1`
+    on profile != "" do cmd = "AWS_PROFILE={profile} " + cmd
+    result =| {cmd}
+    if not result.okay
+        return regions, "aws ce failed: " + trim(result.out)
+    endif
+    data = json_decode(result.out)
+    vals = data["DimensionValues"]
+    on vals == nil do return regions, "No DimensionValues in AWS response"
+    foreach v in vals
+        code = v["Value"]
+        continue if code == nil
+        continue if code == ""
+        label = code
+        attrs = data["DimensionValueAttributes"]
+        if attrs != nil
+            foreach a in attrs
+                continue if a["Value"] != code
+                dn = a["Attributes"]["displayName"]
+                on dn != nil do label = "{dn} ({code})"
+            endfor
+        endif
+        append_to(ref regions, map(.code code, .label label))
+    endfor
+    return regions, ""
+end
+
+def fetch_costs(profile, region, start, endt)
+    args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity MONTHLY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
+    on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    data, err = aws_ce(args)
+    on data == nil do return nil, err
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime in response"
+    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    period = results[0]
+    groups = period["Groups"]
+    on groups == nil do return nil, "No Groups in response"
+    on len(groups) == 0 do return nil, "No cost data found"
+    costs = []
+    total = 0.0
+    idx = 0
+    foreach g in groups
+        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        svc_name = g["Keys"][0]
+        on svc_name == nil do svc_name = "Unknown"
+        append_to(ref costs, costrow(
+            .service svc_name,
+            .cost amount,
+            .cost_str "",
+            .pct "",
+            .pct_val 0.0,
+            .sort_val amount,
+            .bar "",
+            .orig_idx idx
+        ))
+        total = total + amount
+        idx = idx + 1
+    endfor
+    on len(costs) == 0 do return nil, "No cost data parsed"
+    for i = 0 to len(costs)-1
+        pct_val = 0.0
+        on total > 0 do pct_val = (costs[i].cost / total * 1000.0)
+        on total > 0 do pct_val = (pct_val / 10.0)
+        costs[i].pct_val = pct_val
+        costs[i].pct = "{=as_string(pct_val.as_bigf, 3)}%"
+        costs[i].bar = usage_bar(pct_val)
+    endfor
+    sort_costs(costs, true)
+    return costs, nil
+end
+
+def fetch_forecast(profile, region, start, endt)
+    args = "get-cost-forecast --time-period Start={start},End={endt} --metric AMORTIZED_COST --granularity MONTHLY"
+    on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    data, err = aws_ce(args)
+    on data == nil do return nil, err
+    total = data["Total"]
+    on total == nil do return nil, "No Total in forecast"
+    amount_str = total["Amount"]
+    on amount_str == nil do return nil, "No Amount in forecast"
+    return as_float(amount_str), nil
+end
+
+# --- TUI screens ---
+
+def show_profile_menu(profiles)
+    heading("Select Profile", "Enter=select  Q=quit")
+
+    opts = []
+    foreach p in profiles
+        append_to(ref opts, "  {p}  ")
+    endfor
+    append_to(ref opts, "  [back]  ")
+
+    m = map(.row 4, .col 4, .title "AWS Profiles", .height 20, .width 40,
+            .options opts, .prompt "Select profile:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
+    s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, s)
+    on menu.Cancel do return "", true
+    idx = menu.Result - 1
+    on idx < 0 || idx >= len(profiles) do return "", true
+    return profiles[idx], false
+end
+
+def show_region_menu(profile, current_region)
+    heading("Select Region", "Fetching regions...")
+
+    regions, rerr = discover_regions(profile)
+    if len(regions) == 0
+        if rerr != ""
+            heading_err("Select Region", rerr)
+        else
+            heading_err("Select Region", "No regions found. Is Cost Explorer enabled?")
+        endif
+        at 5, 1
+        println "[#3]Press any key...[##][#-]"
+        keypress()
+        return current_region, true
+    endif
+
+    heading("Select Region", "Enter=select  Q=cancel")
+
+    opts = []
+    foreach r in regions
+        lbl = r["label"]
+        on lbl == nil do lbl = r["code"]
+        append_to(ref opts, "  {=pad(lbl, 0, 30)}  ")
+    endfor
+    append_to(ref opts, "  [back]  ")
+
+    m = map(.row 4, .col 4, .title "AWS Regions", .height 20, .width 60,
+            .options opts, .prompt "Select region:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
+    s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, s)
+    on menu.Cancel do return current_region, true
+    idx = menu.Result - 1
+    on idx < 0 || idx >= len(regions) do return current_region, true
+    on idx >= len(regions) do return current_region, true
+    code = regions[idx]["code"]
+    on code == nil do return current_region, true
+    return code, false
+end
+
+def show_currency_menu(current_code)
+    heading("Select Currency", "Enter=select  Q=cancel")
+
+    opts = []
+    selected_idx = 0
+    idx_counter = 0
+    foreach c in CURRENCIES
+        marker = "  "
+        on c.code == current_code do marker = "* "
+        append_to(ref opts, "{marker}{=c.code}  {=c.symbol}  {=c.name}")
+        on c.code == current_code do selected_idx = idx_counter
+        idx_counter = idx_counter + 1
+    endfor
+    append_to(ref opts, "  [back]  ")
+
+    m = map(.row 4, .col 4, .title "Currency", .height 20, .width 40,
+            .options opts, .prompt "Select currency:", .cursor "[#b1][#6]>[##][#-]", .index selected_idx, .border true)
+    s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, s)
+    on menu.Cancel do return current_code, true
+    idx = menu.Result - 1
+    on idx < 0 || idx >= len(CURRENCIES) do return current_code, true
+    return CURRENCIES[idx].code, false
+end
+
+def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val, desc)
+    cls
+    at 1, 1
+    println "[#b1][#6]  AWS Billing  [##][#-]"
+    at 2, 1
+    if curr_code != "USD"
+        println "[#3]  Profile: ", profile, "  Region: ", region, "  Period: ", period_lbl, "  Rate: 1 USD = ", prec(get_rate(curr_code).as_bigf, 4), " ", curr_code, "[##][#-]"
+    else
+        println "[#3]  Profile: ", profile, "  Region: ", region, "  Period: ", period_lbl, "[##][#-]"
+    endif
+
+    rows = []
+    total_usd = 0.0
+    foreach c in costs
+        total_usd = total_usd + c.cost
+    endfor
+
+    foreach c in costs
+        append_to(ref rows, costrow(
+            .service trunc(c.service, 38),
+            .cost c.cost,
+            .cost_str convert_and_fmt(c.cost, curr_code),
+            .pct c.pct,
+            .pct_val c.pct_val,
+            .sort_val c.sort_val,
+            .bar c.bar,
+            .orig_idx c.orig_idx
+        ))
+    endfor
+
+    t = map(.format "aos", .data rows, .headers true, .row 4, .col 2, .height term_h()-8, .width term_w()-4)
+    t["display"] = [0, 2, 3, 6]
+    t["sizes"] = [38, 16, 10, 20]
+    t["options"] = ["Service", "Cost (" + curr_code + ")", "Share", "Usage"]
+
+    s = map(
+        .border map(.ih "", .iv "\u2502", .tl "\u2554", .tr "\u2557", .bl "\u255a", .br "\u255d", .tm "\u2550", .bm "\u2550", .lm "\u2502", .rm "\u2502"),
+        .hi_bg "[#b1]", .hi_fg "[#6]",
+        .select_bg "1", .select_fg "7",
+        .list ["", "", "[#2]", "[#3]", "", "", "[#4]", ""]
+    )
+
+    at term_h()-3, 2
+    println "[#b1][#6]  Total: ", convert_and_fmt(total_usd, curr_code), "  Forecast: ", forecast_val != nil ? convert_and_fmt(forecast_val, curr_code) : "N/A", desc ? " [cost \u2193]" : " [cost \u2191]", "  [##][#-]"
+    at term_h()-2, 2
+    println "[#3]  Enter=details  S=sort  C=currency  F=forecast  B=back  Q=quit[##][#-]"
+
+    return tui_table_select(t, s)
+end
+
+def show_forecast_detail(forecast_val, curr_code, period_lbl)
+    heading("Forecast", "")
+    at 3, 5
+    println "[#3]Period: [#6]", period_lbl, "[##][#-]"
+    at 5, 5
+    if forecast_val != nil
+        println "[#3]Projected month-end cost: [#6]", convert_and_fmt(forecast_val, curr_code), "[##][#-]"
+    else
+        println "[#1]Forecast not available.[##][#-]"
+    endif
+    at 7, 5
+    println "[#3]Press any key to return...[##][#-]"
+    keypress()
+end
+
+def show_error(msg)
+    cls
+    at term_h()/2 - 2, 4
+    println "[#1]", msg, "[##][#-]"
+    at term_h()/2, 4
+    println "[#3]Press any key...[##][#-]"
+    keypress()
+end
+
+def show_main_menu(sort_desc)
+    heading("Actions", "Enter=select  Q=cancel")
+
+    sort_text = "Sort: Cost Descending"
+    on not sort_desc do sort_text = "Sort: Cost Ascending"
+
+    opts = [
+        "  Switch Profile  ",
+        "  Switch Region  ",
+        "  Change Currency  ",
+        "  " + sort_text + "  ",
+        "  Show Forecast  ",
+        "  Refresh Data  ",
+        "  Quit  "
+    ]
+
+    m = map(.row 4, .col 4, .title "Actions", .height 14, .width 40,
+            .options opts, .prompt "Select action:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
+    s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
+             .border map(.bg "0", .fg "7"))
+
+    menu = tui_menu(m, s)
+    on menu.Cancel do return "quit"
+    case menu.Result
+    is 1 ; return "profile"
+    is 2 ; return "region"
+    is 3 ; return "currency"
+    is 4 ; return "sort"
+    is 5 ; return "forecast"
+    is 6 ; return "refresh"
+    is 7 ; return "quit"
+    endcase
+    return "quit"
+end
+
+# --- Main ---
+
+tui_screen(1)
+
+while true
+    cursoroff()
+
+    if not check_aws_cli()
+        show_error("AWS CLI not found. Please install and configure it.")
+        break
+    endif
+
+    profiles = discover_profiles()
+    if len(profiles) == 0
+        show_error("No AWS profiles found in ~/.aws/config")
+        break
+    endif
+
+    if len(profiles) == 1
+        curr_profile = profiles[0]
+    else
+        while true
+            curr_profile, cancelled = show_profile_menu(profiles)
+            break if not cancelled
+        endwhile
+    endif
+    break if curr_profile == ""
+
+    curr_region = ""
+    while true
+        curr_region, cancelled = show_region_menu(curr_profile, curr_region)
+        break if not cancelled
+    endwhile
+
+    curr_code = "USD"
+    load_rates()
+
+    start_t, end_t = this_month_period()
+    period_lbl = period_label(start_t, end_t)
+
+    costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+    if costs == nil
+        show_error("Failed to fetch costs: {err}")
+        break
+    endif
+
+    sort_desc = true
+    sort_costs(costs, sort_desc)
+    forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+
+    while true
+        cursoroff()
+        res = show_cost_table(costs, curr_profile, curr_region, curr_code, period_lbl, forecast_val, sort_desc)
+        if res.Back
+            action = show_main_menu(sort_desc)
+            case action
+            is "profile"
+                while true
+                    curr_profile, cancelled = show_profile_menu(profiles)
+                    break if not cancelled
+                endwhile
+                break if curr_profile == ""
+                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                continue if costs == nil
+                sort_costs(costs, sort_desc)
+                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+            is "region"
+                while true
+                    curr_region, cancelled = show_region_menu(curr_profile, curr_region)
+                    break if not cancelled
+                endwhile
+                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                continue if costs == nil
+                sort_costs(costs, sort_desc)
+                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+            is "currency"
+                while true
+                    curr_code, cancelled = show_currency_menu(curr_code)
+                    break if not cancelled
+                endwhile
+            is "sort"
+                sort_desc = not sort_desc
+                sort_costs(costs, sort_desc)
+            is "forecast"
+                show_forecast_detail(forecast_val, curr_code, period_lbl)
+            is "refresh"
+                costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
+                if costs == nil
+                    show_error("Failed to fetch costs: {err}")
+                    continue
+                endif
+                sort_costs(costs, sort_desc)
+                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+            is "quit"
+                break
+            endcase
+            continue
+        endif
+        if res.Action == "s" || res.Action == "S"
+            sort_desc = not sort_desc
+            sort_costs(costs, sort_desc)
+            continue
+        endif
+        if res.Action == "c" || res.Action == "C"
+            while true
+                curr_code, cancelled = show_currency_menu(curr_code)
+                break if not cancelled
+            endwhile
+            continue
+        endif
+        if res.Action == "f" || res.Action == "F"
+            show_forecast_detail(forecast_val, curr_code, period_lbl)
+            continue
+        endif
+        break if res.Cancel
+
+        sel = res.Result.as_int
+        continue if sel < 0 || sel >= len(costs)
+        chosen = costs[sel]
+
+        heading("Service Details", "")
+        at 5, 5
+        println "[#3]Service: [#6]", chosen.service, "[##][#-]"
+        at 7, 5
+        println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
+        at 9, 5
+        println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
+        at 11, 5
+        println "[#3]Press any key to return...[##][#-]"
+        keypress()
+    endwhile
+    break
+endwhile
+
+tui_screen(0)
+cursoron()
+at term_h(), 1
+

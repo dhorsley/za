@@ -166,32 +166,66 @@ func buildTableData(t tui) (td tableData, err error) {
 		}
 
 		var first bool = true
-		var refstruct reflect.Value
+		var fieldOrder []string
 		for i := 0; i < len(t.Data.([]any)); i += 1 {
-			switch refstruct = reflect.ValueOf(t.Data.([]any)[i]); refstruct.Kind() {
-			case reflect.Struct:
+			item := t.Data.([]any)[i]
+			rv := reflect.ValueOf(item)
+			switch rv.Kind() {
+			case reflect.Struct, reflect.Map:
 			default:
-				return td, fmt.Errorf(".Data element %d not a struct", i)
+				return td, fmt.Errorf(".Data element %d not a struct or map", i)
 			}
-			rvalue := reflect.ValueOf(t.Data.([]any)[i])
+
 			if first {
-				colMax = rvalue.NumField()
-				fieldNames = make([]string, colMax)
-				aaos[0] = make([]string, colMax)
-				for j := 0; j < colMax; j += 1 {
-					rname := rvalue.Type().Field(j).Name
-					fieldNames[j] = rname
-					aaos[0][j] = rname
+				switch rv.Kind() {
+				case reflect.Struct:
+					colMax = rv.NumField()
+					fieldOrder = make([]string, colMax)
+					fieldNames = make([]string, colMax)
+					aaos[0] = make([]string, colMax)
+					for j := 0; j < colMax; j += 1 {
+						rname := rv.Type().Field(j).Name
+						fieldOrder[j] = rname
+						fieldNames[j] = rname
+						aaos[0][j] = rname
+					}
+				case reflect.Map:
+					keys := rv.MapKeys()
+					colMax = len(keys)
+					fieldOrder = make([]string, colMax)
+					fieldNames = make([]string, colMax)
+					aaos[0] = make([]string, colMax)
+					for j, k := range keys {
+						sk := sf("%v", k.Interface())
+						fieldOrder[j] = sk
+						fieldNames[j] = sk
+						aaos[0][j] = sk
+					}
 				}
 				first = false
 			}
-			if rvalue.NumField() != colMax {
-				return td, fmt.Errorf("Column count mismatch in tui_table() at .Data line %d", i)
-			}
 			aaos[i+1] = make([]string, colMax)
-			for j := 0; j < colMax; j += 1 {
-				field_value := refstruct.FieldByName(aaos[0][j])
-				aaos[i+1][j] = sf("%v", field_value)
+			switch rv.Kind() {
+			case reflect.Struct:
+				if rv.NumField() != colMax {
+					return td, fmt.Errorf("Column count mismatch in tui_table() at .Data line %d", i)
+				}
+				for j := 0; j < colMax; j += 1 {
+					field_value := rv.FieldByName(fieldOrder[j])
+					aaos[i+1][j] = sf("%v", field_value)
+				}
+			case reflect.Map:
+				if rv.Len() != colMax {
+					return td, fmt.Errorf("Column count mismatch in tui_table() at .Data line %d", i)
+				}
+				for j := 0; j < colMax; j += 1 {
+					fv := rv.MapIndex(reflect.ValueOf(fieldOrder[j]))
+					if fv.IsValid() {
+						aaos[i+1][j] = sf("%v", fv.Interface())
+					} else {
+						aaos[i+1][j] = ""
+					}
+				}
 			}
 		}
 		td.hasHeader = true
@@ -203,7 +237,17 @@ func buildTableData(t tui) (td tableData, err error) {
 	}
 
 	if len(t.Options) > 0 {
-		if lineMethod != "struct" {
+		if lineMethod == "struct" && len(t.Display) > 0 {
+			if len(t.Options) != len(t.Display) {
+				return td, fmt.Errorf("Options count (%d) does not match Display count (%d) in tui_table()", len(t.Options), len(t.Display))
+			}
+			for i, idx := range t.Display {
+				if idx < colMax {
+					fieldNames[idx] = t.Options[i]
+				}
+			}
+			td.hasHeader = true
+		} else {
 			if len(t.Options) != colMax {
 				return td, fmt.Errorf("Column count does not match provided header name count in tui_table() .Options field")
 			}
@@ -232,6 +276,12 @@ func buildTableData(t tui) (td tableData, err error) {
 
 	if len(t.Sizes) == colMax {
 		cw = t.Sizes
+	} else if lineMethod == "struct" && len(t.Display) > 0 && len(t.Sizes) == len(t.Display) {
+		for i, idx := range t.Display {
+			if idx < colMax {
+				cw[idx] = t.Sizes[i]
+			}
+		}
 	} else {
 		for _, l := range aaos {
 			for j, v := range l {
@@ -382,6 +432,10 @@ func tui_table_select(t tui, s tui_style) tui {
 	}
 
 	cllen := len(s.list)
+	if cllen > 0 && cllen != td.colMax {
+		t.Cancel = true
+		return t
+	}
 
 	selBg := s.select_bg
 	selFg := s.select_fg
@@ -609,6 +663,11 @@ func tui_table_select(t tui, s tui_style) tui {
 			lastlock.Lock()
 			sig_int = true
 			lastlock.Unlock()
+		default:
+			if (k >= 'a' && k <= 'z') || (k >= 'A' && k <= 'Z') || (k >= '0' && k <= '9') {
+				t.Action = string(rune(k))
+				finished = true
+			}
 		}
 		render()
 	}
@@ -1415,8 +1474,8 @@ func tui_menu(t tui, s tui_style) tui {
         addhifg = "[#" + hi_fg + "]"
     }
 
-    // scroll if necessary
-    if row+len(t.Options)+6>MH {
+    // scroll if necessary — inner scroll handles overflow when useScroll is true
+    if !(t.Height > 0 && len(t.Options) > t.Height) && row+len(t.Options)+6>MH {
         for ssize:=row+len(t.Options)+6; ssize>MH; ssize-=1 {
             fmt.Println()
         }
@@ -1438,16 +1497,17 @@ func tui_menu(t tui, s tui_style) tui {
         offset+=4
     }
 
-    sel := t.Index
-
-    // determine if scrolling is needed
+    // determine if scrolling is needed (must be after offset is known)
     visibleCount := len(t.Options)
     scrollOffset := 0
     useScroll := false
     if t.Height > 0 && len(t.Options) > t.Height {
-        visibleCount = t.Height
+        visibleCount = t.Height - offset
+        if visibleCount < 1 { visibleCount = 1 }
         useScroll = true
     }
+
+    sel := t.Index
 
     // display visible menu items
     redraw := func() {

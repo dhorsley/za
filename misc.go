@@ -457,7 +457,11 @@ func (parser *leparser) report(line int16, s string) {
     if interactive {
         submsg = "[#7]Error (interactive) : "
     } else {
-        submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
+        if line < 0 {
+            submsg = sf("[#7]Error in %+v/%s (line unknown) : ", moduleName, baseName)
+        } else {
+            submsg = sf("[#7]Error in %+v/%s (line #%d) : ", moduleName, baseName, line+1)
+        }
     }
 
     var msg string

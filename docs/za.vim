@@ -100,6 +100,7 @@ syntax match list_functions "\(^|.\|\s*\)eqlen\s*("he=e-1
 syntax match list_functions "\(^|.\|\s*\)list_fill\s*("he=e-1
 
 syntax match conversion_functions "\(^|.\|\s*\)md2ansi\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)format_currency\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)f2n\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)byte\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_int64\s*("he=e-1
@@ -131,6 +132,7 @@ syntax match conversion_functions "\(^|.\|\s*\)hex_decode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)url_encode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)url_decode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_decode\s*("he=e-1
+syntax match conversion_functions "\(^|.\|\s*\)json_encode\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_format\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)json_query\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)write_struct\s*("he=e-1

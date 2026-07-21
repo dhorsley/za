@@ -239,7 +239,11 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                     break skiploop1
                 }
                 brace_level -= 1
-            case O_Comma, SYM_COLON, EOF:
+            case O_Comma:
+                if brace_level == 0 {
+                    break skiploop1
+                }
+            case SYM_COLON, EOF:
                 break skiploop1
             default:
                 // Stop at binary operators outside nested parens that
@@ -505,6 +509,33 @@ binloop1:
 
         }
 
+        // Short-circuit ternary: don't eagerly evaluate both branches.
+        // Format: cond ? true_expr : false_expr
+        // After consuming '?', parser is positioned at 'true_expr : false_expr'
+        if token.tokType == O_Query {
+            cond, ok := left.(bool)
+            if !ok {
+                panic(fmt.Errorf("not a boolean on left of ternary"))
+            }
+            if cond {
+                left, err = p.dparse(0, false)
+            } else {
+                p.dparse(0, true) // skip true branch
+            }
+            // consume ':'
+            if p.peek().tokType == SYM_COLON {
+                p.next()
+            } else {
+                panic(fmt.Errorf("missing colon in ternary"))
+            }
+            if !cond {
+                left, err = p.dparse(0, false)
+            } else {
+                p.dparse(0, true) // skip false branch
+            }
+            continue
+        }
+
         if p.pos >= p.len {
             estring := "Incomplete expression, terminates early (on "
             if p.prev2.tokType < END_STATEMENTS {
@@ -544,9 +575,6 @@ binloop1:
             left = ev_div(left, right)
         case O_Percent:
             left = ev_mod(left, right)
-
-        case O_Query: // ternary
-            left = p.tern_if(left, right)
 
         case SYM_EQ:
             left = deepEqual(left, right)

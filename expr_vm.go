@@ -139,6 +139,9 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			vm.push(val)
 		case OpStoreLocal:
 			val := vm.pop()
+			if s, ok := val.(string); ok {
+				val = interpolate(vm.namespace, vm.fs, vm.ident, s)
+			}
 			bin := uint64(instr.Arg1)
 			name := vm.pool[instr.Arg2].(string)
 			vm.storeLocal(bin, name, val)

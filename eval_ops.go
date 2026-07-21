@@ -2518,7 +2518,7 @@ func (p *leparser) callUserDefinedFunction(evalfs uint32, ident *[]Variable, nam
 							excInfo := &exceptionInfo{
 								category:   category,
 								message:    message,
-								line:       0,
+								line:       int(p.line) + 1,
 								function:   name,
 								fs:         evalfs,
 								stackTrace: nil,
@@ -2543,7 +2543,7 @@ func (p *leparser) callUserDefinedFunction(evalfs uint32, ident *[]Variable, nam
 							excInfo := &exceptionInfo{
 								category:   category,
 								message:    message,
-								line:       0,
+								line:       int(p.line) + 1,
 								function:   name,
 								fs:         evalfs,
 								stackTrace: stackTraceCopy,

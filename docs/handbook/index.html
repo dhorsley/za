@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Daniel Horsley" />
   <title>Za - The Za Programming Language Handbook</title>
   <style>
-    code{white-space: pre-wrap;}
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -3799,13 +3805,13 @@ stack, std, trace, variance, where, zeros</p>
 <li>prod</li>
 </ul>
 <h2 id="conversion">conversion</h2>
-<p><strong>Functions (39):</strong></p>
+<p><strong>Functions (42):</strong></p>
 <p>as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string,
 as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n,
-hex_decode, hex_encode, is_number, itob, json_decode, json_format,
-json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp,
-read_struct, s2m, table, to_typed, url_decode, url_encode,
-write_struct</p>
+format_currency, hex_decode, hex_encode, is_number, itob, json_decode,
+json_encode, json_format, json_query, kind, m2s, maxfloat, maxint,
+maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed,
+type, typeof, url_decode, url_encode, write_struct</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>as_float</li>

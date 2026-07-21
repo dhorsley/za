@@ -5,6 +5,7 @@ import (
     "os"
     "strconv"
     str "strings"
+    "unicode/utf8"
 )
 
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -424,11 +425,33 @@ func nextToken(input string, fs uint32, curLine *int16, start int) (rv *lcstruct
                         case 'n':
                             nw = append(nw, '\n')
                         case '`':
-                            // nw = append(nw, '\\', '`')
                             nw = append(nw, '`')
                         case '"':
-                            // nw = append(nw, '\\', '"')
                             nw = append(nw, '"')
+                        case 'u':
+                            if i+4 < len(w) {
+                                hex := string(w[i+1 : i+5])
+                                if codepoint, err := strconv.ParseInt(hex, 16, 32); err == nil {
+                                    nw = utf8.AppendRune(nw, rune(codepoint))
+                                    i += 4
+                                } else {
+                                    nw = append(nw, '\\', 'u')
+                                }
+                            } else {
+                                nw = append(nw, '\\', 'u')
+                            }
+                        case 'U':
+                            if i+8 < len(w) {
+                                hex := string(w[i+1 : i+9])
+                                if codepoint, err := strconv.ParseInt(hex, 16, 64); err == nil {
+                                    nw = utf8.AppendRune(nw, rune(codepoint))
+                                    i += 8
+                                } else {
+                                    nw = append(nw, '\\', 'U')
+                                }
+                            } else {
+                                nw = append(nw, '\\', 'U')
+                            }
                         default:
                             nw = append(nw, '\\', w[i])
                         }

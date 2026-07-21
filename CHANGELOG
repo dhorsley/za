@@ -341,6 +341,65 @@ Now considered supported
   * lib-ini.go: basic support for .ini files
 
 
+interpreter/vm changes
+----------------------
+
+  * ternary operator (`? :`) now short-circuits — only evaluates the matching
+    branch, not both (eval.go)
+
+  * comma operator (`O_Comma`) respects brace_level in skip loop — fixes
+    nested expression parsing where commas inside braces were incorrectly
+    breaking out of the skip loop (eval.go)
+
+  * `OpStoreLocal` now interpolates strings — values stored in local
+    variables are interpolated via `interpolate()` when they are strings
+    (expr_vm.go)
+
+  * added `\uXXXX` and `\UXXXXXXXX` unicode escape support in string literals
+    (lex.go) — requires `unicode/utf8` import
+
+  * exception info line numbers fixed — `exceptionInfo.line` now uses
+    `int(p.line) + 1` instead of hardcoded 0 (eval_ops.go)
+
+  * `report()` shows "line unknown" when `line < 0` instead of a negative
+    line number (misc.go)
+
+
+library changes (additional)
+----------------------------
+
+  * added `format_currency(number[,symbol])` to lib-conversion.go
+      - formats numbers as currency with comma separators and 2 decimal places
+      - optional currency symbol (default $)
+      - supports int, int64, float64, uint, and *big.Float input types
+
+  * `json_decode()` help text corrected — now says "map|array" instead of
+    "[]any", and added array fallback decode for JSON arrays
+
+  * `getFieldValue()` in lib-list.go now supports `map[string]any`
+      - enables tui_table and related widgets to use map data alongside structs
+
+  * `tui_table` struct format improvements (lib-tui.go)
+      - now accepts `reflect.Map` (za map()) in addition to `reflect.Struct`
+      - `.Options` with `.Display` set maps 1:1 to displayed column indices
+
+  * `tui_table_select` improvements (lib-tui.go)
+      - added `cllen != td.colMax` guard
+      - unrecognized alphanumeric keys stored in `t.Action` and exit the loop
+
+  * `tui_menu` scroll logic fixed (lib-tui.go)
+      - `visibleCount` computed after prompt offset is known
+      - outer terminal scroll skipped when inner scroll is active
+
+
+script changes
+--------------
+
+  * added `eg/awsbilling` — AWS Billing TUI demo script
+      - interactive table view of AWS Cost Explorer data
+      - profile/region switching, currency conversion, sort, forecast
+
+
 1.2.2
 =====
 

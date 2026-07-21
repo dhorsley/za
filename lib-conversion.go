@@ -1272,7 +1272,7 @@ func buildConversionLib() {
         "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
         "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
-        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi", "human_size",
+        "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi", "human_size", "format_currency",
     }
 
     slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
@@ -1560,7 +1560,7 @@ func buildConversionLib() {
         return string(dec), nil
     }
 
-    slhelp["json_decode"] = LibHelp{in: "string", out: "[]any", action: "Return a mixed type array representing a JSON string."}
+    slhelp["json_decode"] = LibHelp{in: "string", out: "map|array", action: "Decode a JSON string into a map (objects) or array (JSON arrays)."}
     stdlib["json_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("json_decode", args, 1, "1", "string"); !ok {
             return nil, err
@@ -1570,7 +1570,13 @@ func buildConversionLib() {
         dec := json.NewDecoder(str.NewReader(args[0].(string)))
 
         if err := dec.Decode(&v); err != nil {
-            return "", errors.New(sf("could not convert value '%v' in json_decode()", args[0].(string)))
+            // Try decoding as array (for JSON arrays)
+            var arr []any
+            dec2 := json.NewDecoder(str.NewReader(args[0].(string)))
+            if err2 := dec2.Decode(&arr); err2 != nil {
+                return "", errors.New(sf("could not convert value '%v' in json_decode()", args[0].(string)))
+            }
+            return arr, nil
         }
 
         return v, nil
@@ -2068,6 +2074,42 @@ func buildConversionLib() {
             return sf("%.0f %s", n, units[idx]), nil
         }
         return sf("%.1f %s", n, units[idx]), nil
+    }
+
+    slhelp["format_currency"] = LibHelp{in: "number[,symbol]", out: "string",
+        action: "Format a number as currency with comma separators, 2 decimal places, and optional currency symbol (default $)."}
+    stdlib["format_currency"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("format_currency", args, 2,
+            "1", "number",
+            "2", "number", "string"); !ok {
+            return nil, err
+        }
+
+        var n float64
+        switch v := args[0].(type) {
+        case int:
+            n = float64(v)
+        case int64:
+            n = float64(v)
+        case float64:
+            n = v
+        case *big.Float:
+            n, _ = v.Float64()
+        case uint:
+            n = float64(v)
+        default:
+            return nil, errors.New(sf("format_currency: unsupported type %T", v))
+        }
+
+        symbol := "$"
+        if len(args) == 2 {
+            if s, ok := args[1].(string); ok && s != "" {
+                symbol = s
+            }
+        }
+
+        formatted := RenderFloat("#,###.00", n)
+        return symbol + formatted, nil
     }
 
 }
