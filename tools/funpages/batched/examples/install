@@ -1,2 +1,7 @@
-# Example for install (not available, internal use only)
-
+# Example for install
+result = install("bash")
+if result == 0
+    println "Install/verified OK"
+else
+    println format("Install failed with code: %d", result)
+endif

@@ -1,3 +1,2 @@
 # Example for seed
-seed(1234)
-
+seed(42)

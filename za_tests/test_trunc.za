@@ -1,0 +1,110 @@
+#!/usr/bin/env za
+
+# Test script for trunc() function
+# Tests trunc() string truncation with various inputs
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== trunc() Tests ==="
+
+# Test 1: Basic string truncation
+println "\n1. Testing basic string truncation..."
+try
+    t1 = trunc("hello world", 5)
+    if t1 == "hell…"
+        println "✓ trunc('hello world', 5) =", t1
+    else
+        println "✗ trunc('hello world', 5) expected 'hell…', got:", t1
+    endif
+
+    t2 = trunc("hello", 10)
+    if t2 == "hello"
+        println "✓ trunc('hello', 10) =", t2
+    else
+        println "✗ trunc('hello', 10) expected 'hello', got:", t2
+    endif
+
+    t3 = trunc("", 5)
+    if t3 == ""
+        println "✓ trunc('', 5) = (empty string)"
+    else
+        println "✗ trunc('', 5) expected empty, got:", t3
+    endif
+
+catch err
+    println "Error in basic trunc tests:"
+    println pp(err)
+endtry
+
+# Test 2: trunc with custom ellipsis
+println "\n2. Testing trunc with custom ellipsis..."
+try
+    t4 = trunc("hello world", 5, "»")
+    if t4 == "hell»"
+        println "✓ trunc('hello world', 5, '»') =", t4
+    else
+        println "✗ trunc('hello world', 5, '»') expected 'hell»', got:", t4
+    endif
+
+    t5 = trunc("hello world", 8, "..")
+    if t5 == "hello .."
+        println "✓ trunc('hello world', 8, '..') =", t5
+    else
+        println "✗ trunc('hello world', 8, '..') expected 'hello ..', got:", t5
+    endif
+
+catch err
+    println "Error in custom ellipsis test:"
+    println pp(err)
+endtry
+
+# Test 3: UFCS usage
+println "\n3. Testing trunc via UFCS..."
+try
+    t6 = "hello world".trunc(5)
+    if t6 == "hell…"
+        println "✓ 'hello world'.trunc(5) =", t6
+    else
+        println "✗ 'hello world'.trunc(5) expected 'hell…', got:", t6
+    endif
+
+catch err
+    println "Error in UFCS test:"
+    println pp(err)
+endtry
+
+# Test 4: Edge cases
+println "\n4. Testing edge cases..."
+try
+    # Exact length
+    t7 = trunc("hello", 5)
+    if t7 == "hello"
+        println "✓ trunc('hello', 5) =", t7
+    else
+        println "✗ trunc('hello', 5) expected 'hello', got:", t7
+    endif
+
+    # One less than length
+    t8 = trunc("hello", 4)
+    if t8 == "hel…"
+        println "✓ trunc('hello', 4) =", t8
+    else
+        println "✗ trunc('hello', 4) expected 'hel…', got:", t8
+    endif
+
+    # Width 0
+    t9 = trunc("hello", 0)
+    if t9 == ""
+        println "✓ trunc('hello', 0) = (empty string)"
+    else
+        println "✗ trunc('hello', 0) expected empty, got:", t9
+    endif
+
+catch err
+    println "Error in edge case tests:"
+    println pp(err)
+endtry
+
+println "\n=== trunc() Tests Complete ==="

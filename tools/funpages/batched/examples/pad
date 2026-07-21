@@ -1,3 +1,2 @@
 # Example for pad
-println pad("abc",1,5,"*")  # "**abc"
-
+pad("hello", 42, 42)  # usage

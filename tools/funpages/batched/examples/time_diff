@@ -1,0 +1,2 @@
+# Example for time_diff
+time_diff(42, 42)  # usage

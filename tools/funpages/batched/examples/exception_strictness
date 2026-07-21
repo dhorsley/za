@@ -1,0 +1,2 @@
+# Example for exception_strictness
+exception_strictness("strict")

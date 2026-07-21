@@ -1,0 +1,3 @@
+# Example for sha512sum_file
+write_file("/tmp/za_sha512.txt", "hello")
+sha512sum_file("/tmp/za_sha512.txt")

@@ -1,0 +1,2 @@
+# Example for interpolate
+interpolate("hello")  # usage

@@ -1,3 +1,2 @@
 # Example for has_start
-println has_start("abc","a")  # true
-
+has_start("hello", "hello")  # usage

@@ -1,3 +1,2 @@
 # Example for can_read
-println can_read("/tmp")  # true
-
+can_read("hello")  # usage

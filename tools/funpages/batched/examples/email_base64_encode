@@ -1,0 +1,2 @@
+# Example for email_base64_encode
+email_base64_encode("hello")  # usage

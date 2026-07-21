@@ -1,0 +1,72 @@
+#!/usr/bin/env za
+
+# Web Cache Configuration Functions Test
+# Tests: web_cache_cleanup_interval, web_cache_max_memory, web_cache_purge
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Web Cache Configuration Tests ==="
+
+# Test web_cache_cleanup_interval
+try
+    result = web_cache_cleanup_interval(500)
+    if result == true
+        println "✓ web_cache_cleanup_interval(500) returns true"
+    else
+        println "✗ web_cache_cleanup_interval returned:", result
+    endif
+catch err
+    println "✗ web_cache_cleanup_interval failed:", err
+endtry
+
+# Test web_cache_max_memory
+try
+    result = web_cache_max_memory(50)
+    if result == true
+        println "✓ web_cache_max_memory(50) returns true"
+    else
+        println "✗ web_cache_max_memory returned:", result
+    endif
+catch err
+    println "✗ web_cache_max_memory failed:", err
+endtry
+
+# Test web_cache_purge
+try
+    result = web_cache_purge()
+    if result == true
+        println "✓ web_cache_purge() returns true"
+    else
+        println "✗ web_cache_purge returned:", result
+    endif
+catch err
+    println "✗ web_cache_purge failed:", err
+endtry
+
+# Test edge cases for interval
+try
+    result = web_cache_cleanup_interval(1)
+    if result == true
+        println "✓ web_cache_cleanup_interval(1) returns true"
+    else
+        println "✗ web_cache_cleanup_interval(1) returned:", result
+    endif
+catch err
+    println "✗ web_cache_cleanup_interval(1) failed:", err
+endtry
+
+# Test edge cases for max memory
+try
+    result = web_cache_max_memory(1024)
+    if result == true
+        println "✓ web_cache_max_memory(1024) returns true"
+    else
+        println "✗ web_cache_max_memory(1024) returned:", result
+    endif
+catch err
+    println "✗ web_cache_max_memory(1024) failed:", err
+endtry
+
+println "\n=== Web Cache Configuration Tests Complete ==="

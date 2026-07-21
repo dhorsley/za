@@ -1,0 +1,157 @@
+#!/usr/bin/env za
+
+# HTML Element Builder Functions Test
+# Tests: wh1, wh2, wh3, wh4, wh5, wli, wol, wp, wtbody, wul
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== HTML Element Builder Tests ==="
+
+# Test wh1
+try
+    result = wh1("title")
+    if result ~ "<h1" and result ~ "title" and result ~ "</h1>"
+        println "✓ wh1 returns correct h1 tag"
+    else
+        println "✗ wh1 returned:", result
+    endif
+catch err
+    println "✗ wh1 failed:", err
+endtry
+
+# Test wh2
+try
+    result = wh2("subtitle")
+    if result ~ "<h2" and result ~ "subtitle" and result ~ "</h2>"
+        println "✓ wh2 returns correct h2 tag"
+    else
+        println "✗ wh2 returned:", result
+    endif
+catch err
+    println "✗ wh2 failed:", err
+endtry
+
+# Test wh3
+try
+    result = wh3("section")
+    if result ~ "<h3" and result ~ "section" and result ~ "</h3>"
+        println "✓ wh3 returns correct h3 tag"
+    else
+        println "✗ wh3 returned:", result
+    endif
+catch err
+    println "✗ wh3 failed:", err
+endtry
+
+# Test wh4
+try
+    result = wh4("subsection")
+    if result ~ "<h4" and result ~ "subsection" and result ~ "</h4>"
+        println "✓ wh4 returns correct h4 tag"
+    else
+        println "✗ wh4 returned:", result
+    endif
+catch err
+    println "✗ wh4 failed:", err
+endtry
+
+# Test wh5
+try
+    result = wh5("minor heading")
+    if result ~ "<h5" and result ~ "minor heading" and result ~ "</h5>"
+        println "✓ wh5 returns correct h5 tag"
+    else
+        println "✗ wh5 returned:", result
+    endif
+catch err
+    println "✗ wh5 failed:", err
+endtry
+
+# Test wp
+try
+    result = wp("paragraph text")
+    if result ~ "<p" and result ~ "paragraph text" and result ~ "</p>"
+        println "✓ wp returns correct p tag"
+    else
+        println "✗ wp returned:", result
+    endif
+catch err
+    println "✗ wp failed:", err
+endtry
+
+# Test wtbody
+try
+    result = wtbody("table body content")
+    if result ~ "<tbody" and result ~ "table body content" and result ~ "</tbody>"
+        println "✓ wtbody returns correct tbody tag"
+    else
+        println "✗ wtbody returned:", result
+    endif
+catch err
+    println "✗ wtbody failed:", err
+endtry
+
+# Test wol
+try
+    result = wol("ordered list content")
+    if result ~ "<ol" and result ~ "ordered list content" and result ~ "</ol>"
+        println "✓ wol returns correct ol tag"
+    else
+        println "✗ wol returned:", result
+    endif
+catch err
+    println "✗ wol failed:", err
+endtry
+
+# Test wul
+try
+    result = wul("unordered list content")
+    if result ~ "<ul" and result ~ "unordered list content" and result ~ "</ul>"
+        println "✓ wul returns correct ul tag"
+    else
+        println "✗ wul returned:", result
+    endif
+catch err
+    println "✗ wul failed:", err
+endtry
+
+# Test wli
+try
+    result = wli("list item")
+    if result ~ "<li" and result ~ "list item" and result ~ "</li>"
+        println "✓ wli returns correct li tag"
+    else
+        println "✗ wli returned:", result
+    endif
+catch err
+    println "✗ wli failed:", err
+endtry
+
+# Test with options map
+println "\n--- Testing with options ---"
+
+try
+    result = wh1("title", map(.class "main-title", .id "top"))
+    if result ~ "class=" and result ~ "main-title" and result ~ "id=" and result ~ "top"
+        println "✓ wh1 with options map works"
+    else
+        println "✗ wh1 with options returned:", result
+    endif
+catch err
+    println "✗ wh1 with options failed:", err
+endtry
+
+try
+    result = wul("items", map(.class "nav-list"))
+    if result ~ "class=" and result ~ "nav-list"
+        println "✓ wul with options map works"
+    else
+        println "✗ wul with options returned:", result
+    endif
+catch err
+    println "✗ wul with options failed:", err
+endtry
+
+println "\n=== HTML Element Builder Tests Complete ==="

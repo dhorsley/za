@@ -1,3 +1,2 @@
 # Example for term_w
-println term_w()  # e.g., 80
-
+term_w()  # usage

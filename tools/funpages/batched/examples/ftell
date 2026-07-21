@@ -1,4 +1,4 @@
 # Example for ftell
-var f=fopen("/tmp/f","r")
-println ftell(f)
-
+write_file("/tmp/za_ftell.txt", "hello")
+fh = fopen("/tmp/za_ftell.txt", "r")
+ftell(fh)

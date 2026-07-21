@@ -1,3 +1,2 @@
 # Example for execpath
-println execpath()
-
+execpath()  # usage

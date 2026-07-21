@@ -1,0 +1,2 @@
+# Example for array_colours
+array_colours(["[#red]", "[#blue]"])

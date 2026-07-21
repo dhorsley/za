@@ -1,0 +1,2 @@
+# Example for metric_register
+metric_register("hello", "hello")  # usage

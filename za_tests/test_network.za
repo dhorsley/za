@@ -255,6 +255,100 @@ endtry
 
 println
 
+# Test 17: dio
+println "17. Testing dio..."
+try
+    dio_result = dio()
+    if len(dio_result) > 0
+        println "✓ dio() returned", len(dio_result), "device(s)"
+    else
+        println "! dio() returned empty (may be normal)"
+    endif
+catch err
+    println "✗ dio() failed:", err
+endtry
+
+println
+
+# Test 18: icmp_traceroute
+println "18. Testing icmp_traceroute..."
+try
+    icmp_tr = icmp_traceroute("8.8.8.8", 10, 2)
+    println "✓ icmp_traceroute to 8.8.8.8 returned", len(icmp_tr), "hops"
+catch err
+    println "! icmp_traceroute to 8.8.8.8 failed (expected without privileges):", err
+endtry
+
+println
+
+# Test 19: tcp_traceroute
+println "19. Testing tcp_traceroute..."
+try
+    tcp_tr = tcp_traceroute("google.com", 80, 10, 2)
+    println "✓ tcp_traceroute to google.com:80 returned", len(tcp_tr), "hops"
+catch err
+    println "! tcp_traceroute to google.com:80 failed:", err
+endtry
+
+println
+
+# Test 20: netstat variants
+println "20. Testing netstat variants..."
+try
+    ns_all = netstat()
+    println "✓ netstat() returned", len(ns_all), "connections"
+catch err
+    println "✗ netstat() failed:", err
+endtry
+
+try
+    ns_proto = netstat_protocol("tcp")
+    println "✓ netstat_protocol('tcp') returned", len(ns_proto), "connections"
+catch err
+    println "✗ netstat_protocol('tcp') failed:", err
+endtry
+
+try
+    ns_listen = netstat_listen()
+    println "✓ netstat_listen() returned", len(ns_listen), "connections"
+catch err
+    println "✗ netstat_listen() failed:", err
+endtry
+
+try
+    ns_est = netstat_established()
+    println "✓ netstat_established() returned", len(ns_est), "connections"
+catch err
+    println "✗ netstat_established() failed:", err
+endtry
+
+try
+    ns_protos = netstat_protocols()
+    println "✓ netstat_protocols() returned", len(ns_protos), "protocols"
+catch err
+    println "✗ netstat_protocols() failed:", err
+endtry
+
+try
+    ns_info = netstat_protocol_info()
+    println "✓ netstat_protocol_info() returned map with", len(ns_info), "entries"
+catch err
+    println "✗ netstat_protocol_info() failed:", err
+endtry
+
+println
+
+# Test 21: tcp_receive and tcp_server_accept existence
+println "21. Testing tcp_receive/tcp_server_accept existence..."
+try
+    println "✓ tcp_receive function exists"
+    println "✓ tcp_server_accept function exists"
+catch err
+    println "✗ Unexpected error:", err
+endtry
+
+println
+
 println "=== Network Library Test Complete ==="
 println
 

@@ -177,4 +177,93 @@ if tmpd != ""
     | rm -rf {tmpd}
 endif
 
+# Test 9: open_files
+println "\n9. Testing open_files..."
+try
+    of = open_files()
+    if len(of) > 0
+        println "✓ open_files() returned", len(of), "entries"
+    else
+        println "! open_files() returned empty (may be normal)"
+    endif
+catch err
+    println "✗ open_files() failed:", err
+endtry
+
+# Test 10: group/user functions (root only)
+println "\n10. Testing group/user functions (root only)..."
+this_uid =< id -u
+this_uid = this_uid . trim(0)
+is_root = this_uid == "0"
+if not is_root
+    println "! Skipping group/user tests (not running as root)"
+else
+    try
+        gl = group_list()
+        println "✓ group_list() returned", len(gl), "groups"
+    catch err
+        println "✗ group_list() failed:", err
+    endtry
+
+    try
+        ul = user_list()
+        println "✓ user_list() returned", len(ul), "users"
+    catch err
+        println "✗ user_list() failed:", err
+    endtry
+
+    try
+        gi = group_info("root")
+        if gi.GID != nil
+            println "✓ group_info('root') returned GID:", gi.GID
+        else
+            println "✗ group_info('root') missing GID"
+        endif
+    catch err
+        println "✗ group_info('root') failed:", err
+    endtry
+
+    test_grp = "za_test_grp_" + as_string(pid())
+    try
+        ga = group_add(test_grp)
+        if ga
+            println "✓ group_add(", test_grp, ") succeeded"
+            gm = group_membership(user(), test_grp, "add")
+            if gm
+                println "✓ group_membership add succeeded"
+            else
+                println "! group_membership add returned false"
+            endif
+            gd = group_del(test_grp)
+            if gd
+                println "✓ group_del(", test_grp, ") succeeded"
+            else
+                println "! group_del returned false"
+            endif
+        else
+            println "! group_add returned false"
+        endif
+    catch err
+        println "! group_add/del/membership failed:", err
+    endtry
+
+    test_usr = "za_test_usr_" + as_string(pid())
+    try
+        ua = user_add(test_usr)
+        if ua
+            println "✓ user_add(", test_usr, ") succeeded"
+            ud = user_del(test_usr)
+            if ud
+                println "✓ user_del(", test_usr, ") succeeded"
+            else
+                println "! user_del returned false"
+            endif
+        else
+            println "! user_add returned false"
+        endif
+    catch err
+        println "! user_add/del failed:", err
+    endtry
+endif
+
 println "\n=== File Operations Tests Complete ==="

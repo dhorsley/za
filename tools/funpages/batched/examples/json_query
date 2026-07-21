@@ -1,4 +1,2 @@
 # Example for json_query
-var data='{"a":[1,2,3]}'
-println json_query(data,".a")  # [1,2,3]
-
+json_query("{\"a\": 1}", ".a")

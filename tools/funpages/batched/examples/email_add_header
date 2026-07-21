@@ -1,0 +1,2 @@
+# Example for email_add_header
+email_add_header("hello", "hello", "hello")  # usage

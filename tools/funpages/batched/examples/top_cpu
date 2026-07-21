@@ -1,0 +1,2 @@
+# Example for top_cpu
+top_cpu(42)  # usage

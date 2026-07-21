@@ -1,3 +1,2 @@
 # Example for capture_shell
-capture_shell(true)
-
+capture_shell(true)  # usage

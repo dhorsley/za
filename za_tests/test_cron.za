@@ -154,5 +154,32 @@ end_time = epoch_time()
 duration = end_time - start_time
 println "1000 cron parses completed in ", duration, " seconds"
 
+# Test 16: Additional quartz_to_cron conversions
+println "\n16. Testing additional quartz_to_cron conversions..."
+try
+    q1 = quartz_to_cron("0 0 12 * * ?")
+    if q1 == "0 12 * * *"
+        println "✓ quartz_to_cron('0 0 12 * * ?') -> '0 12 * * *'"
+    else
+        println "✗ Expected '0 12 * * *', got:", q1
+    endif
+
+    q2 = quartz_to_cron("0 15 10 ? * MON-FRI")
+    if q2 == "0 15 10 * * 1-5"
+        println "✓ quartz_to_cron('0 15 10 ? * MON-FRI') -> '0 15 10 * * 1-5'"
+    else
+        println "✗ Expected '0 15 10 * * 1-5', got:", q2
+    endif
+
+    q3 = quartz_to_cron("0 0 12 1/1 * ?")
+    if q3 == "0 12 * * *"
+        println "✓ quartz_to_cron('0 0 12 1/1 * ?') -> '0 12 * * *'"
+    else
+        println "✗ Expected '0 12 * * *', got:", q3
+    endif
+catch err
+    println "✗ Additional quartz_to_cron test failed:", err
+endtry
+
 println "\n=== Cron Library Tests Complete ===" 
 

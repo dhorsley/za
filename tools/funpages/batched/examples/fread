@@ -1,5 +1,5 @@
 # Example for fread
-f=fopen("/tmp/file","r")
-println fread(f,"\n")
-fclose(f)
-
+write_file("/tmp/za_fread.txt", "hello")
+fh = fopen("/tmp/za_fread.txt", "r")
+fread(fh, "5")
+fclose(fh)

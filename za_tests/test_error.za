@@ -1,0 +1,54 @@
+#!/usr/bin/env za
+
+# Test script for error handling functions
+# Tests error_default_handler, error_filename, last_err, suppress_prompt
+
+permit("error_exit", false)
+exception_strictness("warn")
+
+println "=== Error Handling Tests ==="
+
+# Test 1: error_default_handler (only callable inside error handler)
+println "\n1. Testing error_default_handler..."
+try
+    error_default_handler()
+    println "✗ error_default_handler() did not fail outside handler"
+catch err
+    println "✓ error_default_handler() correctly rejected outside handler"
+endtry
+
+# Test 2: error_filename (only callable inside error handler)
+println "\n2. Testing error_filename..."
+try
+    fn = error_filename()
+    println "✗ error_filename() did not fail outside handler, returned:", fn
+catch err
+    println "✓ error_filename() correctly rejected outside handler"
+endtry
+
+# Test 3: last_err
+println "\n3. Testing last_err..."
+try
+    # Trigger a shell error to populate last_err
+    | false
+    le = last_err()
+    if le != nil and le != ""
+        println "✓ last_err() returned error after failed command:", le
+    else
+        println "! last_err() returned nil/empty (no captured error text)"
+    endif
+catch err
+    println "✗ last_err() test failed:", err
+endtry
+
+# Test 4: suppress_prompt
+println "\n4. Testing suppress_prompt..."
+try
+    prev = suppress_prompt(true)
+    println "✓ suppress_prompt(true) succeeded, previous:", prev
+    suppress_prompt(false)
+catch err
+    println "! suppress_prompt not available or failed:", err
+endtry
+
+println "\n=== Error Handling Tests Complete ==="

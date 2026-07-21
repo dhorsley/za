@@ -1,0 +1,2 @@
+# Example for json_encode
+json_encode(map(.a 1))

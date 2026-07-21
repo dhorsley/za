@@ -1,0 +1,2 @@
+# Example for anytrue
+anytrue(list_bool([true, false, true]))  # usage

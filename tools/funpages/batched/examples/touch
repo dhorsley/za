@@ -1,0 +1,2 @@
+# Example for touch
+touch("hello")  # usage

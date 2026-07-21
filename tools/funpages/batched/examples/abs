@@ -1,3 +1,2 @@
 # Example for abs
-println abs(-5)  # 5
-
+abs(99999999999999999999999999999999999999)  # usage

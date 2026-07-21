@@ -1,3 +1,2 @@
 # Example for reg_match
-println reg_match("abc123","\\d+")  # true
-
+reg_match("hello", "hello")  # usage

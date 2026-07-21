@@ -1,4 +1,2 @@
 # Example for tokens
-var t=tokens("a=1")
-println t.tokens  # ["a","=","1"]
-
+tokens("hello")  # usage

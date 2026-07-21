@@ -1,0 +1,2 @@
+# Example for mkdir_p
+mkdir_p("/tmp/test_mkdir_p")  # usage

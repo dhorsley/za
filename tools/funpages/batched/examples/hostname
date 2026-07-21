@@ -1,3 +1,2 @@
 # Example for hostname
-println hostname()  # e.g., "myhost"
-
+hostname()  # usage

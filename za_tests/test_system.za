@@ -1,0 +1,144 @@
+#!/usr/bin/env za
+
+# System Process and Resource Monitoring Tests
+# Tests: ps_map, ps_tree, top_cpu, top_dio, top_mem, top_nio
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== System Process and Resource Tests ==="
+
+# Test ps_map
+try
+    result = ps_map()
+    if result != nil and result.len > 0
+        println "✓ ps_map() returns process map with", result.len, "entries"
+    else
+        println "✗ ps_map() returned empty or nil"
+    endif
+catch err
+    println "✗ ps_map() failed:", err
+endtry
+
+# Test ps_map with specific PID (current process)
+try
+    result = ps_map(1)
+    if result != nil
+        println "✓ ps_map(1) returns process map"
+    else
+        println "✗ ps_map(1) returned nil"
+    endif
+catch err
+    println "✗ ps_map(1) failed:", err
+endtry
+
+# Test ps_tree
+try
+    result = ps_tree()
+    if result != nil
+        println "✓ ps_tree() returns process tree structure"
+    else
+        println "✗ ps_tree() returned nil"
+    endif
+catch err
+    println "✗ ps_tree() failed:", err
+endtry
+
+# Test ps_tree with specific PID
+try
+    result = ps_tree(1)
+    if result != nil
+        println "✓ ps_tree(1) returns process tree structure"
+    else
+        println "✗ ps_tree(1) returned nil"
+    endif
+catch err
+    println "✗ ps_tree(1) failed:", err
+endtry
+
+# Test top_cpu
+try
+    result = top_cpu(5)
+    if result != nil and result.len > 0
+        println "✓ top_cpu(5) returns", result.len, "processes"
+    else
+        println "✗ top_cpu(5) returned empty or nil"
+    endif
+catch err
+    println "✗ top_cpu(5) failed:", err
+endtry
+
+# Test top_cpu with -1 (all)
+try
+    result = top_cpu(-1)
+    if result != nil and result.len > 0
+        println "✓ top_cpu(-1) returns", result.len, "processes"
+    else
+        println "✗ top_cpu(-1) returned empty or nil"
+    endif
+catch err
+    println "✗ top_cpu(-1) failed:", err
+endtry
+
+# Test top_mem
+try
+    result = top_mem(5)
+    if result != nil and result.len > 0
+        println "✓ top_mem(5) returns", result.len, "processes"
+    else
+        println "✗ top_mem(5) returned empty or nil"
+    endif
+catch err
+    println "✗ top_mem(5) failed:", err
+endtry
+
+# Test top_nio
+try
+    result = top_nio(5)
+    if result != nil
+        println "✓ top_nio(5) returns network I/O data"
+    else
+        println "✗ top_nio(5) returned nil"
+    endif
+catch err
+    println "✗ top_nio(5) failed:", err
+endtry
+
+# Test top_nio with -1
+try
+    result = top_nio(-1)
+    if result != nil
+        println "✓ top_nio(-1) returns all network I/O data"
+    else
+        println "✗ top_nio(-1) returned nil"
+    endif
+catch err
+    println "✗ top_nio(-1) failed:", err
+endtry
+
+# Test top_dio
+try
+    result = top_dio(5)
+    if result != nil
+        println "✓ top_dio(5) returns disk I/O data"
+    else
+        println "✗ top_dio(5) returned nil"
+    endif
+catch err
+    println "✗ top_dio(5) failed:", err
+endtry
+
+# Test top_dio with -1
+try
+    result = top_dio(-1)
+    if result != nil
+        println "✓ top_dio(-1) returns all disk I/O data"
+    else
+        println "✗ top_dio(-1) returned nil"
+    endif
+catch err
+    println "✗ top_dio(-1) failed:", err
+endtry
+
+println "\n=== System Process and Resource Tests Complete ==="

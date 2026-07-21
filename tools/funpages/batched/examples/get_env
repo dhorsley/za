@@ -1,3 +1,2 @@
 # Example for get_env
-println get_env("HOME")  # /home/user
-
+get_env("hello")  # usage

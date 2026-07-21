@@ -1,0 +1,2 @@
+# Example for base64e
+base64e("hello")  # usage

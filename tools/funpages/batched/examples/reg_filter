@@ -1,3 +1,2 @@
 # Example for reg_filter
-println reg_filter("hello","l")  # [[2,3],[3,4]]
-
+reg_filter("hello", "hello")  # usage

@@ -1,0 +1,226 @@
+#!/usr/bin/env za
+
+# Test script for string utility functions
+# Tests levdist, rlen, rvalid, ubin8, uhex32
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== String Utility Tests ==="
+
+# Test 1: levdist - Levenshtein distance
+println "\n1. Testing levdist..."
+try
+    d1 = levdist("kitten", "sitting")
+    println "levdist('kitten', 'sitting'):", d1
+    if d1 == 3
+        println "✓ levdist('kitten', 'sitting') = 3"
+    else
+        println "✗ levdist('kitten', 'sitting') expected 3, got:", d1
+    endif
+    
+    # Same string
+    d2 = levdist("hello", "hello")
+    println "levdist('hello', 'hello'):", d2
+    if d2 == 0
+        println "✓ levdist same string = 0"
+    else
+        println "✗ levdist same string expected 0, got:", d2
+    endif
+    
+    # Empty string
+    d3 = levdist("", "abc")
+    println "levdist('', 'abc'):", d3
+    if d3 == 3
+        println "✓ levdist empty to 'abc' = 3"
+    else
+        println "✗ levdist empty to 'abc' expected 3, got:", d3
+    endif
+    
+    # Single character difference
+    d4 = levdist("book", "back")
+    println "levdist('book', 'back'):", d4
+    if d4 == 2
+        println "✓ levdist('book', 'back') = 2"
+    else
+        println "✗ levdist('book', 'back') expected 2, got:", d4
+    endif
+catch err
+    println "Error in levdist test:"
+    println pp(err)
+endtry
+
+# Test 2: rlen - rune length
+println "\n2. Testing rlen..."
+try
+    # ASCII string
+    r1 = rlen("hello")
+    println "rlen('hello'):", r1
+    if r1 == 5
+        println "✓ rlen ASCII correct"
+    else
+        println "✗ rlen('hello') expected 5, got:", r1
+    endif
+    
+    # Unicode string with multi-byte characters
+    r2 = rlen("hello")
+    println "rlen('hello'):", r2
+    if r2 == 5
+        println "✓ rlen Unicode emoji correct"
+    else
+        println "✗ rlen('hello') expected 5, got:", r2
+    endif
+    
+    # Mixed ASCII and Unicode
+    r3 = rlen("a日本語b")
+    println "rlen('a日本語b'):", r3
+    if r3 == 5
+        println "✓ rlen mixed correct"
+    else
+        println "✗ rlen('a日本語b') expected 5, got:", r3
+    endif
+    
+    # Empty string
+    r4 = rlen("")
+    if r4 == 0
+        println "✓ rlen empty string = 0"
+    else
+        println "✗ rlen empty string expected 0, got:", r4
+    endif
+catch err
+    println "Error in rlen test:"
+    println pp(err)
+endtry
+
+# Test 3: rvalid - regex validation
+println "\n3. Testing rvalid..."
+try
+    # Valid patterns
+    if rvalid("[a-z]+")
+        println "✓ rvalid('[a-z]+') = true"
+    else
+        println "✗ rvalid('[a-z]+') should be true"
+    endif
+    
+    if rvalid("^hello$")
+        println "✓ rvalid('^hello$') = true"
+    else
+        println "✗ rvalid('^hello$') should be true"
+    endif
+    
+    if rvalid("\\d{3}-\\d{4}")
+        println "✓ rvalid('\\d{3}-\\d{4}') = true"
+    else
+        println "✗ rvalid('\\d{3}-\\d{4}') should be true"
+    endif
+    
+    # Invalid patterns
+    if !rvalid("[a-z")
+        println "✓ rvalid('[a-z') = false (unclosed group)"
+    else
+        println "✗ rvalid('[a-z') should be false"
+    endif
+    
+    if !rvalid("(abc")
+        println "✓ rvalid('(abc') = false (unclosed paren)"
+    else
+        println "✗ rvalid('(abc') should be false"
+    endif
+    
+    if !rvalid("*+")
+        println "✓ rvalid('*+') = false (invalid)"
+    else
+        println "✗ rvalid('*+') should be false"
+    endif
+    
+    # Empty pattern is valid
+    if rvalid("")
+        println "✓ rvalid('') = true"
+    else
+        println "✗ rvalid('') should be true"
+    endif
+catch err
+    println "Error in rvalid test:"
+    println pp(err)
+endtry
+
+# Test 4: ubin8 - unsigned binary to decimal
+println "\n4. Testing ubin8..."
+try
+    b1 = ubin8("0")
+    if b1 == 0
+        println "✓ ubin8('0') = 0"
+    else
+        println "✗ ubin8('0') expected 0, got:", b1
+    endif
+    
+    b2 = ubin8("1")
+    if b2 == 1
+        println "✓ ubin8('1') = 1"
+    else
+        println "✗ ubin8('1') expected 1, got:", b2
+    endif
+    
+    b3 = ubin8("1010")
+    if b3 == 10
+        println "✓ ubin8('1010') = 10"
+    else
+        println "✗ ubin8('1010') expected 10, got:", b3
+    endif
+    
+    b4 = ubin8("11111111")
+    if b4 == 255
+        println "✓ ubin8('11111111') = 255"
+    else
+        println "✗ ubin8('11111111') expected 255, got:", b4
+    endif
+    
+    # Invalid should error
+    try
+        bad = ubin8("2")
+        println "✗ ubin8('2') should have errored"
+    catch bad_err
+        println "✓ ubin8('2') correctly rejected"
+    endtry
+catch err
+    println "Error in ubin8 test:"
+    println pp(err)
+endtry
+
+# Test 5: uhex32 - unsigned hex to decimal
+println "\n5. Testing uhex32..."
+try
+    h1 = uhex32("0")
+    if h1 == 0
+        println "✓ uhex32('0') = 0"
+    else
+        println "✗ uhex32('0') expected 0, got:", h1
+    endif
+    
+    h2 = uhex32("FF")
+    if h2 == 255
+        println "✓ uhex32('FF') = 255"
+    else
+        println "✗ uhex32('FF') expected 255, got:", h2
+    endif
+    
+    h3 = uhex32("ffff")
+    if h3 == 65535
+        println "✓ uhex32('ffff') = 65535"
+    else
+        println "✗ uhex32('ffff') expected 65535, got:", h3
+    endif
+    
+    # Invalid should error
+    try
+        bad = uhex32("GG")
+        println "✗ uhex32('GG') should have errored"
+    catch bad_err
+        println "✓ uhex32('GG') correctly rejected"
+    endtry
+catch err
+    println "Error in uhex32 test:"
+    println pp(err)
+endtry
+
+println "\n=== String Utility Tests Complete ==="

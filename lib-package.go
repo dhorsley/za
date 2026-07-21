@@ -283,7 +283,6 @@ func uninstall(pkgs string) (state int) {
         err := Copper(updateCommand, true).Code
         if err != 0 {
             pf("Problem performing system update!\n")
-            finish(true, ERR_PACKAGE)
             return err
         }
         firstInstallRun = false
@@ -493,7 +492,6 @@ func install(pkgs string, quiet bool) (state int) {
             if !quiet {
                 pf("Problem performing system update!\n[cmd->%s]\n", updateCommand)
             }
-            finish(true, ERR_PACKAGE)
             return err
         }
         firstInstallRun = false

@@ -1,3 +1,2 @@
 # Example for parent
-println parent("/usr/local/bin/")  # /usr/local
-
+parent("hello")  # usage

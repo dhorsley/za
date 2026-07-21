@@ -1,0 +1,4 @@
+# Example for ini_write
+write_file("/tmp/za_ini_w.ini", "[section]\nkey=val\n")
+cfg = ini_read("/tmp/za_ini_w.ini")
+ini_write(cfg, "/tmp/za_ini_w_out.ini")

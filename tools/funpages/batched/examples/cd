@@ -1,3 +1,2 @@
 # Example for cd
-println cd("/tmp")  # true
-
+cd("hello")  # usage

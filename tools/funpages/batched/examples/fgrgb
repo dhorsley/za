@@ -1,3 +1,2 @@
 # Example for fgrgb
-println fgrgb(255,0,0)  # \033[38;2;255;0;0m
-
+fgrgb(42, 42, 42)  # usage

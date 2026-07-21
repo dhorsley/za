@@ -1,3 +1,2 @@
 # Example for keypress
-println keypress(1000)  # (waits for keypress, returns code)
-
+keypress()  # usage

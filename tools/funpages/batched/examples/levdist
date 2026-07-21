@@ -1,0 +1,2 @@
+# Example for levdist
+levdist("hello", "hello")  # usage

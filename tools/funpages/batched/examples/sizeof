@@ -1,0 +1,2 @@
+# Example for sizeof
+sizeof("hello")  # usage

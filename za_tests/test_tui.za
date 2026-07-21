@@ -1,0 +1,42 @@
+#!/usr/bin/env za
+
+# TUI Library Tests
+# Tests: tui_box
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== TUI Library Tests ==="
+
+# Test tui_box with basic map
+# tui_box expects a map with .Row, .Col, .Width, .Height, .Title, etc.
+try
+    box_map = map(.Row 1, .Col 1, .Width 10, .Height 5, .Title "Test")
+    result = tui_box(box_map)
+    # tui_box returns nil on success (it draws to screen)
+    println "✓ tui_box with basic map executed without error"
+catch err
+    println "✗ tui_box with basic map failed:", err
+endtry
+
+# Test tui_box with style map
+try
+    box_map = map(.Row 2, .Col 2, .Width 20, .Height 3)
+    style_map = map(.Fg "white", .Bg "blue")
+    result = tui_box(box_map, style_map)
+    println "✓ tui_box with style map executed without error"
+catch err
+    println "✗ tui_box with style map failed:", err
+endtry
+
+# Test tui_box with minimal map
+try
+    box_map = map(.Row 0, .Col 0, .Width 5, .Height 2)
+    result = tui_box(box_map)
+    println "✓ tui_box with minimal map executed without error"
+catch err
+    println "✗ tui_box with minimal map failed:", err
+endtry
+
+println "\n=== TUI Library Tests Complete ==="

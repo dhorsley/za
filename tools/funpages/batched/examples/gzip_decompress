@@ -1,0 +1,4 @@
+# Example for gzip_decompress
+write_file("/tmp/za_gzip.txt", "hello")
+gzip_compress("/tmp/za_gzip.txt", "/tmp/za_gzip.gz")
+gzip_decompress("/tmp/za_gzip.gz", "/tmp/za_gzip_out.txt")

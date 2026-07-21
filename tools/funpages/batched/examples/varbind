@@ -1,3 +1,2 @@
 # Example for varbind
-println varbind("a")  # 1
-
+varbind("hello")  # usage

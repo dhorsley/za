@@ -1,0 +1,2 @@
+# Example for ssl_cert_install_help
+ssl_cert_install_help("hello")  # usage

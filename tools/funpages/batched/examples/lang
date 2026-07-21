@@ -1,3 +1,2 @@
 # Example for lang
-println lang()  # e.g., en_GB.UTF-8
-
+lang()  # usage

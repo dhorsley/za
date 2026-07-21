@@ -1,3 +1,2 @@
 # Example for tanh
-println tanh(1)  # 0.7615...
-
+tanh(42)  # usage

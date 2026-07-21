@@ -1,4 +1,4 @@
 # Example for fseek
-var f=fopen("/tmp/file","r")
-println fseek(f,10,0)
-
+write_file("/tmp/za_fseek.txt", "hello")
+fh = fopen("/tmp/za_fseek.txt", "r")
+fseek(fh, 0, 0)

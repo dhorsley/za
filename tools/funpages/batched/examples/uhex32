@@ -1,0 +1,2 @@
+# Example for uhex32
+uhex32("FF")

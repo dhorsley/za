@@ -1,3 +1,2 @@
 # Example for itob
-println itob(1)  # true
-
+itob(42)  # usage

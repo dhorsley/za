@@ -1,3 +1,2 @@
 # Example for username
-println username(1000)
-
+username(42)  # usage

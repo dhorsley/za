@@ -1,3 +1,2 @@
 # Example for has_colour
-println has_colour()  # true/false
-
+has_colour()  # usage

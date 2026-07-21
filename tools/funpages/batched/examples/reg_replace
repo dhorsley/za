@@ -1,3 +1,2 @@
 # Example for reg_replace
-println reg_replace("abc123","\\d+","X")  # abcX
-
+reg_replace("hello", "hello", "hello")  # usage

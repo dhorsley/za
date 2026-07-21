@@ -1,0 +1,6 @@
+# Example for format_stack_trace
+try
+    panic("test")
+catch err
+    format_stack_trace(err["stack_trace"])
+endtry

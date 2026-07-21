@@ -1,3 +1,2 @@
 # Example for pi
-println pi()  # 3.141592653589793
-
+pi()  # usage

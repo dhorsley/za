@@ -1,3 +1,3 @@
 # Example for copy
-copy("/tmp/file1","/tmp/file2")
-
+write_file("/tmp/za_copy_src.txt", "hello")
+copy("/tmp/za_copy_src.txt", "/tmp/za_copy_dst.txt")

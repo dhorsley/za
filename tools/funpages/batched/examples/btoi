@@ -1,3 +1,2 @@
 # Example for btoi
-println btoi(true)  # 1
-
+btoi(true)  # usage

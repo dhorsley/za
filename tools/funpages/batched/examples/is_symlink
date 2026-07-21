@@ -1,3 +1,2 @@
 # Example for is_symlink
-println is_symlink(41471)  # true/false
-
+is_symlink(42)  # usage

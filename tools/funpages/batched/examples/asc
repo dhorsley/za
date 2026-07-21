@@ -1,3 +1,2 @@
 # Example for asc
-println asc("A")  # 65
-
+asc("hello")  # usage

@@ -1,4 +1,2 @@
 # Example for peek
-var lst=[1,2,3]
-println peek("lst")  # 3
-
+peek(["a", "b", "c"])  # usage

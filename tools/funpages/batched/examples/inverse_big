@@ -1,0 +1,2 @@
+# Example for inverse_big
+inverse_big([[1, 0], [0, 1]])

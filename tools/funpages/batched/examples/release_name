@@ -1,3 +1,2 @@
 # Example for release_name
-println release_name()  # e.g., "Ubuntu"
-
+release_name()  # usage

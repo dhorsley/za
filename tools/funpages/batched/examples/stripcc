@@ -1,3 +1,2 @@
 # Example for stripcc
-println stripcc("[#red]red[#-]")  # red
-
+stripcc("hello")  # usage

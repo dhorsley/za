@@ -1,0 +1,3 @@
+# Example for gzip_compress
+write_file("/tmp/za_gzip.txt", "hello")
+gzip_compress("/tmp/za_gzip.txt", "/tmp/za_gzip.gz")

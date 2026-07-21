@@ -1,0 +1,2 @@
+# Example for metric_deregister
+metric_deregister("hello")  # usage

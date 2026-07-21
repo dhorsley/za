@@ -1,3 +1,2 @@
 # Example for pane_r
-println pane_r()  # 0
-
+pane_r()  # usage

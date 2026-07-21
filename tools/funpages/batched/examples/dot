@@ -1,0 +1,2 @@
+# Example for dot
+dot([1, 2], [3, 4])  # usage

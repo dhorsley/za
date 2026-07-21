@@ -1,3 +1,2 @@
 # Example for net_interfaces
-println net_interfaces()
-
+net_interfaces()  # usage

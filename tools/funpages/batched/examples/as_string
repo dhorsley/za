@@ -1,0 +1,2 @@
+# Example for as_string
+as_string("hello")  # usage

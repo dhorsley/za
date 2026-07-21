@@ -1,0 +1,6 @@
+# Example for symlink
+write_file("/tmp/za_symlink_target.txt", "hello")
+if is_file("/tmp/za_symlink_link.txt")
+    delete("/tmp/za_symlink_link.txt")
+endif
+symlink("/tmp/za_symlink_target.txt", "/tmp/za_symlink_link.txt")

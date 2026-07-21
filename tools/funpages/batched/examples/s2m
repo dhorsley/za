@@ -1,0 +1,3 @@
+# Example for s2m
+r = sys_resources()
+s2m(r)

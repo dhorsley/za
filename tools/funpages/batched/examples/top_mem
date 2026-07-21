@@ -1,0 +1,2 @@
+# Example for top_mem
+top_mem(42)  # usage

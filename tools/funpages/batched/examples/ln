@@ -1,3 +1,2 @@
 # Example for ln
-println ln(2.71828)  # ~1
-
+ln(42)  # usage

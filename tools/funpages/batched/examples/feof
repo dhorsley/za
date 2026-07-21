@@ -1,5 +1,5 @@
 # Example for feof
-f=fopen("/tmp/file","r")
-println feof(f)
-fclose(f)
-
+fh = fopen("/tmp/za_feof.txt", "w")
+fclose(fh)
+fh = fopen("/tmp/za_feof.txt", "r")
+feof(fh)

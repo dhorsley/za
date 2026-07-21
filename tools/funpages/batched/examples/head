@@ -1,4 +1,2 @@
 # Example for head
-var lst=[1,2,3,4]
-println head(lst)  # 1
-
+head("hello")  # usage

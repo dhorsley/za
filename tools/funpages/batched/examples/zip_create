@@ -1,0 +1,3 @@
+# Example for zip_create
+write_file("/tmp/za_zip.txt", "hello")
+zip_create("/tmp/za_test.zip", ["/tmp/za_zip.txt"])

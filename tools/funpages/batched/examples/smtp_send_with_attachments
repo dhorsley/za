@@ -1,0 +1,7 @@
+# Example for smtp_send_with_attachments
+write_file("/tmp/za_attach.txt", "hello")
+try
+    smtp_send_with_attachments("localhost:25", "25", list_string(["from@a.com", "to@b.com"]), "hello", "subject", list_string(["/tmp/za_attach.txt"]))
+catch err
+    println "SMTP connection failed (expected)"
+endtry

@@ -1,0 +1,2 @@
+# Example for url_encode
+url_encode("hello")  # usage

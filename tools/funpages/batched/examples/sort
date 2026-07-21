@@ -1,4 +1,2 @@
 # Example for sort
-var l=[3,1,2]
-println sort(l)  # [1,2,3]
-
+sort(nil)  # usage

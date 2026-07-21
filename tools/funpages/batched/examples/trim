@@ -1,3 +1,2 @@
 # Example for trim
-println trim("  a  ",0)  # "a"
-
+trim("hello", 42)  # usage

@@ -1,3 +1,2 @@
 # Example for ibase
-println ibase(2,10)  # "1010"
-
+ibase(10, 10)

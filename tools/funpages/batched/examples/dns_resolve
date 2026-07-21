@@ -1,0 +1,2 @@
+# Example for dns_resolve
+dns_resolve("hello")  # usage

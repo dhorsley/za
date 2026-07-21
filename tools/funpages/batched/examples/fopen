@@ -1,4 +1,2 @@
 # Example for fopen
-var f=fopen("/tmp/file","r")
-println f
-
+fopen("/tmp/za_fopen.txt", "w")

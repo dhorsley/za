@@ -1,0 +1,2 @@
+# Example for yaml_set
+yaml_set(map(.a 1), "a", 2)

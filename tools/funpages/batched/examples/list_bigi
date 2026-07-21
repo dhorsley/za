@@ -1,0 +1,2 @@
+# Example for list_bigi
+list_bigi([1, 2, 3])  # usage

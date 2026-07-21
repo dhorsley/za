@@ -1,0 +1,2 @@
+# Example for human_size
+human_size(42)  # usage

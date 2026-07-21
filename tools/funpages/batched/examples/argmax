@@ -1,0 +1,2 @@
+# Example for argmax
+argmax([[1, 2], [3, 4]])

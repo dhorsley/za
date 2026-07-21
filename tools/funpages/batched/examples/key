@@ -1,4 +1,2 @@
 # Example for key
-var m={"a":1}
-println key(m,"a")  # true
-
+key("hello", "hello")  # usage

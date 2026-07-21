@@ -1,3 +1,2 @@
 # Example for is_setuid
-println is_setuid(4755)  # true/false
-
+is_setuid(42)  # usage

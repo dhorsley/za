@@ -1,3 +1,2 @@
 # Example for asinh
-println asinh(1)  # ~0.881
-
+asinh(42)  # usage

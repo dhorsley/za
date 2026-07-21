@@ -1,0 +1,2 @@
+# Example for log_sanitise
+log_sanitise("hello")  # usage

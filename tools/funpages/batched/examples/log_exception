@@ -1,0 +1,2 @@
+# Example for log_exception
+log_exception("hello", "hello")  # usage

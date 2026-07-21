@@ -1,3 +1,2 @@
 # Example for can_write
-println can_write("/tmp")  # true
-
+can_write("hello")  # usage

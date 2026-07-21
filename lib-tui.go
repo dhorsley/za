@@ -1745,7 +1745,7 @@ func buildTuiLib() {
     categories["tui"] = []string{
         "tui_new", "tui_new_style", "tui", "tui_box", "tui_screen", "tui_text", "tui_pager", "tui_menu",
         "tui_progress", "tui_progress_reset", "tui_input", "tui_clear", "tui_template", "tui_table",
-        "tui_table_select", "editor",
+        "tui_table_select", "editor", "selector", "tui_radio",
     }
 
     slhelp["editor"] = LibHelp{

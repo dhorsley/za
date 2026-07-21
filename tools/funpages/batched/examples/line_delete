@@ -1,4 +1,2 @@
 # Example for line_delete
-var s="a\nb\nc"
-println line_delete(s,"b")  # a\nc
-
+line_delete("hello\nworld", "hello")  # usage

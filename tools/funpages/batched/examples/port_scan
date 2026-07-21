@@ -1,0 +1,2 @@
+# Example for port_scan
+port_scan("hello", [1, 2, 3])  # usage

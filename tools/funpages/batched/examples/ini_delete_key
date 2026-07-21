@@ -1,0 +1,4 @@
+# Example for ini_delete_key
+write_file("/tmp/za_ini_dk.ini", "[section]\nkey=val\n")
+cfg = ini_read("/tmp/za_ini_dk.ini")
+ini_delete_key(cfg, "section", "key")

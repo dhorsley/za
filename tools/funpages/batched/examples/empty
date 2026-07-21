@@ -1,4 +1,2 @@
 # Example for empty
-var lst=[1,2,3]
-println empty(lst)  # false
-
+empty([1, 2, 3])  # usage

@@ -1,3 +1,2 @@
 # Example for line_head
-println line_head("a\nb\nc",2)  # "a\nb"
-
+line_head("hello\nworld", 1)  # usage

@@ -1,4 +1,2 @@
 # Example for inset
-var text="line1\nline2"
-println inset(text,4)
-
+inset("hello", 42)  # usage

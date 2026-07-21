@@ -1,0 +1,87 @@
+#!/usr/bin/env za
+
+# Test script for progress_bar() function
+# Tests progress_bar() with various inputs and edge cases
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== progress_bar() Tests ==="
+
+# Test 1: Basic progress bar (percentage only)
+println "\n1. Testing basic progress_bar..."
+try
+    p1 = progress_bar(50)
+    println "✓ progress_bar(50) ="
+    println p1
+
+    p2 = progress_bar(0)
+    println "✓ progress_bar(0) ="
+    println p2
+
+    p3 = progress_bar(100)
+    println "✓ progress_bar(100) ="
+    println p3
+
+catch err
+    println "Error in basic progress_bar tests:"
+    println pp(err)
+endtry
+
+# Test 2: progress_bar with width
+println "\n2. Testing progress_bar with width..."
+try
+    p4 = progress_bar(50, 20)
+    println "✓ progress_bar(50, 20) ="
+    println p4
+
+    p5 = progress_bar(25, 10)
+    println "✓ progress_bar(25, 10) ="
+    println p5
+
+catch err
+    println "Error in width test:"
+    println pp(err)
+endtry
+
+# Test 3: progress_bar with custom fill/empty characters
+println "\n3. Testing progress_bar with custom characters..."
+try
+    p6 = progress_bar(50, 20, "=", "-")
+    println "✓ progress_bar(50, 20, '=', '-') ="
+    println p6
+
+    p7 = progress_bar(75, 20, "#", " ")
+    println "✓ progress_bar(75, 20, '#', ' ') ="
+    println p7
+
+catch err
+    println "Error in custom chars test:"
+    println pp(err)
+endtry
+
+# Test 4: Edge cases
+println "\n4. Testing edge cases..."
+try
+    # Over 100% should clamp
+    p8 = progress_bar(150, 20)
+    println "✓ progress_bar(150, 20) ="
+    println p8
+
+    # Negative should be 0
+    p9 = progress_bar(-10, 20)
+    println "✓ progress_bar(-10, 20) ="
+    println p9
+
+    # Float percentage
+    p10 = progress_bar(33.3, 20)
+    println "✓ progress_bar(33.3, 20) ="
+    println p10
+
+catch err
+    println "Error in edge case tests:"
+    println pp(err)
+endtry
+
+println "\n=== progress_bar() Tests Complete ==="

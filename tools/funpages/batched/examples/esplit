@@ -1,6 +1,2 @@
 # Example for esplit
-var lst=[1,2,3,4,5]
-esplit(lst,"l","r",3)
-println l  # [1,2]
-println r  # [3,4,5]
-
+esplit([1, 2, 3], "a", "b", 2)  # usage

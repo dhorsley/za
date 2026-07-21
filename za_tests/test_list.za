@@ -1,0 +1,190 @@
+#!/usr/bin/env za
+
+# Test script for list functions
+# Tests list_fill, list_int64, s2m
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== List Function Tests ==="
+
+# Test 1: list_fill
+println "\n1. Testing list_fill..."
+try
+    # Fill entire int list
+    l1 = list_fill([1, 2, 3, 4, 5], 99)
+    println "list_fill([1,2,3,4,5], 99):", l1
+    
+    match = true
+    for i = 0 to len(l1) - 1
+        if l1[i] != 99
+            match = false
+            break
+        endif
+    endfor
+    
+    if match and len(l1) == 5
+        println "✓ list_fill entire list correct"
+    else
+        println "✗ list_fill entire list incorrect, got:", l1
+    endif
+    
+    # Fill string list
+    l2 = list_fill(["a", "b", "c"], "x")
+    println "list_fill(['a','b','c'], 'x'):", l2
+    
+    match2 = true
+    for i = 0 to len(l2) - 1
+        if l2[i] != "x"
+            match2 = false
+            break
+        endif
+    endfor
+    
+    if match2 and len(l2) == 3
+        println "✓ list_fill string list correct"
+    else
+        println "✗ list_fill string list incorrect, got:", l2
+    endif
+    
+    # Fill with range
+    l3 = list_fill([10, 20, 30, 40, 50], 0, 1, 3)
+    println "list_fill([10,20,30,40,50], 0, 1, 3):", l3
+    
+    if l3[0] == 10 and l3[1] == 0 and l3[2] == 0 and l3[3] == 0 and l3[4] == 50
+        println "✓ list_fill with range correct"
+    else
+        println "✗ list_fill with range incorrect, got:", l3
+    endif
+    
+    # Original list unchanged (returns copy)
+    original = [1, 2, 3]
+    filled = list_fill(original, 99)
+    if original[0] == 1 and original[1] == 2 and original[2] == 3
+        println "✓ list_fill does not modify original"
+    else
+        println "✗ list_fill modified original"
+    endif
+catch err
+    println "Error in list_fill test:"
+    println pp(err)
+endtry
+
+# Test 2: list_int64
+println "\n2. Testing list_int64..."
+try
+    # From int list
+    i1 = list_int64([1, 2, 3])
+    println "list_int64([1,2,3]):", i1
+    if len(i1) == 3 and i1[0] == 1 and i1[1] == 2 and i1[2] == 3
+        println "✓ list_int64 from int list correct"
+    else
+        println "✗ list_int64 from int list incorrect, got:", i1
+    endif
+    
+    # From string list
+    i2 = list_int64(["10", "20", "30"])
+    println "list_int64(['10','20','30']):", i2
+    if len(i2) == 3 and i2[0] == 10 and i2[1] == 20 and i2[2] == 30
+        println "✓ list_int64 from string list correct"
+    else
+        println "✗ list_int64 from string list incorrect, got:", i2
+    endif
+    
+    # From bool list
+    i3 = list_int64([true, false, true])
+    println "list_int64([true,false,true]):", i3
+    if len(i3) == 3 and i3[0] == 1 and i3[1] == 0 and i3[2] == 1
+        println "✓ list_int64 from bool list correct"
+    else
+        println "✗ list_int64 from bool list incorrect, got:", i3
+    endif
+    
+    # From float list
+    i4 = list_int64([1.9, 2.1, 3.5])
+    println "list_int64([1.9,2.1,3.5]):", i4
+    if len(i4) == 3 and i4[0] == 1 and i4[1] == 2 and i4[2] == 3
+        println "✓ list_int64 from float list correct (truncated)"
+    else
+        println "✗ list_int64 from float list incorrect, got:", i4
+    endif
+    
+    # Empty list
+    i5 = list_int64([])
+    if len(i5) == 0
+        println "✓ list_int64 empty list correct"
+    else
+        println "✗ list_int64 empty list incorrect, got:", i5
+    endif
+    
+    # Invalid string should error
+    try
+        bad = list_int64(["not_a_number"])
+        println "✗ list_int64(['not_a_number']) should have errored"
+    catch bad_err
+        println "✓ list_int64(['not_a_number']) correctly rejected"
+    endtry
+catch err
+    println "Error in list_int64 test:"
+    println pp(err)
+endtry
+
+# Define a test struct at top level
+struct TestStruct
+    Name string
+    Value int
+    Active bool
+endstruct
+
+# Test 3: s2m - struct to map
+println "\n3. Testing s2m..."
+
+# Create instance
+ts = TestStruct(.Name "Test", .Value 123, .Active true)
+
+# Convert to map
+m = s2m(ts)
+println "s2m result:", m
+
+if typeof(m) == "map" or typeof(m) == "map[string]any"
+    println "✓ s2m returns map type"
+else
+    println "✗ s2m returns unexpected type:", typeof(m)
+endif
+
+# Check map contents
+if m["Name"] == "Test"
+    println "✓ s2m Name field correct"
+else
+    println "✗ s2m Name field incorrect, got:", m["Name"]
+endif
+
+if m["Value"] == 123
+    println "✓ s2m Value field correct"
+else
+    println "✗ s2m Value field incorrect, got:", m["Value"]
+endif
+
+if m["Active"] == true
+    println "✓ s2m Active field correct"
+else
+    println "✗ s2m Active field incorrect, got:", m["Active"]
+endif
+
+# Non-struct should error
+try
+    bad = s2m("not_a_struct")
+    println "✗ s2m('not_a_struct') should have errored"
+catch bad_err
+    println "✓ s2m('not_a_struct') correctly rejected"
+endtry
+
+# Map should error
+try
+    bad2 = s2m(map(.a 1))
+    println "✗ s2m(map) should have errored"
+catch bad2_err
+    println "✓ s2m(map) correctly rejected"
+endtry
+
+println "\n=== List Function Tests Complete ==="

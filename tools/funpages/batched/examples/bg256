@@ -1,3 +1,2 @@
 # Example for bg256
-println bg256(34)  # \033[48;5;34m
-
+bg256(42)  # usage

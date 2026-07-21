@@ -191,5 +191,70 @@ println "last parsed :\n",parsed.pp
 println "last marshall :\n",marshaled
 println "1000 parse/marshal cycles completed in ", duration, " seconds"
 
+# Test 20: yaml_get nested values
+println "\n20. Testing yaml_get..."
+try
+    yaml_get_test = yaml_parse("server:\n  host: localhost\n  port: 8080\n  ssl: true\n  tags:\n    - alpha\n    - beta")
+    host = yaml_get(yaml_get_test, "server.host")
+    port = yaml_get(yaml_get_test, "server.port")
+    ssl  = yaml_get(yaml_get_test, "server.ssl")
+    tag0 = yaml_get(yaml_get_test, "server.tags[0]")
+    if host == "localhost" and port == 8080 and ssl == true and tag0 == "alpha"
+        println "✓ yaml_get returned correct nested values"
+    else
+        println "✗ yaml_get values mismatch: host=", host, " port=", port, " ssl=", ssl, " tag0=", tag0
+    endif
+catch err
+    println "✗ yaml_get test failed:", err
+endtry
+
+# Test 21: yaml_set nested values
+println "\n21. Testing yaml_set..."
+try
+    yaml_set_test = yaml_parse("app:\n  name: old_name\n  count: 1")
+    yaml_set_test = yaml_set(yaml_set_test, "app.name", "new_name")
+    yaml_set_test = yaml_set(yaml_set_test, "app.count", 99)
+    yaml_set_test = yaml_set(yaml_set_test, "app.enabled", false)
+    name = yaml_get(yaml_set_test, "app.name")
+    count = yaml_get(yaml_set_test, "app.count")
+    enabled = yaml_get(yaml_set_test, "app.enabled")
+    if name == "new_name" and count == 99 and enabled == false
+        println "✓ yaml_set updated nested values correctly"
+    else
+        println "✗ yaml_set values mismatch: name=", name, " count=", count, " enabled=", enabled
+    endif
+catch err
+    println "✗ yaml_set test failed:", err
+endtry
+
+# Test 22: yaml_delete nested values
+println "\n22. Testing yaml_delete..."
+try
+    yaml_del_test = yaml_parse("keep: yes\nremove: no\nnested:\n  a: 1\n  b: 2")
+    yaml_del_test = yaml_delete(yaml_del_test, "remove")
+    yaml_del_test = yaml_delete(yaml_del_test, "nested.b")
+    keep = yaml_get(yaml_del_test, "keep")
+    a    = yaml_get(yaml_del_test, "nested.a")
+    if keep == "yes" and a == 1
+        println "✓ yaml_delete kept remaining values correctly"
+    else
+        println "✗ yaml_delete mismatch: keep=", keep, " a=", a
+    endif
+    try
+        rem = yaml_get(yaml_del_test, "remove")
+        println "✗ yaml_get('remove') should have failed after delete, got:", rem
+    catch e2
+        println "✓ yaml_get('remove') correctly fails after delete"
+    endtry
+    try
+        b = yaml_get(yaml_del_test, "nested.b")
+        println "✗ yaml_get('nested.b') should have failed after delete, got:", b
+    catch e3
+        println "✓ yaml_get('nested.b') correctly fails after delete"
+    endtry
+catch err
+    println "✗ yaml_delete test failed:", err
+endtry
+
 println "\n=== YAML Library Tests Complete ===" 
 

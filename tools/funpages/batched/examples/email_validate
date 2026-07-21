@@ -1,0 +1,2 @@
+# Example for email_validate
+email_validate("hello")  # usage

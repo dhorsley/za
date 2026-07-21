@@ -1,0 +1,3 @@
+# Example for gzip_compress_bytes
+data = hex_decode("48656c6c6f")
+gzip_compress_bytes(data)

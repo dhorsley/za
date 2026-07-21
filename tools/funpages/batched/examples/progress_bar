@@ -1,0 +1,2 @@
+# Example for progress_bar
+progress_bar(42)  # usage

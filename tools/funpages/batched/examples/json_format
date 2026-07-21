@@ -1,4 +1,2 @@
 # Example for json_format
-json='{"a":1,"b":2}'
-println json_format(json)
-
+json_format("{\"a\": 1}")

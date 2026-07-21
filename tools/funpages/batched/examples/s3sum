@@ -1,3 +1,3 @@
 # Example for s3sum
-println s3sum("/tmp/f").sum
-
+write_file("/tmp/za_s3.txt", "hello")
+s3sum("/tmp/za_s3.txt")

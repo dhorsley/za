@@ -1,3 +1,2 @@
 # Example for line_tail
-println line_tail("a\nb\nc",2)  # "b\nc"
-
+line_tail("hello\nworld", 1)  # usage

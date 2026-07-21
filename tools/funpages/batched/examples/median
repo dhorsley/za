@@ -1,0 +1,2 @@
+# Example for median
+median([1, 2, 3])

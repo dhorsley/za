@@ -1,0 +1,2 @@
+# Example for literal
+literal("hello")  # usage

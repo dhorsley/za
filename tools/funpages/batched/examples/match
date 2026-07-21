@@ -1,3 +1,2 @@
 # Example for match
-println match("hello","ell")  # true
-
+match("hello", "hello")  # usage

@@ -1,3 +1,2 @@
 # Example for is_sticky
-println is_sticky(17407)  # true/false
-
+is_sticky(42)  # usage

@@ -1,0 +1,2 @@
+# Example for yaml_parse
+yaml_parse("hello")  # usage

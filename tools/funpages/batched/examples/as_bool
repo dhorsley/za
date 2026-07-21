@@ -1,0 +1,2 @@
+# Example for as_bool
+as_bool("true")  # usage

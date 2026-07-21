@@ -1,0 +1,2 @@
+# Example for cron_parse
+cron_parse("0 0 * * *")  # usage

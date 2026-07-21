@@ -1,0 +1,2 @@
+# Example for email_get_attachments
+email_get_attachments("hello")  # usage

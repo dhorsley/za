@@ -1,4 +1,2 @@
 # Example for ev_watch
-var w,code=ev_watch("/tmp")
-println w,code  # watcher object, 0
-
+ev_watch("hello")  # usage

@@ -1,3 +1,2 @@
 # Example for has_shell
-println has_shell()  # true
-
+has_shell()  # usage

@@ -1,0 +1,2 @@
+# Example for symmetric_difference
+symmetric_difference(map(.a 1, .b 2), map(.a 1, .b 2))  # usage

@@ -1,0 +1,4 @@
+# Example for sgrep
+write_file("/tmp/za_sgrep.txt", "hello
+world")
+sgrep("/tmp/za_sgrep.txt", map(.regex "hello"))

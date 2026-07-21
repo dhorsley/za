@@ -1,0 +1,2 @@
+# Example for yaml_get
+yaml_get(map(.a 1), "a")

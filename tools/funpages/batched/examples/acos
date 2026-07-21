@@ -1,3 +1,2 @@
 # Example for acos
-println acos(1)  # 0
-
+acos(42)  # usage

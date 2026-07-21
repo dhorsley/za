@@ -1,0 +1,3 @@
+# Example for local
+hello = 42
+local("hello")

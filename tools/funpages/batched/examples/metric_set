@@ -1,0 +1,2 @@
+# Example for metric_set
+metric_set("hello", 3.14)  # usage

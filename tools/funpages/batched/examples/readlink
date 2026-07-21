@@ -1,0 +1,2 @@
+# Example for readlink
+readlink("hello")  # usage

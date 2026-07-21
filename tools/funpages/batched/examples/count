@@ -1,3 +1,2 @@
 # Example for count
-println count("a\nb\nc")  # 3
-
+count("hello")  # usage

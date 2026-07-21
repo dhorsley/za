@@ -1,0 +1,150 @@
+#!/usr/bin/env za
+
+# Test script for conversion functions
+# Tests as_int64, byte, f2n
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Conversion Function Tests ==="
+
+# Test 1: as_int64
+println "\n1. Testing as_int64..."
+try
+    # Integer input
+    i1 = as_int64(42)
+    println "as_int64(42):", i1
+    if i1 == 42
+        println "✓ as_int64(42) = 42"
+    else
+        println "✗ as_int64(42) expected 42, got:", i1
+    endif
+    
+    # String input
+    i2 = as_int64("123")
+    println "as_int64('123'):", i2
+    if i2 == 123
+        println "✓ as_int64('123') = 123"
+    else
+        println "✗ as_int64('123') expected 123, got:", i2
+    endif
+    
+    # Float input (should truncate)
+    i3 = as_int64(3.14)
+    println "as_int64(3.14):", i3
+    if i3 == 3
+        println "✓ as_int64(3.14) = 3"
+    else
+        println "✗ as_int64(3.14) expected 3, got:", i3
+    endif
+    
+    # Zero
+    i4 = as_int64(0)
+    if i4 == 0
+        println "✓ as_int64(0) = 0"
+    else
+        println "✗ as_int64(0) expected 0, got:", i4
+    endif
+    
+    # Negative
+    i5 = as_int64(-99)
+    if i5 == -99
+        println "✓ as_int64(-99) = -99"
+    else
+        println "✗ as_int64(-99) expected -99, got:", i5
+    endif
+    
+    # Invalid input should error
+    try
+        bad = as_int64("not_a_number")
+        println "✗ as_int64('not_a_number') should have errored"
+    catch bad_err
+        println "✓ as_int64('not_a_number') correctly rejected"
+    endtry
+catch err
+    println "Error in as_int64 test:"
+    println pp(err)
+endtry
+
+# Test 2: byte
+println "\n2. Testing byte..."
+try
+    # Integer input
+    b1 = byte(65)
+    println "byte(65):", b1
+    if b1 == 65
+        println "✓ byte(65) = 65"
+    else
+        println "✗ byte(65) expected 65, got:", b1
+    endif
+    
+    # String input
+    b2 = byte("66")
+    println "byte('66'):", b2
+    if b2 == 66
+        println "✓ byte('66') = 66"
+    else
+        println "✗ byte('66') expected 66, got:", b2
+    endif
+    
+    # Zero
+    b3 = byte(0)
+    if b3 == 0
+        println "✓ byte(0) = 0"
+    else
+        println "✗ byte(0) expected 0, got:", b3
+    endif
+    
+    # Max uint8
+    b4 = byte(255)
+    if b4 == 255
+        println "✓ byte(255) = 255"
+    else
+        println "✗ byte(255) expected 255, got:", b4
+    endif
+    
+    # Invalid string input returns 0
+    bad = byte("abc")
+    if bad == 0
+        println "✓ byte('abc') returns 0 for invalid input"
+    else
+        println "✗ byte('abc') expected 0, got:", bad
+    endif
+catch err
+    println "Error in byte test:"
+    println pp(err)
+endtry
+
+# Test 3: f2n
+println "\n3. Testing f2n..."
+try
+    # false -> nil
+    n1 = f2n(false)
+    println "f2n(false):", n1
+    if n1 == nil
+        println "✓ f2n(false) = nil"
+    else
+        println "✗ f2n(false) expected nil, got:", n1
+    endif
+    
+    # true -> true
+    n2 = f2n(true)
+    println "f2n(true):", n2
+    if n2 == true
+        println "✓ f2n(true) = true"
+    else
+        println "✗ f2n(true) expected true, got:", n2
+    endif
+    
+    # Verify type of true result
+    if typeof(n2) == "bool"
+        println "✓ f2n(true) returns bool type"
+    else
+        println "✗ f2n(true) returns unexpected type:", typeof(n2)
+    endif
+catch err
+    println "Error in f2n test:"
+    println pp(err)
+endtry
+
+println "\n=== Conversion Function Tests Complete ==="

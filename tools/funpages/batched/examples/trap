@@ -1,0 +1,2 @@
+# Example for trap
+trap("hello", "hello")  # usage

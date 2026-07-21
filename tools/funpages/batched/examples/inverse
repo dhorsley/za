@@ -1,0 +1,2 @@
+# Example for inverse
+inverse([[1, 0], [0, 1]])

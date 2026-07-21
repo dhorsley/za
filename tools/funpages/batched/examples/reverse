@@ -1,3 +1,2 @@
 # Example for reverse
-println reverse([1,2,3])  # [3,2,1]
-
+reverse("hello")  # usage

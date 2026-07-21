@@ -133,7 +133,7 @@ RATES = nil
 CURR_CACHE = home() + "/.cache/za/awsbilling/"
 
 def ensure_cache_dir()
-    | mkdir -p {CURR_CACHE}
+    | mkdir -p {=CURR_CACHE}
 end
 
 def load_rates()

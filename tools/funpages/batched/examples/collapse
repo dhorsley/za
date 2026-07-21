@@ -1,3 +1,2 @@
 # Example for collapse
-println collapse("a\nb\nc")  # "a b c"
-
+collapse("hello")  # usage

@@ -1,3 +1,2 @@
 # Example for permit
-println permit("shell",false)
-
+permit("error_exit", true)

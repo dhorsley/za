@@ -1,0 +1,2 @@
+# Example for rvalid
+rvalid("hello")  # usage

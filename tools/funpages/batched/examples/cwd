@@ -1,3 +1,2 @@
 # Example for cwd
-println cwd()  # current working directory
-
+cwd()  # usage

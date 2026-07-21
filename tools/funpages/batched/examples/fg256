@@ -1,3 +1,2 @@
 # Example for fg256
-println fg256(31)+"hello"+fg256(0)  # red hello text
-
+fg256(42)  # usage

@@ -1,3 +1,2 @@
 # Example for log10
-println log10(100)  # 2
-
+log10(42)  # usage

@@ -1,0 +1,2 @@
+# Example for wrap_text
+wrap_text("hello")  # usage

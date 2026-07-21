@@ -1,0 +1,2 @@
+# Example for email_get_body
+email_get_body("Subject: test\n\nbody\n")  # usage

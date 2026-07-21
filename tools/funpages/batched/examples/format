@@ -1,3 +1,2 @@
 # Example for format
-println format("%s %d", "Age:", 30)
-
+format("hello %s", "world")  # usage

@@ -1,3 +1,2 @@
 # Example for bgrgb
-println bgrgb(255,0,0)  # \033[48;2;255;0;0m
-
+bgrgb(42, 42, 42)  # usage

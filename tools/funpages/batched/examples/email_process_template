@@ -1,0 +1,2 @@
+# Example for email_process_template
+email_process_template("hello", map(.a 1, .b 2))  # usage

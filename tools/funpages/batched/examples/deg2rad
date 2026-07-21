@@ -1,3 +1,2 @@
 # Example for deg2rad
-println deg2rad(180)  # 3.14159...
-
+deg2rad(42)  # usage

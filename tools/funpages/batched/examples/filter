@@ -1,3 +1,2 @@
 # Example for filter
-println filter("abc def","d")  # "def"
-
+filter("hello", "hello")  # usage

@@ -1,4 +1,2 @@
 # Example for line_add
-var s="a\nb\nc"
-println line_add(s,"d")  # "a\nb\nc\nd"
-
+line_add("hello\nworld", "newline")

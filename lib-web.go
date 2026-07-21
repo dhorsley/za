@@ -940,7 +940,7 @@ func buildWebLib() {
     web_client = &http.Client{Transport: web_tr}
 
     features["web"] = Feature{version: 1, category: "web"}
-    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download", "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download",         "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable", "web_template"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.

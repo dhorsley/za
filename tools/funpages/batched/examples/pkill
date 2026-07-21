@@ -1,0 +1,2 @@
+# Example for pkill
+pkill("hello")  # usage

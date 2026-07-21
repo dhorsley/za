@@ -1,3 +1,2 @@
 # Example for md5sum
-println md5sum("abc")
-
+md5sum("hello")  # usage

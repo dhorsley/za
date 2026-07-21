@@ -1,4 +1,2 @@
 # Example for lines
-var s="a\nb\nc"
-println lines(s,"1:2")  # "a\nb"
-
+lines("hello", "hello")  # usage

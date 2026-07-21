@@ -1,0 +1,2 @@
+# Example for email_remove_header
+email_remove_header("hello", "hello")  # usage

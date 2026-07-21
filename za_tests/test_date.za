@@ -1,0 +1,150 @@
+#!/usr/bin/env za
+
+# Test script for date formatting and time zone functions
+# Tests format_date, format_time, time_zone, time_zone_offset
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Date Formatting and Time Zone Tests ==="
+
+# Test 1: format_date with known epoch
+println "\n1. Testing format_date with known epoch..."
+try
+    # Epoch 0 = 1970-01-01 00:00:00 UTC
+    date_str = format_date(0)
+    println "format_date(0):", date_str
+    
+    # Should match pattern YYYY-MM-DD
+    if len(date_str) == 10 and date_str[4] == "-" and date_str[7] == "-"
+        println "✓ format_date returns correct pattern"
+    else
+        println "✗ format_date returns unexpected pattern:", date_str
+    endif
+    
+    # Test with current time (no args)
+    current_date = format_date()
+    println "format_date():", current_date
+    if len(current_date) == 10 and current_date[4] == "-" and current_date[7] == "-"
+        println "✓ format_date() current returns correct pattern"
+    else
+        println "✗ format_date() current returns unexpected pattern:", current_date
+    endif
+catch err
+    println "Error in format_date test:"
+    println pp(err)
+endtry
+
+# Test 2: format_time with known epoch
+println "\n2. Testing format_time with known epoch..."
+try
+    time_str = format_time(0)
+    println "format_time(0):", time_str
+    
+    # Should match pattern HH:MM:SS
+    if len(time_str) == 8 and time_str[2] == ":" and time_str[5] == ":"
+        println "✓ format_time returns correct pattern"
+    else
+        println "✗ format_time returns unexpected pattern:", time_str
+    endif
+    
+    # Test with current time (no args)
+    current_time = format_time()
+    println "format_time():", current_time
+    if len(current_time) == 8 and current_time[2] == ":" and current_time[5] == ":"
+        println "✓ format_time() current returns correct pattern"
+    else
+        println "✗ format_time() current returns unexpected pattern:", current_time
+    endif
+catch err
+    println "Error in format_time test:"
+    println pp(err)
+endtry
+
+# Test 3: time_zone
+println "\n3. Testing time_zone..."
+try
+    tz = time_zone()
+    println "time_zone():", tz
+    
+    if len(tz) > 0
+        println "✓ time_zone returns non-empty string"
+    else
+        println "✗ time_zone returns empty string"
+    endif
+    
+    # Test with epoch argument
+    tz_epoch = time_zone(0)
+    println "time_zone(0):", tz_epoch
+    if len(tz_epoch) > 0
+        println "✓ time_zone with epoch returns non-empty string"
+    else
+        println "✗ time_zone with epoch returns empty string"
+    endif
+catch err
+    println "Error in time_zone test:"
+    println pp(err)
+endtry
+
+# Test 4: time_zone_offset
+println "\n4. Testing time_zone_offset..."
+try
+    offset = time_zone_offset()
+    println "time_zone_offset():", offset
+    
+    if typeof(offset) == "int"
+        println "✓ time_zone_offset returns integer"
+    else
+        println "✗ time_zone_offset returns unexpected type:", typeof(offset)
+    endif
+    
+    # Should be a multiple of 60 (seconds in a minute)
+    # and within reasonable range (-12 to +14 hours)
+    if offset >= -50400 and offset <= 50400
+        println "✓ time_zone_offset within valid range"
+    else
+        println "✗ time_zone_offset out of range:", offset
+    endif
+    
+    # Test with epoch argument
+    offset_epoch = time_zone_offset(0)
+    println "time_zone_offset(0):", offset_epoch
+    if typeof(offset_epoch) == "int"
+        println "✓ time_zone_offset with epoch returns integer"
+    else
+        println "✗ time_zone_offset with epoch returns unexpected type:", typeof(offset_epoch)
+    endif
+catch err
+    println "Error in time_zone_offset test:"
+    println pp(err)
+endtry
+
+# Test 5: Consistency between date and time
+println "\n5. Testing consistency..."
+try
+    # Get current epoch
+    epoch = now()
+    
+    # Format using functions
+    d = format_date(epoch)
+    t = format_time(epoch)
+    
+    # Basic sanity checks
+    if d != "" and t != ""
+        println "✓ format_date and format_time both return non-empty"
+    else
+        println "✗ One or both returned empty"
+    endif
+    
+    # The date and time strings should be different formats
+    if d != t
+        println "✓ Date and time strings are different formats"
+    else
+        println "✗ Date and time strings are identical (unexpected)"
+    endif
+catch err
+    println "Error in consistency test:"
+    println pp(err)
+endtry
+
+println "\n=== Date Formatting and Time Zone Tests Complete ==="

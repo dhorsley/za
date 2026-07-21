@@ -272,7 +272,7 @@ func getMemoryPressure() map[string]PressureStats {
                 continue
             }
             fields := strings.Fields(line)
-            if len(fields) >= 4 {
+            if len(fields) >= 5 {
                 resource := fields[0]
                 avg10, _ := strconv.ParseFloat(fields[1], 64)
                 avg60, _ := strconv.ParseFloat(fields[2], 64)

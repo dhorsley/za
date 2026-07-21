@@ -1,3 +1,2 @@
 # Example for pane_w
-println pane_w()  # 80
-
+pane_w()  # usage

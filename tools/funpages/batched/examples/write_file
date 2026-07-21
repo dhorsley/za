@@ -1,3 +1,2 @@
 # Example for write_file
-println write_file("/tmp/f","hi",0644)
-
+write_file("/tmp/za_write.txt", "hello")

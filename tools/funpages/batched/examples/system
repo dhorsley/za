@@ -1,3 +1,2 @@
 # Example for system
-println system("echo hello",true)
-
+system("hello")  # usage

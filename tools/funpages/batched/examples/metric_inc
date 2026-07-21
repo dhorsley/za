@@ -1,0 +1,2 @@
+# Example for metric_inc
+metric_inc("hello")  # usage

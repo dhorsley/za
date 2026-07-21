@@ -1,0 +1,2 @@
+# Example for glob
+glob("hello")  # usage

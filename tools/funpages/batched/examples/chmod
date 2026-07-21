@@ -1,0 +1,3 @@
+# Example for chmod
+touch("/tmp/za_chmod.txt")
+chmod("/tmp/za_chmod.txt", "644")

@@ -1,0 +1,2 @@
+# Example for email_extract_addresses
+email_extract_addresses("hello")  # usage

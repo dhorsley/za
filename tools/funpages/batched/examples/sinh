@@ -1,3 +1,2 @@
 # Example for sinh
-println sinh(0.5)  # ~0.521
-
+sinh(42)  # usage

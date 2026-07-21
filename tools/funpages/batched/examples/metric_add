@@ -1,0 +1,2 @@
+# Example for metric_add
+metric_add("hello", 42)  # usage

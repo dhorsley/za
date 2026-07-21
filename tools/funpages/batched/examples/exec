@@ -1,0 +1,2 @@
+# Example for exec
+exec("println 42")  # usage

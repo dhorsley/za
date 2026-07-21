@@ -1,3 +1,2 @@
 # Example for clean
-println clean("a{b{c}}d")  # ad
-
+clean("hello")  # usage

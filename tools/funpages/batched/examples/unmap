@@ -1,5 +1,2 @@
 # Example for unmap
-var m=map{"a":1,"b":2}
-unmap("m","a")
-println m  # {"b":2}
-
+unmap("hello", "hello")  # usage

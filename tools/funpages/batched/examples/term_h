@@ -1,3 +1,2 @@
 # Example for term_h
-println term_h()  # e.g., 24
-
+term_h()  # usage

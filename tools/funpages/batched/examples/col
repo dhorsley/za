@@ -1,3 +1,2 @@
 # Example for col
-println col("a b\nc d",2)  # ["b","d"]
-
+col("hello", 42)  # usage

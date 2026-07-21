@@ -1,3 +1,2 @@
 # Example for strpos
-println strpos("abcde","c")  # 3
-
+strpos("hello", "hello")  # usage

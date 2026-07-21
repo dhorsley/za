@@ -1,3 +1,2 @@
 # Example for ast
-println ast("myfunction")
-
+ast("hello")  # usage

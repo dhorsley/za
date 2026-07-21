@@ -1,3 +1,2 @@
 # Example for groupname
-println groupname(1000)
-
+groupname(42)  # usage

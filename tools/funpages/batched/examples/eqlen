@@ -1,3 +1,2 @@
 # Example for eqlen
-println eqlen([[1,2],[3,4]])  # true
-
+eqlen([[1, 2], [3, 4]])

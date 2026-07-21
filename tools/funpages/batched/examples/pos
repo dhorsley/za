@@ -1,3 +1,2 @@
 # Example for pos
-println pos(10,20)  # ANSI cursor string
-
+pos(42, 42)  # usage

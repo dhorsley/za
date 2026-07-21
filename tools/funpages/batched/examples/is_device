@@ -1,3 +1,2 @@
 # Example for is_device
-println is_device(6000)  # true for block device mode
-
+is_device(42)  # usage

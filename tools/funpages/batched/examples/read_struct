@@ -1,3 +1,4 @@
 # Example for read_struct
-println read_struct("/tmp/struct","s")
-
+r = sys_resources()
+write_struct("/tmp/za_struct.bin", "r")
+read_struct("/tmp/za_struct.bin", "r")

@@ -1,4 +1,3 @@
 # Example for fclose
-var f=fopen("/tmp/file","r")
-fclose(f)
-
+fh = fopen("/tmp/za_fclose.txt", "w")
+fclose(fh)

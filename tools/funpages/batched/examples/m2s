@@ -1,0 +1,4 @@
+# Example for m2s
+r = sys_resources()
+m = s2m(r)
+m2s(m, r)

@@ -1,3 +1,2 @@
 # Example for tan
-println tan(0.5)
-
+tan(42)  # usage

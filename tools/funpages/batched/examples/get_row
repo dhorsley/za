@@ -1,3 +1,2 @@
 # Example for get_row
-println get_row()  # e.g., 0
-
+get_row()  # usage

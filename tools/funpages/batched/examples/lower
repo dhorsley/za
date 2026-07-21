@@ -1,3 +1,2 @@
 # Example for lower
-println lower("HELLO")  # hello
-
+lower("hello")  # usage

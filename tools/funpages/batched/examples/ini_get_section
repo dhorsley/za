@@ -1,0 +1,4 @@
+# Example for ini_get_section
+write_file("/tmp/za_ini_gs.ini", "[section]\nkey=val\n")
+cfg = ini_read("/tmp/za_ini_gs.ini")
+ini_get_section(cfg, "section")

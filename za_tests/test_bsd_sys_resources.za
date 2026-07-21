@@ -42,6 +42,58 @@ catch err
     println "✗ sys_resources() failed: " + err
 endtry
 
+# Test resource_usage
+println "\nTesting resource_usage()..."
+try
+    ru = resource_usage(pid())
+    if ru.PID > 0
+        println "✓ resource_usage() returned PID:", ru.PID
+    else
+        println "✗ resource_usage() returned invalid PID"
+    endif
+catch err
+    println "✗ resource_usage() failed:", err
+endtry
+
+# Test sys_load
+println "\nTesting sys_load()..."
+try
+    load = sys_load()
+    if load.load_1min != nil and load.load_5min != nil and load.load_15min != nil
+        println "✓ sys_load() returned load averages"
+    else
+        println "✗ sys_load() missing expected keys"
+    endif
+catch err
+    println "✗ sys_load() failed:", err
+endtry
+
+# Test mount_info
+println "\nTesting mount_info()..."
+try
+    mounts = mount_info()
+    if len(mounts) > 0
+        println "✓ mount_info() returned", len(mounts), "mount points"
+    else
+        println "✗ mount_info() returned empty array"
+    endif
+catch err
+    println "✗ mount_info() failed:", err
+endtry
+
+# Test term
+println "\nTesting term()..."
+try
+    t = term()
+    if t != "" and kind(t) == "string"
+        println "✓ term() returned terminal type:", t
+    else
+        println "✗ term() returned empty or non-string value"
+    endif
+catch err
+    println "✗ term() failed:", err
+endtry
+
 println "System resources test completed."
 
 

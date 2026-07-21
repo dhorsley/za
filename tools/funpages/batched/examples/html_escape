@@ -1,3 +1,2 @@
 # Example for html_escape
-println html_escape("<b>hi</b>")  # "&lt;b&gt;hi&lt;/b&gt;"
-
+html_escape("hello")  # usage

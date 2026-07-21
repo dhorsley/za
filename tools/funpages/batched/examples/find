@@ -1,0 +1,2 @@
+# Example for find
+find([1, 2, 3], 2)

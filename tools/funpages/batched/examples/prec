@@ -1,0 +1,2 @@
+# Example for prec
+prec(as_bigf(3.14159), 2)

@@ -1,0 +1,5 @@
+# Example for mkdir
+mkdir("/tmp/za_mkdir_test")
+if is_dir("/tmp/za_mkdir_test")
+    delete("/tmp/za_mkdir_test")
+endif

@@ -1,0 +1,2 @@
+# Example for format_currency
+format_currency(42)  # usage

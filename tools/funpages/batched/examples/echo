@@ -1,3 +1,2 @@
 # Example for echo
-println echo(false)  # disables local echo
-
+echo(true)  # usage

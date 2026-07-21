@@ -1,0 +1,2 @@
+# Example for import_has_errors
+import_has_errors("hello")  # usage

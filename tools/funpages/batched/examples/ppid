@@ -1,3 +1,2 @@
 # Example for ppid
-println ppid()  # parent PID
-
+ppid()  # usage

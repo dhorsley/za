@@ -1,3 +1,2 @@
 # Example for ln2
-println ln2()  # ~0.693
-
+ln2()  # usage

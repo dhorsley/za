@@ -497,7 +497,7 @@ func buildListLib() {
     features["list"] = Feature{version: 1, category: "data"}
     categories["list"] = []string{"col", "head", "tail", "sum", "fieldsort", "ssort", "sort", "uniq",
         "append", "append_to", "insert", "remove", "push_front", "pop", "peek",
-        "any", "all", "esplit", "min", "max", "avg", "eqlen",
+        "anytrue", "alltrue", "esplit", "min", "max", "avg", "eqlen",
         "empty", "list_string", "list_float", "list_int", "list_int64", "list_bool", "list_bigi", "list_bigf",
         "scan_left", "zip", "list_fill", "concat",
     }

@@ -1,0 +1,4 @@
+# Example for ini_get_global
+write_file("/tmp/za_ini.ini", "key=val\n")
+cfg = ini_read("/tmp/za_ini.ini")
+ini_get_global(cfg)

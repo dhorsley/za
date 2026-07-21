@@ -1,3 +1,2 @@
 # Example for atanh
-println atanh(0.5)  # 0.5493...
-
+atanh(42)  # usage

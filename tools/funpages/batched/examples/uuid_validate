@@ -1,0 +1,2 @@
+# Example for uuid_validate
+uuid_validate("hello")  # usage

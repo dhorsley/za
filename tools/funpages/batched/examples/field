@@ -1,3 +1,2 @@
 # Example for field
-println field("a b c",2)  # "b"
-
+field("hello", 42)  # usage

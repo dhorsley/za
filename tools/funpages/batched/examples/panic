@@ -1,0 +1,6 @@
+# Example for panic
+try
+    panic("test")
+catch err
+    println "Caught panic"
+endtry

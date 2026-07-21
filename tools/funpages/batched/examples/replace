@@ -1,3 +1,2 @@
 # Example for replace
-println replace("abc","b","B")  # aBc
-
+replace("hello", "hello", "hello")  # usage

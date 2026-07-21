@@ -1,3 +1,2 @@
 # Example for ln10
-println ln10()  # 2.302585
-
+ln10()  # usage

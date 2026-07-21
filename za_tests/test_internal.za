@@ -1,0 +1,116 @@
+#!/usr/bin/env za
+
+# Test script for internal functions
+# Tests funcref, import_errors, set_depth
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Internal Function Tests ==="
+
+# Test 1: funcref
+println "\n1. Testing funcref..."
+try
+    # Get reference to a built-in function
+    ref1 = funcref("println")
+    println "funcref('println'):", ref1
+    
+    if typeof(ref1) == "uint32"
+        println "✓ funcref returns uint32 handle"
+    else
+        println "✗ funcref returns unexpected type:", typeof(ref1)
+    endif
+    
+    # Another built-in
+    ref2 = funcref("len")
+    println "funcref('len'):", ref2
+    if typeof(ref2) == "uint32"
+        println "✓ funcref('len') returns uint32 handle"
+    else
+        println "✗ funcref('len') invalid type:", typeof(ref2)
+    endif
+    
+    # Non-existent function should return 0
+    ref3 = funcref("nonexistent_function_xyz")
+    println "funcref('nonexistent_function_xyz'):", ref3
+    if ref3 == 0
+        println "✓ funcref non-existent returns 0"
+    else
+        println "✗ funcref non-existent should return 0, got:", ref3
+    endif
+catch err
+    println "Error in funcref test:"
+    println pp(err)
+endtry
+
+# Test 2: import_errors
+println "\n2. Testing import_errors..."
+try
+    # Test with a non-existent module - should return empty list
+    errors1 = import_errors("nonexistent_module_xyz")
+    println "import_errors('nonexistent_module_xyz'):", errors1
+    
+    if typeof(errors1) == "[]any"
+        println "✓ import_errors returns list type"
+    else
+        println "✗ import_errors returns unexpected type:", typeof(errors1)
+    endif
+    
+    # Should be empty for non-existent module
+    if len(errors1) == 0
+        println "✓ import_errors non-existent module returns empty list"
+    else
+        println "✗ import_errors non-existent module should be empty, got:", errors1
+    endif
+    
+    # Test with empty string
+    errors2 = import_errors("")
+    if len(errors2) == 0
+        println "✓ import_errors empty string returns empty list"
+    else
+        println "✗ import_errors empty string should be empty, got:", errors2
+    endif
+catch err
+    println "Error in import_errors test:"
+    println pp(err)
+endtry
+
+# Test 3: set_depth
+println "\n3. Testing set_depth..."
+try
+    # Set depth to various values
+    result1 = set_depth(5)
+    println "set_depth(5):", result1
+    if result1 == nil
+        println "✓ set_depth returns nil"
+    else
+        println "✗ set_depth expected nil, got:", result1
+    endif
+    
+    result2 = set_depth(0)
+    if result2 == nil
+        println "✓ set_depth(0) returns nil"
+    else
+        println "✗ set_depth(0) expected nil, got:", result2
+    endif
+    
+    result3 = set_depth(100)
+    if result3 == nil
+        println "✓ set_depth(100) returns nil"
+    else
+        println "✗ set_depth(100) expected nil, got:", result3
+    endif
+    
+    # Negative should work too (no error)
+    try
+        result4 = set_depth(-1)
+        println "✓ set_depth(-1) accepted"
+    catch neg_err
+        println "✗ set_depth(-1) should not error"
+    endtry
+catch err
+    println "Error in set_depth test:"
+    println pp(err)
+endtry
+
+println "\n=== Internal Function Tests Complete ==="

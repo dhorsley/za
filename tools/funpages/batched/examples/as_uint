@@ -1,0 +1,2 @@
+# Example for as_uint
+as_uint("42")  # usage

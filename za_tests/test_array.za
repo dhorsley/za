@@ -1,0 +1,149 @@
+#!/usr/bin/env za
+
+# Array Library Tests
+# Tests: array_colours, flatten, reshape
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Array Library Tests (array_colours, flatten, reshape) ==="
+
+# Test array_colours
+try
+    old_colours = array_colours(["[#red]", "[#green]", "[#blue]"])
+    if old_colours != nil
+        println "✓ array_colours returns previous colours"
+    else
+        println "✗ array_colours returned nil"
+    endif
+
+    # Restore original
+    array_colours(old_colours)
+    println "✓ array_colours restored original colours"
+catch err
+    println "✗ array_colours failed:", err
+endtry
+
+# Test array_colours error handling
+try
+    result = array_colours(["invalid"])
+    println "✗ array_colours should have failed with invalid colour"
+catch err
+    println "✓ array_colours correctly rejects invalid colour format"
+endtry
+
+# Test flatten with 2D array
+try
+    arr2d = [[1, 2, 3], [4, 5, 6]]
+    result = flatten(arr2d)
+    if result == [1, 2, 3, 4, 5, 6]
+        println "✓ flatten(2D) returns [1, 2, 3, 4, 5, 6]"
+    else
+        println "✗ flatten(2D) returned:", result
+    endif
+catch err
+    println "✗ flatten(2D) failed:", err
+endtry
+
+# Test flatten with 3D array
+try
+    arr3d = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+    result = flatten(arr3d)
+    if result == [1, 2, 3, 4, 5, 6, 7, 8]
+        println "✓ flatten(3D) returns [1, 2, 3, 4, 5, 6, 7, 8]"
+    else
+        println "✗ flatten(3D) returned:", result
+    endif
+catch err
+    println "✗ flatten(3D) failed:", err
+endtry
+
+# Test flatten with 1D array (should return copy)
+try
+    arr1d = [1, 2, 3]
+    result = flatten(arr1d)
+    if result == [1, 2, 3]
+        println "✓ flatten(1D) returns [1, 2, 3]"
+    else
+        println "✗ flatten(1D) returned:", result
+    endif
+catch err
+    println "✗ flatten(1D) failed:", err
+endtry
+
+# Test flatten error handling
+try
+    result = flatten("not an array")
+    println "✗ flatten should have failed with non-array"
+catch err
+    println "✓ flatten correctly rejects non-array argument"
+endtry
+
+# Test reshape 1D to 2D
+try
+    arr = [1, 2, 3, 4, 5, 6]
+    result = reshape(arr, [2, 3])
+    if len(result) == 2 and len(result[0]) == 3 and result[0][0] == 1 and result[1][2] == 6
+        println "✓ reshape [6] -> [2,3] works"
+    else
+        println "✗ reshape [6] -> [2,3] returned:", result
+    endif
+catch err
+    println "✗ reshape [6] -> [2,3] failed:", err
+endtry
+
+# Test reshape 1D to 3D
+try
+    arr = [1, 2, 3, 4, 5, 6, 7, 8]
+    result = reshape(arr, [2, 2, 2])
+    if len(result) == 2 and len(result[0]) == 2 and len(result[0][0]) == 2 and result[0][0][0] == 1 and result[1][1][1] == 8
+        println "✓ reshape [8] -> [2,2,2] works"
+    else
+        println "✗ reshape [8] -> [2,2,2] returned:", result
+    endif
+catch err
+    println "✗ reshape [8] -> [2,2,2] failed:", err
+endtry
+
+# Test reshape flatten and re-shape
+try
+    arr2d = [[1, 2], [3, 4], [5, 6]]
+    flat = flatten(arr2d)
+    result = reshape(flat, [2, 3])
+    if len(result) == 2 and len(result[0]) == 3 and result[0][0] == 1 and result[1][2] == 6
+        println "✓ flatten + reshape roundtrip works"
+    else
+        println "✗ flatten + reshape roundtrip returned:", result
+    endif
+catch err
+    println "✗ flatten + reshape roundtrip failed:", err
+endtry
+
+# Test reshape error: mismatched element count
+try
+    arr = [1, 2, 3, 4, 5]
+    result = reshape(arr, [2, 3])
+    println "✗ reshape should have failed with 5 elements -> 6 slots"
+catch err
+    println "✓ reshape correctly rejects mismatched element count"
+endtry
+
+# Test reshape error: negative dimension
+try
+    arr = [1, 2, 3, 4]
+    result = reshape(arr, [-1, 4])
+    println "✗ reshape should have failed with negative dimension"
+catch err
+    println "✓ reshape correctly rejects negative dimension"
+endtry
+
+# Test reshape error: non-array input
+try
+    result = reshape("not an array", [2, 2])
+    println "✗ reshape should have failed with non-array"
+catch err
+    println "✓ reshape correctly rejects non-array input"
+endtry
+
+println "\n=== Array Library Tests Complete ==="

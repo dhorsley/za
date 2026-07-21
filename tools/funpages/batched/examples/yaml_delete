@@ -1,0 +1,2 @@
+# Example for yaml_delete
+yaml_delete(map(.a 1), "a")

@@ -1,0 +1,2 @@
+# Example for sysvar
+sysvar("hello")  # usage

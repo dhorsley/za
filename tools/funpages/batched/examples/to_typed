@@ -1,0 +1,2 @@
+# Example for to_typed
+to_typed(42, "int")

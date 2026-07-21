@@ -1,4 +1,2 @@
 # Example for line_replace
-var s="a\nb\nc"
-println line_replace(s,"b","x")  # a\nx\nc
-
+line_replace("hello\nworld", "hello", "hi")  # usage

@@ -1,3 +1,2 @@
 # Example for sum
-println sum([1,2,3])  # 6
-
+sum([1,2,3])  # usage

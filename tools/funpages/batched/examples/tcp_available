@@ -1,0 +1,2 @@
+# Example for tcp_available
+tcp_available("hello")  # usage

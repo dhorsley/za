@@ -1,1 +1,4 @@
-
+# Example for fwrite
+fh = fopen("/tmp/za_fwrite.txt", "w")
+fwrite(fh, "hello")
+fclose(fh)

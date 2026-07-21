@@ -1273,6 +1273,7 @@ func buildConversionLib() {
         "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
         "btoi", "itob", "dtoo", "otod", "s2m", "m2s", "f2n", "to_typed", "table", "md2ansi", "human_size", "format_currency",
+        "str", "type", "typeof",
     }
 
     slhelp["f2n"] = LibHelp{in: "any", out: "nil_or_any", action: "Converts false to nil or returns true."}
