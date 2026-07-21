@@ -1474,6 +1474,24 @@ func tui_menu(t tui, s tui_style) tui {
         addhifg = "[#" + hi_fg + "]"
     }
 
+    // Calculate prompt offset early for auto-height calculation
+    offset := 0
+    if prompt != "" {
+        offset = 3
+    }
+
+    // Auto-calculate height if not specified or invalid
+    if t.Height <= 0 {
+        autoHeight := len(t.Options) + offset + 1
+        if autoHeight > MH - 6 {
+            autoHeight = MH - 6
+        }
+        if autoHeight < 3 {
+            autoHeight = 3
+        }
+        t.Height = autoHeight
+    }
+
     if t.Height < 3 {
         t.Height = 3
     }
@@ -1494,11 +1512,10 @@ func tui_menu(t tui, s tui_style) tui {
     pf(addbg)
     pf(addfg)
 
-    offset:=0
-    if prompt!="" {
+    // Draw prompt
+    if prompt != "" {
         absat(row+1, col+2)
         pf(prompt)
-        offset+=3
     }
 
     // determine if scrolling is needed (must be after offset is known)

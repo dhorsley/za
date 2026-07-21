@@ -34,13 +34,7 @@
         "configuration": "./language-configuration.json"
       }
     ],
-    "grammars": [
-      {
-        "language": "za",
-        "scopeName": "source.za",
-        "path": "./syntaxes/za.tmLanguage.json"
-      }
-    ]
+    "grammars": []
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -6,6 +6,7 @@ import (
     "errors"
     "fmt"
     "io/ioutil"
+    "os"
     "reflect"
     "regexp"
     "runtime"
@@ -1624,6 +1625,80 @@ func buildStringLib() {
         s1 := args[0].(string)
         s2 := args[1].(string)
         return calculateLevenshteinDistance(s1, s2), nil
+    }
+
+    slhelp["trunc"] = LibHelp{in: "string,width[,ellipsis]", out: "string", action: "Truncates string to width runes, appending ellipsis if truncated."}
+    stdlib["trunc"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("trunc", args, 2,
+            "2", "string", "int",
+            "3", "string", "int", "string"); !ok {
+            return nil, err
+        }
+        s := args[0].(string)
+        n := args[1].(int)
+        ellipsis := "..."
+        if len(args) == 3 {
+            ellipsis = args[2].(string)
+        } else {
+            if str.HasSuffix(str.ToLower(os.Getenv("LANG")), ".utf-8") {
+                ellipsis = "…"
+            }
+        }
+        ellen := utf8.RuneCountInString(ellipsis)
+        if n <= ellen {
+            return ellipsis[:n], nil
+        }
+        if utf8.RuneCountInString(s) <= n {
+            return s, nil
+        }
+        var b str.Builder
+        count := 0
+        for _, r := range s {
+            if count >= n-ellen {
+                break
+            }
+            b.WriteRune(r)
+            count++
+        }
+        b.WriteString(ellipsis)
+        return b.String(), nil
+    }
+
+    slhelp["progress_bar"] = LibHelp{in: "percentage[,width[,fill[,empty]]]", out: "string", action: "Returns a progress bar string."}
+    stdlib["progress_bar"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("progress_bar", args, 4,
+            "1", "number",
+            "2", "number", "int",
+            "3", "number", "int", "string",
+            "4", "number", "int", "string", "string"); !ok {
+            return nil, err
+        }
+        pct, _ := GetAsFloat(args[0])
+        width := 20
+        if len(args) >= 2 {
+            width = args[1].(int)
+        }
+        fill := "#"
+        empty := "-"
+        if str.HasSuffix(str.ToLower(os.Getenv("LANG")), ".utf-8") {
+            fill = "█"
+            empty = "░"
+        }
+        if len(args) >= 3 {
+            fill = args[2].(string)
+        }
+        if len(args) >= 4 {
+            empty = args[3].(string)
+        }
+        filled := int(pct * float64(width) / 100.0)
+        if filled < 0 {
+            filled = 0
+        }
+        if filled > width {
+            filled = width
+        }
+        bar := str.Repeat(fill, filled) + str.Repeat(empty, width-filled)
+        return bar, nil
     }
 
 }

@@ -12,23 +12,6 @@ def sig_cleanup()
     exit
 end
 
-# --- helpers ---
-
-def usage_bar(pct)
-    bar_width = 10
-    filled = (pct * bar_width / 100).as_int
-    on filled > bar_width do filled = bar_width
-    empty = bar_width - filled
-    bar = "█" * filled
-    on empty > 0 do bar += "░" * empty
-    return bar
-end
-
-def trunc(s, n)
-    on len(s) > n do return s[0:n-3] + "..."
-    return s
-end
-
 # --- structs for table display ---
 
 struct fsrow
@@ -61,10 +44,10 @@ def show_filesystems()
     foreach d in disks
         on d.inodes_total > 0 do has_inodes = true
         pct_val = d.usage_percent
-        bar = usage_bar(pct_val)
+        bar = progress_bar(pct_val, 10, "█", "░")
         append_to(ref rows, fsrow(
-            .device trunc(d.path, 16),
-            .mount trunc(d.mounted_path, 22),
+            .device trunc(d.path, 16, "…"),
+            .mount trunc(d.mounted_path, 22, "…"),
             .size human_size(d.size),
             .avail human_size(d.available),
             .bar bar
@@ -226,7 +209,7 @@ def show_space_hogs(path)
             # truncate path to fit in terminal
             ppath = parts[1]
             on ppath == path do ppath = "."
-            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40, "…"), .full_path parts[1]))
         endfor
 
         t = map(.format "aos", .data rows, .headers true, .row 3, .col 2, .height term_h()-6, .width term_w()-4)
@@ -290,7 +273,7 @@ def show_inode_hogs(path)
                 on len(parts) < 2 do continue
                 ppath = parts[1]
                 on ppath == path do ppath = "."
-                append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+                append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40, "…"), .full_path parts[1]))
             endfor
 
             t = map(.format "aos", .data rows, .headers true, .row 5, .col 2, .height term_h()-8, .width term_w()-4)
@@ -331,7 +314,7 @@ def show_inode_hogs(path)
             continue if len(parts) < 2
             ppath = parts[1]
             on ppath == path do ppath = "."
-            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40), .full_path parts[1]))
+            append_to(ref rows, durow(.size parts[0], .path trunc(ppath, 40, "…"), .full_path parts[1]))
         endfor
 
         t = map(.format "aos", .data rows, .headers true, .row 3, .col 2, .height term_h()-6, .width term_w()-4)

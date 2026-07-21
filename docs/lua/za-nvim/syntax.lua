@@ -414,6 +414,8 @@ local za_functions = {
 
     -- String functions
     "pad",
+    "trunc",
+    "progress_bar",
     "field",
     "fields",
     "get_value",

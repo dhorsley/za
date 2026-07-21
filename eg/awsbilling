@@ -176,23 +176,6 @@ def convert_and_fmt(usd_amount, code)
     return format_currency(usd_amount * get_rate(code), curr_symbol(code))
 end
 
-# --- Helpers ---
-
-def usage_bar(pct)
-    bar_width = 20
-    filled = (pct * bar_width / 100).as_int
-    on filled > bar_width do filled = bar_width
-    empty = bar_width - filled
-    bar = "\u2588" * filled
-    on empty > 0 do bar = bar + "\u2591" * empty
-    return bar
-end
-
-def trunc(s, n)
-    on len(s) > n do return s[0:n-3] + "..."
-    return s
-end
-
 # --- Structs for table display ---
 
 struct costrow
@@ -347,7 +330,7 @@ def fetch_costs(profile, region, start, endt)
         pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
         on pct_str ~ "e-" do pct_str = "<0.001%"
         costs[i].pct = pct_str
-        costs[i].bar = usage_bar(pct_val)
+        costs[i].bar = progress_bar(pct_val, 20, "\u2588", "\u2591")
     endfor
     sort_costs(costs, true)
     return costs, nil
@@ -376,9 +359,7 @@ def show_profile_menu(profiles)
     endfor
     append_to(ref opts, "  [back]  ")
 
-    menu_height = len(opts) + 4
-    on menu_height > term_h() - 6 do menu_height = term_h() - 6
-    m = map(.row 4, .col 4, .title "AWS Profiles", .height menu_height, .width 40,
+    m = map(.row 4, .col 4, .title "AWS Profiles", .height 0, .width 40,
             .options opts, .prompt "Select profile:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -416,9 +397,7 @@ def show_region_menu(profile, current_region)
     endfor
     append_to(ref opts, "  [back]  ")
 
-    menu_height = len(opts) + 4
-    on menu_height > term_h() - 6 do menu_height = term_h() - 6
-    m = map(.row 4, .col 4, .title "AWS Regions", .height menu_height, .width 50,
+    m = map(.row 4, .col 4, .title "AWS Regions", .height 0, .width 50,
             .options opts, .prompt "Select region:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -447,9 +426,7 @@ def show_currency_menu(current_code)
     endfor
     append_to(ref opts, "  [back]  ")
 
-    menu_height = len(opts) + 4
-    on menu_height > term_h() - 6 do menu_height = term_h() - 6
-    m = map(.row 4, .col 4, .title "Currency", .height menu_height, .width 40,
+    m = map(.row 4, .col 4, .title "Currency", .height 0, .width 40,
             .options opts, .prompt "Select currency:", .cursor "[#b1][#6]>[##][#-]", .index selected_idx, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))
@@ -480,7 +457,7 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
 
     foreach c in costs
         append_to(ref rows, costrow(
-            .service trunc(c.service, 38),
+            .service trunc(c.service, 38, "…"),
             .cost c.cost,
             .cost_str convert_and_fmt(c.cost, curr_code),
             .pct c.pct,
@@ -551,9 +528,7 @@ def show_main_menu(sort_desc)
         "  Quit  "
     ]
 
-    menu_height = len(opts) + 4
-    on menu_height > term_h() - 6 do menu_height = term_h() - 6
-    m = map(.row 4, .col 4, .title "Actions", .height menu_height, .width 40,
+    m = map(.row 4, .col 4, .title "Actions", .height 0, .width 40,
             .options opts, .prompt "Select action:", .cursor "[#b1][#6]>[##][#-]", .index 0, .border true)
     s = map(.fill true, .bg "0", .fg "7", .hi_bg "1", .hi_fg "6",
              .border map(.bg "0", .fg "7"))

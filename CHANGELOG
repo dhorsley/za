@@ -18,6 +18,16 @@ library changes
       - used by docs/lsp/main.go for robust metadata loading
       - alternative to pp().stripcc which was brittle with brace patterns
 
+  * added trunc() to lib-string.go
+      - trunc(string, width[, ellipsis]) -> string
+      - truncates string to width runes, appending ellipsis if truncated
+      - default ellipsis: "…" if UTF-8 supported, "..." otherwise
+
+  * added progress_bar() to lib-string.go
+      - progress_bar(percentage[, width[, fill[, empty]]]) -> string
+      - returns a progress bar string for visual indicators
+      - defaults: width=20, fill="█" (or "#"), empty="░" (or "-")
+
   * added native UUID library (lib-uuid.go) - no external dependencies
       - uuid_generate() -> string - generates RFC 4122 version 4 UUIDs
       - uuid_parse(string) -> string - normalizes UUID strings (accepts with/without
