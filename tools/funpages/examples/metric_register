@@ -1,2 +1,2 @@
 # Example for metric_register
-metric_register("hello", "hello")  # usage
+metric_register("hello", "counter")  # usage
