@@ -1,2 +1,2 @@
 # Example for html_escape
-println html_escape("hello")
+println html_escape("<div>Hello & Welcome</div>")

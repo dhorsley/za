@@ -1,2 +1,3 @@
 # Example for format_time
-println format_time(42)
+println format_time(1609459200000000000)
+println format_time()

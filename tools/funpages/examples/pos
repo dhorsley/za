@@ -1,2 +1,3 @@
 # Example for pos
-println pos(42, 42)
+print pos(1, 1)
+println "Cursor repositioned"

@@ -1,2 +1,2 @@
 # Example for cos
-println cos(42)
+println cos(0.0)

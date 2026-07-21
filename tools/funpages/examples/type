@@ -1,2 +1,4 @@
 # Example for type
+println type(42)
 println type("hello")
+println type([1, 2, 3])

@@ -1,2 +1,4 @@
 # Example for truncate
-println truncate("hello", 42)
+f = temp_file("za-truncate-")
+write_file(f, "hello world")
+println truncate(f, 5)

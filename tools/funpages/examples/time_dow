@@ -1,2 +1,3 @@
 # Example for time_dow
-println time_dow(42)
+println time_dow(1609459200)
+println time_dow()

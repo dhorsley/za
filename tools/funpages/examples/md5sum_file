@@ -1,2 +1,4 @@
 # Example for md5sum_file
-println md5sum_file("hello")
+f = temp_file("za-md5-")
+write_file(f, "hello world")
+println md5sum_file(f)

@@ -1,2 +1,2 @@
 # Example for max
-println max(42)
+println max([10, 20, 30, 40])

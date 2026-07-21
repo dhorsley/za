@@ -1,2 +1,2 @@
 # Example for base64e
-println base64e("hello")
+println base64e("Hello World")

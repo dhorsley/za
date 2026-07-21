@@ -1,2 +1,4 @@
 # Example for is_dir
-println is_dir("hello")
+println is_dir("/tmp")
+println is_dir("/etc/passwd")
+println is_dir("/nonexistent")

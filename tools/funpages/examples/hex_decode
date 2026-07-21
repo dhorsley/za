@@ -1,2 +1,2 @@
 # Example for hex_decode
-println hex_decode("48656c6c6f")
+println hex_decode("48656c6c6f20576f726c64")

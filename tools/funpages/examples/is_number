@@ -1,2 +1,4 @@
 # Example for is_number
+println is_number("42")
 println is_number("hello")
+println is_number("3.14")

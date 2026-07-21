@@ -1,2 +1,2 @@
 # Example for as_bigf
-println as_bigf("hello")
+println as_bigf("3.14159265358979323846")

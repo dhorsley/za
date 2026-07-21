@@ -1,2 +1,2 @@
 # Example for import_has_errors
-println import_has_errors("hello")
+println import_has_errors("nonexistent_module")

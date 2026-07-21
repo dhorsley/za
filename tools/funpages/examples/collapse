@@ -1,2 +1,2 @@
 # Example for collapse
-println collapse("hello")
+println collapse("hello   world\n\n\nfoo    bar")

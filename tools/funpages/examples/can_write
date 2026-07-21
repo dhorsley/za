@@ -1,2 +1,2 @@
 # Example for can_write
-println can_write("hello")
+println can_write("/tmp")

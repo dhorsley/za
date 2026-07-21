@@ -1,2 +1,2 @@
 # Example for time_diff
-println time_diff(42, 42)
+println time_diff(5000, 1000)

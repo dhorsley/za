@@ -1,2 +1,2 @@
 # Example for literal
-println literal("hello", "hello")
+literal("Hello %s, you have %d messages\n", "Alice", 5)

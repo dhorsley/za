@@ -1,2 +1,3 @@
 # Example for log_exception_with_stack
-println log_exception_with_stack(42, "hello", [1, 2, 3])
+stack = [map(.function "main", .line 10, .caller "test"), map(.function "helper", .line 5, .caller "main")]
+log_exception_with_stack("error", "Something went wrong", stack)

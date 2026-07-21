@@ -1,2 +1,2 @@
 # Example for parent
-println parent("hello")
+println parent("/home/user/documents/file.txt")

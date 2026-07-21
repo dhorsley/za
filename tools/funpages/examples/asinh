@@ -1,2 +1,2 @@
 # Example for asinh
-println asinh(42)
+println asinh(1.0)

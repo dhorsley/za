@@ -1,2 +1,2 @@
 # Example for abs
-println abs(42)
+println abs(-42)

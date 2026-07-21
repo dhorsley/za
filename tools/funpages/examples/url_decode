@@ -1,2 +1,3 @@
 # Example for url_decode
-println url_decode("hello")
+encoded = url_encode("hello world!")
+println url_decode(encoded)

@@ -1,2 +1,2 @@
 # Example for acos
-println acos(42)
+println acos(0.5)

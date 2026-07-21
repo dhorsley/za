@@ -1,6 +1,0 @@
-# Example for selector
-try
-    println selector([])
-catch err
-    println "selector not available"
-endtry

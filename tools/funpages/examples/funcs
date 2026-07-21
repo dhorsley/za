@@ -1,2 +1,2 @@
 # Example for funcs
-println funcs("hello", true)
+println funcs("", true)

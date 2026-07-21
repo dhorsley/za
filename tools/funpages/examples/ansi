@@ -1,2 +1,4 @@
 # Example for ansi
-println ansi(true)
+prev = ansi(true)
+println "ANSI mode was: " + as_string(prev)
+ansi(false)

@@ -1,2 +1,3 @@
 # Example for sysvar
-println sysvar("hello")
+println sysvar("home")
+println sysvar("unknown_var")

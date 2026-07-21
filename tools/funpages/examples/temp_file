@@ -1,2 +1,5 @@
 # Example for temp_file
-println temp_file("hello")
+f = temp_file("za-example-")
+println f
+write_file(f, "hello world")
+println read_file(f)

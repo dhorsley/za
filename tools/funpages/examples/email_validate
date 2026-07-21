@@ -1,2 +1,3 @@
 # Example for email_validate
-println email_validate("hello")
+println email_validate("test@example.com")
+println email_validate("invalid-email")

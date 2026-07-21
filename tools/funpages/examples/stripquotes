@@ -1,2 +1,3 @@
 # Example for stripquotes
-println stripquotes("hello")
+println stripquotes('"hello world"')
+println stripquotes("'single quoted'")

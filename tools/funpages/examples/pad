@@ -1,2 +1,4 @@
 # Example for pad
-println pad("hello", 42, 42)
+println pad("hello", 0, 10)
+println pad("hello", -1, 10, "-")
+println pad("hello", 1, 10, "-")

@@ -1,2 +1,3 @@
 # Example for is_setuid
-println is_setuid(42)
+mode = file_mode("/etc/passwd")
+println is_setuid(mode)

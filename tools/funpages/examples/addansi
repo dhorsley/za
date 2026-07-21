@@ -1,2 +1,2 @@
 # Example for addansi
-println addansi("hello")
+println addansi("[#2]Red Text[#-]")

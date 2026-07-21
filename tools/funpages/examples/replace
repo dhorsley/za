@@ -1,2 +1,2 @@
 # Example for replace
-println replace("hello", "hello", "hello")
+println replace("hello world", "world", "everyone")

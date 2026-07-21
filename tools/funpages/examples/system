@@ -1,2 +1,2 @@
 # Example for system
-println system("hello", true)
+println system("echo hello world", false)

@@ -1,2 +1,3 @@
 # Example for is_socket
-println is_socket(42)
+mode = file_mode("/tmp")
+println is_socket(mode)

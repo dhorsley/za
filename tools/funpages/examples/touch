@@ -1,2 +1,3 @@
 # Example for touch
-println touch("hello")
+f = temp_file("za-touch-")
+println touch(f)

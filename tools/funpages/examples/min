@@ -1,2 +1,2 @@
 # Example for min
-println min(42)
+println min([10, 20, 30, 40])

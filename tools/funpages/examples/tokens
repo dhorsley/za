@@ -1,2 +1,2 @@
 # Example for tokens
-println tokens("hello")
+println tokens("hello world 42")

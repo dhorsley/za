@@ -1,2 +1,3 @@
 # Example for is_pipe
-println is_pipe(42)
+mode = file_mode("/tmp")
+println is_pipe(mode)

@@ -1,2 +1,2 @@
 # Example for tanh
-println tanh(42)
+println tanh(1.0)

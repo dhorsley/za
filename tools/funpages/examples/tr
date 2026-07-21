@@ -1,2 +1,2 @@
 # Example for tr
-tr("hello", "hello", "hello")  # usage
+println tr("hello world", "lo", "12")

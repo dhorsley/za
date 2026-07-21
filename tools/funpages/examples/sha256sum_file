@@ -1,2 +1,4 @@
 # Example for sha256sum_file
-println sha256sum_file("hello")
+f = temp_file("za-sha256-")
+write_file(f, "hello world")
+println sha256sum_file(f)

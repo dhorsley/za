@@ -1,2 +1,5 @@
 # Example for file_size
-println file_size("hello")
+f = temp_file("za-size-")
+write_file(f, "hello world")
+println file_size(f)
+println file_size("/etc/passwd")

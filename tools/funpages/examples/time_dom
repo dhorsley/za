@@ -1,2 +1,3 @@
 # Example for time_dom
-println time_dom(42)
+println time_dom(1609459200)
+println time_dom()

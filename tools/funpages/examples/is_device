@@ -1,2 +1,4 @@
 # Example for is_device
-println is_device(42)
+mode = file_mode("/dev/null")
+println is_device(mode)
+println is_device(file_mode("/tmp"))

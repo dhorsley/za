@@ -1,2 +1,2 @@
 # Example for as_float
-println as_float("hello")
+println as_float("3.14159")

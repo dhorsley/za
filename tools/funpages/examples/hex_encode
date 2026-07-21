@@ -1,2 +1,4 @@
 # Example for hex_encode
-println hex_encode("hello")
+hex = hex_encode("Hello World")
+println hex
+println hex_decode(hex)

@@ -1,2 +1,3 @@
 # Example for clean
-println clean("hello")
+text = "password=secret123&api_key=abc123&token=xyz789"
+println clean(text)

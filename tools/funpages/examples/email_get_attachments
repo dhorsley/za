@@ -1,2 +1,3 @@
 # Example for email_get_attachments
-println email_get_attachments("hello")
+email = "From: test@example.com\nSubject: Test\nContent-Type: multipart/mixed; boundary=\"boundary\"\n\n--boundary\nContent-Type: text/plain\n\nHello\n--boundary\nContent-Type: application/octet-stream\nContent-Disposition: attachment; filename=\"test.txt\"\n\nFile content\n--boundary--"
+println email_get_attachments(email)

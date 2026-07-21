@@ -1,2 +1,2 @@
 # Example for tan
-println tan(42)
+println tan(1.0)

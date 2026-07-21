@@ -1,2 +1,2 @@
 # Example for stat
-println stat("hello")
+println stat("/tmp")

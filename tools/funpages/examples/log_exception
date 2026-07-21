@@ -1,2 +1,2 @@
 # Example for log_exception
-println log_exception(42, "hello")
+log_exception("error", "Something went wrong")

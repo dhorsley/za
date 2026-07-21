@@ -1,2 +1,2 @@
 # Example for append
-println append(42)
+println append([1, 2, 3], 4)

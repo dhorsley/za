@@ -549,7 +549,7 @@ func buildMathLib() {
         return 1 + rand.Intn(args[0].(int)), err
     }
 
-    slhelp["randf"] = LibHelp{in: "", out: "float", action: "Generate a random float between 0 and 1."}
+    slhelp["randf"] = LibHelp{in: "?number", out: "float", action: "Generate a random float. With no argument, returns a float between 0 and 1. With a number argument, returns a float between 0 and that value."}
     stdlib["randf"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("randf", args, 2,
             "1", "int",

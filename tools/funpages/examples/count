@@ -1,2 +1,3 @@
 # Example for count
-println count("hello")
+text = "line1\nline2\nline3"
+println count(text)

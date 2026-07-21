@@ -1,2 +1,3 @@
 # Example for line_match
-println line_match("hello", "hello")
+text = "apple\nbanana\ncherry"
+println line_match(text, "an")

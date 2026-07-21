@@ -1,2 +1,3 @@
 # Example for next_match
-println next_match("hello", "l", 0)
+println next_match("hello world", "l", 0)
+println next_match("hello world", "l", 3)

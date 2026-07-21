@@ -1,2 +1,3 @@
 # Example for line_filter
-println line_filter("hello", "hello")
+text = "apple\nbanana\ncherry"
+println line_filter(text, "an")

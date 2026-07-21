@@ -1,2 +1,4 @@
 # Example for key
-println key("hello", "hello")
+mydata = map(.name "Alice", .age 30)
+println key("mydata", "name")
+println key("mydata", "city")

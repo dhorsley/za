@@ -1,2 +1,4 @@
 # Example for kind
 println kind(42)
+println kind("hello")
+println kind([1, 2, 3])

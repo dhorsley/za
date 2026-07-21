@@ -1,2 +1,3 @@
 # Example for interpolate
-println interpolate("hello")
+name = "World"
+println interpolate("Hello {name}!")

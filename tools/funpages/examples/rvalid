@@ -1,2 +1,3 @@
 # Example for rvalid
-println rvalid("hello")
+println rvalid("^[a-z]+$")
+println rvalid("[invalid")

@@ -1,2 +1,3 @@
 # Example for format_date
-println format_date(42)
+println format_date(1609459200000000000)
+println format_date()

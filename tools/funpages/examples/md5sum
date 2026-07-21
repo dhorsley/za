@@ -1,2 +1,2 @@
 # Example for md5sum
-println md5sum("hello")
+println md5sum("Hello World")

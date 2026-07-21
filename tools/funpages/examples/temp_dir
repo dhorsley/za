@@ -1,2 +1,5 @@
 # Example for temp_dir
-println temp_dir("hello")
+d = temp_dir("za-example-")
+println d
+write_file(d + "/test.txt", "hello")
+println read_file(d + "/test.txt")

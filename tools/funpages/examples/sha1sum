@@ -1,2 +1,2 @@
 # Example for sha1sum
-println sha1sum("hello")
+println sha1sum("Hello World")

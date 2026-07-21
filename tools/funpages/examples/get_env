@@ -1,2 +1,4 @@
 # Example for get_env
-println get_env("hello")
+println get_env("HOME")
+println get_env("PATH")
+println get_env("NONEXISTENT_VAR")

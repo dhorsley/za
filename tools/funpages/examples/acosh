@@ -1,2 +1,2 @@
 # Example for acosh
-println acosh(42)
+println acosh(2.0)

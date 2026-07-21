@@ -1,2 +1,2 @@
 # Example for len
-println len("hello")
+println len([1, 2, 3, 4, 5])

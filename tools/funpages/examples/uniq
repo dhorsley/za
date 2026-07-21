@@ -1,2 +1,3 @@
 # Example for uniq
-println uniq("hello")
+text = "apple\napple\nbanana\nbanana\nbanana\ncherry"
+println uniq(text)

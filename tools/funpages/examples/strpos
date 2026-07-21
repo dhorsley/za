@@ -1,2 +1,2 @@
 # Example for strpos
-println strpos("hello", "hello")
+println strpos("hello world", "world")

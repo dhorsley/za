@@ -1,2 +1,3 @@
 # Example for rlen
 println rlen("hello")
+println rlen("hello \u4e16\u754c")

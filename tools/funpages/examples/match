@@ -1,2 +1,2 @@
 # Example for match
-println match("hello", "hello")
+println match("hello world", "world")

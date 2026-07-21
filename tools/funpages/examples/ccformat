@@ -1,2 +1,2 @@
 # Example for ccformat
-println ccformat("hello", "hello")
+println ccformat("[#2]Error[#-]: %s (code: %d)", "File not found", 404)

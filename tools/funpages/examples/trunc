@@ -1,2 +1,3 @@
 # Example for trunc
-println trunc("hello", 42)
+println trunc("The quick brown fox jumps over the lazy dog", 20)
+println trunc("hello world", 5, "..")

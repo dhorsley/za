@@ -1,2 +1,3 @@
 # Example for date
-println date(42)
+println date(1609459200)
+println date()

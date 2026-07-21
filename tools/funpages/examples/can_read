@@ -1,2 +1,3 @@
 # Example for can_read
-println can_read("hello")
+println can_read("/etc/passwd")
+println can_read("/nonexistent/file")

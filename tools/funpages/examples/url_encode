@@ -1,2 +1,2 @@
 # Example for url_encode
-println url_encode("hello")
+println url_encode("hello world!")

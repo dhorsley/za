@@ -1,2 +1,3 @@
 # Example for time_zone
-println time_zone(42)
+println time_zone(1609459200)
+println time_zone()

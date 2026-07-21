@@ -1,2 +1,2 @@
 # Example for avg
-println avg(42)
+println avg([10, 20, 30, 40])

@@ -1,2 +1,4 @@
 # Example for randf
-println randf(42)
+seed(12345)
+println randf(100)
+println randf()

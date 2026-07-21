@@ -1,2 +1,3 @@
 # Example for grep
-println grep("hello", "hello")
+text = "apple\nbanana\ncherry\napricot"
+println grep(text, "^a")

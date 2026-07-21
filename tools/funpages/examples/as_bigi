@@ -1,2 +1,2 @@
 # Example for as_bigi
-println as_bigi("hello")
+println as_bigi("12345678901234567890")

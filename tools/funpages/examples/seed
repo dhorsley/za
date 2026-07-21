@@ -1,2 +1,3 @@
 # Example for seed
-println seed(42)
+seed(12345)
+println randf(100)

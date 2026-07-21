@@ -1,2 +1,3 @@
 # Example for enum_all
-println enum_all("hello")
+enum fruits(apple, banana, cherry)
+println enum_all("fruits")

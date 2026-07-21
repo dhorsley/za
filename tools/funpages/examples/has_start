@@ -1,2 +1,2 @@
 # Example for has_start
-println has_start("hello", "hello")
+println has_start("hello world", "hello")

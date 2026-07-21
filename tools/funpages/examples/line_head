@@ -1,2 +1,3 @@
 # Example for line_head
-println line_head("hello", 42)
+text = "line1\nline2\nline3"
+println line_head(text, 2)

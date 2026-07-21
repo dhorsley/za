@@ -1,2 +1,2 @@
 # Example for cd
-println cd("hello")
+println cd("/tmp")

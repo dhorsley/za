@@ -1,2 +1,2 @@
 # Example for format
-println format("hello", "hello")
+println format("Hello %s, you have %d messages", "Alice", 5)

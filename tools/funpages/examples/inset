@@ -1,2 +1,3 @@
 # Example for inset
-println inset("hello", 42)
+println inset("hello", 3)
+println inset("hello world", 20)

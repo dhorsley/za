@@ -1,2 +1,3 @@
 # Example for time_year
-println time_year(42)
+println time_year(1609459200)
+println time_year()

@@ -1,2 +1,2 @@
 # Example for has_end
-println has_end("hello", "hello")
+println has_end("hello world", "world")

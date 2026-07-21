@@ -1,2 +1,3 @@
 # Example for email_remove_header
-println email_remove_header("hello", "hello")
+email = "Subject: Test\nFrom: old@example.com\n\nBody content"
+println email_remove_header(email, "From")

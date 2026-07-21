@@ -1,2 +1,3 @@
 # Example for file_mode
-println file_mode("hello")
+println file_mode("/etc/passwd")
+println file_mode("/tmp")

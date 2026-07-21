@@ -1,2 +1,4 @@
 # Example for email_process_template
-println email_process_template("hello", map(.a 1, .b 2))
+template = "Hello {name}, your order #{order} is ready."
+vars = map(.name "Alice", .order "12345")
+println email_process_template(template, vars)

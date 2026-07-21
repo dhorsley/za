@@ -1,2 +1,3 @@
 # Example for stripansi
-println stripansi("hello")
+text = addansi("[#2]Red Text[#-]")
+println stripansi(text)

@@ -1,2 +1,3 @@
 # Example for defined
-println defined("hello")
+myvar = 42
+println defined("myvar")

@@ -1,2 +1,3 @@
 # Example for email_parse_headers
-println email_parse_headers("hello")
+email = "From: sender@example.com\nTo: recipient@example.com\nSubject: Test Email\n\nBody content"
+println email_parse_headers(email)

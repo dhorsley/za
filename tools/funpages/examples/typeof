@@ -1,2 +1,4 @@
 # Example for typeof
+println typeof(42)
 println typeof("hello")
+println typeof([1, 2, 3])

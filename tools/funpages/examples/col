@@ -1,2 +1,3 @@
 # Example for col
-println col("hello", 42, "hello")
+text = "a b c\nd e f\ng h i"
+println col(text, 2, " ")

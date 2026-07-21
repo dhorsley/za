@@ -1,2 +1,3 @@
 # Example for levdist
-println levdist("hello", "hello")
+println levdist("kitten", "sitting")
+println levdist("saturday", "sunday")

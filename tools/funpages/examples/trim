@@ -1,2 +1,5 @@
 # Example for trim
-trim("hello", 42)  # usage
+println trim("  hello world  ", 0)
+println trim("  hello world  ", -1)
+println trim("  hello world  ", 1)
+println trim("--hello world--", 0, "-")

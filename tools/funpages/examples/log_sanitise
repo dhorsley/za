@@ -1,2 +1,2 @@
 # Example for log_sanitise
-println log_sanitise("hello")
+println log_sanitise("password=secret123&api_key=abc123&token=xyz789")

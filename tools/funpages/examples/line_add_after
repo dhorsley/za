@@ -1,2 +1,3 @@
 # Example for line_add_after
-println line_add_after("hello", "hello", "hello")
+text = "apple\nbanana\ncherry"
+println line_add_after(text, "banana", "blueberry")

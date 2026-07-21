@@ -1,2 +1,6 @@
 # Example for funcref
-println funcref("hello")
+def myfunc()
+    return 42
+endfunc
+println funcref("myfunc")
+println funcref("nonexistent_function")

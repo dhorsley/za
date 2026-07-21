@@ -1,2 +1,2 @@
 # Example for identity
-println identity(42)
+println identity(42 + 8)

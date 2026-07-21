@@ -1,2 +1,3 @@
 # Example for line_replace
-println line_replace("hello", "hello", "hello")
+text = "apple\nbanana\ncherry"
+println line_replace(text, "banana", "blueberry")

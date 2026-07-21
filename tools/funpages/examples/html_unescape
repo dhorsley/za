@@ -1,2 +1,3 @@
 # Example for html_unescape
-println html_unescape("hello")
+escaped = html_escape("<div>Hello & Welcome</div>")
+println html_unescape(escaped)

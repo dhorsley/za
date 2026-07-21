@@ -1,2 +1,2 @@
 # Example for umask
-println umask(42)
+println umask(022)

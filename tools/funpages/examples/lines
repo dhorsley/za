@@ -1,2 +1,3 @@
 # Example for lines
-lines("hello", "hello")  # usage
+text = "line1\nline2\nline3"
+println lines(text, "1:2")

@@ -1,2 +1,3 @@
 # Example for base64d
-println base64d("SGVsbG8gV29ybGQ=")
+encoded = base64e("Hello World")
+println base64d(encoded)

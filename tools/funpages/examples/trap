@@ -1,2 +1,2 @@
 # Example for trap
-println trap("hello", "hello")
+trap("SIGINT", "println \"Caught SIGINT\"")
