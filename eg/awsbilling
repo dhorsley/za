@@ -18,54 +18,55 @@ struct currdef
     name    string
 es
 
-CURRENCIES = []
-append_to(ref CURRENCIES, currdef("USD", "$",   "US Dollar"))
-append_to(ref CURRENCIES, currdef("GBP", "\u00a3",   "British Pound"))
-append_to(ref CURRENCIES, currdef("EUR", "\u20ac",   "Euro"))
-append_to(ref CURRENCIES, currdef("JPY", "\u00a5", "Japanese Yen"))
-append_to(ref CURRENCIES, currdef("CAD", "C$", "Canadian Dollar"))
-append_to(ref CURRENCIES, currdef("AUD", "A$", "Australian Dollar"))
-append_to(ref CURRENCIES, currdef("CHF", "CHF", "Swiss Franc"))
-append_to(ref CURRENCIES, currdef("CNY", "\u00a5", "Chinese Yuan"))
-append_to(ref CURRENCIES, currdef("INR", "\u20b9", "Indian Rupee"))
-append_to(ref CURRENCIES, currdef("BRL", "R$", "Brazilian Real"))
-append_to(ref CURRENCIES, currdef("KRW", "\u20a9", "South Korean Won"))
-append_to(ref CURRENCIES, currdef("SEK", "kr", "Swedish Krona"))
-append_to(ref CURRENCIES, currdef("NOK", "kr", "Norwegian Krone"))
-append_to(ref CURRENCIES, currdef("NZD", "NZ$", "New Zealand Dollar"))
-append_to(ref CURRENCIES, currdef("MXN", "MX$", "Mexican Peso"))
-append_to(ref CURRENCIES, currdef("SGD", "S$", "Singapore Dollar"))
-append_to(ref CURRENCIES, currdef("HKD", "HK$", "Hong Kong Dollar"))
-append_to(ref CURRENCIES, currdef("ZAR", "R", "South African Rand"))
-append_to(ref CURRENCIES, currdef("AED", "AED", "UAE Dirham"))
-append_to(ref CURRENCIES, currdef("SAR", "SAR", "Saudi Riyal"))
-append_to(ref CURRENCIES, currdef("PLN", "z\u0142", "Polish Zloty"))
-append_to(ref CURRENCIES, currdef("TRY", "\u20ba", "Turkish Lira"))
-append_to(ref CURRENCIES, currdef("THB", "\u0e3f", "Thai Baht"))
-append_to(ref CURRENCIES, currdef("TWD", "NT$", "Taiwan Dollar"))
-append_to(ref CURRENCIES, currdef("IDR", "Rp", "Indonesian Rupiah"))
-append_to(ref CURRENCIES, currdef("MYR", "RM", "Malaysian Ringgit"))
-append_to(ref CURRENCIES, currdef("PHP", "\u20b1", "Philippine Peso"))
-append_to(ref CURRENCIES, currdef("CZK", "K\u010d", "Czech Koruna"))
-append_to(ref CURRENCIES, currdef("ILS", "\u20aa", "Israeli Shekel"))
-append_to(ref CURRENCIES, currdef("CLP", "CL$", "Chilean Peso"))
-append_to(ref CURRENCIES, currdef("ARS", "AR$", "Argentine Peso"))
-append_to(ref CURRENCIES, currdef("COP", "CO$", "Colombian Peso"))
-append_to(ref CURRENCIES, currdef("PEN", "S/", "Peruvian Sol"))
-append_to(ref CURRENCIES, currdef("EGP", "E\u00a3", "Egyptian Pound"))
-append_to(ref CURRENCIES, currdef("NGN", "\u20a6", "Nigerian Naira"))
-append_to(ref CURRENCIES, currdef("VND", "\u20ab", "Vietnamese Dong"))
-append_to(ref CURRENCIES, currdef("BDT", "\u09f3", "Bangladeshi Taka"))
-append_to(ref CURRENCIES, currdef("PKR", "\u20a8", "Pakistani Rupee"))
-append_to(ref CURRENCIES, currdef("UAH", "\u20b4", "Ukrainian Hryvnia"))
-append_to(ref CURRENCIES, currdef("RON", "lei", "Romanian Leu"))
-append_to(ref CURRENCIES, currdef("HUF", "Ft", "Hungarian Forint"))
-append_to(ref CURRENCIES, currdef("DKK", "kr", "Danish Krone"))
-append_to(ref CURRENCIES, currdef("JOD", "JD", "Jordanian Dinar"))
-append_to(ref CURRENCIES, currdef("KWD", "KD", "Kuwaiti Dinar"))
-append_to(ref CURRENCIES, currdef("BHD", "BD", "Bahraini Dinar"))
-append_to(ref CURRENCIES, currdef("OMR", "OMR", "Omani Rial"))
-append_to(ref CURRENCIES, currdef("QAR", "QR", "Qatari Riyal"))
+CURRENCIES = [
+    currdef("USD", "$", "US Dollar"),
+    currdef("GBP", "\u00a3", "British Pound"),
+    currdef("EUR", "\u20ac", "Euro"),
+    currdef("JPY", "\u00a5", "Japanese Yen"),
+    currdef("CAD", "C$", "Canadian Dollar"),
+    currdef("AUD", "A$", "Australian Dollar"),
+    currdef("CHF", "CHF", "Swiss Franc"),
+    currdef("CNY", "\u00a5", "Chinese Yuan"),
+    currdef("INR", "\u20b9", "Indian Rupee"),
+    currdef("BRL", "R$", "Brazilian Real"),
+    currdef("KRW", "\u20a9", "South Korean Won"),
+    currdef("SEK", "kr", "Swedish Krona"),
+    currdef("NOK", "kr", "Norwegian Krone"),
+    currdef("NZD", "NZ$", "New Zealand Dollar"),
+    currdef("MXN", "MX$", "Mexican Peso"),
+    currdef("SGD", "S$", "Singapore Dollar"),
+    currdef("HKD", "HK$", "Hong Kong Dollar"),
+    currdef("ZAR", "R", "South African Rand"),
+    currdef("AED", "AED", "UAE Dirham"),
+    currdef("SAR", "SAR", "Saudi Riyal"),
+    currdef("PLN", "z\u0142", "Polish Zloty"),
+    currdef("TRY", "\u20ba", "Turkish Lira"),
+    currdef("THB", "\u0e3f", "Thai Baht"),
+    currdef("TWD", "NT$", "Taiwan Dollar"),
+    currdef("IDR", "Rp", "Indonesian Rupiah"),
+    currdef("MYR", "RM", "Malaysian Ringgit"),
+    currdef("PHP", "\u20b1", "Philippine Peso"),
+    currdef("CZK", "K\u010d", "Czech Koruna"),
+    currdef("ILS", "\u20aa", "Israeli Shekel"),
+    currdef("CLP", "CL$", "Chilean Peso"),
+    currdef("ARS", "AR$", "Argentine Peso"),
+    currdef("COP", "CO$", "Colombian Peso"),
+    currdef("PEN", "S/", "Peruvian Sol"),
+    currdef("EGP", "E\u00a3", "Egyptian Pound"),
+    currdef("NGN", "\u20a6", "Nigerian Naira"),
+    currdef("VND", "\u20ab", "Vietnamese Dong"),
+    currdef("BDT", "\u09f3", "Bangladeshi Taka"),
+    currdef("PKR", "\u20a8", "Pakistani Rupee"),
+    currdef("UAH", "\u20b4", "Ukrainian Hryvnia"),
+    currdef("RON", "lei", "Romanian Leu"),
+    currdef("HUF", "Ft", "Hungarian Forint"),
+    currdef("DKK", "kr", "Danish Krone"),
+    currdef("JOD", "JD", "Jordanian Dinar"),
+    currdef("KWD", "KD", "Kuwaiti Dinar"),
+    currdef("BHD", "BD", "Bahraini Dinar"),
+    currdef("OMR", "OMR", "Omani Rial"),
+    currdef("QAR", "QR", "Qatari Riyal"),
+]
 
 # --- TUI helpers ---
 
@@ -85,6 +86,45 @@ def heading_err(subtitle, msg)
     println "[#1]", msg, "[##][#-]"
 end
 
+# --- Spinner ---
+
+SPINNER_FRAMES = ["\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834", "\u2826", "\u2827", "\u2807", "\u280f"]
+spin_idx = 0
+
+def spinner_show(msg)
+    @spin_idx = (spin_idx + 1) % len(SPINNER_FRAMES)
+    at 3, 1
+    clear_line(3, 1)
+    print "[#3]  {=SPINNER_FRAMES[spin_idx]} {msg}...[##][#-]"
+end
+
+def spinner_clear()
+    at 3, 1
+    clear_line(3, 1)
+end
+
+def async_fetch(profile, region, start, endt, sort_desc)
+    costs, err = fetch_costs(profile, region, start, endt)
+    on costs == nil do return map(.costs nil, .forecast nil, .err err)
+    sort_costs(costs, sort_desc)
+    forecast, ferr = fetch_forecast(profile, region, start, endt)
+    return map(.costs costs, .forecast forecast, .err nil)
+end
+
+def async_load(profile, region, start, endt, sort_desc)
+    heading("Loading", "Please wait...")
+    var h map
+    ASYNC h async_fetch(profile, region, start, endt, sort_desc) "result"
+    while true
+        spinner_show("Fetching cost data")
+        res = await(ref h, false)
+        break if len(h) == 0
+        pause 50
+    endwhile
+    spinner_clear()
+    return res["result"]
+end
+
 # --- Date helpers ---
 
 def this_month_period()
@@ -95,8 +135,6 @@ def this_month_period()
     ny = y
     if nm > 12
         nm = 1
-    endif
-    if nm == 1
         ny = as_string(time_year() + 1)
     endif
     nms = pad(as_string(nm), 1, 2, "0")
@@ -105,18 +143,16 @@ def this_month_period()
 end
 
 def prev_month_period()
-    cy = as_string(time_year())
-    cm = as_int(time_month())
-    pm = cm - 1
-    py = cy
+    y = as_string(time_year())
+    m = time_month()
+    pm = m - 1
+    py = y
     if pm < 1
-        pm = pm + 12
-    endif
-    if pm > cm
-        py = as_string(as_int(cy) - 1)
+        pm = 12
+        py = as_string(as_int(y) - 1)
     endif
     start = `{py}-{=pad(as_string(pm), 1, 2, "0")}-01`
-    end_str = `{cy}-{=pad(as_string(cm), 1, 2, "0")}-01`
+    end_str = `{y}-{=pad(as_string(m), 1, 2, "0")}-01`
     return start, end_str
 end
 
@@ -140,11 +176,19 @@ def load_rates()
     today = `{=as_string(time_year())}-{=pad(as_string(time_month()), 1, 2, "0")}-{=pad(as_string(time_dom()), 1, 2, "0")}`
     cache_file = CURR_CACHE + "rates_{today}.json"
     if is_file(cache_file)
-        @RATES = json_decode($in cache_file)
-        return
+        cached = json_decode($in cache_file)
+        if cached != nil
+            rates_map = cached["rates"]
+            if rates_map != nil
+                @RATES = cached
+                return
+            endif
+        endif
+        | rm -f {cache_file}
     endif
-    println "[#3]Fetching exchange rates...[##][#-]"
+    spinner_show("Fetching exchange rates")
     result =| curl -s "https://api.frankfurter.dev/v1/latest?base=USD"
+    spinner_clear()
     if not result.okay
         println "[#1]Failed to fetch exchange rates.[##][#-]"
         println "[#1]", result.err, "[##][#-]"
@@ -186,7 +230,7 @@ struct costrow
     pct_val     float
     sort_val    float
     bar         string
-    orig_idx    int
+
 es
 
 # --- Sorting ---
@@ -301,7 +345,6 @@ def fetch_costs(profile, region, start, endt)
     on len(groups) == 0 do return nil, "No cost data found"
     costs = []
     total = 0.0
-    idx = 0
     foreach g in groups
         amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
         continue if amount_str == nil
@@ -315,17 +358,14 @@ def fetch_costs(profile, region, start, endt)
             .pct "",
             .pct_val 0.0,
             .sort_val amount,
-            .bar "",
-            .orig_idx idx
+            .bar ""
         ))
         total = total + amount
-        idx = idx + 1
     endfor
     on len(costs) == 0 do return nil, "No cost data parsed"
     for i = 0 to len(costs)-1
         pct_val = 0.0
-        on total > 0 do pct_val = (costs[i].cost / total * 1000.0)
-        on total > 0 do pct_val = (pct_val / 10.0)
+        on total > 0 do pct_val = costs[i].cost / total * 100.0
         costs[i].pct_val = pct_val
         pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
         on pct_str ~ "e-" do pct_str = "<0.001%"
@@ -455,29 +495,29 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
         total_usd = total_usd + c.cost
     endfor
 
+    svc_w = max([20, term_w() - 67]).as_int
     foreach c in costs
         append_to(ref rows, costrow(
-            .service trunc(c.service, 38, "…"),
+            .service trunc(c.service, svc_w, "…"),
             .cost c.cost,
             .cost_str convert_and_fmt(c.cost, curr_code),
             .pct c.pct,
             .pct_val c.pct_val,
             .sort_val c.sort_val,
-            .bar c.bar,
-            .orig_idx c.orig_idx
+            .bar c.bar
         ))
     endfor
 
-    t = map(.format "aos", .data rows, .headers true, .row 4, .col 2, .height term_h()-8, .width term_w()-4)
+    t = map(.format "aos", .data rows, .headers true, .row 4, .col 2, .height term_h()-8, .width term_w()-6)
     t["display"] = [0, 2, 3, 6]
-    t["sizes"] = [38, 16, 10, 20]
+    t["sizes"] = [svc_w, 16, 10, 20]
     t["options"] = ["Service", "Cost (" + curr_code + ")", "Share", "Usage"]
 
     s = map(
         .border map(.ih "", .iv "\u2502", .tl "\u2554", .tr "\u2557", .bl "\u255a", .br "\u255d", .tm "\u2550", .bm "\u2550", .lm "\u2502", .rm "\u2502"),
         .hi_bg "[#b1]", .hi_fg "[#6]",
         .select_bg "1", .select_fg "7",
-        .list ["", "", "[#2]", "[#3]", "", "", "[#4]", ""]
+        .list ["", "", "[#2]", "[#3]", "", "", "[#4]"]
     )
 
     at term_h()-3, 2
@@ -506,7 +546,7 @@ end
 def show_error(msg)
     cls
     at term_h()/2 - 2, 4
-    println "[#1]", msg, "[##][#-]"
+    println "[#1]", trunc(msg, term_w() - 8, "\u2026"), "[##][#-]"
     at term_h()/2, 4
     println "[#3]Press any key...[##][#-]"
     keypress()
@@ -581,18 +621,24 @@ while true
     start_t, end_t = this_month_period()
     period_lbl = period_label(start_t, end_t)
 
-    costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-    if costs == nil
-        show_error("Failed to fetch costs: {err}")
+    fetch_result = async_load(curr_profile, curr_region, start_t, end_t, true)
+    if fetch_result["costs"] == nil
+        show_error("Failed to fetch costs: {=fetch_result["err"]}")
         break
     endif
+    costs = fetch_result["costs"]
+    forecast_val = fetch_result["forecast"]
 
     sort_desc = true
-    sort_costs(costs, sort_desc)
-    forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+    prev_w = term_w()
+    prev_h = term_h()
 
     while true
         cursoroff()
+        if term_w() != prev_w || term_h() != prev_h
+            prev_w = term_w()
+            prev_h = term_h()
+        endif
         res = show_cost_table(costs, curr_profile, curr_region, curr_code, period_lbl, forecast_val, sort_desc)
         if res.Back
             action = show_main_menu(sort_desc)
@@ -600,24 +646,22 @@ while true
             is "profile"
                 curr_profile, cancelled = show_profile_menu(profiles)
                 break if curr_profile == ""
-                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                if new_costs == nil
-                    show_error("Failed to fetch costs: {err}")
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                if fetch_result["costs"] == nil
+                    show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = new_costs
-                sort_costs(costs, sort_desc)
-                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+                costs = fetch_result["costs"]
+                forecast_val = fetch_result["forecast"]
             is "region"
                 curr_region, cancelled = show_region_menu(curr_profile, curr_region)
-                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                if new_costs == nil
-                    show_error("Failed to fetch costs: {err}")
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                if fetch_result["costs"] == nil
+                    show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = new_costs
-                sort_costs(costs, sort_desc)
-                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+                costs = fetch_result["costs"]
+                forecast_val = fetch_result["forecast"]
             is "currency"
                 curr_code, cancelled = show_currency_menu(curr_code)
             is "sort"
@@ -626,14 +670,13 @@ while true
             is "forecast"
                 show_forecast_detail(forecast_val, curr_code, period_lbl)
             is "refresh"
-                new_costs, err = fetch_costs(curr_profile, curr_region, start_t, end_t)
-                if new_costs == nil
-                    show_error("Failed to fetch costs: {err}")
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, sort_desc)
+                if fetch_result["costs"] == nil
+                    show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
                 endif
-                costs = new_costs
-                sort_costs(costs, sort_desc)
-                forecast_val, ferr = fetch_forecast(curr_profile, curr_region, start_t, end_t)
+                costs = fetch_result["costs"]
+                forecast_val = fetch_result["forecast"]
             is "quit"
                 break
             endcase
