@@ -1,4 +1,3 @@
 # Example for await
-var h={"job": 1}
-println await(h)  # list of results
-
+var h = map(.job 1)
+println await(h)

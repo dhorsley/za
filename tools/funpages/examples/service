@@ -1,0 +1,6 @@
+# Example for service
+try
+    println service("http", "localhost:19999")
+catch err
+    println "service not available"
+endtry

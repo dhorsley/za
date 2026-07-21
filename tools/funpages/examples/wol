@@ -1,0 +1,6 @@
+# Example for wol
+try
+    wol("00:11:22:33:44:55")
+catch err
+    println "WOL failed"
+endtry

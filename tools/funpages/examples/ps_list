@@ -1,2 +1,2 @@
 # Example for ps_list
-ps_list()  # usage
+println ps_list()

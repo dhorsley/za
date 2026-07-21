@@ -1,2 +1,2 @@
 # Example for uuid_generate
-uuid_generate()  # usage
+println uuid_generate()

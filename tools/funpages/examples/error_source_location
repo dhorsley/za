@@ -1,0 +1,6 @@
+# Example for error_source_location
+try
+    println error_source_location()
+catch err
+    println "Error handler only"
+endtry

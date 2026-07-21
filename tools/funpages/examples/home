@@ -1,2 +1,2 @@
 # Example for home
-home()  # usage
+println home()

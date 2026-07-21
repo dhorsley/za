@@ -1,2 +1,2 @@
 # Example for gdump
-gdump()  # usage
+println gdump()

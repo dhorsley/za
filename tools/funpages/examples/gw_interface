@@ -1,2 +1,2 @@
 # Example for gw_interface
-gw_interface()  # usage
+println gw_interface()

@@ -1,2 +1,2 @@
 # Example for ccformat
-ccformat("hello")  # usage
+println ccformat("hello", "hello")

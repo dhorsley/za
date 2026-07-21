@@ -1,0 +1,2 @@
+# Example for wdiv
+println wdiv("content")

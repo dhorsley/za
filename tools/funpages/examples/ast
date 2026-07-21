@@ -1,2 +1,2 @@
 # Example for ast
-ast("hello")  # usage
+println ast("hello")

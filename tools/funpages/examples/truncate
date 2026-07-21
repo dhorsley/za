@@ -1,3 +1,2 @@
 # Example for truncate
-write_file("/tmp/za_trunc.txt", "hello")
-truncate("/tmp/za_trunc.txt", 3)
+println truncate("hello", 42)

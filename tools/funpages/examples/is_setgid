@@ -1,2 +1,2 @@
 # Example for is_setgid
-is_setgid(42)  # usage
+println is_setgid(42)

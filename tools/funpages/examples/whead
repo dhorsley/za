@@ -1,0 +1,2 @@
+# Example for whead
+println whead("header")

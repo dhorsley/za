@@ -1,6 +1,6 @@
 # Example for smtp_send_with_auth
 try
-    smtp_send_with_auth("localhost:25", "25", "user", "pass", list_string(["from@a.com", "to@b.com"]), "hello", "subject")
+    smtp_send_with_auth("test@example.com", ["to@example.com"], "Subject", "Body", "user", "pass")
 catch err
-    println "SMTP connection failed (expected)"
+    println "SMTP failed"
 endtry

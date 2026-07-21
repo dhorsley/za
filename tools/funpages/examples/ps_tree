@@ -1,0 +1,2 @@
+# Example for ps_tree
+println ps_tree()

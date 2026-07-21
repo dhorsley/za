@@ -1,0 +1,2 @@
+# Example for wul
+println wul("items", map(.class "list"))

@@ -1,2 +1,2 @@
 # Example for top_cpu
-top_cpu(42)  # usage
+println top_cpu(5)

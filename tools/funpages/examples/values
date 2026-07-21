@@ -1,2 +1,2 @@
 # Example for values
-values(map(.a 1, .b 2))  # usage
+println values(map(.a 1, .b 2))

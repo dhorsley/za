@@ -1,2 +1,2 @@
 # Example for phi
-phi()  # usage
+println phi()

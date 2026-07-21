@@ -1,2 +1,2 @@
 # Example for write_file
-write_file("/tmp/za_write.txt", "hello")
+write_file("/tmp/test.txt", "hello world")

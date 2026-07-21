@@ -1,2 +1,2 @@
 # Example for bash_version
-bash_version()  # usage
+println bash_version()

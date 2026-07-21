@@ -1,0 +1,6 @@
+# Example for group_membership
+try
+    println group_membership("root")
+catch err
+    println "Group membership failed"
+endtry

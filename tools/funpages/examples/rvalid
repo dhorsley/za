@@ -1,2 +1,2 @@
 # Example for rvalid
-rvalid("hello")  # usage
+println rvalid("hello")

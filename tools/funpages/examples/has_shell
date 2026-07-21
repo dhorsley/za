@@ -1,2 +1,2 @@
 # Example for has_shell
-has_shell()  # usage
+println has_shell()

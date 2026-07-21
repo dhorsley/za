@@ -1,0 +1,6 @@
+# Example for error_default_handler
+try
+    println error_default_handler()
+catch err
+    println "Error handler only"
+endtry

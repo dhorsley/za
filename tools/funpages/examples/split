@@ -1,2 +1,2 @@
 # Example for split
-split("hello")  # usage
+println split("hello")

@@ -1,2 +1,2 @@
 # Example for can_write
-can_write("hello")  # usage
+println can_write("hello")

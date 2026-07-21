@@ -1,2 +1,6 @@
 # Example for expect
-expect([1, 2], 1, list_string(["int", "int"]))
+try
+    expect(true, "test")
+catch err
+    println "Expect failed"
+endtry

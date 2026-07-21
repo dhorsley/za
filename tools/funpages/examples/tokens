@@ -1,2 +1,2 @@
 # Example for tokens
-tokens("hello")  # usage
+println tokens("hello")

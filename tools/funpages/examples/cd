@@ -1,2 +1,2 @@
 # Example for cd
-cd("hello")  # usage
+println cd("hello")

@@ -1,2 +1,2 @@
 # Example for get_env
-get_env("hello")  # usage
+println get_env("hello")

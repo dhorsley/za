@@ -1,2 +1,2 @@
 # Example for maxuint
-maxuint()  # usage
+println maxuint()

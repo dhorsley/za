@@ -1,3 +1,6 @@
 # Example for download
-println download("https://example.com")  # saved file name
-
+try
+    println download("https://example.com", "/tmp/example.html")
+catch err
+    println "Download failed"
+endtry

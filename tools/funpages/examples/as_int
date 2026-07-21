@@ -1,2 +1,2 @@
 # Example for as_int
-as_int("42")  # usage
+println as_int("42")

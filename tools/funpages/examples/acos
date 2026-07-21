@@ -1,2 +1,2 @@
 # Example for acos
-acos(42)  # usage
+println acos(42)

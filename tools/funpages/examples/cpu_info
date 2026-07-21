@@ -1,2 +1,2 @@
 # Example for cpu_info
-cpu_info()  # usage
+println cpu_info()

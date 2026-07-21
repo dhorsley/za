@@ -1,0 +1,6 @@
+# Example for error_call_stack
+try
+    println error_call_stack()
+catch err
+    println "Error handler only"
+endtry

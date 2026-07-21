@@ -1,2 +1,2 @@
 # Example for sha224sum
-sha224sum("hello")  # usage
+println sha224sum("hello")

@@ -1,2 +1,2 @@
 # Example for base64d
-base64d(base64e("hello"))
+println base64d("SGVsbG8gV29ybGQ=")

@@ -1,2 +1,2 @@
 # Example for is_file
-is_file("hello")  # usage
+println is_file("hello")

@@ -1,4 +1,4 @@
 # Example for gzip_decompress_bytes
 data = hex_decode("48656c6c6f")
-compressed = gzip_compress_bytes(data)
-gzip_decompress_bytes(compressed)
+comp = gzip_compress_bytes(data)
+println gzip_decompress_bytes(comp)

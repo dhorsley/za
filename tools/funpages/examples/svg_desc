@@ -1,0 +1,4 @@
+# Example for svg_desc
+h = svg_start("test.svg", 100, 100)
+svg_desc(h, "Test SVG")
+svg_end(h)

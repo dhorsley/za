@@ -1,2 +1,2 @@
 # Example for func_inputs
-func_inputs()  # usage
+println func_inputs()

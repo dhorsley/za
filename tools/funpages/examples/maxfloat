@@ -1,2 +1,2 @@
 # Example for maxfloat
-maxfloat()  # usage
+println maxfloat()

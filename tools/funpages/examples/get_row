@@ -1,2 +1,2 @@
 # Example for get_row
-get_row()  # usage
+println get_row()

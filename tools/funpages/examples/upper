@@ -1,2 +1,2 @@
 # Example for upper
-upper("hello")  # usage
+println upper("hello")

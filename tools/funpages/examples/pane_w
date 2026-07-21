@@ -1,2 +1,2 @@
 # Example for pane_w
-pane_w()  # usage
+println pane_w()

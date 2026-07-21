@@ -1,4 +1,6 @@
 # Example for ev_event
-var e=ev_event(watcher)
-println e  # Event struct with .Name and .Op fields
-
+try
+    println ev_event()
+catch err
+    println "No event available"
+endtry

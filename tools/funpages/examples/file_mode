@@ -1,2 +1,2 @@
 # Example for file_mode
-file_mode("hello")  # usage
+println file_mode("hello")

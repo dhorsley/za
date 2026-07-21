@@ -1,2 +1,2 @@
 # Example for inverse
-inverse([[1, 0], [0, 1]])
+println inverse([[1, 2], [3, 4]])

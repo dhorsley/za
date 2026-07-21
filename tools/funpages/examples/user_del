@@ -1,0 +1,6 @@
+# Example for user_del
+try
+    user_del("testuser")
+catch err
+    println "User del failed"
+endtry

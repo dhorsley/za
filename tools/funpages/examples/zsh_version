@@ -1,2 +1,2 @@
 # Example for zsh_version
-zsh_version()  # usage
+println zsh_version()

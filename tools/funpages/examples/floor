@@ -1,2 +1,2 @@
 # Example for floor
-floor(3.14)  # usage
+println floor(3.14)

@@ -1,2 +1,2 @@
 # Example for filter
-filter("hello", "hello")  # usage
+println filter("hello", "hello")

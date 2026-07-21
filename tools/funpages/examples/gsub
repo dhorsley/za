@@ -1,2 +1,2 @@
 # Example for gsub
-gsub("hello", "hello", "hello")  # usage
+println gsub("hello", "hello", "hello")

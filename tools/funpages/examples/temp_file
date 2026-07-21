@@ -1,2 +1,2 @@
 # Example for temp_file
-temp_file()  # usage
+println temp_file("hello")

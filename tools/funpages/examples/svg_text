@@ -1,0 +1,4 @@
+# Example for svg_text
+h = svg_start("test.svg", 100, 100)
+svg_text(h, 50, 50, "Hello")
+svg_end(h)

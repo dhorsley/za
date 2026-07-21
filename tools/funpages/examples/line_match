@@ -1,2 +1,2 @@
 # Example for line_match
-line_match("hello\nworld", "hello")  # usage
+println line_match("hello", "hello")

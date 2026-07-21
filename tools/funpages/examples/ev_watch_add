@@ -1,4 +1,6 @@
 # Example for ev_watch_add
-watch,code=ev_watch("/tmp")
-ev_watch_add(watch,"/var")
-
+try
+    println ev_watch_add(0, "/tmp")
+catch err
+    println "Error"
+endtry

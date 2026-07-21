@@ -1,2 +1,2 @@
 # Example for line_tail
-line_tail("hello\nworld", 1)  # usage
+println line_tail("hello", 42)

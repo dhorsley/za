@@ -1,0 +1,2 @@
+# Example for wtable
+println wtable("data", map(.class "table"))

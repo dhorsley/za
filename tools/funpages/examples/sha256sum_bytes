@@ -1,3 +1,2 @@
 # Example for sha256sum_bytes
-data = hex_decode("48656c6c6f")
-sha256sum_bytes(data)
+println sha256sum_bytes(hex_decode("48656c6c6f"))

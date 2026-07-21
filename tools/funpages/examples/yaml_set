@@ -1,2 +1,3 @@
 # Example for yaml_set
-yaml_set(map(.a 1), "a", 2)
+data = yaml_parse("a: 1")
+println yaml_set(data, "b", 2)

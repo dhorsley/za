@@ -1,2 +1,2 @@
 # Example for exreg
-exreg("hello", "info")
+println exreg("my_error", "warn")

@@ -1,0 +1,5 @@
+# Example for svg_link_end
+h = svg_start("test.svg", 100, 100)
+svg_link(h, "https://example.com", "Link")
+svg_link_end(h)
+svg_end(h)

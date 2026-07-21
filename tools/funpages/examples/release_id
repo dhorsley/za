@@ -1,2 +1,2 @@
 # Example for release_id
-release_id()  # usage
+println release_id()

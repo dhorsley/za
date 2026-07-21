@@ -1,2 +1,2 @@
 # Example for det_big
-det_big([[1, 2], [3, 4]])  # usage
+println det_big([[1, 2], [3, 4]])

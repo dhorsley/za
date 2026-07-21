@@ -1,2 +1,2 @@
 # Example for format
-format("hello %s", "world")  # usage
+println format("hello", "hello")

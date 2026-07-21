@@ -1,2 +1,2 @@
 # Example for uuid_validate
-uuid_validate("hello")  # usage
+println uuid_validate("hello")

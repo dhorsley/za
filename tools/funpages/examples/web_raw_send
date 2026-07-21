@@ -1,0 +1,6 @@
+# Example for web_raw_send
+try
+    println web_raw_send("example.com", 80, "GET / HTTP/1.0\r\n\r\n")
+catch err
+    println "Network error"
+endtry

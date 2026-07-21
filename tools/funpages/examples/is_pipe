@@ -1,2 +1,2 @@
 # Example for is_pipe
-is_pipe(42)  # usage
+println is_pipe(42)

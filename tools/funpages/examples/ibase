@@ -1,2 +1,2 @@
 # Example for ibase
-ibase(10, 10)
+println ibase(3.14, 3.14)

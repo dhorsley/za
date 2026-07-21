@@ -1,2 +1,2 @@
 # Example for wrap_text
-wrap_text("hello")  # usage
+println wrap_text("hello", 3.14)

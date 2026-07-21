@@ -1,4 +1,9 @@
 # Example for fflush
-fh = fopen("/tmp/za_fflush.txt", "w")
-fflush(fh)
-fclose(fh)
+try
+    fp = fopen("/tmp/test.txt", "w")
+    fwrite(fp, "hello")
+    fflush(fp)
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

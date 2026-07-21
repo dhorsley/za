@@ -1,2 +1,3 @@
 # Example for unmap
-unmap("hello", "hello")  # usage
+m = map(.a 1, .b 2)
+println unmap("m", "a")

@@ -1,2 +1,2 @@
 # Example for rank
-rank([[1, 2], [3, 4]])
+println rank([[1, 2], [3, 4]])

@@ -1,2 +1,2 @@
 # Example for clean
-clean("hello")  # usage
+println clean("hello")

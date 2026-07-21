@@ -1,2 +1,2 @@
 # Example for is_socket
-is_socket(42)  # usage
+println is_socket(42)

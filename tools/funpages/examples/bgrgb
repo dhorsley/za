@@ -1,2 +1,2 @@
 # Example for bgrgb
-bgrgb(42, 42, 42)  # usage
+println bgrgb(3.14, 3.14, 3.14)

@@ -1,7 +1,6 @@
 # Example for uninstall
-result = uninstall("nonexistent_pkg")
-if result == 0
-    println "Uninstall OK"
-else
-    println format("Uninstall failed with code: %d", result)
-endif
+try
+    println uninstall("test-package")
+catch err
+    println "Uninstall failed"
+endtry

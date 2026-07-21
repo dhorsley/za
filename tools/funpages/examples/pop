@@ -1,2 +1,4 @@
 # Example for pop
-pop("hello")  # usage
+mylist = [1, 2, 3]
+println pop("mylist")
+println mylist

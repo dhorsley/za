@@ -1,3 +1,6 @@
 # Example for web_head
-println web_head("https://example.com")  # true
-
+try
+    println web_head("https://example.com")
+catch err
+    println "Network error"
+endtry

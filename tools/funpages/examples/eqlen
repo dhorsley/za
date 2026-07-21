@@ -1,2 +1,2 @@
 # Example for eqlen
-eqlen([[1, 2], [3, 4]])
+println eqlen([[1, 2], [3, 4]])

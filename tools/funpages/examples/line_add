@@ -1,2 +1,2 @@
 # Example for line_add
-line_add("hello\nworld", "newline")
+println line_add("hello", "hello")

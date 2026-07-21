@@ -1,0 +1,2 @@
+# Example for resource_usage
+println resource_usage(pid())

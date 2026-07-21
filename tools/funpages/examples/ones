@@ -1,2 +1,2 @@
 # Example for ones
-ones(3, 3)  # usage
+println ones(3, 4)

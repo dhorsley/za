@@ -1,0 +1,6 @@
+# Example for error_source_line_numbers
+try
+    println error_source_line_numbers(1, 1)
+catch err
+    println "Error handler only"
+endtry

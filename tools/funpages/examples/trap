@@ -1,2 +1,2 @@
 # Example for trap
-trap("hello", "hello")  # usage
+println trap("hello", "hello")

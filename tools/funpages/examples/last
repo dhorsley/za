@@ -1,2 +1,2 @@
 # Example for last
-last()  # usage
+println last()

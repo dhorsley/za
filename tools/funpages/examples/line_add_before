@@ -1,2 +1,2 @@
 # Example for line_add_before
-line_add_before("hello\nworld", "new", "hello")  # usage
+println line_add_before("hello", "hello", "hello")

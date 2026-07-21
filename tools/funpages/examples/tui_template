@@ -1,0 +1,7 @@
+# Example for tui_template
+try
+    tui_new()
+    tui_template("Hello {{name}}", map(.name "World"))
+catch err
+    println "TUI not available"
+endtry

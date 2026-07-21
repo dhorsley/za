@@ -1,0 +1,6 @@
+# Example for group_add
+try
+    group_add("testgroup")
+catch err
+    println "Group add failed"
+endtry

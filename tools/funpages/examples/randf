@@ -1,2 +1,2 @@
 # Example for randf
-randf()  # usage
+println randf(42)

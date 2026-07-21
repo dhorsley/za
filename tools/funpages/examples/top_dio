@@ -1,2 +1,2 @@
 # Example for top_dio
-top_dio(42)  # usage
+println top_dio(5)

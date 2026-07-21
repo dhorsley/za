@@ -1,2 +1,2 @@
 # Example for as_bool
-as_bool("true")  # usage
+println as_bool("true")

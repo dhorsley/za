@@ -1,2 +1,2 @@
 # Example for is_setuid
-is_setuid(42)  # usage
+println is_setuid(42)

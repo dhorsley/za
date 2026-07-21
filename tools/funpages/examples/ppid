@@ -1,2 +1,2 @@
 # Example for ppid
-ppid()  # usage
+println ppid()

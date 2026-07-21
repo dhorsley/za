@@ -1,0 +1,2 @@
+# Example for wh3
+println wh3("Section")

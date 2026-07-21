@@ -1,0 +1,2 @@
+# Example for wbody
+println wbody("main content")

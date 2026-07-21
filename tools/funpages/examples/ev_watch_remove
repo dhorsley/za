@@ -1,4 +1,6 @@
 # Example for ev_watch_remove
-watch,code=ev_watch("/tmp")
-ev_watch_remove(watch,"/tmp")
-
+try
+    ev_watch_remove(0, "/tmp")
+catch err
+    println "Error"
+endtry

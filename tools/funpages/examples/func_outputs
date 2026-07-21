@@ -1,2 +1,2 @@
 # Example for func_outputs
-func_outputs()  # usage
+println func_outputs()

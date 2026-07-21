@@ -1,2 +1,2 @@
 # Example for argc
-argc()  # usage
+println argc()

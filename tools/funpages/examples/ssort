@@ -1,2 +1,2 @@
 # Example for ssort
-ssort(dir("/tmp"), "name")
+println ssort([map(.name "banana"), map(.name "apple"), map(.name "cherry")], "name", true)

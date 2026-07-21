@@ -1,2 +1,2 @@
 # Example for tanh
-tanh(42)  # usage
+println tanh(42)

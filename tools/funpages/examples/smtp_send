@@ -1,6 +1,6 @@
 # Example for smtp_send
 try
-    smtp_send("localhost:25", "25", list_string(["from@a.com", "to@b.com"]), "hello", "subject")
+    smtp_send("test@example.com", ["to@example.com"], "Subject", "Body")
 catch err
-    println "SMTP connection failed (expected)"
+    println "SMTP failed"
 endtry

@@ -1,2 +1,2 @@
 # Example for list_bigf
-list_bigf([1, 2, 3])  # usage
+println list_bigf([1, 2, 3])

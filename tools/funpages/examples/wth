@@ -1,0 +1,2 @@
+# Example for wth
+println wth("Header")

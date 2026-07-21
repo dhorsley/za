@@ -1,2 +1,2 @@
 # Example for time_year
-time_year()  # usage
+println time_year(42)

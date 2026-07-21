@@ -1,2 +1,2 @@
 # Example for func_categories
-func_categories()  # usage
+println func_categories()

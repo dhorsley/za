@@ -1,2 +1,6 @@
 # Example for exec
-exec("println 42")  # usage
+try
+    exec("println 42")
+catch err
+    println "exec not permitted"
+endtry

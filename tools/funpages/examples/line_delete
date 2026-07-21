@@ -1,2 +1,2 @@
 # Example for line_delete
-line_delete("hello\nworld", "hello")  # usage
+println line_delete("hello\nworld\ntest", "world")

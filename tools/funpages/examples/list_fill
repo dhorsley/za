@@ -1,2 +1,2 @@
 # Example for list_fill
-list_fill([1, 2, 3], 0)
+println list_fill([1, 2, 3], 42)

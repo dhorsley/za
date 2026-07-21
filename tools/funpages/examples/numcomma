@@ -1,2 +1,2 @@
 # Example for numcomma
-numcomma(1234567)
+println numcomma(3.14, 3.14)

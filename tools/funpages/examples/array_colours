@@ -1,2 +1,2 @@
 # Example for array_colours
-array_colours(["[#red]", "[#blue]"])
+println array_colours(["[#red]", "[#green]", "[#blue]"])

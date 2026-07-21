@@ -1,0 +1,7 @@
+# Example for tui_clear
+try
+    tui_new()
+    tui_clear()
+catch err
+    println "TUI not available"
+endtry

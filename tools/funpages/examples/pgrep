@@ -1,2 +1,2 @@
 # Example for pgrep
-pgrep("hello")  # usage
+println pgrep("bash")

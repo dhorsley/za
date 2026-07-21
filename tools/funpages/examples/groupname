@@ -1,2 +1,2 @@
 # Example for groupname
-groupname(42)  # usage
+println groupname(3.14)

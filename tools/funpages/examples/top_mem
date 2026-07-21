@@ -1,2 +1,2 @@
 # Example for top_mem
-top_mem(42)  # usage
+println top_mem(5)

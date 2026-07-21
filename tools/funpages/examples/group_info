@@ -1,2 +1,6 @@
 # Example for group_info
-group_info("root")
+try
+    println group_info("root")
+catch err
+    println "Group info failed"
+endtry

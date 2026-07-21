@@ -1,3 +1,6 @@
 # Example for chroot
-chroot("/mydir")
-
+try
+    println chroot("/tmp")
+catch err
+    println "Chroot failed"
+endtry

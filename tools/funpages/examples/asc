@@ -1,2 +1,2 @@
 # Example for asc
-asc("hello")  # usage
+println asc("hello")

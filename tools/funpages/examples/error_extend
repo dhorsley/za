@@ -1,0 +1,2 @@
+# Example for error_extend
+println error_extend(true)

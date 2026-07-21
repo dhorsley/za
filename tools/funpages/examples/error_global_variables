@@ -1,0 +1,6 @@
+# Example for error_global_variables
+try
+    println error_global_variables()
+catch err
+    println "Error handler only"
+endtry

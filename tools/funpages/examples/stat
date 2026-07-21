@@ -1,2 +1,2 @@
 # Example for stat
-stat("hello")  # usage
+println stat("hello")

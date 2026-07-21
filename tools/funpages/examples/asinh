@@ -1,2 +1,2 @@
 # Example for asinh
-asinh(42)  # usage
+println asinh(42)

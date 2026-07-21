@@ -1,3 +1,2 @@
 # Example for perms
-write_file("/tmp/za_perms.txt", "hello")
-perms("/tmp/za_perms.txt")
+println perms("hello")

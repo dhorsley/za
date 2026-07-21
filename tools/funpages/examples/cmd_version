@@ -1,2 +1,2 @@
 # Example for cmd_version
-cmd_version()  # usage
+println cmd_version()

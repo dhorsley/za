@@ -1,2 +1,2 @@
 # Example for has_term
-has_term()  # usage
+println has_term()

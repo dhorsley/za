@@ -1,2 +1,2 @@
 # Example for email_extract_addresses
-email_extract_addresses("hello")  # usage
+println email_extract_addresses("test@example.com")

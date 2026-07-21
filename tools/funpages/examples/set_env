@@ -1,2 +1,2 @@
 # Example for set_env
-set_env("hello", "hello")  # usage
+set_env("ZA_TEST", "hello")

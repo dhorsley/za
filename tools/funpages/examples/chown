@@ -1,0 +1,6 @@
+# Example for chown
+try
+    println chown("/tmp", "root", "root")
+catch err
+    println "Chown failed"
+endtry

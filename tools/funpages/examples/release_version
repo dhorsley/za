@@ -1,2 +1,2 @@
 # Example for release_version
-release_version()  # usage
+println release_version()

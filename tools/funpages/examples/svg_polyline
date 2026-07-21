@@ -1,0 +1,4 @@
+# Example for svg_polyline
+h = svg_start("test.svg", 100, 100)
+svg_polyline(h, to_typed([0, 50, 100], "[]int"), to_typed([0, 50, 100], "[]int"))
+svg_end(h)

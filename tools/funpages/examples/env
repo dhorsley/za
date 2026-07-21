@@ -1,2 +1,2 @@
 # Example for env
-env()  # usage
+println env()

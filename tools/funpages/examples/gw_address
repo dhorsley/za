@@ -1,2 +1,2 @@
 # Example for gw_address
-gw_address()  # usage
+println gw_address()

@@ -1,2 +1,2 @@
 # Example for get_cores
-get_cores()  # usage
+println get_cores()

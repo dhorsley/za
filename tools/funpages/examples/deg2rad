@@ -1,2 +1,2 @@
 # Example for deg2rad
-deg2rad(42)  # usage
+println deg2rad(3.14)

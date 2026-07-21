@@ -1,2 +1,2 @@
 # Example for line_head
-line_head("hello\nworld", 1)  # usage
+println line_head("hello", 42)

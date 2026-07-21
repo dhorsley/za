@@ -1,2 +1,2 @@
 # Example for hostname
-hostname()  # usage
+println hostname()

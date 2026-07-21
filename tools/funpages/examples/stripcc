@@ -1,2 +1,2 @@
 # Example for stripcc
-stripcc("hello")  # usage
+println stripcc("hello")

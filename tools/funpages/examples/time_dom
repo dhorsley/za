@@ -1,2 +1,2 @@
 # Example for time_dom
-time_dom()  # usage
+println time_dom(42)

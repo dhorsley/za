@@ -1,0 +1,6 @@
+# Example for error_emergency_exit
+try
+    println error_emergency_exit()
+catch err
+    println "Error handler only"
+endtry

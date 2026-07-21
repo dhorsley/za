@@ -1,2 +1,2 @@
 # Example for where
-where([1, 2, 3], ">", 2)
+println where([1, 2, 3, 4, 5], "#>3")

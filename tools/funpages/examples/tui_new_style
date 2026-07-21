@@ -1,2 +1,6 @@
 # Example for tui_new_style
-tui_new_style()  # usage
+try
+    tui_new_style("bold")
+catch err
+    println "TUI not available"
+endtry

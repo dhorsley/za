@@ -1,2 +1,2 @@
 # Example for wimg
-wimg("hello")  # usage
+println wimg("test.png")

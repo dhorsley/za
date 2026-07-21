@@ -1,2 +1,2 @@
 # Example for debug_cpu_files
-debug_cpu_files()  # usage
+println debug_cpu_files()

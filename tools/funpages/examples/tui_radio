@@ -1,0 +1,7 @@
+# Example for tui_radio
+try
+    tui_new()
+    println tui_radio(["Yes", "No"])
+catch err
+    println "TUI not available"
+endtry

@@ -1,3 +1,3 @@
 # Example for delete
-write_file("/tmp/za_delete_test.txt", "hello")
-delete("/tmp/za_delete_test.txt")
+write_file("/tmp/test.txt", "hello")
+println delete("/tmp/test.txt")

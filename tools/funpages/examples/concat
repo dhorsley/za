@@ -1,2 +1,2 @@
 # Example for concat
-concat([1,2,3], [4,5,6])  # usage
+println concat([1, 2], [3, 4])

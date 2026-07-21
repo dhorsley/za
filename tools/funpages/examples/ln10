@@ -1,2 +1,2 @@
 # Example for ln10
-ln10()  # usage
+println ln10()

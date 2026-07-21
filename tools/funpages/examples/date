@@ -1,2 +1,2 @@
 # Example for date
-date()  # usage
+println date(42)

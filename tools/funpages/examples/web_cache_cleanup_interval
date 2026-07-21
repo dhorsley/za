@@ -1,2 +1,2 @@
 # Example for web_cache_cleanup_interval
-web_cache_cleanup_interval(42)  # usage
+web_cache_cleanup_interval(60)

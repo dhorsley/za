@@ -1,2 +1,2 @@
 # Example for rad2deg
-rad2deg(42)  # usage
+println rad2deg(3.14)

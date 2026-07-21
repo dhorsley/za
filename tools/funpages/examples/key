@@ -1,2 +1,2 @@
 # Example for key
-key("hello", "hello")  # usage
+println key("hello", "hello")

@@ -1,2 +1,2 @@
 # Example for line_replace
-line_replace("hello\nworld", "hello", "hi")  # usage
+println line_replace("hello", "hello", "hello")

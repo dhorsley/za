@@ -1,2 +1,2 @@
 # Example for enum_all
-enum_all("hello")  # usage
+println enum_all("hello")

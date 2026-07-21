@@ -1,2 +1,2 @@
 # Example for len
-len("hello")  # usage
+println len("hello")

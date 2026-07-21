@@ -1,2 +1,2 @@
 # Example for empty
-empty([1, 2, 3])  # usage
+println empty([1, 2, 3])

@@ -1,2 +1,2 @@
 # Example for log_exception_with_stack
-log_exception_with_stack("hello", "hello", [1, 2, 3])  # usage
+println log_exception_with_stack(42, "hello", [1, 2, 3])

@@ -1,2 +1,2 @@
 # Example for variance
-variance([1,2,3,4,5])  # usage
+println variance([1, 2, 3, 4, 5])

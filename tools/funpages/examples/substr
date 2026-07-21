@@ -1,2 +1,2 @@
 # Example for substr
-substr("hello", 1, 3)
+println substr("hello world", 0, 5)

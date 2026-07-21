@@ -1,2 +1,8 @@
 # Example for fopen
-fopen("/tmp/za_fopen.txt", "w")
+try
+    fp = fopen("/tmp/test.txt", "w")
+    println fp
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

@@ -1,2 +1,2 @@
 # Example for log_sanitise
-log_sanitise("hello")  # usage
+println log_sanitise("hello")

@@ -1,2 +1,2 @@
 # Example for find
-find([1, 2, 3], 2)
+println find([1, 2, 3, 4, 5], 3)

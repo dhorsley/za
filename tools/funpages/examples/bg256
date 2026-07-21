@@ -1,2 +1,2 @@
 # Example for bg256
-bg256(42)  # usage
+println bg256(3.14)

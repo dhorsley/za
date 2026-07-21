@@ -1,0 +1,6 @@
+# Example for error_filename
+try
+    println error_filename()
+catch err
+    println "Error handler only"
+endtry

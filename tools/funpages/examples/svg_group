@@ -1,0 +1,5 @@
+# Example for svg_group
+h = svg_start("test.svg", 100, 100)
+svg_group(h)
+svg_group_end(h)
+svg_end(h)

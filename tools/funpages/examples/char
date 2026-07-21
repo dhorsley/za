@@ -1,2 +1,2 @@
 # Example for char
-char(42)  # usage
+println char(42)

@@ -1,2 +1,2 @@
 # Example for top_nio
-top_nio(42)  # usage
+println top_nio(5)

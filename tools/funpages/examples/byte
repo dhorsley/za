@@ -1,2 +1,2 @@
 # Example for byte
-byte("hello")  # usage
+println byte("hello")

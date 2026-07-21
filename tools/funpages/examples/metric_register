@@ -1,2 +1,2 @@
 # Example for metric_register
-metric_register("hello", "counter")  # usage
+println metric_register("counter", "test", "help")

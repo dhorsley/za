@@ -1,4 +1,3 @@
 # Example for write_struct
-var x={a:1,b:2}
-println write_struct("/tmp/struct","x")  # bytes written
-
+r = sys_resources()
+write_struct("/tmp/za_struct.bin", "r")

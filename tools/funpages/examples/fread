@@ -1,5 +1,9 @@
 # Example for fread
-write_file("/tmp/za_fread.txt", "hello")
-fh = fopen("/tmp/za_fread.txt", "r")
-fread(fh, "5")
-fclose(fh)
+try
+    write_file("/tmp/test.txt", "hello world")
+    fp = fopen("/tmp/test.txt", "r")
+    println fread(fp, 5)
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

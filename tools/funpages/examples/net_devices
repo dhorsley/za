@@ -1,2 +1,2 @@
 # Example for net_devices
-net_devices()  # usage
+println net_devices()

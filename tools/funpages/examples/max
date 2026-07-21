@@ -1,2 +1,2 @@
 # Example for max
-max([3, 1, 2])  # usage
+println max(42)

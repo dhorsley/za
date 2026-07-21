@@ -1,2 +1,2 @@
 # Example for otod
-otod("755")
+println otod("10")

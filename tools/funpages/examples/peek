@@ -1,2 +1,2 @@
 # Example for peek
-peek(["a", "b", "c"])  # usage
+println peek(to_typed([1, 2, 3], "[]int"))

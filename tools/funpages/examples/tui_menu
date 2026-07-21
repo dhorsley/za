@@ -1,0 +1,7 @@
+# Example for tui_menu
+try
+    tui_new()
+    println tui_menu(["Option 1", "Option 2"])
+catch err
+    println "TUI not available"
+endtry

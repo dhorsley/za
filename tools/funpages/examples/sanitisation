@@ -1,2 +1,2 @@
 # Example for sanitisation
-sanitisation(true)  # usage
+println sanitisation(true)

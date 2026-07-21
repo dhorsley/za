@@ -1,2 +1,2 @@
 # Example for uniq
-uniq("hello")  # usage
+println uniq("hello")

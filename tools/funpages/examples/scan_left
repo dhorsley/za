@@ -1,2 +1,2 @@
 # Example for scan_left
-scan_left([1, 2, 3], "+", 0.0)  # usage
+println scan_left(to_typed([1, 2, 3], "[]int"), "+", 0)

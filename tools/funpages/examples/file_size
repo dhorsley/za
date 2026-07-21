@@ -1,3 +1,2 @@
 # Example for file_size
-write_file("/tmp/za_fsize.txt", "hello")
-file_size("/tmp/za_fsize.txt")
+println file_size("hello")

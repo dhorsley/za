@@ -1,2 +1,2 @@
 # Example for time_zone_offset
-time_zone_offset()  # usage
+println time_zone_offset(42)

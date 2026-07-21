@@ -1,2 +1,2 @@
 # Example for system
-system("hello")  # usage
+println system("hello", true)

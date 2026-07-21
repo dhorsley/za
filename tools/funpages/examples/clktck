@@ -1,2 +1,2 @@
 # Example for clktck
-clktck()  # usage
+println clktck()

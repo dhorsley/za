@@ -1,2 +1,2 @@
 # Example for pp
-pp("hello")  # usage
+pp(map(.a 1))

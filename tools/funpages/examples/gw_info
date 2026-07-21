@@ -1,2 +1,2 @@
 # Example for gw_info
-gw_info()  # usage
+println gw_info()

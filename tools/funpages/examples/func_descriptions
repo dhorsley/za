@@ -1,2 +1,2 @@
 # Example for func_descriptions
-func_descriptions()  # usage
+println func_descriptions()

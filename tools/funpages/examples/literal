@@ -1,2 +1,2 @@
 # Example for literal
-literal("hello")  # usage
+println literal("hello", "hello")

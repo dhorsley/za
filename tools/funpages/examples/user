@@ -1,2 +1,2 @@
 # Example for user
-user()  # usage
+println user()

@@ -1,4 +1,7 @@
 # Example for db_close
-var db=db_init("mydb")
-db_close(db)
-
+try
+    db = db_open(":memory:")
+    db_close(db)
+catch err
+    println "DB error"
+endtry

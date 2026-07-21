@@ -1,2 +1,2 @@
 # Example for now
-now()  # usage
+println now()

@@ -1,2 +1,2 @@
 # Example for json_format
-json_format("{\"a\": 1}")
+println json_format("{\"a\":1}")

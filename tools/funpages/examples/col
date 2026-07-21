@@ -1,2 +1,2 @@
 # Example for col
-col("hello", 42)  # usage
+println col("hello", 42, "hello")

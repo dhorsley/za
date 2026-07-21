@@ -1,2 +1,2 @@
 # Example for stripquotes
-stripquotes("hello")  # usage
+println stripquotes("hello")

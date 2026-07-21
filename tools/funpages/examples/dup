@@ -1,2 +1,2 @@
 # Example for dup
-dup("arg")  # usage
+println dup(map(.a "1", .b "2"))

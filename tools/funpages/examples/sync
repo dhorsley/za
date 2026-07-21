@@ -1,2 +1,2 @@
 # Example for sync
-sync()  # usage
+println sync()

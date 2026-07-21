@@ -1,2 +1,2 @@
 # Example for web_cache_enable
-web_cache_enable(true)  # usage
+web_cache_enable(true)

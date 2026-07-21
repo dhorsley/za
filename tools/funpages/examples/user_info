@@ -1,2 +1,6 @@
 # Example for user_info
-user_info("root")
+try
+    println user_info("root")
+catch err
+    println "User info failed"
+endtry

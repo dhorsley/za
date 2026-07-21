@@ -1,2 +1,2 @@
 # Example for metric_observe
-metric_observe("hello", 3.14)  # usage
+println metric_observe("test", 1.0)

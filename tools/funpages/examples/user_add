@@ -1,0 +1,6 @@
+# Example for user_add
+try
+    user_add("testuser", "password")
+catch err
+    println "User add failed"
+endtry

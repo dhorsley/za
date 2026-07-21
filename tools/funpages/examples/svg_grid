@@ -1,0 +1,4 @@
+# Example for svg_grid
+h = svg_start("test.svg", 100, 100)
+svg_grid(h, 10, 10, 0, 0, 100)
+svg_end(h)

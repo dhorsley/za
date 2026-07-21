@@ -1,2 +1,6 @@
 # Example for tui_new
-tui_new()  # usage
+try
+    tui_new()
+catch err
+    println "TUI not available"
+endtry

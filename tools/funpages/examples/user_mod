@@ -1,0 +1,6 @@
+# Example for user_mod
+try
+    user_mod("testuser", map(.shell "/bin/bash"))
+catch err
+    println "User mod failed"
+endtry

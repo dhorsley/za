@@ -1,2 +1,2 @@
 # Example for prod
-prod([1,2,3])  # usage
+println prod([1, 2, 3, 4, 5])

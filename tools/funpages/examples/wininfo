@@ -1,2 +1,2 @@
 # Example for wininfo
-wininfo()  # usage
+println wininfo(42)

@@ -1,2 +1,2 @@
 # Example for os
-os()  # usage
+println os()

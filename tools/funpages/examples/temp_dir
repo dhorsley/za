@@ -1,2 +1,2 @@
 # Example for temp_dir
-temp_dir()  # usage
+println temp_dir("hello")

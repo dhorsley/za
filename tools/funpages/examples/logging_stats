@@ -1,2 +1,2 @@
 # Example for logging_stats
-logging_stats()  # usage
+println logging_stats()

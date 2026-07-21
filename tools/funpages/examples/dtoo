@@ -1,2 +1,2 @@
 # Example for dtoo
-dtoo(42)  # usage
+println dtoo(42)

@@ -1,2 +1,6 @@
 # Example for wa
-wa("hello")  # usage
+try
+    wa("message")
+catch err
+    println "Error"
+endtry

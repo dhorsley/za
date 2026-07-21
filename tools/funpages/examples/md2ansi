@@ -1,2 +1,2 @@
 # Example for md2ansi
-md2ansi("hello")  # usage
+println md2ansi("# Hello")

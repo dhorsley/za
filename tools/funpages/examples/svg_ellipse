@@ -1,0 +1,4 @@
+# Example for svg_ellipse
+h = svg_start("test.svg", 100, 100)
+svg_ellipse(h, 50, 50, 30, 20)
+svg_end(h)

@@ -1,2 +1,2 @@
 # Example for pow
-pow(42, 42)  # usage
+println pow(42, 42)

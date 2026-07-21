@@ -1,0 +1,2 @@
+# Example for wh5
+println wh5("Detail")

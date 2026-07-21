@@ -1,0 +1,7 @@
+# Example for tui_box
+try
+    tui_new()
+    tui_box(0, 0, 10, 5)
+catch err
+    println "TUI not available"
+endtry

@@ -1,2 +1,2 @@
 # Example for pkill
-pkill("hello")  # usage
+println pkill("test")

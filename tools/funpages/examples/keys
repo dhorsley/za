@@ -1,2 +1,2 @@
 # Example for keys
-keys(map(.a 1, .b 2))  # usage
+println keys(map(.a 1, .b 2))

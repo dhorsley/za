@@ -1,2 +1,2 @@
 # Example for join
-join(["a", "b", "c"])  # usage
+println join(["a", "b", "c"])

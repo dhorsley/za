@@ -1,0 +1,7 @@
+# Example for async_wait_startup
+try
+    var h = map(.job 1)
+    async_wait_startup(h)
+catch err
+    println "Async wait failed"
+endtry

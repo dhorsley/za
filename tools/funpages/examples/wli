@@ -1,0 +1,2 @@
+# Example for wli
+println wli("Item")

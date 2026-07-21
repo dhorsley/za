@@ -1,2 +1,2 @@
 # Example for is_dir
-is_dir("hello")  # usage
+println is_dir("hello")

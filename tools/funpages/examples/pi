@@ -1,2 +1,2 @@
 # Example for pi
-pi()  # usage
+println pi()

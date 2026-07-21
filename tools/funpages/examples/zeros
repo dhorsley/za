@@ -1,2 +1,2 @@
 # Example for zeros
-zeros(3, 3)  # usage
+println zeros(3, 4)

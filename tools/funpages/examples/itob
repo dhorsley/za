@@ -1,2 +1,2 @@
 # Example for itob
-itob(42)  # usage
+println itob(42)

@@ -1,0 +1,6 @@
+# Example for error_message
+try
+    println error_message()
+catch err
+    println "Error handler only"
+endtry

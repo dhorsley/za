@@ -1,2 +1,2 @@
 # Example for interpolate
-interpolate("hello")  # usage
+println interpolate("hello")

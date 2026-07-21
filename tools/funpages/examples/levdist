@@ -1,2 +1,2 @@
 # Example for levdist
-levdist("hello", "hello")  # usage
+println levdist("hello", "hello")

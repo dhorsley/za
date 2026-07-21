@@ -1,2 +1,2 @@
 # Example for reg_match
-reg_match("hello", "hello")  # usage
+println reg_match("hello world", "world")

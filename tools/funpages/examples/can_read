@@ -1,2 +1,2 @@
 # Example for can_read
-can_read("hello")  # usage
+println can_read("hello")

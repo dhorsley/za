@@ -1,4 +1,8 @@
 # Example for fwrite
-fh = fopen("/tmp/za_fwrite.txt", "w")
-fwrite(fh, "hello")
-fclose(fh)
+try
+    fp = fopen("/tmp/test.txt", "w")
+    println fwrite(fp, "hello")
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

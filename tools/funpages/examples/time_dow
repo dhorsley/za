@@ -1,2 +1,2 @@
 # Example for time_dow
-time_dow()  # usage
+println time_dow(42)

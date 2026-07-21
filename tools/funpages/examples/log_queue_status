@@ -1,2 +1,2 @@
 # Example for log_queue_status
-log_queue_status()  # usage
+println log_queue_status()

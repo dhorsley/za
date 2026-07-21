@@ -1,0 +1,7 @@
+# Example for tui_text
+try
+    tui_new()
+    tui_text(0, 0, "Hello")
+catch err
+    println "TUI not available"
+endtry

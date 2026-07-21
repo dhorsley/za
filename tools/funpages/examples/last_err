@@ -1,2 +1,2 @@
 # Example for last_err
-last_err()  # usage
+println last_err()

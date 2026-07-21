@@ -1,3 +1,8 @@
 # Example for web_serve_start
-println web_serve_start("/var/www",8080)
-
+try
+    id = web_serve_start("/tmp", 18080)
+    println web_serve_up(id)
+    web_serve_stop(id)
+catch err
+    println "Web server error"
+endtry

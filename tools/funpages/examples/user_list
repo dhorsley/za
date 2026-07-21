@@ -1,2 +1,2 @@
 # Example for user_list
-user_list()  # usage
+println user_list()

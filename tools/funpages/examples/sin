@@ -1,2 +1,2 @@
 # Example for sin
-sin(42)  # usage
+println sin(42)

@@ -1,0 +1,4 @@
+# Example for svg_title
+h = svg_start("test.svg", 100, 100)
+svg_title(h, "Test")
+svg_end(h)

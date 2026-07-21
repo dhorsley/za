@@ -1,2 +1,2 @@
 # Example for term
-term()  # usage
+println term()

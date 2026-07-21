@@ -1,2 +1,2 @@
 # Example for dinfo
-x = dinfo()
+println dinfo()

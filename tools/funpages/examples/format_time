@@ -1,2 +1,2 @@
 # Example for format_time
-format_time()  # usage
+println format_time(42)

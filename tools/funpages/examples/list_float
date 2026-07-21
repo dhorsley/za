@@ -1,2 +1,2 @@
 # Example for list_float
-list_float([1.1, 2.2, 3.3])  # usage
+println list_float([1, 2, 3])

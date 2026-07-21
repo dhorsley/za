@@ -1,2 +1,2 @@
 # Example for import_errors
-import_errors("hello")  # usage
+println import_errors("hello")

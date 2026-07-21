@@ -1,4 +1,5 @@
 # Example for zip_extract_file
-write_file("/tmp/za_zip.txt", "hello")
-zip_create("/tmp/za_test.zip", ["/tmp/za_zip.txt"])
-zip_extract_file("/tmp/za_test.zip", ["/tmp/za_zip.txt"], "/tmp/za_extract_file")
+zip_create("/tmp/za_test.zip", [])
+write_file("/tmp/za_test.txt", "hello")
+zip_add("/tmp/za_test.zip", ["/tmp/za_test.txt"])
+zip_extract_file("/tmp/za_test.zip", ["/tmp/za_test.txt"], "/tmp/za_zip_single.txt")

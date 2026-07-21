@@ -1,2 +1,2 @@
 # Example for acosh
-acosh(42)  # usage
+println acosh(42)

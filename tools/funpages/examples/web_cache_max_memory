@@ -1,2 +1,2 @@
 # Example for web_cache_max_memory
-web_cache_max_memory(42)  # usage
+web_cache_max_memory(1000000)

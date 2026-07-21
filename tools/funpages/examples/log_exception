@@ -1,2 +1,2 @@
 # Example for log_exception
-log_exception("hello", "hello")  # usage
+println log_exception(42, "hello")

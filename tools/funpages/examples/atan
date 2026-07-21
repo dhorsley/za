@@ -1,2 +1,2 @@
 # Example for atan
-atan(42)  # usage
+println atan(42)

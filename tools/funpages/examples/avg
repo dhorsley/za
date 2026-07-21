@@ -1,2 +1,2 @@
 # Example for avg
-avg([1, 2, 3])  # usage
+println avg(42)

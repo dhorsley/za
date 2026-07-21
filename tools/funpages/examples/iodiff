@@ -1,4 +1,8 @@
 # Example for iodiff
 r1 = sys_resources()
 r2 = sys_resources()
-iodiff(r1, r2, 1)
+try
+    println iodiff(r1, r2, 1)
+catch err
+    println "iodiff requires proper duration type"
+endtry

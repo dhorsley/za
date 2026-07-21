@@ -1,2 +1,2 @@
 # Example for email_add_header
-email_add_header("hello", "hello", "hello")  # usage
+println email_add_header("Subject: Test\n\nBody", "From", "test@example.com")

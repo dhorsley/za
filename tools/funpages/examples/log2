@@ -1,2 +1,2 @@
 # Example for log2
-log2(42)  # usage
+println log2(3.14)

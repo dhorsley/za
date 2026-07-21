@@ -1,2 +1,2 @@
 # Example for trunc
-trunc("hello", 42)  # usage
+println trunc("hello", 42)

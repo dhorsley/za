@@ -1,2 +1,2 @@
 # Example for push_front
-push_front("hello")  # usage
+println push_front(to_typed([2, 3], "[]int"), 1)

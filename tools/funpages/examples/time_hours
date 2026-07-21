@@ -1,2 +1,2 @@
 # Example for time_hours
-time_hours()  # usage
+println time_hours(42)

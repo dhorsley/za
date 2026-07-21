@@ -1,2 +1,2 @@
 # Example for as_float
-as_float("3.14")  # usage
+println as_float("hello")

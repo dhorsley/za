@@ -1,2 +1,2 @@
 # Example for asin
-asin(42)  # usage
+println asin(42)

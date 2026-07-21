@@ -1,2 +1,2 @@
 # Example for match
-match("hello", "hello")  # usage
+println match("hello", "hello")

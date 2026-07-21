@@ -1,2 +1,2 @@
 # Example for list_string
-list_string(["a","b"])  # usage
+println list_string([1, 2, 3])

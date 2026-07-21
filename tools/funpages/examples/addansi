@@ -1,2 +1,2 @@
 # Example for addansi
-addansi("hello")  # usage
+println addansi("hello")

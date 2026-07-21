@@ -1,0 +1,7 @@
+# Example for tui_progress_reset
+try
+    tui_new()
+    tui_progress_reset()
+catch err
+    println "TUI not available"
+endtry

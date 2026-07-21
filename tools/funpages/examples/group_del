@@ -1,0 +1,6 @@
+# Example for group_del
+try
+    group_del("testgroup")
+catch err
+    println "Group del failed"
+endtry

@@ -1,2 +1,2 @@
 # Example for as_string
-as_string("hello")  # usage
+println as_string(42)

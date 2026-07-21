@@ -1,2 +1,2 @@
 # Example for capture_shell
-capture_shell(true)  # usage
+println capture_shell(true)

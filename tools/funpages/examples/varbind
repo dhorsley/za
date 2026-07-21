@@ -1,2 +1,6 @@
 # Example for varbind
-varbind("hello")  # usage
+try
+    println varbind("myvar")
+catch err
+    println "varbind failed"
+endtry

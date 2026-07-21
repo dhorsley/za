@@ -1,2 +1,2 @@
 # Example for cron_next
-cron_next("0 0 * * *")  # usage
+println cron_next("0 0 * * *")

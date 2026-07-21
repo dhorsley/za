@@ -1,2 +1,2 @@
 # Example for fieldsort
-fieldsort("a\tb", 1, "\t")
+println fieldsort("b:2\na:1", 1, ":")

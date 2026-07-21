@@ -1,2 +1,2 @@
 # Example for lang
-lang()  # usage
+println lang()

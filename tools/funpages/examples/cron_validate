@@ -1,2 +1,2 @@
 # Example for cron_validate
-cron_validate("0 0 * * *")  # usage
+println cron_validate("0 0 * * *")

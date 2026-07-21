@@ -1,0 +1,2 @@
+# Example for wh2
+println wh2("Subtitle")

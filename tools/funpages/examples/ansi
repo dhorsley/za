@@ -1,2 +1,2 @@
 # Example for ansi
-ansi(true)  # usage
+println ansi(true)

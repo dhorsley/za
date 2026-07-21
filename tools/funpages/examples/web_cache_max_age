@@ -1,2 +1,2 @@
 # Example for web_cache_max_age
-web_cache_max_age(42)  # usage
+web_cache_max_age(3600)

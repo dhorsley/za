@@ -1,0 +1,2 @@
+# Example for wpage
+println wpage("Title", "Body content")

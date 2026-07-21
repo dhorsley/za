@@ -1,2 +1,2 @@
 # Example for kind
-kind("hello")  # usage
+println kind(42)

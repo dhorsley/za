@@ -1,2 +1,2 @@
 # Example for email_validate
-email_validate("hello")  # usage
+println email_validate("hello")

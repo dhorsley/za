@@ -2,5 +2,5 @@
 try
     panic("test")
 catch err
-    format_stack_trace(err["stack_trace"])
+    println format_stack_trace(err["stack_trace"])
 endtry

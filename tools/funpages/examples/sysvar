@@ -1,2 +1,2 @@
 # Example for sysvar
-sysvar("hello")  # usage
+println sysvar("hello")

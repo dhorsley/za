@@ -1,2 +1,2 @@
 # Example for sinh
-sinh(42)  # usage
+println sinh(42)

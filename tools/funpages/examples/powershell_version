@@ -1,2 +1,2 @@
 # Example for powershell_version
-powershell_version()  # usage
+println powershell_version()

@@ -1,2 +1,2 @@
 # Example for sizeof
-sizeof("hello")  # usage
+println sizeof(42)

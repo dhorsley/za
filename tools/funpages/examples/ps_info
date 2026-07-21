@@ -1,2 +1,2 @@
 # Example for ps_info
-ps_info(1)
+println ps_info(pid())

@@ -1,2 +1,2 @@
 # Example for pad
-pad("hello", 42, 42)  # usage
+println pad("hello", 42, 42)

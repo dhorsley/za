@@ -1,2 +1,2 @@
 # Example for collapse
-collapse("hello")  # usage
+println collapse("hello")

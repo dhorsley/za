@@ -1,2 +1,8 @@
 # Example for tui
-tui(map(.a 1, .b 2))  # usage
+try
+    tui_new()
+    tui("Hello World")
+    tui_clear()
+catch err
+    println "TUI not available"
+endtry

@@ -1,2 +1,2 @@
 # Example for pid
-pid()  # usage
+println pid()

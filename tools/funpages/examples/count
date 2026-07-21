@@ -1,2 +1,2 @@
 # Example for count
-count("hello")  # usage
+println count("hello")

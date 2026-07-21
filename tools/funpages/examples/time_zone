@@ -1,2 +1,2 @@
 # Example for time_zone
-time_zone()  # usage
+println time_zone(42)

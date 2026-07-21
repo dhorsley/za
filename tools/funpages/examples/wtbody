@@ -1,0 +1,2 @@
+# Example for wtbody
+println wtbody("body content")

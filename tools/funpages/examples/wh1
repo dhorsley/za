@@ -1,0 +1,2 @@
+# Example for wh1
+println wh1("Title")

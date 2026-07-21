@@ -1,2 +1,2 @@
 # Example for seed
-seed(42)
+println seed(42)

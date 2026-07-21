@@ -1,2 +1,2 @@
 # Example for bash_versinfo
-bash_versinfo()  # usage
+println bash_versinfo()

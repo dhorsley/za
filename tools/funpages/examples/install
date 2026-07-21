@@ -1,7 +1,6 @@
 # Example for install
-result = install("bash")
-if result == 0
-    println "Install/verified OK"
-else
-    println format("Install failed with code: %d", result)
-endif
+try
+    println install("test-package")
+catch err
+    println "Install failed"
+endtry

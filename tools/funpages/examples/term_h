@@ -1,2 +1,2 @@
 # Example for term_h
-term_h()  # usage
+println term_h()

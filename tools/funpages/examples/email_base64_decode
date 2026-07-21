@@ -1,2 +1,2 @@
 # Example for email_base64_decode
-email_base64_decode("aGVsbG8=")  # usage
+println email_base64_decode("SGVsbG8=")

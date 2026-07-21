@@ -1,2 +1,6 @@
 # Example for progress_bar
-progress_bar(42)  # usage
+try
+    progress_bar(50, 100)
+catch err
+    println "Error"
+endtry

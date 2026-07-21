@@ -1,2 +1,2 @@
 # Example for flatten
-flatten([1, 2, 3])  # usage
+println flatten([[1, 2], [3, 4]])

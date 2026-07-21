@@ -1,2 +1,2 @@
 # Example for web_gzip_enable
-web_gzip_enable(true)  # usage
+web_gzip_enable(true)

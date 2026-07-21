@@ -1,2 +1,6 @@
 # Example for email_get_body
-email_get_body("Subject: test\n\nbody\n")  # usage
+try
+    println email_get_body("Subject: Test\n\nBody")
+catch err
+    println "Email parse failed"
+endtry

@@ -1,2 +1,2 @@
 # Example for anytrue
-anytrue(list_bool([true, false, true]))  # usage
+println anytrue(to_typed([true, false, true], "[]bool"))

@@ -1,2 +1,2 @@
 # Example for atanh
-atanh(42)  # usage
+println atanh(42)

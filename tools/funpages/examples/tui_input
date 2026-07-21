@@ -1,0 +1,7 @@
+# Example for tui_input
+try
+    tui_new()
+    println tui_input("Enter name:", "")
+catch err
+    println "TUI not available"
+endtry

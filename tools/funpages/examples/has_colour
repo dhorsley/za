@@ -1,2 +1,2 @@
 # Example for has_colour
-has_colour()  # usage
+println has_colour()

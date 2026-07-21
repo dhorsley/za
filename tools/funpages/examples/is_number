@@ -1,2 +1,2 @@
 # Example for is_number
-is_number(42)  # usage
+println is_number("hello")

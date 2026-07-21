@@ -1,0 +1,2 @@
+# Example for wtd
+println wtd("Cell")

@@ -1,2 +1,2 @@
 # Example for reg_replace
-reg_replace("hello", "hello", "hello")  # usage
+println reg_replace("hello world", "world", "universe")

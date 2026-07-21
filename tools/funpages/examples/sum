@@ -1,2 +1,2 @@
 # Example for sum
-sum([1,2,3])  # usage
+println sum([1, 2, 3, 4, 5])

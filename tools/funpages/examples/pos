@@ -1,2 +1,2 @@
 # Example for pos
-pos(42, 42)  # usage
+println pos(42, 42)

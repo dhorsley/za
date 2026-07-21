@@ -1,2 +1,2 @@
 # Example for shell_pid
-shell_pid()  # usage
+println shell_pid()

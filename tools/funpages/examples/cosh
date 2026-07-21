@@ -1,2 +1,2 @@
 # Example for cosh
-cosh(42)  # usage
+println cosh(42)

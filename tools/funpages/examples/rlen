@@ -1,2 +1,2 @@
 # Example for rlen
-rlen("hello")  # usage
+println rlen("hello")

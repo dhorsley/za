@@ -1,2 +1,2 @@
 # Example for ln
-ln(42)  # usage
+println ln(3.14)

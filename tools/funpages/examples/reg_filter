@@ -1,2 +1,2 @@
 # Example for reg_filter
-reg_filter("hello", "hello")  # usage
+println reg_filter("hello\nworld", "^h")

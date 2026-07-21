@@ -1,2 +1,2 @@
 # Example for zip
-zip([1, 2], [3, 4])  # usage
+println zip([1, 2, 3], [1, 2, 3])

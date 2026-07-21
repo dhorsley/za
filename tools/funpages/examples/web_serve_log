@@ -1,3 +1,2 @@
 # Example for web_serve_log
-web_serve_log("entry")
-
+println web_serve_log()

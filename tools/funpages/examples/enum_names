@@ -1,2 +1,2 @@
 # Example for enum_names
-enum_names("hello")  # usage
+println enum_names("hello")

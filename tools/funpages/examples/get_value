@@ -1,2 +1,2 @@
 # Example for get_value
-get_value("hello", "hello")  # usage
+println get_value("name=John\nage=30", "name")

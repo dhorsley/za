@@ -1,2 +1,2 @@
 # Example for term_w
-term_w()  # usage
+println term_w()

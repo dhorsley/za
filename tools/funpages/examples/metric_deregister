@@ -1,2 +1,2 @@
 # Example for metric_deregister
-metric_deregister("hello")  # usage
+println metric_deregister("test")

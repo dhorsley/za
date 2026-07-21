@@ -1,2 +1,2 @@
 # Example for logn
-logn(10, 100)
+println logn(3.14, 3.14)

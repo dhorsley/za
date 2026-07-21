@@ -1,2 +1,2 @@
 # Example for time_month
-time_month()  # usage
+println time_month(42)

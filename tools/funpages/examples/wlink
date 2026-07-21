@@ -1,2 +1,2 @@
 # Example for wlink
-wlink("hello")  # usage
+println wlink("https://example.com")

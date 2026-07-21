@@ -1,2 +1,2 @@
 # Example for web_max_clients
-web_max_clients()  # usage
+println web_max_clients()

@@ -1,2 +1,2 @@
 # Example for fgrgb
-fgrgb(42, 42, 42)  # usage
+println fgrgb(3.14, 3.14, 3.14)

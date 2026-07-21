@@ -1,2 +1,2 @@
 # Example for as_int64
-as_int64("42")  # usage
+println as_int64("42")

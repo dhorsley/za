@@ -1,2 +1,2 @@
 # Example for format_date
-format_date()  # usage
+println format_date(42)

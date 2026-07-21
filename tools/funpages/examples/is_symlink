@@ -1,2 +1,2 @@
 # Example for is_symlink
-is_symlink(42)  # usage
+println is_symlink(42)

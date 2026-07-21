@@ -1,2 +1,2 @@
 # Example for min
-min([3, 1, 2])  # usage
+println min(42)

@@ -1,3 +1,2 @@
 # Example for md5sum_file
-write_file("/tmp/za_md5.txt", "hello")
-md5sum_file("/tmp/za_md5.txt")
+println md5sum_file("hello")

@@ -1,2 +1,2 @@
 # Example for append
-append("hello")  # usage
+println append(42)

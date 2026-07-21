@@ -1,0 +1,6 @@
+# Example for group_mod
+try
+    group_mod("testgroup", map(.gid 1000))
+catch err
+    println "Group mod failed"
+endtry

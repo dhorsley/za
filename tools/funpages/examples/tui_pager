@@ -1,0 +1,7 @@
+# Example for tui_pager
+try
+    tui_new()
+    tui_pager("Line 1\nLine 2\nLine 3")
+catch err
+    println "TUI not available"
+endtry

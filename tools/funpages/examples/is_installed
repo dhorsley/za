@@ -1,2 +1,2 @@
 # Example for is_installed
-is_installed("hello")  # usage
+println is_installed("bash")

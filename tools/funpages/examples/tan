@@ -1,2 +1,2 @@
 # Example for tan
-tan(42)  # usage
+println tan(42)

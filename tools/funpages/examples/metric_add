@@ -1,2 +1,2 @@
 # Example for metric_add
-metric_add("hello", 42)  # usage
+println metric_add("counter", "test", 1)

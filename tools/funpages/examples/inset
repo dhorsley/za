@@ -1,2 +1,2 @@
 # Example for inset
-inset("hello", 42)  # usage
+println inset("hello", 42)

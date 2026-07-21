@@ -1,2 +1,2 @@
 # Example for lower
-lower("hello")  # usage
+println lower("hello")

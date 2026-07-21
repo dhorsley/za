@@ -1,2 +1,2 @@
 # Example for uhex32
-uhex32("FF")
+println uhex32("FF")

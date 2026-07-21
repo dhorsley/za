@@ -1,2 +1,2 @@
 # Example for e
-e()  # usage
+println e()

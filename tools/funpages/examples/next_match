@@ -1,2 +1,2 @@
 # Example for next_match
-next_match("hello", "hello", 42)  # usage
+println next_match("hello", "l", 0)

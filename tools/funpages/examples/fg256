@@ -1,2 +1,2 @@
 # Example for fg256
-fg256(42)  # usage
+println fg256(3.14)

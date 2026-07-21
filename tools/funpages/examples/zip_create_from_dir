@@ -1,4 +1,4 @@
 # Example for zip_create_from_dir
-mkdir("/tmp/za_zip_new_123")
-write_file("/tmp/za_zip_new_123/file.txt", "hello")
-zip_create_from_dir("/tmp/za_test_new.zip", "/tmp/za_zip_new_123")
+d = temp_dir("za-zip-")
+write_file(d + "/a.txt", "hello")
+zip_create_from_dir("/tmp/za_test_dir_temp.zip", d)

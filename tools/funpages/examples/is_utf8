@@ -1,2 +1,2 @@
 # Example for is_utf8
-is_utf8("hello")  # usage
+println is_utf8("hello")

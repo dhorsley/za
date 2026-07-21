@@ -1,2 +1,2 @@
 # Example for line_filter
-line_filter("hello\nworld", "hello")  # usage
+println line_filter("hello", "hello")

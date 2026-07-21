@@ -1,2 +1,2 @@
 # Example for list_int
-list_int([1, 2, 3])  # usage
+println list_int([1, 2, 3])

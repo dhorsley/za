@@ -1,2 +1,2 @@
 # Example for get_col
-get_col()  # usage
+println get_col()

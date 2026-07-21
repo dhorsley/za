@@ -1,2 +1,2 @@
 # Example for is_sticky
-is_sticky(42)  # usage
+println is_sticky(42)

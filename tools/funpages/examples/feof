@@ -1,5 +1,9 @@
 # Example for feof
-fh = fopen("/tmp/za_feof.txt", "w")
-fclose(fh)
-fh = fopen("/tmp/za_feof.txt", "r")
-feof(fh)
+try
+    write_file("/tmp/test.txt", "hello")
+    fp = fopen("/tmp/test.txt", "r")
+    println feof(fp)
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

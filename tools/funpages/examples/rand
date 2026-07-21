@@ -1,2 +1,2 @@
 # Example for rand
-rand(42)  # usage
+println rand(42)

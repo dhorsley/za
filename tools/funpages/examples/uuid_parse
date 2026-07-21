@@ -1,2 +1,2 @@
 # Example for uuid_parse
-uuid_parse("hello")  # usage
+println uuid_parse("hello")

@@ -1,3 +1,7 @@
 # Example for fclose
-fh = fopen("/tmp/za_fclose.txt", "w")
-fclose(fh)
+try
+    fp = fopen("/tmp/test.txt", "w")
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

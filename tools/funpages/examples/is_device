@@ -1,2 +1,2 @@
 # Example for is_device
-is_device(42)  # usage
+println is_device(42)

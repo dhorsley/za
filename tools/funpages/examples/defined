@@ -1,2 +1,2 @@
 # Example for defined
-defined("x")  # usage
+println defined("hello")

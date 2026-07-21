@@ -1,2 +1,7 @@
 # Example for tui_table_select
-tui_table_select(map(.a 1, .b 2))  # usage
+try
+    tui_new()
+    println tui_table_select(["Col1", "Col2"], [["a", 1], ["b", 2]])
+catch err
+    println "TUI not available"
+endtry

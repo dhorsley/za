@@ -1,2 +1,2 @@
 # Example for btoi
-btoi(true)  # usage
+println btoi(true)

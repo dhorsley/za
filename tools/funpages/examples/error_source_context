@@ -1,0 +1,6 @@
+# Example for error_source_context
+try
+    println error_source_context(1, 1)
+catch err
+    println "Error handler only"
+endtry

@@ -1,2 +1,6 @@
 # Example for argv
-argv()  # usage
+try
+    println argv(0)
+catch err
+    println "No command-line arguments available"
+endtry

@@ -1,0 +1,6 @@
+# Example for error_call_chain
+try
+    println error_call_chain()
+catch err
+    println "Error handler only"
+endtry

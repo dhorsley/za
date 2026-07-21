@@ -1,4 +1,9 @@
 # Example for ftell
-write_file("/tmp/za_ftell.txt", "hello")
-fh = fopen("/tmp/za_ftell.txt", "r")
-ftell(fh)
+try
+    write_file("/tmp/test.txt", "hello world")
+    fp = fopen("/tmp/test.txt", "r")
+    println ftell(fp)
+    fclose(fp)
+catch err
+    println "File operation failed"
+endtry

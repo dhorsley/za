@@ -1,2 +1,2 @@
 # Example for web_cache_purge
-web_cache_purge()  # usage
+web_cache_purge()

@@ -1,2 +1,2 @@
 # Example for quartz_to_cron
-quartz_to_cron("0 0 0 * * ?")
+println quartz_to_cron("0 0 12 * * ?")

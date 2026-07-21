@@ -1,2 +1,2 @@
 # Example for parent
-parent("hello")  # usage
+println parent("hello")
