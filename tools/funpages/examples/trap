@@ -1,2 +1,12 @@
 # Example for trap
-trap("SIGINT", "println \"Caught SIGINT\"")
+
+def cleanup()
+  println "**break"
+  exit 1
+end
+
+trap("int", "cleanup()")
+
+while
+  pause 1000
+endwhile
