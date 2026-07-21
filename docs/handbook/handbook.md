@@ -2180,7 +2180,7 @@ if ip_match
 endif
 
 # String formatting for reports
-report = "Server: {0}, CPU: {1}%, Memory: {2}%".format(hostname, cpu_usage, memory_usage)
+report = "Server: %v, CPU: %v%%, Memory: %v%%".format(hostname, cpu_usage, memory_usage)
 ```
 
 ### 38.2 List and Array Operations
@@ -4159,7 +4159,8 @@ Za’s standard library is implemented in the interpreter source as a set of bui
 
 This appendix lists the calls **by category**. For each category, all function names are listed, followed by a short “commonly used” section.
 
-> This appendix intentionally does not repeat full per-function documentation, because Za can generate function reference pages automatically and the REPL supports `help` and `func(...)` lookups.
+> This appendix does not repeat full per-function documentation. The Za REPL supports `help` and `func(...)` lookups.
+Also, the library is covered here: [za standard library](https://zalang.org/user/data/za/funpages/)
 
 
 ## array

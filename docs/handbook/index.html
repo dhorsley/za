@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Daniel Horsley" />
   <title>Za - The Za Programming Language Handbook</title>
   <style>
-    code{white-space: pre-wrap;}
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -2088,7 +2094,7 @@ if ip_match
 endif
 
 # String formatting for reports
-report = &quot;Server: {0}, CPU: {1}%, Memory: {2}%&quot;.format(hostname, cpu_usage, memory_usage)</code></pre>
+report = &quot;Server: %v, CPU: %v%%, Memory: %v%%&quot;.format(hostname, cpu_usage, memory_usage)</code></pre>
 <h3 id="list-and-array-operations">38.2 List and Array Operations</h3>
 <p>Lists and arrays are essential for managing collections of servers,
 files, or data points:</p>
@@ -3773,10 +3779,11 @@ imports.</p>
 category, all function names are listed, followed by a short “commonly
 used” section.</p>
 <blockquote>
-<p>This appendix intentionally does not repeat full per-function
-documentation, because Za can generate function reference pages
-automatically and the REPL supports <code>help</code> and
-<code>func(...)</code> lookups.</p>
+<p>This appendix does not repeat full per-function documentation. The Za
+REPL supports <code>help</code> and <code>func(...)</code> lookups.
+Also, the library is covered here: <a
+href="https://zalang.org/user/data/za/funpages/">za standard
+library</a></p>
 </blockquote>
 <h2 id="array">array</h2>
 <p><strong>Functions (23):</strong></p>
