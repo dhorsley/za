@@ -781,7 +781,6 @@ func main() {
     var a_enable_asserts = flag.Bool("a", false, "enable assertions. default is false, unless -t specified.")
     var a_enable_profiling = flag.Bool("P", false, "enable profiling of Za interpreter phases.")
     var a_metrics_port = flag.Int("M", 0, "enable Prometheus metrics exporter on specified port (e.g. -M 9091)")
-    var a_check_syntax = flag.Bool("K", false, "check syntax only (do not execute)")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -1802,47 +1801,36 @@ func main() {
         col++
     }
 
-    // tokenise and part-parse the input
-    if len(input) > 0 {
-        fileMap.Store(uint32(0), exec_file_name)
-        fileMap.Store(uint32(1), exec_file_name)
-        var badword bool
-        if debugMode {
-            start := time.Now()
-            badword, _ = phraseParse(ctx, "main", input, 0, 0)
-            elapsed := time.Since(start)
-            pf("(timings-main) elapsed in parse translation for main : %v\n", elapsed)
-        } else {
-            badword, _ = phraseParse(ctx, "main", input, 0, 0)
-        }
-
-        // If syntax-check mode, exit with appropriate code
-        if *a_check_syntax {
-            if badword {
-                os.Exit(1)
+        // tokenise and part-parse the input
+        if len(input) > 0 {
+            fileMap.Store(uint32(0), exec_file_name)
+            fileMap.Store(uint32(1), exec_file_name)
+            if debugMode {
+                start := time.Now()
+                phraseParse(ctx, "main", input, 0, 0)
+                elapsed := time.Since(start)
+                pf("(timings-main) elapsed in parse translation for main : %v\n", elapsed)
+            } else {
+                phraseParse(ctx, "main", input, 0, 0)
             }
-            os.Exit(0)
-        }
 
-        // initialise the main program
+            // initialise the main program
 
-        mainloc, _ := GetNextFnSpace(true, "main", call_s{prepared: false})
-        calllock.Lock()
-        cs := call_s{}
-        cs.caller = 0
-        cs.base = 1
-        cs.fs = "main"
-        atomic.StoreInt32(&cs.callLine, 1) // Main program entry point
-        calltable[mainloc] = cs
-        calllock.Unlock()
-        currentModule = "main"
-        if *a_program != "" {
-            vset(nil, 1, &mident, "_stdin", string(data))
-        }
+            mainloc, _ := GetNextFnSpace(true, "main", call_s{prepared: false})
+            calllock.Lock()
+            cs := call_s{}
+            cs.caller = 0
+            cs.base = 1
+            cs.fs = "main"
+            atomic.StoreInt32(&cs.callLine, 1) // Main program entry point
+            calltable[mainloc] = cs
+            calllock.Unlock()
+            currentModule = "main"
+            if *a_program != "" {
+                vset(nil, 1, &mident, "_stdin", string(data))
+            }
 
-        if !*a_check_syntax {
             Call(ctx, MODE_NEW, &mident, mainloc, ciMain, false, nil, "", []string{}, nil)
-        }
 
         // Check if main function returned with unhandled exception
         calllock.Lock()

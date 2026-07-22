@@ -523,12 +523,7 @@ func (s *LSPServer) runDiagnostics(uri string) {
 	// Run structural diagnostics
 	structuralDiags := s.getStructuralDiagnostics(uri, doc.Content)
 
-	// Run subprocess diagnostics (safe with -K flag)
-	subprocessDiags := s.getSubprocessDiagnostics(uri, doc.Content)
-
-	// Merge
-	allDiags := append(structuralDiags, subprocessDiags...)
-	s.publishDiagnostics(uri, allDiags)
+	s.publishDiagnostics(uri, structuralDiags)
 }
 
 func (s *LSPServer) handleDidChange(msg *JSONRPCMessage) {
@@ -890,108 +885,6 @@ func stripANSI(s string) string {
 		result.WriteByte(s[i])
 	}
 	return result.String()
-}
-
-func (s *LSPServer) getSubprocessDiagnostics(uri string, content string) []Diagnostic {
-	diagnostics := []Diagnostic{}
-
-	// Write to temp file
-	tmpFile := fmt.Sprintf("/tmp/za-lsp-diag-%d.za", time.Now().UnixNano())
-	if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
-		return diagnostics
-	}
-	defer os.Remove(tmpFile)
-
-	// Run za parser with -K flag to check syntax only (no execution)
-	cmd := exec.Command(s.zaPath, "-K", tmpFile)
-	output, err := cmd.CombinedOutput()
-	outputStr := stripANSI(string(output))
-
-	// If there's no error, no diagnostics needed
-	if err == nil {
-		return diagnostics
-	}
-
-	// Parse various error formats from ZA output
-	lines := strings.Split(outputStr, "\n")
-	for l, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		// Format 1: "Error found on line N in text"
-		if strings.Contains(line, "Error found on line") {
-			var lineNum int
-			var text string
-			if _, err := fmt.Sscanf(line, "Error found on line %d in %s", &lineNum, &text); err == nil {
-				diagnostics = append(diagnostics, Diagnostic{
-					Range:    Range{Start: Position{Line: lineNum - 1, Character: 0}, End: Position{Line: lineNum - 1, Character: 80}},
-					Severity: 1,
-					Message:  fmt.Sprintf("Syntax error: %s", text),
-					Source:   "za",
-				})
-				continue
-			}
-		}
-
-		// Format 2: "Error in main/main (line #N) : ..."
-		// This can be either a syntax error or a runtime error (missing library, etc.)
-		// We distinguish them by checking the following lines for runtime indicators.
-		if strings.Contains(line, "Error in main/main (line #") {
-			start := strings.Index(line, "line #")
-			if start != -1 {
-				numStr := ""
-				for i := start + 6; i < len(line) && line[i] >= '0' && line[i] <= '9'; i++ {
-					numStr += string(line[i])
-				}
-				if numStr != "" {
-					lineNum := 0
-					fmt.Sscanf(numStr, "%d", &lineNum)
-					msg := line
-					if idx := strings.Index(line, ") :"); idx != -1 {
-						msg = strings.TrimSpace(line[idx+3:])
-					}
-
-					// Check next few lines for runtime error indicators
-					isRuntime := false
-					runtimeIndicators := []string{
-						"Failed to load C library",
-						"cannot open shared object",
-						"No such file or directory",
-						"Permission denied",
-						"Segmentation fault",
-						"Illegal instruction",
-						"Floating point exception",
-						"Killed",
-					}
-					for j := l + 1; j < len(lines) && j < l+5; j++ {
-						nextLine := strings.TrimSpace(lines[j])
-						for _, indicator := range runtimeIndicators {
-							if strings.Contains(nextLine, indicator) {
-								isRuntime = true
-								break
-							}
-						}
-						if isRuntime {
-							break
-						}
-					}
-
-					if !isRuntime {
-						diagnostics = append(diagnostics, Diagnostic{
-							Range:    Range{Start: Position{Line: lineNum - 1, Character: 0}, End: Position{Line: lineNum - 1, Character: 80}},
-							Severity: 1,
-							Message:  msg,
-							Source:   "za",
-						})
-					}
-				}
-			}
-		}
-	}
-
-	return diagnostics
 }
 
 // extractSymbols parses Za file for local definitions using token-based analysis

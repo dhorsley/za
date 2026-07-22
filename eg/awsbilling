@@ -105,16 +105,17 @@ end
 
 def async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
     if granularity == "DAILY"
-        costs, err = fetch_daily_costs(profile, region, cost_start, cost_endt)
+        costs, max_cost, err = fetch_daily_costs(profile, region, cost_start, cost_endt)
     else
         costs, err = fetch_costs(profile, region, cost_start, cost_endt)
     endif
-    on costs == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .err err)
+    on costs == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .max_cost 0.0, .err err)
     sort_costs(costs, sort_mode)
     forecast, ferr = fetch_forecast(profile, region, forecast_start, forecast_endt)
     prev_start, prev_end = prev_period(cost_start)
     prev_map, _ = fetch_prev_month_costs(profile, region, prev_start, prev_end)
-    return map(.costs costs, .forecast forecast, .prev_costs_map prev_map, .err nil)
+    on granularity != "DAILY" do max_cost = 0.0
+    return map(.costs costs, .forecast forecast, .prev_costs_map prev_map, .max_cost max_cost, .err nil)
 end
 
 def async_load(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
@@ -195,6 +196,31 @@ def prev_period(start)
     endif
     pe = as_string(ny) + "-" + pad(as_string(nm), 1, 2, "0") + "-01"
     return ps, pe
+end
+
+def next_day(date_str)
+    result =| date -d "{date_str} + 1 day" +%Y-%m-%d 2>/dev/null
+    if result.okay
+        d = $st result.out
+        on len(d) == 10 do return d
+    endif
+    # Manual fallback
+    y = as_int(substr(date_str, 0, 4))
+    m = as_int(substr(date_str, 5, 2))
+    d = as_int(substr(date_str, 8, 2)) + 1
+    dim = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+        dim[2] = 29
+    endif
+    if d > dim[m]
+        d = 1
+        m = m + 1
+        if m > 12
+            m = 1
+            y = y + 1
+        endif
+    endif
+    return "{=as_string(y)}-{=pad(as_string(m), 1, 2, "0")}-{=pad(as_string(d), 1, 2, "0")}"
 end
 
 def period_label(start, endt)
@@ -317,7 +343,7 @@ def aws_ce(profile, args)
     result =| {cmd}
     if not result.okay
         err_msg = result.err
-        on err_msg == "" do err_msg = trim(result.out)
+        on err_msg == "" do err_msg = $st result.out
         return nil, err_msg
     endif
     return json_decode(result.out), nil
@@ -443,10 +469,10 @@ def fetch_daily_costs(profile, region, start, endt)
     args = "get-cost-and-usage --time-period Start={start},End={endt} --granularity DAILY --metrics AmortizedCost"
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
     data, err = aws_ce(profile, args)
-    on data == nil do return nil, err
+    on data == nil do return nil, 0.0, err
     results = data["ResultsByTime"]
-    on results == nil do return nil, "No ResultsByTime in response"
-    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    on results == nil do return nil, 0.0, "No ResultsByTime in response"
+    on len(results) == 0 do return nil, 0.0, "Empty ResultsByTime"
     costs = []
     total = 0.0
     max_cost = 0.0
@@ -468,7 +494,7 @@ def fetch_daily_costs(profile, region, start, endt)
         total = total + amount
         on amount > max_cost do max_cost = amount
     endfor
-    on len(costs) == 0 do return nil, "No cost data parsed"
+    on len(costs) == 0 do return nil, 0.0, "No cost data parsed"
     for i = 0 to len(costs)-1
         pct_val = 0.0
         on total > 0 do pct_val = costs[i].cost / total * 100.0
@@ -480,7 +506,7 @@ def fetch_daily_costs(profile, region, start, endt)
         on max_cost > 0 do bar_pct = costs[i].cost / max_cost * 100.0
         costs[i].bar = progress_bar(bar_pct, 20, "\u2588", "\u2591")
     endfor
-    return costs, nil
+    return costs, max_cost, nil
 end
 
 def fetch_forecast(profile, region, start, endt)
@@ -533,9 +559,9 @@ def fetch_service_daily(profile, region, service_name, start, endt)
     on region != "" do args = args + " --filter '" + filter_expr + "'"
     on region == "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "SERVICE", .Values [service_name]))) + "'"
     data, err = aws_ce(profile, args)
-    on data == nil do return nil, err
+    on data == nil do return nil, 0.0, err
     results = data["ResultsByTime"]
-    on results == nil do return nil, "No ResultsByTime"
+    on results == nil do return nil, 0.0, "No ResultsByTime"
     days = []
     max_cost = 0.0
     foreach period in results
@@ -550,6 +576,51 @@ def fetch_service_daily(profile, region, service_name, start, endt)
     return days, max_cost, nil
 end
 
+def fetch_day_services(profile, region, date_str)
+    next_d = next_day(date_str)
+    args = "get-cost-and-usage --time-period Start={date_str},End={next_d} --granularity DAILY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
+    on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    data, err = aws_ce(profile, args)
+    on data == nil do return nil, 0.0, err
+    results = data["ResultsByTime"]
+    on results == nil do return nil, 0.0, "No ResultsByTime"
+    on len(results) == 0 do return nil, 0.0, "Empty ResultsByTime"
+    period = results[0]
+    groups = period["Groups"]
+    on groups == nil do return nil, 0.0, "No Groups"
+    on len(groups) == 0 do return nil, 0.0, "No cost data"
+    services = []
+    total = 0.0
+    max_cost = 0.0
+    foreach g in groups
+        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        svc = g["Keys"][0]
+        on svc == nil do svc = "Unknown"
+        append_to(ref services, costrow(
+            .service svc,
+            .cost amount,
+            .cost_str "",
+            .pct "",
+            .pct_val 0.0,
+            .sort_val amount,
+            .bar ""
+        ))
+        total = total + amount
+        on amount > max_cost do max_cost = amount
+    endfor
+    on len(services) == 0 do return nil, 0.0, "No cost data parsed"
+    for i = 0 to len(services) - 1
+        pct_val = 0.0
+        on total > 0 do pct_val = services[i].cost / total * 100.0
+        services[i].pct_val = pct_val
+        services[i].pct = "{=as_string(pct_val.as_bigf, 1)}%"
+    endfor
+    sort_costs(services, "cost_desc")
+    return services, max_cost, nil
+end
+
 def render_mini_chart(days, max_cost, curr_code)
     if len(days) == 0
         return "No daily data"
@@ -561,6 +632,247 @@ def render_mini_chart(days, max_cost, curr_code)
         append_to(ref lines, "  " + d.date + "  " + convert_and_fmt(d.cost, curr_code) + "  " + bar)
     endfor
     return join(lines, "\n")
+end
+
+def partial_block(frac)
+    on frac >= 0.875 do return "\u2587"
+    on frac >= 0.625 do return "\u2586"
+    on frac >= 0.375 do return "\u2585"
+    on frac >= 0.125 do return "\u2583"
+    return "\u2581"
+end
+
+def render_daily_chart(all_costs, max_cost, curr_code, selected_date, start_row, start_col)
+    n = len(all_costs)
+    on n == 0 do return map(.text "No daily data", .lines 1)
+
+    # Keep chronological order (API already provides this)
+    chart_costs = all_costs
+
+    # Dimensions
+    label_w = 8
+    margin = label_w + 2
+    chart_h = term_h() - 14
+    on chart_h > 15 do chart_h = 15
+    on chart_h < 4 do chart_h = 4
+
+    on max_cost < 0.001 do max_cost = 0.001
+
+    parts = []
+    label_interval = chart_h / 4
+    on label_interval < 1 do label_interval = 1
+
+    # Y-axis labels and bar rows
+    for row = 0 to chart_h - 1
+        # Compute cost at this row level (from top down)
+        frac_from_top = row.as_float / chart_h.as_float
+        row_cost = max_cost * (1.0 - frac_from_top)
+        label = convert_and_fmt(row_cost, curr_code)
+        if len(label) > label_w
+            label = substr(label, 0, label_w)
+        endif
+        label = pad(label, -1, label_w, " ")
+
+        if row == 0 || row == chart_h - 1 || (row % label_interval == 0)
+            append_to(ref parts, pos(start_row + row, start_col) + label + " \u2502")
+        else
+            append_to(ref parts, pos(start_row + row, start_col) + pad("", -1, label_w, " ") + " \u2502")
+        endif
+
+        # Draw bar cells for this row
+        for col = 0 to n - 1
+            cost = chart_costs[col].cost
+            bar_h = cost / max_cost * chart_h.as_float
+            full = as_int(bar_h)
+            frac = bar_h - full.as_float
+
+            # Is this row part of this bar?
+            # row 0 is top, row chart_h-1 is bottom
+            bar_top = chart_h - 1 - full
+            if frac > 0.0 && full < chart_h
+                bar_top = bar_top - 1
+            endif
+
+            if row >= bar_top && row <= chart_h - 1
+                cell = "\u2588"
+                if row == bar_top && frac > 0.0 && full < chart_h
+                    cell = partial_block(frac)
+                endif
+                if selected_date != "" && chart_costs[col].service == selected_date
+                    cell = "[#6]" + cell + "[#-]"
+                endif
+                append_to(ref parts, pos(start_row + row, start_col + margin + col * 3 + 1) + cell)
+            endif
+        endfor
+    endfor
+
+    # Zero line
+    zero_label = pad(convert_and_fmt(0.0, curr_code), -1, label_w, " ")
+    append_to(ref parts, pos(start_row + chart_h, start_col) + zero_label + " \u253c")
+    for c = 0 to n * 3 - 1
+        append_to(ref parts, pos(start_row + chart_h, start_col + margin + c) + "\u2500")
+    endfor
+
+    # Day numbers
+    for col = 0 to n - 1
+        day_str = substr(chart_costs[col].service, 8, 2)
+        append_to(ref parts, pos(start_row + chart_h + 1, start_col + margin + col * 3) + day_str)
+    endfor
+
+    return map(.text join(parts, ""), .lines chart_h + 2)
+end
+
+def svc_color(idx)
+    colors = [
+        fgrgb(255, 50, 50),   fgrgb(50, 255, 50),   fgrgb(50, 50, 255),
+        fgrgb(255, 200, 0),   fgrgb(255, 0, 255),   fgrgb(0, 255, 255),
+        fgrgb(255, 100, 0),   fgrgb(200, 50, 200),  fgrgb(100, 255, 100),
+        fgrgb(100, 100, 255), fgrgb(255, 255, 50),  fgrgb(255, 50, 150),
+        fgrgb(50, 200, 200),  fgrgb(200, 150, 50),  fgrgb(150, 50, 255),
+        fgrgb(50, 255, 150),  fgrgb(255, 150, 100), fgrgb(100, 150, 255),
+        fgrgb(200, 255, 50),  fgrgb(255, 100, 100)
+    ]
+    return colors[idx % 20]
+end
+
+def render_service_chart(services, max_cost, curr_code, start_row, start_col, max_h, legend_name_width)
+    n = len(services)
+    on n == 0 do return map(.text "No service data", .lines 1)
+
+    # Keep only >$0
+    filtered = []
+    foreach s in services
+        on s.cost > 0.0 do append_to(ref filtered, s)
+    endfor
+    n = len(filtered)
+    on n == 0 do return map(.text "No service costs", .lines 1)
+
+    # Dimensions
+    label_w = 8
+    margin = label_w + 2
+    chart_h = max_h
+    on chart_h > 20 do chart_h = 20
+    on chart_h < 4 do chart_h = 4
+
+    on max_cost < 0.001 do max_cost = 0.001
+
+    parts = []
+    label_interval = chart_h / 4
+    on label_interval < 1 do label_interval = 1
+
+    # Y-axis labels and bars
+    for row = 0 to chart_h - 1
+        frac_from_top = row.as_float / chart_h.as_float
+        row_cost = max_cost * (1.0 - frac_from_top)
+        label = convert_and_fmt(row_cost, curr_code)
+        if len(label) > label_w
+            label = substr(label, 0, label_w)
+        endif
+        label = pad(label, -1, label_w, " ")
+
+        if row == 0 || row == chart_h - 1 || (row % label_interval == 0)
+            append_to(ref parts, pos(start_row + row, start_col) + label + " \u2502")
+        else
+            append_to(ref parts, pos(start_row + row, start_col) + pad("", -1, label_w, " ") + " \u2502")
+        endif
+
+        for col = 0 to n - 1
+            cost = filtered[col].cost
+            bar_h = cost / max_cost * chart_h.as_float
+            full = as_int(bar_h)
+            frac = bar_h - full.as_float
+
+            bar_top = chart_h - 1 - full
+            if frac > 0.0 && full < chart_h
+                bar_top = bar_top - 1
+            endif
+
+            if row >= bar_top && row <= chart_h - 1
+                cell = "\u2588"
+                if row == bar_top && frac > 0.0 && full < chart_h
+                    cell = partial_block(frac)
+                endif
+                color = svc_color(col)
+                append_to(ref parts, pos(start_row + row, start_col + margin + col * 2) + color + cell + "[#-]")
+            endif
+        endfor
+    endfor
+
+    # Zero line
+    zero_label = pad(convert_and_fmt(0.0, curr_code), -1, label_w, " ")
+    append_to(ref parts, pos(start_row + chart_h, start_col) + zero_label + " \u253c")
+    for c = 0 to n * 2 - 1
+        append_to(ref parts, pos(start_row + chart_h, start_col + margin + c) + "\u2500")
+    endfor
+
+    # Multi-column legend
+    legend_entries = []
+    max_legend = 20
+    shown = 0
+    foreach s in filtered
+        if shown >= max_legend
+            break
+        endif
+        cost_str = convert_and_fmt(s.cost, curr_code)
+        name = trunc(s.service, legend_name_width, "\u2026")
+        swatch = svc_color(shown) + "\u2588\u2588" + "[#-]"
+        entry = swatch + " " + pad(name, 1, legend_name_width, " ") + " " + cost_str
+        append_to(ref legend_entries, entry)
+        shown = shown + 1
+    endfor
+    if len(filtered) > max_legend
+        append_to(ref legend_entries, "... and " + as_string(len(filtered) - max_legend) + " more")
+    endif
+
+    entry_w = 2 + 1 + legend_name_width + 1 + 12 + 2  # swatch + space + name + space + cost + pad
+    per_row = (term_w() - 4) / entry_w
+    on per_row < 1 do per_row = 1
+
+    legend_row = 0
+    for i = 0 to len(legend_entries) - 1
+        col_in_row = i % per_row
+        if col_in_row == 0
+            legend_row = legend_row + 1
+        endif
+        append_to(ref parts, pos(start_row + chart_h + 1 + legend_row, start_col + col_in_row * entry_w) + legend_entries[i])
+    endfor
+
+    return map(.text join(parts, ""), .lines chart_h + 1 + legend_row + 1)
+end
+
+def show_monthly_chart(all_costs, curr_code, period_lbl, hide_zero)
+    chart_costs = []
+    max_cost = 0.0
+    foreach c in all_costs
+        on hide_zero && c.cost == 0.0 do continue
+        append_to(ref chart_costs, c)
+        on c.cost > max_cost do max_cost = c.cost
+    endfor
+    on len(chart_costs) == 0 do return
+
+    sort_costs(chart_costs, "cost_desc")
+
+    heading("Monthly Cost Breakdown", "V=table  Q=quit")
+    at 2, 1
+    println "[#3]  Period: ", period_lbl, "  Total services: ", as_string(len(chart_costs)), "  [##][#-]"
+
+    if term_w() >= 100
+        chart_res = render_service_chart(chart_costs, max_cost, curr_code, 4, 2, term_h() - 8, 25)
+        print "[#2]", chart_res.text, "[##][#-]"
+    else
+        lines = []
+        foreach c in chart_costs
+            bar = ""
+            on max_cost > 0 do bar = progress_bar(c.cost / max_cost * 100.0, 20, "\u2588", "\u2591")
+            append_to(ref lines, "  " + trunc(c.service, 30, "\u2026") + "  " + convert_and_fmt(c.cost, curr_code) + "  " + bar)
+        endfor
+        at 5, 2
+        println "[#2]", join(lines, "\n"), "[##][#-]"
+    endif
+
+    at term_h() - 1, 2
+    println "[#3]Press any key to return...[##][#-]"
+    keypress()
 end
 
 # --- TUI screens ---
@@ -751,7 +1063,7 @@ def show_cost_table(costs, profile, region, curr_code, period_lbl, forecast_val,
     at term_h()-3, 2
     println "[#b1][#6]  Total: ", convert_and_fmt(total_usd, curr_code), "  Forecast: ", forecast_val != nil ? convert_and_fmt(forecast_val, curr_code) : "N/A", sort_text, filter_text, "  [##][#-]"
     at term_h()-2, 2
-    println "[#3]  Enter=details  S=sort  C=currency  F=forecast  O=options  H=hide$0  T=topN  P=period  D=daily  I=info  Q=quit[##][#-]"
+    println "[#3]  Enter=details  S=sort  C=currency  F=forecast  O=options  V=chart  H=hide$0  T=topN  P=period  D=daily  I=info  Q=quit[##][#-]"
 
     return tui_table_select(t, s)
 end
@@ -784,18 +1096,20 @@ def show_help()
     at 12, 5
     println "[#6]O         [#3]Options menu[##]"
     at 14, 5
-    println "[#6]T         [#3]Top-N filter popup[##]"
+    println "[#6]V         [#3]Monthly cost chart (monthly mode only)[##]"
     at 16, 5
-    println "[#6]H         [#3]Toggle hide $0 services[##]"
+    println "[#6]T         [#3]Top-N filter popup[##]"
     at 18, 5
-    println "[#6]P         [#3]Toggle period (this/last month)[##]"
+    println "[#6]H         [#3]Toggle hide $0 services[##]"
     at 20, 5
-    println "[#6]D         [#3]Toggle daily/monthly granularity[##]"
+    println "[#6]P         [#3]Toggle period (this/last month)[##]"
     at 22, 5
-    println "[#6]I         [#3]This help screen[##]"
+    println "[#6]D         [#3]Toggle daily/monthly granularity[##]"
     at 24, 5
-    println "[#6]Q         [#3]Quit[##]"
+    println "[#6]I         [#3]This help screen[##]"
     at 26, 5
+    println "[#6]Q         [#3]Quit[##]"
+    at 28, 5
     println "[#3]Press any key to return...[##][#-]"
     keypress()
 end
@@ -952,7 +1266,7 @@ while true
             prev_h = term_h()
         endif
         res = show_cost_table(costs, curr_profile, curr_region, curr_code, period_lbl, forecast_val, sort_mode, top_n, len(all_costs), hide_zero, granularity, prev_costs_map)
-        if res.Back || res.Action == "o" || res.Action == "O"
+        if res.Back || $lc res.Action == "o"
             action = show_main_menu(sort_mode, period_lbl, top_n)
             case action
             is "profile"
@@ -1035,7 +1349,7 @@ while true
             endcase
             continue
         endif
-        if res.Action == "s" || res.Action == "S"
+        if $lc res.Action == "s"
             if sort_mode == "cost_desc"
                 sort_mode = "cost_asc"
             else
@@ -1048,21 +1362,21 @@ while true
             sort_costs(costs, sort_mode)
             continue
         endif
-        if res.Action == "c" || res.Action == "C"
+        if $lc res.Action == "c"
             curr_code, cancelled = show_currency_menu(curr_code)
             continue
         endif
-        if res.Action == "f" || res.Action == "F"
+        if $lc res.Action == "f"
             show_forecast_detail(forecast_val, curr_code, period_lbl)
             continue
         endif
-        if res.Action == "t" || res.Action == "T"
+        if $lc res.Action == "t"
             top_n, cancelled = show_topn_menu(top_n)
             costs = all_costs
             on top_n > 0 && len(costs) > top_n do costs = costs[:top_n]
             continue
         endif
-        if res.Action == "h" || res.Action == "H"
+        if $lc res.Action == "h"
             if hide_zero
                 hide_zero = false
             else
@@ -1070,7 +1384,7 @@ while true
             endif
             continue
         endif
-        if res.Action == "p" || res.Action == "P"
+        if $lc res.Action == "p"
             if not is_prev
                 start_t, end_t = prev_month_period()
                 is_prev = true
@@ -1091,11 +1405,13 @@ while true
             prev_costs_map = fetch_result["prev_costs_map"]
             continue
         endif
-        if res.Action == "d" || res.Action == "D"
+        if $lc res.Action == "d"
             if granularity == "MONTHLY"
                 granularity = "DAILY"
+                sort_mode = "name"
             else
                 granularity = "MONTHLY"
+                sort_mode = "cost_desc"
             endif
             fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
             if fetch_result["costs"] == nil
@@ -1109,7 +1425,13 @@ while true
             prev_costs_map = fetch_result["prev_costs_map"]
             continue
         endif
-        if res.Action == "i" || res.Action == "I"
+        if $lc res.Action == "v"
+            if granularity == "MONTHLY"
+                show_monthly_chart(all_costs, curr_code, period_lbl, hide_zero)
+            endif
+            continue
+        endif
+        if $lc res.Action == "i"
             show_help()
             continue
         endif
@@ -1123,55 +1445,123 @@ while true
             heading("Date Details", "")
             at 5, 5
             println "[#3]Date:  [#6]", trunc(chosen.service, term_w() - 14, "…"), "[##][#-]"
+            at 7, 5
+            println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
+            at 9, 5
+            println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
+            
+            # Show previous month comparison if available
+            prev_cost = nil
+            on prev_costs_map != nil do prev_cost = prev_costs_map[chosen.service]
+            if prev_cost != nil
+                delta = ((chosen.cost - prev_cost) / prev_cost * 100.0)
+                delta_str = as_string(delta.as_bigf, 1) + "%"
+                at 11, 5
+                if delta > 0
+                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25b2 +", delta_str, "][##][#-]"
+                else
+                    if delta < 0
+                        println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25bc ", delta_str, "][##][#-]"
+                    else
+                        println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [= 0%][##][#-]"
+                    endif
+                endif
+            endif
+
+            # Fetch and show service breakdown for this day
+            svc_costs, svc_max, svc_err = fetch_day_services(curr_profile, curr_region, chosen.service)
+            if svc_err == nil && len(svc_costs) > 0
+                if term_w() >= 100
+                    at 13, 5
+                    println "[#3]Services:[##][#-]"
+                    chart_res = render_service_chart(svc_costs, svc_max, curr_code, 14, 5, 12, 18)
+                    print "[#2]", chart_res.text, "[##][#-]"
+                    at term_h() - 1, 5
+                    println "[#3]Press any key to return...[##][#-]"
+                else
+                    at 13, 5
+                    println "[#3]Services:[##][#-]"
+                    lines = []
+                    foreach s in svc_costs
+                        on s.cost == 0.0 do continue
+                        bar = ""
+                        on svc_max > 0 do bar = progress_bar(s.cost / svc_max * 100.0, 20, "\u2588", "\u2591")
+                        append_to(ref lines, "  " + trunc(s.service, 25, "\u2026") + "  " + convert_and_fmt(s.cost, curr_code) + "  " + bar)
+                    endfor
+                    at 15, 5
+                    println "[#2]", join(lines, "\n"), "[##][#-]"
+                    at 15 + len(lines), 5
+                    println "[#3]Press any key to return...[##][#-]"
+                endif
+            else
+                at 13, 5
+                println "[#3]Press any key to return...[##][#-]"
+            endif
         else
             heading("Service Details", "")
             at 5, 5
             println "[#3]Service: [#6]", trunc(chosen.service, term_w() - 14, "…"), "[##][#-]"
             at 7, 5
             println "[#3]Rank:    [#6]", as_string(sel + 1), " of ", as_string(len(costs)), "[##][#-]"
-        endif
-        at 9, 5
-        println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
-        at 11, 5
-        println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
-        at 13, 5
-        println "[#3]Usage:   [#6]", chosen.bar, "[##][#-]"
-        
-        # Show previous month comparison if available
-        prev_cost = nil
-        on prev_costs_map != nil do prev_cost = prev_costs_map[chosen.service]
-        if prev_cost != nil
-            delta = ((chosen.cost - prev_cost) / prev_cost * 100.0)
-            delta_str = as_string(delta.as_bigf, 1) + "%"
-            at 15, 5
-            if delta > 0
-                println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25b2 +", delta_str, "][##][#-]"
-            else
-                if delta < 0
-                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25bc ", delta_str, "][##][#-]"
+            at 9, 5
+            println "[#3]Cost:    [#6]", convert_and_fmt(chosen.cost, curr_code), "[##][#-]"
+            at 11, 5
+            println "[#3]Share:   [#6]", chosen.pct, "[##][#-]"
+            at 13, 5
+            println "[#3]Usage:   [#6]", chosen.bar, "[##][#-]"
+            
+            # Show previous month comparison if available
+            prev_cost = nil
+            on prev_costs_map != nil do prev_cost = prev_costs_map[chosen.service]
+            if prev_cost != nil
+                delta = ((chosen.cost - prev_cost) / prev_cost * 100.0)
+                delta_str = as_string(delta.as_bigf, 1) + "%"
+                at 15, 5
+                if delta > 0
+                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25b2 +", delta_str, "][##][#-]"
                 else
-                    println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [= 0%][##][#-]"
+                    if delta < 0
+                        println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [\u25bc ", delta_str, "][##][#-]"
+                    else
+                        println "[#3]Previous: [#6]", convert_and_fmt(prev_cost, curr_code), "  [= 0%][##][#-]"
+                    endif
                 endif
             endif
-        endif
-        
-        # Fetch and show 30-day mini-chart
-        if granularity == "MONTHLY"
+            
+            # Fetch and show 30-day daily chart
             days, max_day_cost, chart_err = fetch_service_daily(curr_profile, curr_region, chosen.service, start_t, end_t)
             if chart_err == nil && len(days) > 0
-                at 17, 5
-                println "[#3]Daily trend:[##][#-]"
-                at 19, 5
-                println "[#2]", render_mini_chart(days, max_day_cost, curr_code), "[##][#-]"
-                at 21 + len(days), 5
-                println "[#3]Press any key to return...[##][#-]"
+                if term_w() >= 100
+                    chart_costs = []
+                    foreach d in days
+                        append_to(ref chart_costs, costrow(
+                            .service d.date,
+                            .cost d.cost,
+                            .cost_str "",
+                            .pct "",
+                            .pct_val 0.0,
+                            .sort_val d.cost,
+                            .bar ""
+                        ))
+                    endfor
+                    at 17, 5
+                    println "[#3]Daily trend:[##][#-]"
+                    chart_res = render_daily_chart(chart_costs, max_day_cost, curr_code, "", 19, 5)
+                    print "[#2]", chart_res.text, "[##][#-]"
+                    at term_h() - 1, 5
+                    println "[#3]Press any key to return...[##][#-]"
+                else
+                    at 17, 5
+                    println "[#3]Daily trend:[##][#-]"
+                    at 19, 5
+                    println "[#2]", render_mini_chart(days, max_day_cost, curr_code), "[##][#-]"
+                    at 21 + len(days), 5
+                    println "[#3]Press any key to return...[##][#-]"
+                endif
             else
                 at 17, 5
                 println "[#3]Press any key to return...[##][#-]"
             endif
-        else
-            at 15, 5
-            println "[#3]Press any key to return...[##][#-]"
         endif
         keypress()
     endwhile
