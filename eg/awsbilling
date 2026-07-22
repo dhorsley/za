@@ -103,27 +103,229 @@ def spinner_clear()
     clear_line(3, 1)
 end
 
-def async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
+def parse_costs(data)
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime in response"
+    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    period = results[0]
+    groups = period["Groups"]
+    on groups == nil do return nil, "No Groups in response"
+    on len(groups) == 0 do return nil, "No cost data found"
+    costs = []
+    total = 0.0
+    foreach g in groups
+        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        svc_name = g["Keys"][0]
+        on svc_name == nil do svc_name = "Unknown"
+        append_to(ref costs, costrow(
+            .service svc_name,
+            .cost amount,
+            .cost_str "",
+            .pct "",
+            .pct_val 0.0,
+            .sort_val amount,
+            .bar ""
+        ))
+        total = total + amount
+    endfor
+    on len(costs) == 0 do return nil, "No cost data parsed"
+    for i = 0 to len(costs)-1
+        pct_val = 0.0
+        on total > 0 do pct_val = costs[i].cost / total * 100.0
+        costs[i].pct_val = pct_val
+        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
+        on pct_str ~ "e-" do pct_str = "<0.001%"
+        costs[i].pct = pct_str
+        costs[i].bar = progress_bar(pct_val, 20, "\u2588", "\u2591")
+    endfor
+    sort_costs(costs, "cost_desc")
+    return costs, nil
+end
+
+def parse_daily_costs(data)
+    results = data["ResultsByTime"]
+    on results == nil do return nil, 0.0, "No ResultsByTime in response"
+    on len(results) == 0 do return nil, 0.0, "Empty ResultsByTime"
+    costs = []
+    total = 0.0
+    max_cost = 0.0
+    foreach period in results
+        amount_str = period["Total"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        amount = as_float(amount_str)
+        date_label = period["TimePeriod"]["Start"]
+        on date_label == nil do date_label = "Unknown"
+        append_to(ref costs, costrow(
+            .service date_label,
+            .cost amount,
+            .cost_str "",
+            .pct "",
+            .pct_val 0.0,
+            .sort_val amount,
+            .bar ""
+        ))
+        total = total + amount
+        on amount > max_cost do max_cost = amount
+    endfor
+    on len(costs) == 0 do return nil, 0.0, "No cost data parsed"
+    for i = 0 to len(costs)-1
+        pct_val = 0.0
+        on total > 0 do pct_val = costs[i].cost / total * 100.0
+        costs[i].pct_val = pct_val
+        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
+        on pct_str ~ "e-" do pct_str = "<0.001%"
+        costs[i].pct = pct_str
+        bar_pct = 0.0
+        on max_cost > 0 do bar_pct = costs[i].cost / max_cost * 100.0
+        costs[i].bar = progress_bar(bar_pct, 20, "\u2588", "\u2591")
+    endfor
+    return costs, max_cost, nil
+end
+
+def parse_forecast(data)
+    total = data["Total"]
+    on total == nil do return nil, "No Total in forecast"
+    amount_str = total["Amount"]
+    on amount_str == nil do return nil, "No Amount in forecast"
+    return as_float(amount_str), nil
+end
+
+def parse_prev_month_costs(data)
+    results = data["ResultsByTime"]
+    on results == nil do return nil, "No ResultsByTime"
+    on len(results) == 0 do return nil, "Empty ResultsByTime"
+    period = results[0]
+    groups = period["Groups"]
+    on groups == nil do return nil, "No Groups"
+    prev = map()
+    foreach g in groups
+        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
+        continue if amount_str == nil
+        svc = g["Keys"][0]
+        on svc == nil do svc = "Unknown"
+        prev[svc] = as_float(amount_str)
+    endfor
+    return prev, nil
+end
+
+def try_load_from_cache(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
+    cache_tag = "costs"
     if granularity == "DAILY"
-        costs, max_cost, err = fetch_daily_costs(profile, region, cost_start, cost_endt)
-    else
-        costs, err = fetch_costs(profile, region, cost_start, cost_endt)
+        cache_tag = "daily_costs"
     endif
-    on costs == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .max_cost 0.0, .err err)
+
+    cached_data = cache_load(profile, region, cost_start, cost_endt, granularity, cache_tag)
+    if cached_data == nil
+        return nil
+    endif
+
+    if granularity == "DAILY"
+        costs, max_cost, err = parse_daily_costs(cached_data)
+    else
+        costs, err = parse_costs(cached_data)
+        max_cost = 0.0
+    endif
+
+    if costs == nil || len(costs) == 0
+        return nil
+    endif
+
+    forecast_data = cache_load(profile, region, forecast_start, forecast_endt, "MONTHLY", "forecast")
+    forecast = nil
+    if forecast_data != nil
+        forecast, _ = parse_forecast(forecast_data)
+    endif
+
+    prev_data = cache_load(profile, region, cost_start, cost_endt, granularity, "prev_month")
+    prev_map = nil
+    if prev_data != nil
+        prev_map, _ = parse_prev_month_costs(prev_data)
+    endif
+
     sort_costs(costs, sort_mode)
-    forecast, ferr = fetch_forecast(profile, region, forecast_start, forecast_endt)
-    prev_start, prev_end = prev_period(cost_start)
-    prev_map, _ = fetch_prev_month_costs(profile, region, prev_start, prev_end)
     on granularity != "DAILY" do max_cost = 0.0
     return map(.costs costs, .forecast forecast, .prev_costs_map prev_map, .max_cost max_cost, .err nil)
 end
 
-def async_load(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
+def async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity, force_refresh)
+    cache_tag = "costs"
+    if granularity == "DAILY"
+        cache_tag = "daily_costs"
+    endif
+
+    costs = nil
+    max_cost = 0.0
+    err = nil
+
+    # Fetch fresh cost data
+    if granularity == "DAILY"
+        args = "get-cost-and-usage --time-period Start={cost_start},End={cost_endt} --granularity DAILY --metrics AmortizedCost"
+        on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+        data, err = aws_ce(profile, args)
+        on data == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .max_cost 0.0, .err err)
+        cache_save(profile, region, cost_start, cost_endt, granularity, cache_tag, data)
+        costs, max_cost, err = parse_daily_costs(data)
+    else
+        args = "get-cost-and-usage --time-period Start={cost_start},End={cost_endt} --granularity MONTHLY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
+        on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+        data, err = aws_ce(profile, args)
+        on data == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .max_cost 0.0, .err err)
+        cache_save(profile, region, cost_start, cost_endt, granularity, cache_tag, data)
+        costs, err = parse_costs(data)
+        max_cost = 0.0
+    endif
+    on costs == nil do return map(.costs nil, .forecast nil, .prev_costs_map nil, .max_cost 0.0, .err err)
+    sort_costs(costs, sort_mode)
+
+    # Fetch and cache forecast
+    fargs = "get-cost-forecast --time-period Start={forecast_start},End={forecast_endt} --metric AMORTIZED_COST --granularity MONTHLY"
+    on region != "" do fargs = fargs + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    forecast_data, ferr = aws_ce(profile, fargs)
+    forecast = nil
+    if forecast_data != nil
+        cache_save(profile, region, forecast_start, forecast_endt, "MONTHLY", "forecast", forecast_data)
+        forecast, _ = parse_forecast(forecast_data)
+    endif
+
+    # Fetch and cache previous month
+    prev_start, prev_end = prev_period(cost_start)
+    pargs = "get-cost-and-usage --time-period Start={prev_start},End={prev_end} --granularity MONTHLY --metrics AmortizedCost --group-by Type=DIMENSION,Key=SERVICE"
+    on region != "" do pargs = pargs + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
+    prev_data, _ = aws_ce(profile, pargs)
+    prev_map = nil
+    if prev_data != nil
+        cache_save(profile, region, cost_start, cost_endt, granularity, "prev_month", prev_data)
+        prev_map, _ = parse_prev_month_costs(prev_data)
+    endif
+
+    on granularity != "DAILY" do max_cost = 0.0
+    return map(.costs costs, .forecast forecast, .prev_costs_map prev_map, .max_cost max_cost, .err nil)
+end
+
+def async_load(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity, force_refresh)
+    if not force_refresh
+        cached_result = try_load_from_cache(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity)
+        if cached_result != nil
+            heading("Loading", "Please wait...")
+            spinner_show("Loading from cache")
+            pause 100
+            spinner_clear()
+            return cached_result
+        endif
+    endif
+
     heading("Loading", "Please wait...")
     var h map
-    ASYNC h async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity) "result"
-    while true
-        spinner_show("Fetching cost data")
+    ASYNC h async_fetch(profile, region, cost_start, cost_endt, forecast_start, forecast_endt, sort_mode, granularity, force_refresh) "result"
+    cursoroff()
+    while
+        if force_refresh
+            spinner_show("Refreshing cost data")
+        else
+            spinner_show("Fetching cost data")
+        endif
         res = await(ref h, false)
         break if len(h) == 0
         pause 50
@@ -237,6 +439,72 @@ CURR_CACHE = home() + "/.cache/za/awsbilling/"
 
 def ensure_cache_dir()
     | mkdir -p {=CURR_CACHE}
+    | mkdir -p {=CURR_CACHE}costs/
+end
+
+def cache_key(profile, region, start, endt, granularity, call_type)
+    safe_profile = replace(profile, "[^a-zA-Z0-9_-]", "_")
+    safe_region = replace(region, "[^a-zA-Z0-9_-]", "_")
+    return CURR_CACHE + "costs/" + safe_profile + "_" + safe_region + "_" + start + "_" + endt + "_" + granularity + "_" + call_type + ".json"
+end
+
+def cache_load(profile, region, start, endt, granularity, call_type)
+    path = cache_key(profile, region, start, endt, granularity, call_type)
+    if not is_file(path)
+        return nil
+    endif
+    cached = json_decode($in path)
+    if cached == nil
+        return nil
+    endif
+    ts = cached["timestamp"]
+    if ts == nil
+        return nil
+    endif
+    age = epoch_time() - ts
+    on age > 7200 do return nil
+    return cached["data"]
+end
+
+def cache_save(profile, region, start, endt, granularity, call_type, data)
+    ensure_cache_dir()
+    path = cache_key(profile, region, start, endt, granularity, call_type)
+    json_encode(map(.timestamp epoch_time(), .data data)) $out path
+end
+
+def cache_clear()
+    | rm -rf {=CURR_CACHE}costs/*
+end
+
+def cleanup_old_cache()
+    cutoff = epoch_time() - 172800
+    cache_dir = CURR_CACHE + "costs/"
+
+    if is_dir(cache_dir)
+        files = glob("*", cache_dir)
+        foreach f in files
+            if not is_file(f)
+                continue
+            endif
+            s = stat(f)
+            if s != nil && s["modtime"] < cutoff
+                delete(f)
+            endif
+        endfor
+    endif
+
+    # Also clean old rates files (daily, so 1-day cutoff)
+    rates_files = glob("rates_*.json", CURR_CACHE)
+    rate_cutoff = epoch_time() - 86400
+    foreach f in rates_files
+        if not is_file(f)
+            continue
+        endif
+        s = stat(f)
+        if s != nil && s["modtime"] < rate_cutoff
+            delete(f)
+        endif
+    endfor
 end
 
 def load_rates()
@@ -425,44 +693,7 @@ def fetch_costs(profile, region, start, endt)
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
     data, err = aws_ce(profile, args)
     on data == nil do return nil, err
-    results = data["ResultsByTime"]
-    on results == nil do return nil, "No ResultsByTime in response"
-    on len(results) == 0 do return nil, "Empty ResultsByTime"
-    period = results[0]
-    groups = period["Groups"]
-    on groups == nil do return nil, "No Groups in response"
-    on len(groups) == 0 do return nil, "No cost data found"
-    costs = []
-    total = 0.0
-    foreach g in groups
-        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
-        continue if amount_str == nil
-        amount = as_float(amount_str)
-        svc_name = g["Keys"][0]
-        on svc_name == nil do svc_name = "Unknown"
-        append_to(ref costs, costrow(
-            .service svc_name,
-            .cost amount,
-            .cost_str "",
-            .pct "",
-            .pct_val 0.0,
-            .sort_val amount,
-            .bar ""
-        ))
-        total = total + amount
-    endfor
-    on len(costs) == 0 do return nil, "No cost data parsed"
-    for i = 0 to len(costs)-1
-        pct_val = 0.0
-        on total > 0 do pct_val = costs[i].cost / total * 100.0
-        costs[i].pct_val = pct_val
-        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
-        on pct_str ~ "e-" do pct_str = "<0.001%"
-        costs[i].pct = pct_str
-        costs[i].bar = progress_bar(pct_val, 20, "\u2588", "\u2591")
-    endfor
-    sort_costs(costs, "cost_desc")
-    return costs, nil
+    return parse_costs(data)
 end
 
 def fetch_daily_costs(profile, region, start, endt)
@@ -470,43 +701,7 @@ def fetch_daily_costs(profile, region, start, endt)
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
     data, err = aws_ce(profile, args)
     on data == nil do return nil, 0.0, err
-    results = data["ResultsByTime"]
-    on results == nil do return nil, 0.0, "No ResultsByTime in response"
-    on len(results) == 0 do return nil, 0.0, "Empty ResultsByTime"
-    costs = []
-    total = 0.0
-    max_cost = 0.0
-    foreach period in results
-        amount_str = period["Total"]["AmortizedCost"]["Amount"]
-        continue if amount_str == nil
-        amount = as_float(amount_str)
-        date_label = period["TimePeriod"]["Start"]
-        on date_label == nil do date_label = "Unknown"
-        append_to(ref costs, costrow(
-            .service date_label,
-            .cost amount,
-            .cost_str "",
-            .pct "",
-            .pct_val 0.0,
-            .sort_val amount,
-            .bar ""
-        ))
-        total = total + amount
-        on amount > max_cost do max_cost = amount
-    endfor
-    on len(costs) == 0 do return nil, 0.0, "No cost data parsed"
-    for i = 0 to len(costs)-1
-        pct_val = 0.0
-        on total > 0 do pct_val = costs[i].cost / total * 100.0
-        costs[i].pct_val = pct_val
-        pct_str = "{=as_string(pct_val.as_bigf, 3)}%"
-        on pct_str ~ "e-" do pct_str = "<0.001%"
-        costs[i].pct = pct_str
-        bar_pct = 0.0
-        on max_cost > 0 do bar_pct = costs[i].cost / max_cost * 100.0
-        costs[i].bar = progress_bar(bar_pct, 20, "\u2588", "\u2591")
-    endfor
-    return costs, max_cost, nil
+    return parse_daily_costs(data)
 end
 
 def fetch_forecast(profile, region, start, endt)
@@ -514,11 +709,7 @@ def fetch_forecast(profile, region, start, endt)
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
     data, err = aws_ce(profile, args)
     on data == nil do return nil, err
-    total = data["Total"]
-    on total == nil do return nil, "No Total in forecast"
-    amount_str = total["Amount"]
-    on amount_str == nil do return nil, "No Amount in forecast"
-    return as_float(amount_str), nil
+    return parse_forecast(data)
 end
 
 def fetch_prev_month_costs(profile, region, start, endt)
@@ -526,21 +717,7 @@ def fetch_prev_month_costs(profile, region, start, endt)
     on region != "" do args = args + " --filter '" + json_encode(map(.Dimensions map(.Key "REGION", .Values [region]))) + "'"
     data, err = aws_ce(profile, args)
     on data == nil do return nil, err
-    results = data["ResultsByTime"]
-    on results == nil do return nil, "No ResultsByTime"
-    on len(results) == 0 do return nil, "Empty ResultsByTime"
-    period = results[0]
-    groups = period["Groups"]
-    on groups == nil do return nil, "No Groups"
-    prev = map()
-    foreach g in groups
-        amount_str = g["Metrics"]["AmortizedCost"]["Amount"]
-        continue if amount_str == nil
-        svc = g["Keys"][0]
-        on svc == nil do svc = "Unknown"
-        prev[svc] = as_float(amount_str)
-    endfor
-    return prev, nil
+    return parse_prev_month_costs(data)
 end
 
 def anomaly_flag(cost, prev_cost)
@@ -1212,8 +1389,10 @@ on session != nil do is_prev = session["is_prev"]
 on session != nil do hide_zero = session["hide_zero"]
 on session != nil do granularity = session["granularity"]
 
-while true
+while
     cursoroff()
+
+    cleanup_old_cache()
 
     if not check_aws_cli()
         show_error("AWS CLI not found. Please install and configure it.")
@@ -1246,7 +1425,7 @@ while true
     period_lbl = period_label(start_t, end_t)
     is_prev = false
 
-    fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+    fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
     if fetch_result["costs"] == nil
         show_error("Failed to fetch costs: {=fetch_result["err"]}")
         break
@@ -1259,7 +1438,7 @@ while true
     prev_w = term_w()
     prev_h = term_h()
 
-    while true
+    while
         cursoroff()
         if term_w() != prev_w || term_h() != prev_h
             prev_w = term_w()
@@ -1272,7 +1451,7 @@ while true
             is "profile"
                 curr_profile, cancelled = show_profile_menu(profiles)
                 break if curr_profile == ""
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
@@ -1284,7 +1463,7 @@ while true
                 prev_costs_map = fetch_result["prev_costs_map"]
             is "region"
                 curr_region, cancelled = show_region_menu(curr_profile, curr_region)
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
@@ -1305,7 +1484,7 @@ while true
                     is_prev = false
                 endif
                 period_lbl = period_label(start_t, end_t)
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
@@ -1318,7 +1497,8 @@ while true
             is "forecast"
                 show_forecast_detail(forecast_val, curr_code, period_lbl)
             is "refresh"
-                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+                cache_clear()
+                fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, true)
                 if fetch_result["costs"] == nil
                     show_error("Failed to fetch costs: {=fetch_result["err"]}")
                     continue
@@ -1393,7 +1573,7 @@ while true
                 is_prev = false
             endif
             period_lbl = period_label(start_t, end_t)
-            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
             if fetch_result["costs"] == nil
                 show_error("Failed to fetch costs: {=fetch_result["err"]}")
                 continue
@@ -1413,7 +1593,7 @@ while true
                 granularity = "MONTHLY"
                 sort_mode = "cost_desc"
             endif
-            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity)
+            fetch_result = async_load(curr_profile, curr_region, start_t, end_t, forecast_start, forecast_end, sort_mode, granularity, false)
             if fetch_result["costs"] == nil
                 show_error("Failed to fetch costs: {=fetch_result["err"]}")
                 continue
