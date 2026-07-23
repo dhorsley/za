@@ -654,6 +654,8 @@ func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
 			_, ok = val.([]*big.Int)
 		case ksbigf:
 			_, ok = val.([]*big.Float)
+		case kspointer:
+			_, ok = val.([]*CPointerValue)
 		case ksany:
 			_, ok = val.([]any)
 		case kdynamic:

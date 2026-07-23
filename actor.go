@@ -2479,6 +2479,9 @@ tco_reentry:
                         case "[]bigf":
                             t.IKind = ksbigf
                             t.IValue = make([]*big.Float, size, size)
+                        case "[]pointer":
+                            t.IKind = kspointer
+                            t.IValue = make([]*CPointerValue, size, size)
                         }
                     } else {
                         // Dynamic multi-dimensional types use kdynamic

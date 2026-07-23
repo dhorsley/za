@@ -172,6 +172,7 @@ const (
     kmap
     ksany
     ksbyte
+    kspointer // for arrays of pointer types
     kdynamic // for dynamically constructed multi-dimensional types
     kpointer // for pointer types
     koutparam // for output parameters with unknown type (determined by FFI call)

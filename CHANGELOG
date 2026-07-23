@@ -51,6 +51,16 @@ tooling changes
   * VS Code extension: client-side regex diagnostics for escape/backslash patterns
     (removed), exponent regex fix, keyword exclusion fix
 
+library changes
+---------------
+
+  * `lock_os_thread()` / `unlock_os_thread()` stdlib functions
+    - Bind the script execution to the current OS thread (and release it).
+    - Essential for libraries that rely on thread-local state (e.g., OpenGL
+      context bindings) where the scheduler may otherwise migrate the
+      routine/FFI call to a different OS thread between calls.
+
+
 1.2.3
 =====
 

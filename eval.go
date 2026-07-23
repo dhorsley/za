@@ -1204,6 +1204,8 @@ func (p *leparser) accessArray(left any, right Token) any {
         p.rangelen = len(left)
     case []any:
         p.rangelen = len(left)
+    case []*CPointerValue:
+        p.rangelen = len(left)
 
     case map[string]any, map[string][]any, map[string]alloc_info, map[string]tui, map[string]string, map[string]int:
 
@@ -2663,6 +2665,11 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kspointer:
+            _, ok = value.([]*CPointerValue)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
         case ksany:
             _, ok = value.([]any)
             if ok {
@@ -3103,6 +3110,29 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
             (*ident)[bin].IValue.([]*big.Float)[numel] = GetAsBigFloat(value)
         }
 
+    case []*CPointerValue:
+        sz := cap((*ident)[bin].IValue.([]*CPointerValue))
+        ll := len((*ident)[bin].IValue.([]*CPointerValue))
+        if numel >= sz || numel >= ll {
+            newend := sz
+            if numel >= sz {
+                newend = sz * 2
+            }
+            if sz == 0 {
+                newend = 1
+            }
+            if numel >= newend {
+                newend = numel + 1
+            }
+            newar := make([]*CPointerValue, numel+1, newend)
+            copy(newar, (*ident)[bin].IValue.([]*CPointerValue))
+            (*ident)[bin].IValue = newar
+        }
+        if value == nil {
+            (*ident)[bin].IValue.([]*CPointerValue)[numel] = nil
+        } else {
+            (*ident)[bin].IValue.([]*CPointerValue)[numel] = value.(*CPointerValue)
+        }
     case []any:
         sz := cap((*ident)[bin].IValue.([]any))
         ll := len((*ident)[bin].IValue.([]any))

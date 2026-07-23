@@ -892,6 +892,24 @@ func buildInternalLib() {
         }{a / 1024 / 1024, s / 1024 / 1024}, nil
     }
 
+    slhelp["lock_os_thread"] = LibHelp{in: "", out: "", action: "Locks the current goroutine to the current OS thread."}
+    stdlib["lock_os_thread"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("lock_os_thread", args, 0); !ok {
+            return nil, err
+        }
+        lockOSThread()
+        return nil, nil
+    }
+
+    slhelp["unlock_os_thread"] = LibHelp{in: "", out: "", action: "Unlocks the current goroutine from the OS thread."}
+    stdlib["unlock_os_thread"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("unlock_os_thread", args, 0); !ok {
+            return nil, err
+        }
+        unlockOSThread()
+        return nil, nil
+    }
+
     slhelp["get_cores"] = LibHelp{in: "", out: "int", action: "Returns the CPU core count."}
     stdlib["get_cores"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("get_cores", args, 0); !ok {
@@ -2440,4 +2458,12 @@ func getclktck() int {
         }
     }
     return int(_SYSTEM_CLK_TCK)
+}
+
+func lockOSThread() {
+    runtime.LockOSThread()
+}
+
+func unlockOSThread() {
+    runtime.UnlockOSThread()
 }

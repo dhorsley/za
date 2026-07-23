@@ -2247,6 +2247,10 @@ func accessArray(ident *[]Variable, obj any, field any) any {
                     if len(obj) > ifield {
                         return obj[ifield]
                     }
+                case []*CPointerValue:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
                 default:
                     // Handle kdynamic types using reflection
                     rval := reflect.ValueOf(obj)
@@ -2344,6 +2348,9 @@ func slice(v any, from, to any) any {
     case []map[string]any:
         isArr = true
         arl = len(v.([]map[string]any))
+    case []*CPointerValue:
+        isArr = true
+        arl = len(v.([]*CPointerValue))
     case int, uint, int64, uint64, uint8, float64, *big.Int, *big.Float:
         // clamp operator
         if from == nil && to != nil { // only expressing upper limit
@@ -2447,6 +2454,8 @@ func slice(v any, from, to any) any {
         return v.([][]any)[fromInt:toInt]
     case []map[string]any:
         return v.([]map[string]any)[fromInt:toInt]
+    case []*CPointerValue:
+        return v.([]*CPointerValue)[fromInt:toInt]
     }
     return nil
 }
