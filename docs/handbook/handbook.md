@@ -3532,7 +3532,29 @@ za -t -o "test_results.txt" script
 
 # Override group assertion failure action]
 za -t -O "fail|continue" script
+
+# Emit TAP 13 format (to stderr, or to file with -o)
+za -t --tap script
+za -t --tap -o "results.tap" script
 ```
+
+TAP 13 output format (example):
+
+```tap
+TAP version 13
+# Test Section: math/basic
+ok 1 - math/basic : 1+1==2
+# at /tmp/test.za:2 in main() [module main]
+not ok 2 - math/basic : 2+2==5
+# Could not assert! () (line 3)
+# at /tmp/test.za:3 in main() [module main]
+Bail out! Could not assert! ()
+```
+
+The expression under test is included in the test description (`group/name : expr`).
+`#` diagnostic comments provide the failure message, line number, file path,
+function name, and module context. `Bail out!` is emitted when `ASSERT FAIL`
+stops execution on the first failed assertion.
 
 ### 48.3 Test Structure
 

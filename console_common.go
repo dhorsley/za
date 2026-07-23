@@ -2823,13 +2823,20 @@ func restoreScreen() {
 }
 
 func testStart(file string) {
-    vos, _ := gvget("@os")
-    stros := vos.(string)
-    test_start := sf("\n[#6][#ul][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
-    appendToTestReport(test_output_file, 0, 0, test_start)
+	if test_tap {
+		appendToTestReportRaw(test_output_file, "TAP version 13")
+		return
+	}
+	vos, _ := gvget("@os")
+	stros := vos.(string)
+	test_start := sf("\n[#6][#ul][#bold]Za Test[#-]\n\nTesting : %s on "+stros+"\n", file)
+	appendToTestReport(test_output_file, 0, 0, test_start)
 }
 
 func testExit() {
-    test_final := sf("\n[#6]Tests Performed %d -- Tests Failed %d -- Tests Passed %d[#-]\n\n", testsPassed+testsFailed, testsFailed, testsPassed)
-    appendToTestReport(test_output_file, 0, 0, test_final)
+	if test_tap {
+		return
+	}
+	test_final := sf("\n[#6]Tests Performed %d -- Tests Failed %d -- Tests Passed %d[#-]\n\n", testsPassed+testsFailed, testsFailed, testsPassed)
+	appendToTestReport(test_output_file, 0, 0, test_final)
 }

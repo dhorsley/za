@@ -399,6 +399,9 @@ var testsPassed int
 var testsFailed int
 var testsTotal int
 var enforceError bool
+var test_tap bool
+var test_counter int
+var tapToStderr bool
 
 // - not currently used too much. may eventually be removed
 var debugMode bool     //  enable debugging repl
@@ -766,6 +769,7 @@ func main() {
     var a_program_loop = flag.Bool("r", false, "wraps a program string in a stdin loop - awk-like")
     var a_program_fs = flag.String("F", "", "provides a field separator for -r")
     var a_test_override = flag.String("O", "continue", "test override value")
+    var a_tap = flag.Bool("tap", false, "emit test output in TAP 13 format")
     var a_test_name = flag.String("N", "", "test name filter")
     var a_test_group = flag.String("G", "", "test group filter")
     var a_time_out = flag.Int("T", 0, "Co-process command time-out (ms)")
@@ -1068,6 +1072,18 @@ func main() {
 
     test_output_file = *a_test_file
     _ = os.Remove(test_output_file)
+
+    test_tap = *a_tap
+    if test_tap {
+        // Detect if -o was explicitly specified; if not, emit TAP to stderr
+        tapToStderr = true
+        for _, arg := range os.Args[1:] {
+            if str.HasPrefix(arg, "-o") {
+                tapToStderr = false
+                break
+            }
+        }
+    }
 
     test_group_filter = *a_test_group
     test_name_filter = *a_test_name

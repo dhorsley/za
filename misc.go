@@ -503,18 +503,42 @@ func (parser *leparser) report(line int16, s string) {
 
 func appendToTestReport(test_output_file string, ifs uint32, pos int16, s string) {
 
-    s = sparkle(s) + "\n"
+	s = sparkle(s) + "\n"
 
-    f, err := os.OpenFile(test_output_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
-    if err != nil {
-        log.Fatal(err)
-    }
-    if _, err := f.Write([]byte(s)); err != nil {
-        log.Fatal(err)
-    }
-    if err := f.Close(); err != nil {
-        log.Fatal(err)
-    }
+	f, err := os.OpenFile(test_output_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := f.Write([]byte(s)); err != nil {
+		log.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+// appendToTestReportRaw writes a plain string (no sparkle/ANSI) to the test output
+// file, or to stderr if tapToStderr is set. Used for TAP 13 output.
+func appendToTestReportRaw(test_output_file string, s string) {
+
+	s = s + "\n"
+
+	if tapToStderr {
+		os.Stderr.Write([]byte(s))
+		return
+	}
+
+	f, err := os.OpenFile(test_output_file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := f.Write([]byte(s)); err != nil {
+		log.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
 
 }
 

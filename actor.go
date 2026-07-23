@@ -4592,7 +4592,7 @@ tco_reentry:
                 if varName != "" {
                     vset(nil, ifs, ident, varName, content)
                 }
-                if hasGen && testMode {
+                if hasGen && testMode && !test_tap {
                     appendToTestReport(test_output_file, ifs, parser.pc,
                         interpolate(currentModule, ifs, ident, content),
                     )
@@ -4625,7 +4625,9 @@ tco_reentry:
                             }
                         }
 
-                        appendToTestReport(test_output_file, ifs, parser.pc, docout)
+                        if !test_tap {
+                            appendToTestReport(test_output_file, ifs, parser.pc, docout)
+                        }
 
                     }
                 }
@@ -4686,7 +4688,11 @@ tco_reentry:
                         vset(nil, ifs, ident, "_test_group", test_group)
                         vset(nil, ifs, ident, "_test_name", test_name)
                         under_test = true
-                        appendToTestReport(test_output_file, ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]", test_group, test_name))
+                        if test_tap {
+                            appendToTestReportRaw(test_output_file, sf("# Test Section: %s/%s", test_group, test_name))
+                        } else {
+                            appendToTestReport(test_output_file, ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]", test_group, test_name))
+                        }
                     }
                 } else {
                     // if filter matches name
@@ -4694,7 +4700,11 @@ tco_reentry:
                         vset(nil, ifs, ident, "_test_group", test_group)
                         vset(nil, ifs, ident, "_test_name", test_name)
                         under_test = true
-                        appendToTestReport(test_output_file, ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]", test_group, test_name))
+                        if test_tap {
+                            appendToTestReportRaw(test_output_file, sf("# Test Section: %s/%s", test_group, test_name))
+                        } else {
+                            appendToTestReport(test_output_file, ifs, parser.pc, sf("\nTest Section : [#5][#bold]%s/%s[#boff][#-]", test_group, test_name))
+                        }
                     }
                 }
 
@@ -4767,6 +4777,14 @@ tco_reentry:
             }
 
         case C_Assert:
+
+            // Gather test context for TAP output
+            _funcName := getReportFunctionName(ifs, false)
+            _fileName := ""
+            if fmval, fmok := fileMap.Load(source_base); fmok {
+                _fileName = fmval.(string)
+            }
+            _moduleName := currentModule
 
             if inbound.TokenCount < 2 {
                 parser.report(inbound.SourceLine, "Insufficient arguments supplied to ASSERT")
@@ -4902,15 +4920,15 @@ tco_reentry:
             if isAssertError {
                 if we.evalError {
                     if customMessage != "" {
-                        handleTestResult(ifs, true, inbound.SourceLine, "ASSERT ERROR", customMessage)
+                        handleTestResult(ifs, true, inbound.SourceLine, "ASSERT ERROR", customMessage, _funcName, _fileName, _moduleName)
                     } else {
-                        handleTestResult(ifs, true, inbound.SourceLine, "ASSERT ERROR", "expression threw an error as expected")
+                        handleTestResult(ifs, true, inbound.SourceLine, "ASSERT ERROR", "expression threw an error as expected", _funcName, _fileName, _moduleName)
                     }
                 } else {
                     if customMessage != "" {
-                        handleTestResult(ifs, false, inbound.SourceLine, "ASSERT ERROR", customMessage)
+                        handleTestResult(ifs, false, inbound.SourceLine, "ASSERT ERROR", customMessage, _funcName, _fileName, _moduleName)
                     } else {
-                        handleTestResult(ifs, false, inbound.SourceLine, "ASSERT ERROR", "expression did not throw an error")
+                        handleTestResult(ifs, false, inbound.SourceLine, "ASSERT ERROR", "expression did not throw an error", _funcName, _fileName, _moduleName)
                     }
                 }
                 break
@@ -4930,15 +4948,15 @@ tco_reentry:
             }
             if b, ok := we.result.(bool); !ok || !b {
                 if customMessage != "" {
-                    handleTestResult(ifs, false, inbound.SourceLine, cet.text, customMessage)
+                    handleTestResult(ifs, false, inbound.SourceLine, cet.text, customMessage, _funcName, _fileName, _moduleName)
                 } else {
-                    handleTestResult(ifs, false, inbound.SourceLine, cet.text, sf("Could not assert! (%s)", we.text))
+                    handleTestResult(ifs, false, inbound.SourceLine, cet.text, sf("Could not assert! (%s)", we.text), _funcName, _fileName, _moduleName)
                 }
             } else {
                 if customMessage != "" {
-                    handleTestResult(ifs, true, inbound.SourceLine, cet.text, customMessage)
+                    handleTestResult(ifs, true, inbound.SourceLine, cet.text, customMessage, _funcName, _fileName, _moduleName)
                 } else {
-                    handleTestResult(ifs, true, inbound.SourceLine, cet.text, cet.text)
+                    handleTestResult(ifs, true, inbound.SourceLine, cet.text, cet.text, _funcName, _fileName, _moduleName)
                 }
             }
 
@@ -9613,45 +9631,70 @@ func isCompatibleType(value any, expectedType string, namespace string) bool {
     return true // Unknown type, accept
 }
 
-func handleTestResult(ifs uint32, passed bool, sourceLine int16, exprText string, msg string) {
-    testlock.Lock()
-    defer testlock.Unlock()
+func handleTestResult(ifs uint32, passed bool, sourceLine int16, exprText string, msg string, funcName string, fileName string, moduleName string) {
+	testlock.Lock()
+	defer testlock.Unlock()
 
-    group_name_string := ""
-    if test_group != "" {
-        group_name_string += test_group + "/"
-    }
-    if test_name != "" {
-        group_name_string += test_name
-    }
+	group_name_string := ""
+	if test_group != "" {
+		group_name_string += test_group + "/"
+	}
+	if test_name != "" {
+		group_name_string += test_name
+	}
 
-    var test_report string
-    if passed {
-        if under_test {
-            test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
-                group_name_string, getReportFunctionName(ifs, false), 1+sourceLine, msg)
-            testsPassed++
-            appendToTestReport(test_output_file, ifs, parser.pc, test_report)
-        }
-    } else {
-        if under_test {
-            test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
-                group_name_string, getReportFunctionName(ifs, false), 1+sourceLine, msg)
-            testsFailed++
-            appendToTestReport(test_output_file, ifs, 1+sourceLine, test_report)
-        }
-        temp_test_assert := test_assert
-        if fail_override != "" {
-            temp_test_assert = fail_override
-        }
-        switch temp_test_assert {
-        case "fail":
-            parser.report(sourceLine, msg)
-            finish(false, ERR_ASSERT)
-        case "continue":
-            parser.report(sourceLine, msg+" (but continuing)")
-        }
-    }
+	var test_report string
+	if passed {
+		if under_test {
+			if test_tap {
+				test_counter++
+				// Include expression in TAP description; use msg only if different from expr
+				if msg != exprText && msg != "" {
+					test_report = sf("ok %d - %s : %s (%s)", test_counter, group_name_string, exprText, msg)
+				} else {
+					test_report = sf("ok %d - %s : %s", test_counter, group_name_string, exprText)
+				}
+				appendToTestReportRaw(test_output_file, test_report)
+				// Context as diagnostic comments
+				appendToTestReportRaw(test_output_file, sf("# at %s:%d in %s() [module %s]", fileName, 1+sourceLine, funcName, moduleName))
+			} else {
+				test_report = sf("[#4]TEST PASSED %s (%s/line %d) : %s[#-]",
+					group_name_string, funcName, 1+sourceLine, msg)
+				appendToTestReport(test_output_file, ifs, parser.pc, test_report)
+			}
+			testsPassed++
+		}
+	} else {
+		if under_test {
+			if test_tap {
+				test_counter++
+				// Expression text in description, failure details in diagnostic comment
+				test_report = sf("not ok %d - %s : %s", test_counter, group_name_string, exprText)
+				appendToTestReportRaw(test_output_file, test_report)
+				appendToTestReportRaw(test_output_file, sf("# %s (line %d)", msg, 1+sourceLine))
+				appendToTestReportRaw(test_output_file, sf("# at %s:%d in %s() [module %s]", fileName, 1+sourceLine, funcName, moduleName))
+			} else {
+				test_report = sf("[#2]TEST FAILED %s (%s/line %d) : %s[#-]",
+					group_name_string, funcName, 1+sourceLine, msg)
+				appendToTestReport(test_output_file, ifs, 1+sourceLine, test_report)
+			}
+			testsFailed++
+		}
+		temp_test_assert := test_assert
+		if fail_override != "" {
+			temp_test_assert = fail_override
+		}
+		switch temp_test_assert {
+		case "fail":
+			if test_tap {
+				appendToTestReportRaw(test_output_file, sf("Bail out! %s", msg))
+			}
+			parser.report(sourceLine, msg)
+			finish(false, ERR_ASSERT)
+		case "continue":
+			parser.report(sourceLine, msg+" (but continuing)")
+		}
+	}
 }
 
 func isTruthy(val any) bool {

@@ -38,6 +38,16 @@ tooling changes
 
   * LSP: `-S -zz` subprocess (was `-z`); module error filtering to main file only;
     statement-modifier if and pane define false positive fixes
+
+    * TAP 13 test output (`--tap` flag)
+    - `--tap` emits test results in TAP 13 format instead of colored text
+    - `--tap` without `-o` writes to stderr; with `-o file` writes to file
+    - `ok`/`not ok` per assertion with expression text in the description (`group/name : expr`)
+    - `#` diagnostic comments include file path, line number, function name, and module
+    - `#` comments for section headers; no `1..N` plan line (avoids buffering)
+    - `Bail out!` emitted on `ASSERT FAIL` exits
+    - DOC statements suppressed in TAP mode to avoid corrupting the stream
+    - `appendToTestReportRaw()` helper for plain-text (no sparkle/ANSI) output
   * VS Code extension: client-side regex diagnostics for escape/backslash patterns
     (removed), exponent regex fix, keyword exclusion fix
 
