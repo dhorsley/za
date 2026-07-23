@@ -274,6 +274,20 @@ var blockClosers = map[int64]string{
 	lexer.C_Endcase:   "case",
 }
 
+// isBreakTarget checks if a token on the line is preceded by a break keyword,
+// indicating it's a break target (e.g., "break for") rather than a new block.
+func isBreakTarget(toks []Token, targetType int64) bool {
+	for _, t := range toks {
+		if t.Type == targetType {
+			break
+		}
+		if t.Type == lexer.C_Break {
+			return true
+		}
+	}
+	return false
+}
+
 // tokenizeDocument uses the real za lexer to tokenize the entire document.
 // It returns a map from line number (0-based) to tokens on that line.
 func tokenizeDocument(content string) map[int][]Token {
@@ -932,27 +946,35 @@ func (s *LSPServer) getStructuralDiagnostics(uri string, content string) []Diagn
 					blockStack = append(blockStack, "if")
 					blockLines = append(blockLines, i)
 				}
-			case lexer.C_For:
+		case lexer.C_For:
+			if !isBreakTarget(toks, lexer.C_For) {
 				blockStack = append(blockStack, "for")
 				blockLines = append(blockLines, i)
-			case lexer.C_Foreach:
+			}
+		case lexer.C_Foreach:
+			if !isBreakTarget(toks, lexer.C_Foreach) {
 				blockStack = append(blockStack, "foreach")
 				blockLines = append(blockLines, i)
-			case lexer.C_While:
+			}
+		case lexer.C_While:
+			if !isBreakTarget(toks, lexer.C_While) {
 				blockStack = append(blockStack, "while")
 				blockLines = append(blockLines, i)
-			case lexer.C_Struct:
-				blockStack = append(blockStack, "struct")
-				blockLines = append(blockLines, i)
-			case lexer.C_Try:
-				blockStack = append(blockStack, "try")
-				blockLines = append(blockLines, i)
-			case lexer.C_Case:
+			}
+		case lexer.C_Struct:
+			blockStack = append(blockStack, "struct")
+			blockLines = append(blockLines, i)
+		case lexer.C_Try:
+			blockStack = append(blockStack, "try")
+			blockLines = append(blockLines, i)
+		case lexer.C_Case:
+			if !isBreakTarget(toks, lexer.C_Case) {
 				blockStack = append(blockStack, "case")
 				blockLines = append(blockLines, i)
-			case lexer.C_Test:
-				blockStack = append(blockStack, "test")
-				blockLines = append(blockLines, i)
+			}
+		case lexer.C_Test:
+			blockStack = append(blockStack, "test")
+			blockLines = append(blockLines, i)
 			case lexer.C_Enddef:
 				// Generic 'end'/'enddef' - pop any block
 				if len(blockStack) > 0 {

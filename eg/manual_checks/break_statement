@@ -1,3 +1,4 @@
+#!/usr/bin/za
 println "e f"
 for e = 0 to 9
     foreach f in 0..19

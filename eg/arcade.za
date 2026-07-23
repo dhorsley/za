@@ -318,7 +318,7 @@ while running
 
                   # ensure neg or pos but not 0
                   on ball_vx<0 do ball_vx=ball_vx[:-0.1f]
-                  on ball_vx>=0 do ball_vx=ball_vx[0.1f:]
+                  on ball_vx>=0 do b all_vx=ball_vx[0.1f:]
                   on ball_vy<0 do ball_vy=ball_vy[:-1f]
                   on ball_vy>=0 do ball_vy=ball_vy[1f:]
                 endif

@@ -19,7 +19,7 @@ const patterns: Array<{
 }> = [
     // Invalid number exponent (e.g., 0e$, 1e-, 3.14e)
     {
-        regex: /\b\d+(\.\d+)?[eE][+-]?(?!\d)/g,
+        regex: /\b\d+(\.\d+)?[eE](?![+-]?\d)/gi,
         severity: DiagnosticSeverity.Error,
         message: "Invalid numeric exponent: missing or incomplete exponent digits",
         skipComments: true,
@@ -27,7 +27,7 @@ const patterns: Array<{
     },
     // Multiple decimal points (e.g., 1.2.3)
     {
-        regex: /\b\d+\.\d+\.\d*\b/g,
+        regex: /\b\d+\.\d+\.\d*\b/gi,
         severity: DiagnosticSeverity.Error,
         message: "Multiple decimal points in number",
         skipComments: true,
@@ -35,7 +35,7 @@ const patterns: Array<{
     },
     // Invalid hex literal (e.g., 0xGG)
     {
-        regex: /\b0[xX][^0-9a-fA-F_]+\b/g,
+        regex: /\b0[xX][^0-9a-fA-F_]+\b/gi,
         severity: DiagnosticSeverity.Error,
         message: "Invalid hexadecimal literal",
         skipComments: true,
@@ -43,7 +43,7 @@ const patterns: Array<{
     },
     // Invalid binary literal (e.g., 0b2)
     {
-        regex: /\b0[bB][^01_]+\b/g,
+        regex: /\b0[bB][^01_]+\b/gi,
         severity: DiagnosticSeverity.Error,
         message: "Invalid binary literal",
         skipComments: true,
@@ -51,7 +51,7 @@ const patterns: Array<{
     },
     // Invalid octal literal (e.g., 0o88)
     {
-        regex: /\b0[oO][^0-7_]+\b/g,
+        regex: /\b0[oO][^0-7_]+\b/gi,
         severity: DiagnosticSeverity.Error,
         message: "Invalid octal literal",
         skipComments: true,
@@ -59,7 +59,7 @@ const patterns: Array<{
     },
     // Number immediately followed by identifier without operator (e.g., 123abc)
     {
-        regex: /\b\d+\.?\d*\s+(?!is\b|do\b|to\b|n\b|times\b|then\b|else\b|optarg\b|env\b|param\b|and\b|or\b)[a-zA-Z_]\w*\b/g,
+        regex: /\b\d+\.?\d*\s+(?!is\b|do\b|to\b|n\b|times\b|then\b|else\b|elseif\b|optarg\b|env\b|param\b|and\b|or\b|step\b)[a-zA-Z_]\w*\b/gi,
         severity: DiagnosticSeverity.Warning,
         message: "Number followed by identifier without operator",
         skipComments: true,
@@ -67,7 +67,7 @@ const patterns: Array<{
     },
     // Module keyword typo (e.g., "autp" instead of "auto")
     {
-        regex: /\bmodule\b\s+"[^"]*"\s+\b(?!auto\b|as\b)[a-zA-Z_]\w*\b/g,
+        regex: /\bmodule\b\s+"[^"]*"\s+\b(?!auto\b|as\b)[a-zA-Z_]\w*\b/gi,
         severity: DiagnosticSeverity.Warning,
         message: "Possible typo in module clause (expected 'auto' or 'as')",
         skipComments: true,
@@ -75,7 +75,7 @@ const patterns: Array<{
     },
     // Doc keyword typo (e.g., "delm" instead of "delim")
     {
-        regex: /\bdoc\b\s+"[^"]*"\s+\b(?!delim\b|gen\b|var\b)[a-zA-Z_]\w*\b/g,
+        regex: /\bdoc\b\s+"[^"]*"\s+\b(?!delim\b|gen\b|var\b)[a-zA-Z_]\w*\b/gi,
         severity: DiagnosticSeverity.Warning,
         message: "Possible typo in doc clause (expected 'delim', 'gen', or 'var')",
         skipComments: true,
@@ -100,12 +100,26 @@ export function validateDocument(document: TextDocument): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     const text = document.getText();
     const lines = text.split('\n');
+    let inMultilineString = false;
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
         const line = lines[lineIndex];
-        const lineStart = document.positionAt(
-            text.split('\n').slice(0, lineIndex).reduce((sum, l) => sum + l.length + 1, 0)
-        );
+
+        // Track multi-line strings for ", ', and `
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '\\') {
+                i++; // skip escaped character
+                continue;
+            }
+            if (c === '"' || c === "'" || c === '`') {
+                inMultilineString = !inMultilineString;
+            }
+        }
+
+        if (inMultilineString) {
+            continue; // Skip linting inside multi-line strings
+        }
 
         for (const pattern of patterns) {
             if (pattern.skipComments && line.trimStart().startsWith('#')) {
