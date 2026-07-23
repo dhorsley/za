@@ -26,7 +26,7 @@ Declared Functions:
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal map with int_value to C[#-]"
 
-try uses pass_count,fail_count
+try
     # Create a map with single field
     u = map(.int_value 42)
 
@@ -53,7 +53,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal map with float_value to C[#-]"
 
-try uses pass_count,fail_count
+try
     u = map(.float_value 3.14)
 
     result = get_union_as_float(u)
@@ -78,7 +78,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal map with zero value[#-]"
 
-try uses pass_count,fail_count
+try
     u = map(.int_value 0)
 
     result = get_union_as_int(u)
@@ -103,7 +103,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal map with negative value[#-]"
 
-try uses pass_count,fail_count
+try
     u = map(.int_value -100)
 
     result = get_union_as_int(u)
@@ -128,7 +128,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal map with large value[#-]"
 
-try uses pass_count,fail_count
+try
     u = map(.int_value 0x7FFFFFFF)
 
     result = get_union_as_int(u)
@@ -169,7 +169,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Round-trip marshal/unmarshal[#-]"
 
-try uses pass_count,fail_count
+try
     # Create map and marshal to C
     u_out = map(.int_value 999)
     int_result = get_union_as_int(u_out)
@@ -202,7 +202,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Error handling - multiple fields[#-]"
 
-try uses pass_count,fail_count
+try
     # This should fail - unions require exactly 1 active field
     u = map(.int_value 42, .float_value 3.14)
 
@@ -225,7 +225,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Error handling - empty map[#-]"
 
-try uses pass_count,fail_count
+try
     # This should fail - unions require exactly 1 field
     u = map()
 
@@ -248,7 +248,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Error handling - invalid field name[#-]"
 
-try uses pass_count,fail_count
+try
     # This should fail - not a valid union field
     u = map(.invalid_field 42)
 

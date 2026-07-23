@@ -16,7 +16,7 @@ fail_count = 0
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union typedef parsing from C headers[#-]"
 
-try uses pass_count,fail_count
+try
     # If we got here, AUTO parsing succeeded
     # Module loaded without error means union typedef was parsed
     assert true, "Module loaded successfully"
@@ -35,7 +35,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Unmarshal union with int value[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_int(42)
 
     # Check that we got a map back
@@ -69,7 +69,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Unmarshal union with float value[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_float(3.14)
 
     assert returned != nil, "Return value should not be nil"
@@ -101,7 +101,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union with zero value[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_int(0)
 
     assert returned != nil, "Return value should not be nil"
@@ -129,7 +129,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Memory overlap (all fields at offset 0)[#-]"
 
-try uses pass_count,fail_count
+try
     # Test with a specific bit pattern: 0x12345678
     returned = make_union_from_int(0x12345678)
 
@@ -177,7 +177,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union with large int value[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_int(0x7FFFFFFF)
 
     assert returned != nil, "Return value should not be nil"
@@ -198,7 +198,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union with negative int value[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_int(-42)
 
     assert returned != nil, "Return value should not be nil"
@@ -224,7 +224,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Round-trip consistency[#-]"
 
-try uses pass_count,fail_count
+try
     u1 = make_union_from_int(100)
     u2 = make_union_from_int(100)
 
@@ -256,7 +256,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union with special float value (0.0)[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_float(0.0)
 
     assert returned != nil, "Return value should not be nil"
@@ -278,7 +278,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: All union fields present in returned map[#-]"
 
-try uses pass_count,fail_count
+try
     returned = make_union_from_int(12345)
 
     assert returned != nil, "Return value should not be nil"

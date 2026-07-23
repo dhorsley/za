@@ -406,9 +406,6 @@ type tryBlockInfo struct {
     relativePC       int16    // PC position relative to parent function
     childTryBlocks   []int    // IDs of nested try blocks
 
-    // Variable capture fields
-    capturedVars []string // list of variable names to capture from parent scope
-
 }
 
 type catchBlockInfo struct {

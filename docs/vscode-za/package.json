@@ -1,8 +1,8 @@
 {
   "name": "za-language",
   "displayName": "ZA Language",
-  "description": "Syntax highlighting and LSP support for ZA programming language",
-  "version": "0.1.1",
+  "description": "Syntax highlighting, diagnostics, and LSP support for ZA programming language",
+  "version": "0.2.0",
   "publisher": "za-language",
   "engines": {
     "vscode": "^1.60.0"
@@ -34,7 +34,13 @@
         "configuration": "./language-configuration.json"
       }
     ],
-    "grammars": []
+    "grammars": [
+      {
+        "language": "za",
+        "scopeName": "source.za",
+        "path": "./syntaxes/za.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",

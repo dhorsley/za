@@ -1,7 +1,7 @@
 ---
 title: "Za - The Za Programming Language Handbook"
 author: "Daniel Horsley"
-version: "1.2.3"
+version: "1.3.0"
 css: za.css
 ---
 <div style="text-align:center; page-break-after: always;">
@@ -145,7 +145,7 @@ The intended readership is **Linux system administrators**, from novice to exper
 
 ## Version coverage
 
-This text is written for **Za 1.2.2**.
+This text is written for **Za 1.3.0**.
 
 ---
 
@@ -257,7 +257,7 @@ Za provides built-in help and discovery mechanisms. Use the command-line help to
 $ za -h
 ```
 
-For discovering available functions and modules, examine the standard library source files and examples in the `eg/` directory. The language documentation and examples provide comprehensive coverage of available capabilities.
+For discovering available functions and modules, use the built-in `help` command to browse by category, or press TAB in the REPL for completion of function names and variables. The generated library reference at [zalang.org/funpages](https://zalang.org/user/data/za/funpages/) provides a complete, searchable listing of all 600+ standard library functions. Examples in the `eg/` and `za_tests/` directories demonstrate real-world usage patterns.
 
 ### 3.4 Interactive Features
 
@@ -288,6 +288,32 @@ ctrl-k  # Delete to end
 ctrl-c  # interrupt (interrupt session)
 ctrl-d  # end-of-input (end session)
 ctrl-z  # suspend REPL to background
+```
+
+#### TAB Completion
+
+Press TAB at any time to complete function names, variable names, file paths, and keywords. The completion list shows all 600+ standard library functions plus any variables and functions defined in the current session. Use SHIFT-TAB to cycle backwards through matches.
+
+```za
+>> prin<TAB>
+# Shows: print, println, printn, printf
+
+>> /etc/pass<TAB>
+# Completes to /etc/passwd
+```
+
+#### Multi-line Editor
+
+For editing multi-line statements or pasting complex code blocks, press Ctrl+O to open the built-in multi-line editor. The regular REPL input is a single-line editor, so multi-line content (including pasted code with newlines) must go through the multi-line editor. Compose code in the temporary buffer, then submit with Ctrl+D or cancel with Escape.
+
+```za
+>> ctrl-o
+# Opens multi-line editor
+# Type or paste multi-line code:
+# def greet(name)
+#     println "Hello, " + name
+# end
+# Ctrl+D to submit, Escape to cancel
 ```
 
 ### 3.5 REPL Macros
@@ -449,6 +475,13 @@ control codes such as line feed, tab and others may be expressed using escape se
 the usual manner for C-like sprintf formatting.
 
 Za also supports interpolation forms such as `{...}` and `{=...}` (interpolation can be enabled/disabled via policy controls).
+
+- `{varname}` — substitute a variable: `"hello {name}"`
+- `{=expr}` — evaluate an expression: `"{=1 + 2}"`
+- `{varname:fmt}` — format a variable (v1.3.0): `"{n:04d}"`, `"{cost:.2f}"`, `"{n:08x}"`
+- `{=expr:fmt}` — format an expression result (v1.3.0): `"{=1+2:04d}"`, `"{=255:08x}"`
+
+Format specs are Go `fmt.Sprintf` verbs without the leading `%` (e.g. `d`, `f`, `.2f`, `02d`, `x`, `08x`). Ternary expressions work inside `{=...}`; when mixing ternary with a format spec, wrap in parens for clarity: `{=(a > b ? c : d):.2f}`.
 
 ### 5.2 Numeric literals
 
@@ -1495,7 +1528,7 @@ Example:
 
 ### Bundling (v.1.2.1+)
 
-There is an experimental facility for packaging the interpreter with a za script and it's module dependencies into a single executable.
+There is a facility for packaging the interpreter with a za script and its module dependencies into a single executable.
 
 If the -x argument is used, this bundling will be triggered.
 
@@ -1503,9 +1536,7 @@ That is:
 
 > za -x [ -n test_bundle_name ] script_name
 
-On execution, the bundled version will unpack to a uniquely named directory in /tmp/. The execution path should still be where the bundle was called from, not the extracted directory.
-
-N.B.: due to this, you should avoid the use of the execpath() call inside bundled scripts.
+On execution, the bundled version will unpack to a uniquely named directory in /tmp/. The working directory is preserved from where the bundle was invoked, but the script file itself resides in the extracted directory. Therefore `execpath()` returns the extraction directory, not the original call location. Avoid using `execpath()` to locate relative resources inside bundled scripts; use the working directory or bundle-relative paths instead.
 
 If the -n argument is not provided, the default bundled file is named exec.za.
 
@@ -1546,10 +1577,10 @@ structured results where available, using exceptions when there is no better alt
 
 ## 26. Exceptions (`try … catch … then … endtry`)
 
-A try block may capture outer variables explicitly with `uses`:
+Try blocks execute in the enclosing variable scope transparently — reads and writes to variables inside a try block operate on the parent scope directly, just as `catch` already does.
 
 ```za
-try uses captured_var [,...,captured_var] [throws string_category|ex_enum_category]
+try [throws string_category|ex_enum_category]
     # action
 catch [err] [is category_expr | in list_expr | contains regex]
     # action
@@ -4444,6 +4475,15 @@ alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen, esplit, fie
 - col
 - tail
 - remove
+
+**Sort by computed key (v1.3.0):** `sort(list, map(.key `#.field`, .reverse true))` pre-computes
+a sort key per element using backtick expressions with `#`, `#.field`, and `$idx`.
+Eliminates decorate/sort/undecorate patterns. Example:
+
+```za
+sort(costs, map(.key `#.price`, .reverse true))
+sort(items, map(.key `#.name`))
+```
 
 
 ## math
@@ -8062,10 +8102,10 @@ fp = fopen("/tmp/file", "w")      # Returns FILE* pointer, not Za pfile
 result = fclose(fp)                # Returns int, not void
 ```
 
-If you need the **Za built-in** version instead, remove the library from the USE chain or use an explicit namespace qualifier for the Za version (if available):
+If you need the **Za built-in** version instead, remove the library from the USE chain so the built-in is no longer shadowed:
 ```za
-# Call Za built-in fopen explicitly (if a za:: prefix is supported)
-fp = za::fopen("/tmp/file", "w")   # Returns pfile (Za built-in)
+use -c                               # Remove libc from USE chain
+fp = fopen("/tmp/file", "w")         # Returns pfile (Za built-in)
 ```
 
 **Best practice:** Use explicit namespace qualifiers when you need a specific version:

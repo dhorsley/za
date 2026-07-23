@@ -1884,7 +1884,7 @@ func buildListLib() {
 
     // sort(l,[ud]) ascending or descending sorted version returned. (type dependant)
     slhelp["sort"] = LibHelp{in: "list[,bool_reverse|map_options]", out: "[]new_list", action: "Sorts a [#i1]list[#i0] in ascending or descending ([#i1]bool_reverse[#i0]==true) order, or with map options.\n" +
-        "[#SOL]Map options: .reverse (bool), .numeric (bool, .alphanumeric (bool)",
+        "[#SOL]Map options: .reverse (bool), .numeric (bool), .alphanumeric (bool), .key (backtick expression)",
     }
     stdlib["sort"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("sort", args, 5,
@@ -1904,6 +1904,7 @@ func buildListLib() {
         direction := false
         numeric := false
         alphanumeric := false
+        var keyExpr string
 
         if len(args) == 2 {
             switch args[1].(type) {
@@ -1920,10 +1921,113 @@ func buildListLib() {
                 if alpha, ok := options["alphanumeric"].(bool); ok {
                     alphanumeric = alpha
                 }
+                if key, ok := options["key"].(string); ok {
+                    keyExpr = key
+                }
             }
         } else if len(args) == 3 {
             direction = args[1].(bool)
             numeric = args[2].(bool)
+        }
+
+        // Key-based sort: when .key is specified in map_options, compute a sort key
+        // for each element using the backtick expression (supports #, #.field, $idx).
+        if keyExpr != "" {
+            keyParser := &leparser{}
+            keyParser.fs = evalfs
+            keyParser.ident = ident
+            keyParser.namespace = ns
+            keyParser.ctx = withProfilerContext(context.Background())
+            keyParser.interpolating = true
+            if interactive {
+                keyParser.mident = 1
+            } else {
+                keyParser.mident = 2
+            }
+
+            // Convert list to []any for uniform key computation
+            var elements []any
+            switch v := list.(type) {
+            case []int:
+                elements = make([]any, len(v))
+                for i, x := range v { elements[i] = x }
+            case []uint:
+                elements = make([]any, len(v))
+                for i, x := range v { elements[i] = x }
+            case []float64:
+                elements = make([]any, len(v))
+                for i, x := range v { elements[i] = x }
+            case []string:
+                elements = make([]any, len(v))
+                for i, x := range v { elements[i] = x }
+            case []any:
+                elements = v
+            case map[string]any:
+                elements = make([]any, 0, len(v))
+                for _, x := range v { elements = append(elements, x) }
+            default:
+                return nil, errors.New(sf("sort with .key requires a list or map (got %T)", list))
+            }
+
+            if len(elements) < 2 {
+                return list, nil
+            }
+
+            // Pre-compute sort keys
+            keys := make([]string, len(elements))
+            for i, elem := range elements {
+                cond, cErr := processConditionString(keyExpr, elem, i)
+                if cErr != nil {
+                    keys[i] = sf("%v", elem)
+                    continue
+                }
+                val, eErr := ev(keyParser, evalfs, cond)
+                if eErr != nil {
+                    keys[i] = sf("%v", elem)
+                    continue
+                }
+                keys[i] = sf("%v", val)
+            }
+
+            // Build index slice and sort by keys
+            indices := make([]int, len(elements))
+            for i := range indices { indices[i] = i }
+
+            if direction {
+                sort.SliceStable(indices, func(i, j int) bool { return keys[indices[i]] > keys[indices[j]] })
+            } else {
+                sort.SliceStable(indices, func(i, j int) bool { return keys[indices[i]] < keys[indices[j]] })
+            }
+
+            // Return in original type
+            switch list.(type) {
+            case []int:
+                result := make([]int, len(elements))
+                for i, idx := range indices { result[i] = elements[idx].(int) }
+                return result, nil
+            case []uint:
+                result := make([]uint, len(elements))
+                for i, idx := range indices { result[i] = elements[idx].(uint) }
+                return result, nil
+            case []float64:
+                result := make([]float64, len(elements))
+                for i, idx := range indices { result[i] = elements[idx].(float64) }
+                return result, nil
+            case []string:
+                result := make([]string, len(elements))
+                for i, idx := range indices { result[i] = elements[idx].(string) }
+                return result, nil
+            case []any:
+                result := make([]any, len(elements))
+                for i, idx := range indices { result[i] = elements[idx] }
+                return result, nil
+            case map[string]any:
+                // Maps don't have stable ordering; return as sorted []any
+                result := make([]any, len(elements))
+                for i, idx := range indices { result[i] = elements[idx] }
+                return result, nil
+            }
+            return elements, nil
         }
 
         // need to sort?

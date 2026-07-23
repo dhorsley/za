@@ -110,7 +110,7 @@ println "Result:\n{=res15.pp}\n"
 # Test 16: Error handling - invalid query
 println "[#2]Test 16: Error handling - invalid query[#-]"
 res16=""
-try uses h,res16
+try
     res16=h.db_query("SELECT * FROM nonexistent_table")
 catch err
     println "error in query: ",err
@@ -120,7 +120,7 @@ endtry
 # Test 17: Error handling - invalid format
 res17=""
 println "[#2]Test 17: Error handling - invalid format[#-]"
-try uses h,res17
+try
     res17=h.db_query("SELECT 17 as id", map(.format "invalid_format")) ?? "invalid"
     println "result success : ",res17
 catch err is "invalid"

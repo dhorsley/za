@@ -16,7 +16,7 @@ fail_count = 0
 test_count = test_count + 1
 println "[#6]Test {test_count}: Marshal Za → C (get_union_int_val)[#-]"
 
-try uses pass_count,fail_count
+try
     # Create BasicInlineUnion in Za
     test_struct = map()
     test_struct.type = 42
@@ -47,7 +47,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Unmarshal C → Za (make_union_with_int)[#-]"
 
-try uses pass_count,fail_count
+try
     # Call C function that returns BasicInlineUnion
     result = tu::make_union_with_int(5, 200)
 
@@ -80,7 +80,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Round-trip with modification[#-]"
 
-try uses pass_count,fail_count
+try
     # Create struct
     input_struct = map()
     input_struct.type = 10
@@ -120,7 +120,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Union field interpretation[#-]"
 
-try uses pass_count,fail_count
+try
     # Create with int value and read the result
     struct_int = tu::make_union_with_int(1, 0x42434445)
     int_val = struct_int["data"]["int_val"]
@@ -159,7 +159,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Multiple inline unions[#-]"
 
-try uses pass_count,fail_count
+try
     # Create MultipleInlineUnions struct
     multi = map()
     first_union = map()
@@ -205,7 +205,7 @@ println
 test_count = test_count + 1
 println "[#6]Test {test_count}: Inline struct (non-union)[#-]"
 
-try uses pass_count,fail_count
+try
     # Create InlineStructTest struct
     inline_struct = map()
     point = map()

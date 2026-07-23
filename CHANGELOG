@@ -2,6 +2,45 @@
 CHANGE LOG
 =============================================================================================
 
+1.3.0
+=====
+
+language changes
+----------------
+
+  * Removed `uses` clause from try blocks. Try blocks now execute in the parent
+    variable scope transparently — all reads and writes operate on the parent
+    ident directly. This eliminates the copy-in/copy-out machinery and aligns
+    try/catch scope behavior (catch already shared parent scope).
+    - `capturedVars` field removed from `tryBlockInfo`
+    - `MODE_TRY` added to call modes
+    - `captured_vars` parameter in `Call()` retained for future closure use
+    - `C_Uses` token type retained in lexer/constants for future closure syntax
+
+  * Format specifiers in string interpolation (`{varname:format}` and `{=expr:format}`)
+    - `{varname:fmt}` — format a variable: `{n:04d}`, `{cost:.2f}`, `{n:08x}`
+    - `{=expr:fmt}` — format an expression result: `{=1+2:04d}`, `{=255:08x}`
+    - Format specs are Go `fmt.Sprintf` verbs without the leading `%`
+    - Ternary expressions work in `{=...}`; `hasUnbalancedTernary()` prevents
+      format extraction from stealing ternary `:` colons
+    - `ev()` gains `defer/recover` so expression panics return errors instead of crashing
+    - test coverage: za_tests/test_interpolation.za (17 tests)
+
+  * `sort()` key-extractor option: `sort(list, map(.key `#.field`, .reverse true))`
+    - Pre-computes keys using `processConditionString()` + `ev()` with existing
+      `#`/`#.field`/`$idx` substitution from `->`/`?>` operators
+    - Returns list in original type; eliminates decorate/sort/undecorate patterns
+    - Fixed unclosed paren in sort help text
+    - test coverage: za_tests/test_sort_key.za (8 tests)
+
+tooling changes
+---------------
+
+  * LSP: `-S -zz` subprocess (was `-z`); module error filtering to main file only;
+    statement-modifier if and pane define false positive fixes
+  * VS Code extension: client-side regex diagnostics for escape/backslash patterns
+    (removed), exponent regex fix, keyword exclusion fix
+
 1.2.3
 =====
 
@@ -237,7 +276,7 @@ interpreter/vm changes
 UX / editor support
 -------------------
 
-  * added Language Server Protocol (LSP) server and VS Code: extension
+  * added Language Server Protocol (LSP) server and VS Code extension
       - docs/lsp/main.go: standalone LSP server using Za introspection
           * completion: all 634 stdlib functions + local variables + keywords
           * hover: function signatures and documentation
@@ -247,14 +286,14 @@ UX / editor support
           * diagnostics:
               - structural: unmatched braces, unclosed strings, unclosed blocks
                 (instant, while typing, with 500ms debounce)
-              - subprocess: syntax-check via za -K (on save, zero execution)
-      - docs/vscode-za/: VS Code: extension with syntax highlighting + LSP client
+              - subprocess: syntax-check via za -K (on save, zero execution)  [WITHDRAWN: -K flag removed in 1.3.0]
+      - docs/vscode-za/: VS Code extension with syntax highlighting + LSP client
           * auto-activates on .za files and #!/usr/bin/env za shebang files
           * bundled za-lsp binary for zero-config setup
       - docs/lsp/install.sh: one-command installer
-          * checks prerequisites, builds server + extension, installs to VS Code:
+          * checks prerequisites, builds server + extension, installs to VS Code
           * includes Neovim setup instructions for nvim-lspconfig
-      - test coverage: manual integration testing with VS Code: + Python LSP client
+      - test coverage: manual integration testing with VS Code + Python LSP client
 
 
 fixes

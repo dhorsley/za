@@ -2,7 +2,7 @@ package main
 
 import (
     "sync"
-    )
+)
 
 type Lmap struct {
     m sync.Map // map[string]uint32

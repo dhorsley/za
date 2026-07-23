@@ -167,7 +167,7 @@ println "Marshaled:\n", marshaled
 # Test 18: Error handling - invalid YAML
 println "\n18. Testing error handling - invalid YAML..."
 var result any
-try uses result
+try
     invalid_yaml = "invalid yaml structure"
     result = yaml_parse(invalid_yaml)
     on result == nil do throw "err-18"

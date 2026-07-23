@@ -3196,6 +3196,187 @@ func isValidVarName(s string) bool {
     return true
 }
 
+// splitFormatSpec splits "varname:format" into varname and format.
+// Returns the full string as varname with empty format if no ':' is present.
+// For simple variable names, splits on first ':' since varnames can't contain ':'.
+func splitFormatSpec(s string) (varname, format string) {
+    idx := str.IndexByte(s, ':')
+    if idx < 0 {
+        return s, ""
+    }
+    return s[:idx], s[idx+1:]
+}
+
+// applyFormat applies a Go format specifier to a value.
+// Returns the formatted string, or the default %v representation if format is empty.
+func applyFormat(format string, val any) string {
+    if format == "" {
+        return sf("%v", val)
+    }
+    return sf("%"+format, val)
+}
+
+// lastColonOutsideParens finds the last ':' in s that's not inside parentheses.
+// Returns -1 if no such colon exists.
+func lastColonOutsideParens(s string) int {
+    depth := 0
+    inDQ := false
+    inSQ := false
+    inBT := false
+    last := -1
+    for i := 0; i < len(s); i++ {
+        c := s[i]
+        if inDQ {
+            if c == '\\' && i+1 < len(s) {
+                i++
+                continue
+            }
+            if c == '"' {
+                inDQ = false
+            }
+            continue
+        }
+        if inSQ {
+            if c == '\\' && i+1 < len(s) {
+                i++
+                continue
+            }
+            if c == '\'' {
+                inSQ = false
+            }
+            continue
+        }
+        if inBT {
+            if c == '`' {
+                inBT = false
+            }
+            continue
+        }
+        switch c {
+        case '"':
+            inDQ = true
+        case '\'':
+            inSQ = true
+        case '`':
+            inBT = true
+        case '(':
+            depth++
+        case ')':
+            if depth > 0 {
+                depth--
+            }
+        case ':':
+            if depth == 0 {
+                last = i
+            }
+        }
+    }
+    return last
+}
+
+// hasUnbalancedTernary reports whether s contains a '?' at parenthesis depth 0
+// (outside parens, strings, backticks) that isn't matched by a ':' after it.
+// Used to detect that a ':' is a ternary separator rather than a format-spec delimiter.
+func hasUnbalancedTernary(s string) bool {
+	depth := 0
+	inDQ := false
+	inSQ := false
+	inBT := false
+	qmarks := 0
+	colons := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inDQ {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '"' {
+				inDQ = false
+			}
+			continue
+		}
+		if inSQ {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '\'' {
+				inSQ = false
+			}
+			continue
+		}
+		if inBT {
+			if c == '`' {
+				inBT = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inDQ = true
+		case '\'':
+			inSQ = true
+		case '`':
+			inBT = true
+		case '(':
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+			}
+		case '?':
+			if depth == 0 {
+				qmarks++
+			}
+		case ':':
+			if depth == 0 {
+				colons++
+			}
+		}
+	}
+	return qmarks > colons
+}
+
+// isValidFormatSpec checks if s looks like a Go fmt.Sprintf format specifier
+// (without the leading %). Examples: "d", "f", ".2f", "02d", ">10.2f", "x", "08x".
+func isValidFormatSpec(s string) bool {
+    if len(s) == 0 {
+        return false
+    }
+    i := 0
+    // Optional flags: -, +, #, 0, space
+    for i < len(s) {
+        c := s[i]
+        if c == '-' || c == '+' || c == '#' || c == '0' || c == ' ' {
+            i++
+            continue
+        }
+        break
+    }
+    // Optional width (digits)
+    for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+        i++
+    }
+    // Optional precision (.digits)
+    if i < len(s) && s[i] == '.' {
+        i++
+        for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+            i++
+        }
+    }
+    // Required verb (single character)
+    if i >= len(s) {
+        return false
+    }
+    c := s[i]
+    i++
+    return i == len(s) && (c == 'b' || c == 'B' || c == 'c' || c == 'd' || c == 'e' || c == 'E' ||
+        c == 'f' || c == 'F' || c == 'g' || c == 'G' || c == 'o' || c == 'O' ||
+        c == 'q' || c == 'Q' || c == 's' || c == 'S' || c == 't' || c == 'T' ||
+        c == 'v' || c == 'V' || c == 'x' || c == 'X' || c == 'p' || c == 'U')
+}
+
 func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
     if !interpolation || len(s) == 0 {
         return s
@@ -3232,36 +3413,20 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
             if kn[0] == '=' {
                 continue
             }
+            // Split format specifier: {varname:format} or {varname}
+            varname, fmtSpec := splitFormatSpec(kn)
             // Only interpolate valid simple variable names (alphanumeric
             // plus underscore, starting with a letter or underscore). This
             // prevents interpolate() from accidentally consuming blocks of
             // text that happen to be wrapped in braces (e.g. JSON bodies or
             // pretty-printed map output) as variable names.
-            if !isValidVarName(kn) {
+            if !isValidVarName(varname) {
                 continue
             }
 
-            if kv, there := vget(nil, fs, ident, kn); there {
-                switch kv.(type) {
-                case int:
-                    s = str.Replace(s, "{"+kn+"}", strconv.FormatInt(int64(kv.(int)), 10), -1)
-                case int16:
-                    s = str.Replace(s, "{"+kn+"}", strconv.FormatInt(int64(kv.(int16)), 10), -1)
-                case float64:
-                    s = str.Replace(s, "{"+kn+"}", strconv.FormatFloat(kv.(float64), 'g', -1, 64), -1)
-                case bool:
-                    s = str.Replace(s, "{"+kn+"}", strconv.FormatBool(kv.(bool)), -1)
-                case string:
-                    s = str.Replace(s, "{"+kn+"}", kv.(string), -1)
-                case uint:
-                    s = str.Replace(s, "{"+kn+"}", strconv.FormatUint(uint64(kv.(uint)), 10), -1)
-                case []uint, []float64, []int, []bool, []any, []string:
-                    s = str.Replace(s, "{"+kn+"}", sf("%v", kv), -1)
-                case any:
-                    s = str.Replace(s, "{"+kn+"}", sf("%v", kv), -1)
-                default:
-                    s = str.Replace(s, "{"+kn+"}", sf("!%T!%v", kv, kv), -1)
-                }
+            if kv, there := vget(nil, fs, ident, varname); there {
+                formatted := applyFormat(fmtSpec, kv)
+                s = str.Replace(s, "{"+kn+"}", formatted, -1)
             }
         }
 
@@ -3295,8 +3460,25 @@ func interpolate(ns string, fs uint32, ident *[]Variable, s string) string {
                     break
                 }
 
-                if aval, err := ev(interparse, fs, s[p+2:close_index]); err == nil {
-                    s = s[:p] + sf("%v", aval) + s[close_index+1:]
+                expr := s[p+2 : close_index]
+                fmtSpec := ""
+                // Check for :format specifier at end of expression
+                // Find last ':' not inside parentheses
+                if colonIdx := lastColonOutsideParens(expr); colonIdx > 0 {
+                    candidate := expr[colonIdx+1:]
+                    if isValidFormatSpec(candidate) {
+                        // Verify the ':' isn't a ternary colon by checking
+                        // if the candidate expression has an unbalanced '?'
+                        candidateExpr := expr[:colonIdx]
+                        if !hasUnbalancedTernary(candidateExpr) {
+                            fmtSpec = candidate
+                            expr = candidateExpr
+                        }
+                    }
+                }
+
+                if aval, err := ev(interparse, fs, expr); err == nil {
+                    s = s[:p] + applyFormat(fmtSpec, aval) + s[close_index+1:]
                     modified = true
                     break
                 }
@@ -3342,7 +3524,14 @@ func ev(parser *leparser, fs uint32, ws string) (result any, err error) {
 
     // evaluate token list
     if len(toks) != 0 {
-        result, err = parser.Eval(fs, toks)
+        func() {
+            defer func() {
+                if r := recover(); r != nil {
+                    err = fmt.Errorf("%v", r)
+                }
+            }()
+            result, err = parser.Eval(fs, toks)
+        }()
     }
 
     if result == nil { // could not eval

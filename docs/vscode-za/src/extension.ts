@@ -1,13 +1,19 @@
 import * as path from 'path';
-import { workspace, ExtensionContext, window } from 'vscode';
+import { workspace, ExtensionContext, window, languages } from 'vscode';
 import {
     LanguageClient,
     LanguageClientOptions,
     ServerOptions,
     TransportKind,
 } from 'vscode-languageclient/node';
+import {
+    createDiagnosticCollection,
+    updateDiagnostics,
+    clearDiagnostics,
+} from './diagnostics';
 
 let client: LanguageClient;
+let diagnosticTimeout: NodeJS.Timeout | undefined;
 
 function findZaBinary(outputChannel: any): string | null {
     const fs = require('fs');
@@ -46,6 +52,44 @@ function findZaBinary(outputChannel: any): string | null {
 export async function activate(context: ExtensionContext) {
     const outputChannel = window.createOutputChannel('ZA Language Extension');
     outputChannel.appendLine('[ZA] Extension activating...');
+
+    // Initialize client-side diagnostics
+    createDiagnosticCollection();
+
+    // Run diagnostics on all open Za documents
+    const zaDocs = workspace.textDocuments.filter(doc => doc.languageId === 'za');
+    for (const doc of zaDocs) {
+        updateDiagnostics(doc);
+    }
+
+    // Update diagnostics on document open and change
+    context.subscriptions.push(
+        workspace.onDidOpenTextDocument((doc) => {
+            if (doc.languageId === 'za') {
+                updateDiagnostics(doc);
+            }
+        })
+    );
+    context.subscriptions.push(
+        workspace.onDidChangeTextDocument((event) => {
+            if (event.document.languageId !== 'za') {
+                return;
+            }
+            if (diagnosticTimeout) {
+                clearTimeout(diagnosticTimeout);
+            }
+            diagnosticTimeout = setTimeout(() => {
+                updateDiagnostics(event.document);
+            }, 200);
+        })
+    );
+    context.subscriptions.push(
+        workspace.onDidCloseTextDocument((doc) => {
+            if (doc.languageId === 'za') {
+                clearDiagnostics(doc);
+            }
+        })
+    );
     
     const serverPath = path.join(context.extensionPath, 'bin', 'za-lsp');
     outputChannel.appendLine(`[ZA] Looking for server at: ${serverPath}`);

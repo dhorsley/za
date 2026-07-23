@@ -221,8 +221,8 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
             }
         }
 
-        // remove asserts?
-        if !assert_found && tokenType == C_Assert && !enableAsserts {
+        // remove asserts? (but not inside test declarations like 'test "name" group "g" assert fail')
+        if !assert_found && tokenType == C_Assert && !enableAsserts && (phrase.TokenCount == 0 || phrase.Tokens[0].tokType != C_Test) {
             discard_phrase = true
             assert_found = true
         }
@@ -313,6 +313,16 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                         if parentFileMap, exists := fileMap.Load(lmv); exists {
                             fileMap.Store(tryFS, parentFileMap)
                         }
+
+                        // Copy parent bindings so try-block tokens resolve to the same slots
+                        bindlock.Lock()
+                        if bindings[tryFS] == nil {
+                            bindings[tryFS] = make(map[string]uint64)
+                        }
+                        for name, slot := range bindings[lmv] {
+                            bindings[tryFS][name] = slot
+                        }
+                        bindlock.Unlock()
 
                         // Recursively parse try block content
                         ctx := context.Background()

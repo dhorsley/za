@@ -1694,7 +1694,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
     if ifs >= uint32(cap(bindings)) {
         bindResize()
     }
-    if varmode == MODE_NEW {
+    if varmode == MODE_NEW || varmode == MODE_TRY {
         bindings[ifs] = make(map[string]uint64)
     }
 
@@ -1710,7 +1710,7 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 
     bindlock.Unlock()
 
-    if varmode == MODE_NEW {
+    if varmode == MODE_NEW || varmode == MODE_TRY {
         testlock.Lock()
         test_group = ""
         test_name = ""
@@ -1749,28 +1749,8 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
         (*ident)[bin] = t
     }
 
-    // assign captured variables from parent scope
-    if captured_vars != nil && len(captured_vars) > 0 {
-        // Get the captured variable names from the try block registry
-        if isTryBlock {
-            // Find the try block info to get captured variable names
-            for _, tryBlock := range tryBlockRegistry {
-                if tryBlock.functionSpace == csloc {
-                    for i, varName := range tryBlock.capturedVars {
-                        if i < len(captured_vars) {
-                            bin := bind_int(ifs, varName)
-                            vset(nil, ifs, ident, varName, captured_vars[i])
-                            t := (*ident)[bin]
-                            t.ITyped = false
-                            t.declared = true
-                            (*ident)[bin] = t
-                        }
-                    }
-                    break
-                }
-            }
-        }
-    }
+    // assign captured variables from parent scope (removed with `uses` clause;
+    // captured_vars parameter retained in signature for future closure use)
 
 tco_reentry:
 
@@ -2066,6 +2046,9 @@ tco_reentry:
         }
 
         // show var references for -V arg
+        // NOTE: This whitelist is also the definition of what any static walk
+        // (e.g. a syntax checker) observes. If you add a new statement type
+        // that should be visible to static analysis, it must be included here.
         if var_refs {
             switch statement {
             case C_Module, C_Define, C_Enddef:
@@ -7682,57 +7665,6 @@ tco_reentry:
             continue
 
         case C_Try:
-            // Parse capture list: try USES x,y,z throws "category"
-            var capturedVars []string
-            var usesPos, throwsPos int = -1, -1
-
-            // Find positions of USES and throws
-            for i, tok := range inbound.Tokens {
-                if tok.tokType == C_Uses {
-                    usesPos = i
-                } else if tok.tokType == C_Throws {
-                    throwsPos = i
-                }
-            }
-
-            // Error checking for capture list
-            if usesPos != -1 && throwsPos != -1 && usesPos > throwsPos {
-                parser.report(inbound.SourceLine, "Try USES clause must come before throws clause")
-                finish(false, ERR_SYNTAX)
-                break
-            }
-
-            // Parse capture list if USES found
-            if usesPos != -1 {
-                // Extract tokens after USES until throws (if present)
-                endPos := len(inbound.Tokens)
-                if throwsPos != -1 {
-                    endPos = throwsPos
-                }
-
-                captureTokens := inbound.Tokens[usesPos+1 : endPos]
-                if len(captureTokens) > 0 {
-                    // Split by commas to get variable names
-                    varArrays := parser.splitCommaArray(captureTokens)
-                    for _, varTokens := range varArrays {
-                        if len(varTokens) > 0 {
-                            // Extract variable name and validate it's declared
-                            varToken := varTokens[0]
-                            varName := varToken.tokText
-
-                            // Check if variable is declared using bindpos
-                            if varToken.bindpos >= uint64(len(*ident)) || !(*ident)[varToken.bindpos].declared {
-                                parser.report(inbound.SourceLine, fmt.Sprintf("Variable '%s' in USES clause is not declared", varName))
-                                finish(false, ERR_SYNTAX)
-                                break
-                            }
-
-                            capturedVars = append(capturedVars, varName)
-                        }
-                    }
-                }
-            }
-
             // Parse optional throws clause: try throws "category"
             // This sets the default exception category for throw statements in this block
             var defaultCategory any
@@ -7785,53 +7717,20 @@ tco_reentry:
                 // Only execute during actual execution, not during function definition
                 if matchingTryBlock.functionSpace != 0 && !defining {
 
-                    // Store the captured variables in the actual registry entry
-                    // Find the actual registry entry by function space ID and update it
-                    for key, tryBlock := range tryBlockRegistry {
-                        if tryBlock.functionSpace == matchingTryBlock.functionSpace {
-                            tryBlock.capturedVars = capturedVars
-                            tryBlockRegistry[key] = tryBlock
-                            break
-                        }
-                    }
-
                     // Store the default category in the call context
                     calllock.Lock()
                     calltable[matchingTryBlock.functionSpace].defaultExceptionCategory = defaultCategory
                     calllock.Unlock()
 
-                    // Capture variables from parent scope
-                    var capturedVarsValues []any
-                    if len(capturedVars) > 0 {
-                        capturedVarsValues = make([]any, len(capturedVars))
-                        for i, varName := range capturedVars {
-                            // Get the variable's current value from parent scope
-                            value, _ := vget(nil, ifs, ident, varName)
-                            capturedVarsValues[i] = value
-                        }
-                    }
-
-                    // Create a fresh ident table for try block execution (like regular function calls)
-                    var tryIdent = make([]Variable, identInitialSize)
                     var callErr error
-                    var capturedResult []any
                     // Set the callLine field in the calltable entry before calling the function
                     // For try blocks, we use the source line from the inbound phrase
                     atomic.StoreInt32(&calltable[matchingTryBlock.functionSpace].callLine, int32(inbound.SourceLine))
-                    _, _, _, capturedResult, callErr = Call(ctx, MODE_NEW, &tryIdent, matchingTryBlock.functionSpace, ciEval, false, nil, "", []string{}, capturedVarsValues)
+                    // Execute try block sharing parent ident scope (MODE_TRY)
+                    _, _, _, _, callErr = Call(ctx, MODE_TRY, ident, matchingTryBlock.functionSpace, ciEval, false, nil, "", []string{}, nil)
                     if callErr != nil {
                         // Handle try block execution error
                         pf("Error executing try block: %v\n", callErr)
-                    }
-
-                    // Repopulate parent scope with modified captured variables
-                    if capturedResult != nil && len(capturedResult) > 0 && len(capturedVars) > 0 {
-                        for i, varName := range capturedVars {
-                            if i < len(capturedResult) {
-                                // Update the variable in parent scope
-                                vset(nil, ifs, ident, varName, capturedResult[i])
-                            }
-                        }
                     }
 
                     // Check return values from try block execution and mark for cleanup
@@ -8723,20 +8622,6 @@ tco_reentry:
             method_result, _ = vget(nil, ifs, ident, "self")
         }
 
-        // populate captured_result
-        if isTryBlock {
-            // Find the try block info to get captured variable names
-            for _, tryBlock := range tryBlockRegistry {
-                if tryBlock.functionSpace == csloc {
-                    captured_result = make([]any, len(tryBlock.capturedVars))
-                    for i, varName := range tryBlock.capturedVars {
-                        value, _ := vget(nil, ifs, ident, varName)
-                        captured_result[i] = value
-                    }
-                    break
-                }
-            }
-        }
         if retvalues != nil {
             calltable[ifs].retvals = retvalues
         }
@@ -9875,38 +9760,13 @@ func executeTryBlocks(ctx context.Context, tryBlocks []tryBlockInfo, err error, 
             fileMap.Store(loc, tryBlockFileMap)
         }
 
-        // Capture variables from parent scope if this try block has captured variables
-        var capturedVarsValues []any
-        if len(tryBlock.capturedVars) > 0 {
-            capturedVarsValues = make([]any, len(tryBlock.capturedVars))
-            for i, varName := range tryBlock.capturedVars {
-                // Get the variable's current value from parent scope
-                value, _ := vget(nil, tryBlock.parentFS, ident, varName)
-                capturedVarsValues[i] = value
-            }
-        }
-
-        // Create a fresh ident table for try block execution (like regular function calls)
-        var tryIdent = make([]Variable, identInitialSize)
-
-        // Execute the try block
+        // Execute the try block sharing parent ident scope (MODE_TRY)
         // For trap calls, we don't have parser context, so use 0
         atomic.StoreInt32(&calltable[loc].callLine, 0) // Trap calls don't have parser context
-        _, _, _, capturedResult, callErr := Call(ctx, MODE_NEW, &tryIdent, loc, ciTrap, false, nil, "", []string{}, capturedVarsValues, err)
+        _, _, _, _, callErr := Call(ctx, MODE_TRY, ident, loc, ciTrap, false, nil, "", []string{}, nil, err)
 
         if callErr == nil {
             // Try block executed successfully, consider the exception handled
-
-            // Repopulate parent scope with modified captured variables
-            if capturedResult != nil && len(capturedResult) > 0 && len(tryBlock.capturedVars) > 0 {
-                for i, varName := range tryBlock.capturedVars {
-                    if i < len(capturedResult) {
-                        // Update the variable in parent scope
-                        vset(nil, tryBlock.parentFS, ident, varName, capturedResult[i])
-                    }
-                }
-            }
-
             return true
         }
 
@@ -10044,39 +9904,14 @@ func executeApplicableTryBlocks(ctx context.Context, applicableTryBlocks []tryBl
             fileMap.Store(loc, tryBlockFileMap)
         }
 
-        // Capture variables from parent scope if this try block has captured variables
-        var capturedVarsValues []any
-        if len(tryBlock.capturedVars) > 0 {
-            capturedVarsValues = make([]any, len(tryBlock.capturedVars))
-            for i, varName := range tryBlock.capturedVars {
-                // Get the variable's current value from parent scope
-                value, _ := vget(nil, tryBlock.parentFS, ident, varName)
-                capturedVarsValues[i] = value
-            }
-        }
-
-        // Create a fresh ident table for try block execution (like regular function calls)
-        var tryIdent = make([]Variable, identInitialSize)
-
-        // Execute the try block
+        // Execute the try block sharing parent ident scope (MODE_TRY)
         // Set the callLine field in the calltable entry before calling the function
         // For trap calls, we don't have parser context, so use 0
         atomic.StoreInt32(&calltable[loc].callLine, 0) // Trap calls don't have parser context
-        _, _, _, capturedResult, callErr := Call(ctx, MODE_NEW, &tryIdent, loc, ciTrap, false, nil, "", []string{}, capturedVarsValues, err)
+        _, _, _, _, callErr := Call(ctx, MODE_TRY, ident, loc, ciTrap, false, nil, "", []string{}, nil, err)
 
         if callErr == nil {
             // Try block executed successfully, consider the exception handled
-
-            // Repopulate parent scope with modified captured variables
-            if capturedResult != nil && len(capturedResult) > 0 && len(tryBlock.capturedVars) > 0 {
-                for i, varName := range tryBlock.capturedVars {
-                    if i < len(capturedResult) {
-                        // Update the variable in parent scope
-                        vset(nil, tryBlock.parentFS, ident, varName, capturedResult[i])
-                    }
-                }
-            }
-
             return true
         }
 

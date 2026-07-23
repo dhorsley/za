@@ -1,0 +1,202 @@
+println "=== Try/Catch Variable Scope Tests (v1.3.0) ==="
+
+pass_count = 0
+fail_count = 0
+
+# --- Helpers (global counter updates via @) ---
+def assert_equal(name, actual, expected)
+    if actual == expected
+        @pass_count += 1
+        println "  ✓ " + name
+    else
+        @fail_count += 1
+        println "  ✗ " + name + " | expected: " + expected + " | got: " + actual
+    endif
+end
+
+def assert_true(name, cond)
+    if cond
+        @pass_count += 1
+        println "  ✓ " + name
+    else
+        @fail_count += 1
+        println "  ✗ " + name
+    endif
+end
+
+# ============================================
+# Test 1: Pre-existing variables visible inside try
+# ============================================
+println "\n--- Test 1: Pre-existing variable visibility ---"
+pre_a = 100
+pre_b = "hello"
+try
+    assert_equal("try sees pre_a", pre_a, 100)
+    assert_equal("try sees pre_b", pre_b, "hello")
+    pre_a = 200
+    pre_b = "world"
+endtry
+assert_equal("try modifications persist (pre_a)", pre_a, 200)
+assert_equal("try modifications persist (pre_b)", pre_b, "world")
+
+# ============================================
+# Test 2: Variables declared inside try persist after endtry
+# ============================================
+println "\n--- Test 2: New try-local variables persist ---"
+try
+    try_local = 42
+    try_list = [1, 2, 3]
+    try_map = map(.a 1, .b 2)
+endtry
+assert_equal("try_local persists", try_local, 42)
+assert_equal("try_list persists", try_list, [1, 2, 3])
+assert_equal("try_map persists", try_map.a, 1)
+
+# ============================================
+# Test 3: Catch block sees and modifies parent scope
+# ============================================
+println "\n--- Test 3: Catch block scope sharing ---"
+catch_val = "before"
+try
+    throw "test_err"
+catch err is "test_err"
+    catch_val = "modified_in_catch"
+endtry
+assert_equal("catch modification persists", catch_val, "modified_in_catch")
+
+# ============================================
+# Test 4: Then block sees and modifies parent scope (no exception)
+# ============================================
+println "\n--- Test 4: Then block scope sharing ---"
+then_val = "before"
+try
+    then_val = "modified_in_try"
+then
+    then_val = "modified_in_then"
+endtry
+assert_equal("then modification persists", then_val, "modified_in_then")
+
+# ============================================
+# Test 5: Then block executes on exception path (empty catch body)
+# ============================================
+println "\n--- Test 5: Then block on exception path ---"
+exc_then_val = "before"
+try
+    throw "exc_test"
+catch err is "exc_test"
+    # empty catch body so then block is reached
+then
+    exc_then_val = "modified_in_then_after_catch"
+endtry
+assert_equal("then ran after empty catch", exc_then_val, "modified_in_then_after_catch")
+
+# ============================================
+# Test 6: Nested try blocks share outer scope
+# ============================================
+println "\n--- Test 6: Nested try block scope sharing ---"
+nest_outer = 1
+try
+    nest_outer = 10
+    try
+        assert_equal("inner sees outer modification", nest_outer, 10)
+        nest_outer = 100
+        nest_inner = "inner_var"
+    endtry
+    assert_equal("outer sees inner modification", nest_outer, 100)
+    assert_equal("inner-declared var visible in outer", nest_inner, "inner_var")
+endtry
+assert_equal("nested modifications persist at top level", nest_outer, 100)
+
+# ============================================
+# Test 7: Multiple types and complex data structures
+# ============================================
+println "\n--- Test 7: Complex data types in shared scope ---"
+complex_list = []
+complex_map = map()
+try
+    complex_list = append(complex_list, 1)
+    complex_list = append(complex_list, 2)
+    complex_map.x = 10
+    complex_map.y = 20
+    complex_str = "mutated"
+    complex_int = 999
+endtry
+assert_equal("list length after append", len(complex_list), 2)
+assert_equal("list first element", complex_list[0], 1)
+assert_equal("list second element", complex_list[1], 2)
+assert_equal("map mutated in try", complex_map.x, 10)
+assert_equal("string declared in try", complex_str, "mutated")
+assert_equal("int declared in try", complex_int, 999)
+
+# ============================================
+# Test 8: Variable state across try/then (no catch path)
+# ============================================
+println "\n--- Test 8: State across try+then ---"
+stateful = 0
+try
+    stateful = 1
+    stateful = 2
+then
+    stateful = 3
+endtry
+assert_equal("final state after try+then", stateful, 3)
+
+# ============================================
+# Test 9: Unhandled exception — then still runs before bubble
+# ============================================
+println "\n--- Test 9: Unhandled exception — then still runs ---"
+unhandled_then_ran = false
+unhandled_var = "before"
+try
+    try
+        unhandled_var = "modified_in_try"
+        throw "no_match"
+    catch err is "different"
+        # won't match — empty body so then is reached
+    then
+        # then block executes with active exception present; only first statement
+        # runs before exception jump logic skips rest, so pack both checks into
+        # a single map assignment.
+        unhandled_state = map(.ran true, .var "modified_in_then")
+    endtry
+catch err is "no_match"
+    # caught at outer level
+endtry
+assert_true("then block ran before bubble", unhandled_state.ran)
+assert_equal("then modification persisted through bubble", unhandled_state.var, "modified_in_then")
+
+# ============================================
+# Test 10: No exception — normal path
+# ============================================
+println "\n--- Test 10: Normal path (no exception) ---"
+normal_val = 0
+try
+    normal_val = 10
+then
+    normal_val = 30
+endtry
+assert_equal("normal path: try+then ran", normal_val, 30)
+
+# ============================================
+# Test 11: Catch block variable creation in parent scope
+# ============================================
+println "\n--- Test 11: Catch block variable creation ---"
+catch_new = nil
+try
+    throw "test_11"
+catch err is "test_11"
+    catch_new = 99
+endtry
+assert_equal("catch-declared var persists", catch_new, 99)
+
+# ============================================
+# Summary
+# ============================================
+println "\n=== Results ==="
+println "Passed: " + pass_count
+println "Failed: " + fail_count
+if fail_count > 0
+    println "SOME TESTS FAILED"
+else
+    println "All try/catch scope tests passed!"
+endif

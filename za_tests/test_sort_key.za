@@ -1,0 +1,167 @@
+#!/usr/bin/env za
+
+# Test script for sort() key-extractor option (Tier 5.4)
+# Tests sort(list, map(.key `expr`)) syntax
+permit("error_exit", false)
+
+println "=== Sort Key-Extractor Tests ==="
+
+passed = 0
+failed = 0
+
+# --- Basic key-extractor ---
+
+println "\n1. Sort structs by numeric field"
+items = [map(.name "banana", .price 3), map(.name "apple", .price 1), map(.name "cherry", .price 2)]
+s1 = sort(items, map(.key `#.price`))
+names1 = ""
+for i = 0 to len(s1) - 1
+    if i > 0
+        names1 += ","
+    endif
+    names1 += s1[i].name
+endfor
+if names1 == "apple,cherry,banana"
+    println "PASS: sort by price asc -> apple,cherry,banana"
+    passed += 1
+else
+    println "FAIL: sort by price asc expected apple,cherry,banana, got:", names1
+    failed += 1
+endif
+
+println "\n2. Sort structs by numeric field, reverse"
+s2 = sort(items, map(.key `#.price`, .reverse true))
+names2 = ""
+for i = 0 to len(s2) - 1
+    if i > 0
+        names2 += ","
+    endif
+    names2 += s2[i].name
+endfor
+if names2 == "banana,cherry,apple"
+    println "PASS: sort by price desc -> banana,cherry,apple"
+    passed += 1
+else
+    println "FAIL: sort by price desc expected banana,cherry,apple, got:", names2
+    failed += 1
+endif
+
+println "\n3. Sort structs by string field"
+s3 = sort(items, map(.key `#.name`))
+names3 = ""
+for i = 0 to len(s3) - 1
+    if i > 0
+        names3 += ","
+    endif
+    names3 += s3[i].name
+endfor
+if names3 == "apple,banana,cherry"
+    println "PASS: sort by name -> apple,banana,cherry"
+    passed += 1
+else
+    println "FAIL: sort by name expected apple,banana,cherry, got:", names3
+    failed += 1
+endif
+
+# --- Computed key ---
+
+println "\n4. Sort with computed key"
+items4 = [map(.first "John", .last "Smith"), map(.first "Jane", .last "Adams"), map(.first "Bob", .last "Jones")]
+s4 = sort(items4, map(.key `#.last`))
+names4 = ""
+for i = 0 to len(s4) - 1
+    if i > 0
+        names4 += ","
+    endif
+    names4 += s4[i].first
+endfor
+if names4 == "Jane,Bob,John"
+    println "PASS: sort by last name -> Jane,Bob,John"
+    passed += 1
+else
+    println "FAIL: sort by last name expected Jane,Bob,John, got:", names4
+    failed += 1
+endif
+
+println "\n5. Sort with expression key"
+vals = [map(.v 3), map(.v 1), map(.v 4), map(.v 1), map(.v 5)]
+s5 = sort(vals, map(.key `#.v`))
+result5 = ""
+for i = 0 to len(s5) - 1
+    if i > 0
+        result5 += ","
+    endif
+    result5 += as_string(s5[i].v)
+endfor
+if result5 == "1,1,3,4,5"
+    println "PASS: sort by computed key -> 1,1,3,4,5"
+    passed += 1
+else
+    println "FAIL: sort by computed key expected 1,1,3,4,5, got:", result5
+    failed += 1
+endif
+
+# --- Plain sort still works ---
+
+println "\n6. Plain sort still works (no key)"
+nums = [5, 3, 1, 4, 2]
+s6 = sort(nums)
+result6 = ""
+for i = 0 to len(s6) - 1
+    if i > 0
+        result6 += ","
+    endif
+    result6 += as_string(s6[i])
+endfor
+if result6 == "1,2,3,4,5"
+    println "PASS: plain sort -> 1,2,3,4,5"
+    passed += 1
+else
+    println "FAIL: plain sort expected 1,2,3,4,5, got:", result6
+    failed += 1
+endif
+
+println "\n7. Sort with reverse, no key"
+s7 = sort(nums, true)
+result7 = ""
+for i = 0 to len(s7) - 1
+    if i > 0
+        result7 += ","
+    endif
+    result7 += as_string(s7[i])
+endfor
+if result7 == "5,4,3,2,1"
+    println "PASS: plain reverse sort -> 5,4,3,2,1"
+    passed += 1
+else
+    println "FAIL: plain reverse sort expected 5,4,3,2,1, got:", result7
+    failed += 1
+endif
+
+println "\n8. Sort with .reverse and .key"
+s8 = sort(items, map(.key `#.price`, .reverse true))
+price8 = ""
+for i = 0 to len(s8) - 1
+    if i > 0
+        price8 += ","
+    endif
+    price8 += as_string(s8[i].price)
+endfor
+if price8 == "3,2,1"
+    println "PASS: reverse sort by price -> 3,2,1"
+    passed += 1
+else
+    println "FAIL: reverse sort by price expected 3,2,1, got:", price8
+    failed += 1
+endif
+
+# --- Summary ---
+
+println "\n=== Results ==="
+println "Passed:", passed
+println "Failed:", failed
+if failed == 0
+    println "ALL TESTS PASSED"
+else
+    println "SOME TESTS FAILED"
+endif

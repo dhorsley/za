@@ -109,9 +109,6 @@ try
     bad = hex_decode("zzzz")
     println "✗ Invalid hex should have failed, got:", bad
 catch err
-    println "✓ Invalid hex correctly rejected"
-endtry
-catch err
     println "Error in decode test:"
     println pp(err)
 endtry

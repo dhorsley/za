@@ -10,9 +10,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"za/lexer"
 )
 
 // FunctionLibrary holds all stdlib function metadata
@@ -128,12 +131,15 @@ type LSPServer struct {
 	zaPath             string
 	pendingNotifs      []*JSONRPCMessage
 	timers             map[string]*time.Timer
+	fullTimers         map[string]*time.Timer
+	lastFullDiags      map[string][]Diagnostic
 	writer             *bufio.Writer
 	writeMu            sync.Mutex
 	mu                 sync.RWMutex
 }
 
 const diagDebounceMs = 500
+const wordBoundaryDebounceMs = 150
 
 type Document struct {
 	URI     string
@@ -153,7 +159,7 @@ type SourceLocation struct {
 	Column int
 }
 
-// ---- Lightweight Tokenizer for LSP analysis ----
+// ---- Lexer-based tokenizer using za/lexer ----
 
 type TokenKind int
 
@@ -180,47 +186,151 @@ const (
 
 type Token struct {
 	Kind  TokenKind
+	Type  int64
 	Text  string
 	Start int
 	End   int
 }
 
-var zaKeywords = map[string]bool{
-	"def": true, "define": true, "end": true, "enddef": true,
-	"if": true, "else": true, "endif": true,
-	"for": true, "foreach": true, "endfor": true,
-	"while": true, "endwhile": true,
-	"struct": true, "endstruct": true,
-	"enum": true, "case": true, "is": true, "contains": true,
-	"try": true, "catch": true, "endtry": true,
-	"then": true, "throws": true, "throw": true,
-	"return": true, "break": true, "continue": true,
-	"local": true, "global": true, "const": true,
-	"module": true, "require": true, "use": true, "uses": true,
-	"lib": true, "namespace": true,
-	"in": true, "as": true, "do": true, "to": true, "step": true,
-	"or": true, "and": true, "not": true, "has": true,
-	"test": true, "endtest": true, "assert": true,
-	"async": true, "doc": true, "showdef": true,
-	"input": true, "prompt": true, "log": true, "println": true, "print": true,
+// noopBinder is a no-op binding function for lexer use in the LSP
+// (the LSP doesn't need identifier binding resolution).
+func noopBinder(fs uint32, name string) uint64 { return 0 }
+
+// computeLineStarts returns the byte offsets of each line start in the input.
+func computeLineStarts(input string) []int {
+	starts := []int{0}
+	for i := 0; i < len(input); i++ {
+		if input[i] == '\n' {
+			starts = append(starts, i+1)
+		}
+	}
+	return starts
 }
 
+// mapLexerType maps a lexer token type constant to the LSP TokenKind.
+func mapLexerType(tokType int64) TokenKind {
+	switch tokType {
+	case lexer.Identifier:
+		return TokIdentifier
+	case lexer.StringLiteral:
+		return TokString
+	case lexer.NumericLiteral:
+		return TokNumber
+	case lexer.SingleComment:
+		return TokComment
+	case lexer.Operator:
+		return TokOperator
+	case lexer.LParen:
+		return TokLParen
+	case lexer.RParen:
+		return TokRParen
+	case lexer.LeftSBrace:
+		return TokLBracket
+	case lexer.RightSBrace:
+		return TokRBracket
+	case lexer.LeftCBrace:
+		return TokLBrace
+	case lexer.RightCBrace:
+		return TokRBrace
+	case lexer.O_Comma:
+		return TokComma
+	case lexer.SYM_COLON:
+		return TokColon
+	case lexer.O_Assign:
+		return TokAssign
+	case lexer.EOL, lexer.EOF:
+		return TokEOL
+	case lexer.Error:
+		return TokUnknown
+	default:
+		// Check if it's a statement keyword (C_Define through C_Endtry, etc.)
+		if tokType >= lexer.START_STATEMENTS && tokType <= lexer.END_STATEMENTS {
+			return TokKeyword
+		}
+		return TokUnknown
+	}
+}
+
+// blockOpeners maps lexer keyword types to their block names.
+var blockOpeners = map[int64]string{
+	lexer.C_Define:  "def",
+	lexer.C_If:      "if",
+	lexer.C_For:     "for",
+	lexer.C_Foreach: "foreach",
+	lexer.C_While:   "while",
+	lexer.C_Struct:  "struct",
+	lexer.C_Try:     "try",
+	lexer.C_Case:    "case",
+}
+
+// blockClosers maps lexer end-keyword types to their matching block names.
+var blockClosers = map[int64]string{
+	lexer.C_Enddef:    "def",
+	lexer.C_Endif:     "if",
+	lexer.C_Endfor:    "for",
+	lexer.C_Endwhile:  "while",
+	lexer.C_Endstruct: "struct",
+	lexer.C_Endtry:    "try",
+	lexer.C_Endcase:   "case",
+}
+
+// tokenizeDocument uses the real za lexer to tokenize the entire document.
+// It returns a map from line number (0-based) to tokens on that line.
+func tokenizeDocument(content string) map[int][]Token {
+	result := make(map[int][]Token)
+	lineStarts := computeLineStarts(content)
+
+	var curLine int16 = 0
+	pos := 0
+	for {
+		res, err := lexer.NextToken(content, 0, &curLine, pos, noopBinder)
+		if err != nil {
+			break
+		}
+		if res.Eof || res.Pos < 0 {
+			break
+		}
+
+		startPos := pos
+		endPos := res.Pos
+
+		// Compute line and column
+		line := 0
+		for line < len(lineStarts)-1 && lineStarts[line+1] <= startPos {
+			line++
+		}
+		col := startPos - lineStarts[line]
+
+		tok := Token{
+			Kind:  mapLexerType(res.Tok.TokType),
+			Type:  res.Tok.TokType,
+			Text:  res.Tok.TokText,
+			Start: col,
+			End:   col + (endPos - startPos),
+		}
+		result[line] = append(result[line], tok)
+
+		pos = endPos
+	}
+	return result
+}
+
+// tokenizeLine provides a lightweight fallback for single-line contexts
+// (e.g., cursor position checks) that don't need the full lexer.
 func tokenizeLine(line string) []Token {
 	var tokens []Token
 	i := 0
 	for i < len(line) {
-		// Skip whitespace
 		for i < len(line) && (line[i] == ' ' || line[i] == '\t' || line[i] == '\r') {
 			i++
 		}
 		if i >= len(line) {
 			break
 		}
-
 		start := i
 		ch := line[i]
 
-		// Line comment
+		// Comment
 		if ch == '#' {
 			for i < len(line) && line[i] != '\n' {
 				i++
@@ -228,8 +338,7 @@ func tokenizeLine(line string) []Token {
 			tokens = append(tokens, Token{Kind: TokComment, Text: line[start:i], Start: start, End: i})
 			continue
 		}
-
-		// String literal
+		// String
 		if ch == '"' || ch == '`' || ch == '\'' {
 			quote := ch
 			i++
@@ -247,17 +356,15 @@ func tokenizeLine(line string) []Token {
 			tokens = append(tokens, Token{Kind: TokString, Text: line[start:i], Start: start, End: i})
 			continue
 		}
-
-		// Number literal
-		if isDigit(ch) || (ch == '.' && i+1 < len(line) && isDigit(line[i+1])) {
+		// Number
+		if (ch >= '0' && ch <= '9') || (ch == '.' && i+1 < len(line) && line[i+1] >= '0' && line[i+1] <= '9') {
 			i++
-			for i < len(line) && (isDigit(line[i]) || line[i] == '.' || line[i] == 'e' || line[i] == 'E' || line[i] == '+' || line[i] == '-') {
+			for i < len(line) && ((line[i] >= '0' && line[i] <= '9') || line[i] == '.' || line[i] == 'e' || line[i] == 'E' || line[i] == '+' || line[i] == '-') {
 				i++
 			}
 			tokens = append(tokens, Token{Kind: TokNumber, Text: line[start:i], Start: start, End: i})
 			continue
 		}
-
 		// Single-char tokens
 		switch ch {
 		case '(':
@@ -293,7 +400,6 @@ func tokenizeLine(line string) []Token {
 			tokens = append(tokens, Token{Kind: TokColon, Text: ":", Start: start, End: i})
 			continue
 		}
-
 		// Multi-char operators
 		if i+1 < len(line) {
 			two := line[i : i+2]
@@ -303,46 +409,26 @@ func tokenizeLine(line string) []Token {
 				continue
 			}
 		}
-
 		// Single-char operators
 		if ch == '=' || ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '%' || ch == '^' || ch == '!' || ch == '<' || ch == '>' || ch == '~' || ch == '.' || ch == '?' || ch == ';' || ch == '&' || ch == '|' {
 			i++
 			tokens = append(tokens, Token{Kind: TokOperator, Text: string(ch), Start: start, End: i})
 			continue
 		}
-
-		// Identifier or keyword
-		if isIdentStart(ch) || ch == '$' || ch == '@' {
+		// Identifier
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' || ch == '$' || ch == '@' {
 			i++
-			for i < len(line) && isIdentChar(line[i]) {
+			for i < len(line) && ((line[i] >= 'a' && line[i] <= 'z') || (line[i] >= 'A' && line[i] <= 'Z') || (line[i] >= '0' && line[i] <= '9') || line[i] == '_' || line[i] == '-') {
 				i++
 			}
-			text := line[start:i]
-			kind := TokIdentifier
-			if zaKeywords[text] {
-				kind = TokKeyword
-			}
-			tokens = append(tokens, Token{Kind: kind, Text: text, Start: start, End: i})
+			tokens = append(tokens, Token{Kind: TokIdentifier, Text: line[start:i], Start: start, End: i})
 			continue
 		}
-
-		// Unknown character
+		// Unknown
 		i++
 		tokens = append(tokens, Token{Kind: TokUnknown, Text: string(ch), Start: start, End: i})
 	}
 	return tokens
-}
-
-func isDigit(ch byte) bool {
-	return ch >= '0' && ch <= '9'
-}
-
-func isIdentStart(ch byte) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_'
-}
-
-func isIdentChar(ch byte) bool {
-	return isIdentStart(ch) || isDigit(ch) || ch == '_' || ch == '-'
 }
 
 // getPrefixAtCursor extracts the partial word being typed before the cursor
@@ -352,8 +438,13 @@ func getPrefixAtCursor(line string, char int) string {
 	}
 	// Walk backwards to find word start
 	start := char
-	for start > 0 && isIdentChar(line[start-1]) {
-		start--
+	for start > 0 {
+		c := line[start-1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '$' || c == '@' {
+			start--
+		} else {
+			break
+		}
 	}
 	return line[start:char]
 }
@@ -389,10 +480,12 @@ func (msg *JSONRPCMessage) hasID() bool {
 
 func NewLSPServer(lib *FunctionLibrary, zaPath string) *LSPServer {
 	return &LSPServer{
-		lib:       lib,
-		documents: make(map[string]*Document),
-		zaPath:    zaPath,
-		timers:    make(map[string]*time.Timer),
+		lib:           lib,
+		documents:     make(map[string]*Document),
+		zaPath:        zaPath,
+		timers:        make(map[string]*time.Timer),
+		fullTimers:    make(map[string]*time.Timer),
+		lastFullDiags: make(map[string][]Diagnostic),
 	}
 }
 
@@ -486,8 +579,6 @@ func (s *LSPServer) handleDidOpen(msg *JSONRPCMessage) {
 	json.Unmarshal(msg.Params, &params)
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.documents[params.TextDocument.URI] = &Document{
 		URI:     params.TextDocument.URI,
 		Content: params.TextDocument.Text,
@@ -495,6 +586,10 @@ func (s *LSPServer) handleDidOpen(msg *JSONRPCMessage) {
 	}
 
 	s.extractSymbols(params.TextDocument.URI, params.TextDocument.Text)
+	s.mu.Unlock()
+
+	// Run full diagnostics on open
+	go s.runFullDiagnostics(params.TextDocument.URI)
 }
 
 type DidChangeParams struct {
@@ -509,6 +604,7 @@ type DidChangeParams struct {
 func (s *LSPServer) runDiagnostics(uri string) {
 	s.mu.RLock()
 	doc := s.documents[uri]
+	fullDiags := s.lastFullDiags[uri]
 	s.mu.RUnlock()
 
 	if doc == nil {
@@ -520,10 +616,118 @@ func (s *LSPServer) runDiagnostics(uri string) {
 		return
 	}
 
-	// Run structural diagnostics
+	// Run structural diagnostics (in-process, instant)
 	structuralDiags := s.getStructuralDiagnostics(uri, doc.Content)
 
-	s.publishDiagnostics(uri, structuralDiags)
+	// Merge with last full diagnostics (if any)
+	allDiags := append(structuralDiags, fullDiags...)
+
+	s.publishDiagnostics(uri, allDiags)
+}
+
+func (s *LSPServer) runFullDiagnostics(uri string) {
+	s.mu.RLock()
+	doc := s.documents[uri]
+	s.mu.RUnlock()
+
+	if doc == nil {
+		return
+	}
+
+	if !isZaFile(uri, doc.Content) {
+		return
+	}
+
+	// Run full diagnostics via subprocess
+	fullDiags := s.getFullDiagnostics(uri, doc.Content)
+
+	s.mu.Lock()
+	s.lastFullDiags[uri] = fullDiags
+	s.mu.Unlock()
+
+	// Re-run structural diagnostics to merge and publish
+	s.runDiagnostics(uri)
+}
+
+func (s *LSPServer) getFullDiagnostics(uri string, content string) []Diagnostic {
+	diagnostics := []Diagnostic{}
+
+	// Create temp file in the source file's directory so relative module paths resolve correctly
+	dir := ""
+	if fileURI := strings.TrimPrefix(uri, "file://"); fileURI != uri {
+		dir = filepath.Dir(fileURI)
+	}
+	tmpFile, err := os.CreateTemp(dir, "za-lsp-*.za")
+	if err != nil {
+		log.Printf("[LSP] Failed to create temp file: %v", err)
+		return diagnostics
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		log.Printf("[LSP] Failed to write temp file: %v", err)
+		tmpFile.Close()
+		return diagnostics
+	}
+	tmpFile.Close()
+
+	// Run za -S -zz (level 2 enables module warnings + dynamic path warnings)
+	cmd := exec.Command(s.zaPath, "-S", "-zz", "-f", tmpFile.Name())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// za -z exits 1 on parse errors, but still outputs JSON
+		if len(output) == 0 {
+			log.Printf("[LSP] za -S -zz failed with no output: %v", err)
+			return diagnostics
+		}
+	}
+
+	// Parse JSON output
+	var result struct {
+		Files   []struct {
+			Path    string `json:"path"`
+			ParseMs int64  `json:"parse_ms"`
+			Status  string `json:"status"`
+			Error   string `json:"error,omitempty"`
+		} `json:"files"`
+		TotalMs int64  `json:"total_ms"`
+		Success bool   `json:"success"`
+	}
+
+	if err := json.Unmarshal(output, &result); err != nil {
+		log.Printf("[LSP] Failed to parse za -S -z output: %v", err)
+		return diagnostics
+	}
+
+	// Convert errors to diagnostics (main file only, not module sub-imports)
+	for _, file := range result.Files {
+		if file.Status == "error" && file.Error != "" && file.Path == tmpFile.Name() {
+			// Map the error to line 1, column 0 as a fallback
+			// (za -z doesn't yet emit line-level diagnostics in the JSON)
+			diagnostics = append(diagnostics, Diagnostic{
+				Range: Range{
+					Start: Position{Line: 0, Character: 0},
+					End:   Position{Line: 0, Character: 1},
+				},
+				Severity: 1, // Error
+				Message:  file.Error,
+				Source:   "za-parse",
+			})
+		}
+	}
+
+	return diagnostics
+}
+
+func isWordBoundaryChange(content string) bool {
+	if len(content) == 0 {
+		return true
+	}
+	last := content[len(content)-1]
+	return last == ' ' || last == '\t' || last == '\n' || last == '\r' ||
+		last == ',' || last == ';' || last == '(' || last == ')' ||
+		last == '[' || last == ']' || last == '{' || last == '}' ||
+		last == '"' || last == '\'' || last == '`' || last == '.'
 }
 
 func (s *LSPServer) handleDidChange(msg *JSONRPCMessage) {
@@ -543,12 +747,26 @@ func (s *LSPServer) handleDidChange(msg *JSONRPCMessage) {
 		oldTimer.Stop()
 		delete(s.timers, params.TextDocument.URI)
 	}
+	if oldTimer, ok := s.fullTimers[params.TextDocument.URI]; ok {
+		oldTimer.Stop()
+		delete(s.fullTimers, params.TextDocument.URI)
+	}
 
-	// Start a new debounce timer
 	uri := params.TextDocument.URI
+	content := params.ContentChanges[0].Text
+
+	// Start structural diagnostics timer (always)
 	s.timers[uri] = time.AfterFunc(time.Duration(diagDebounceMs)*time.Millisecond, func() {
 		s.runDiagnostics(uri)
 	})
+
+	// Start full diagnostics timer on word boundary
+	if isWordBoundaryChange(content) {
+		s.fullTimers[uri] = time.AfterFunc(time.Duration(wordBoundaryDebounceMs)*time.Millisecond, func() {
+			s.runFullDiagnostics(uri)
+		})
+	}
+
 	s.mu.Unlock()
 }
 
@@ -566,6 +784,15 @@ func (s *LSPServer) handleDidClose(msg *JSONRPCMessage) {
 	defer s.mu.Unlock()
 
 	delete(s.documents, params.TextDocument.URI)
+	delete(s.lastFullDiags, params.TextDocument.URI)
+	if timer, ok := s.timers[params.TextDocument.URI]; ok {
+		timer.Stop()
+		delete(s.timers, params.TextDocument.URI)
+	}
+	if timer, ok := s.fullTimers[params.TextDocument.URI]; ok {
+		timer.Stop()
+		delete(s.fullTimers, params.TextDocument.URI)
+	}
 }
 
 type DidSaveParams struct {
@@ -602,16 +829,20 @@ func (s *LSPServer) handleDidSave(msg *JSONRPCMessage) {
 		return
 	}
 
-	// Cancel any pending debounce timer
+	// Cancel any pending debounce timers
 	s.mu.Lock()
 	if oldTimer, ok := s.timers[params.TextDocument.URI]; ok {
 		oldTimer.Stop()
 		delete(s.timers, params.TextDocument.URI)
 	}
+	if oldTimer, ok := s.fullTimers[params.TextDocument.URI]; ok {
+		oldTimer.Stop()
+		delete(s.fullTimers, params.TextDocument.URI)
+	}
 	s.mu.Unlock()
 
-	// Run full diagnostics immediately
-	s.runDiagnostics(params.TextDocument.URI)
+	// Run full diagnostics immediately on save
+	s.runFullDiagnostics(params.TextDocument.URI)
 }
 
 // ---- Diagnostics ----
@@ -652,52 +883,114 @@ func (s *LSPServer) getStructuralDiagnostics(uri string, content string) []Diagn
 	diagnostics := []Diagnostic{}
 	lines := strings.Split(content, "\n")
 
-	// Track block nesting
+	// Tokenize the whole document using the real lexer.
+	tokenMap := tokenizeDocument(content)
+
+	// ---- Block nesting using real lexer tokens ----
 	blockStack := []string{}
 	blockLines := []int{}
 
-	for i, line := range lines {
-		toks := tokenizeLine(line)
+	for i := 0; i < len(lines); i++ {
+		toks, ok := tokenMap[i]
+		if !ok {
+			continue
+		}
 		for _, tok := range toks {
 			if tok.Kind != TokKeyword {
 				continue
 			}
-			switch tok.Text {
-			case "def", "if", "for", "foreach", "while", "struct", "try", "case":
-				blockStack = append(blockStack, tok.Text)
+			switch tok.Type {
+			case lexer.C_Define:
+				// 'pane define' is a method call, not a block opener.
+				isMethodCall := false
+				for _, t := range toks {
+					if t.Type == lexer.C_Define {
+						break
+					}
+					if t.Kind == TokIdentifier || t.Kind == TokKeyword {
+						isMethodCall = true
+						break
+					}
+				}
+				if !isMethodCall {
+					blockStack = append(blockStack, "def")
+					blockLines = append(blockLines, i)
+				}
+			case lexer.C_If:
+				// Statement-modifier 'if' (e.g., 'continue if cond') is not a block opener.
+				isStmtMod := false
+				for _, t := range toks {
+					if t.Type == lexer.C_If {
+						break
+					}
+					if t.Kind == TokIdentifier || t.Kind == TokKeyword {
+						isStmtMod = true
+						break
+					}
+				}
+				if !isStmtMod {
+					blockStack = append(blockStack, "if")
+					blockLines = append(blockLines, i)
+				}
+			case lexer.C_For:
+				blockStack = append(blockStack, "for")
 				blockLines = append(blockLines, i)
-			case "end":
+			case lexer.C_Foreach:
+				blockStack = append(blockStack, "foreach")
+				blockLines = append(blockLines, i)
+			case lexer.C_While:
+				blockStack = append(blockStack, "while")
+				blockLines = append(blockLines, i)
+			case lexer.C_Struct:
+				blockStack = append(blockStack, "struct")
+				blockLines = append(blockLines, i)
+			case lexer.C_Try:
+				blockStack = append(blockStack, "try")
+				blockLines = append(blockLines, i)
+			case lexer.C_Case:
+				blockStack = append(blockStack, "case")
+				blockLines = append(blockLines, i)
+			case lexer.C_Test:
+				blockStack = append(blockStack, "test")
+				blockLines = append(blockLines, i)
+			case lexer.C_Enddef:
+				// Generic 'end'/'enddef' - pop any block
 				if len(blockStack) > 0 {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
-			case "endif":
+			case lexer.C_Endif:
 				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "if" {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
-			case "endfor":
+			case lexer.C_Endfor:
 				if len(blockStack) > 0 && (blockStack[len(blockStack)-1] == "for" || blockStack[len(blockStack)-1] == "foreach") {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
-			case "endwhile":
+			case lexer.C_Endwhile:
 				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "while" {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
-			case "enddef":
-				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "def" {
-					blockStack = blockStack[:len(blockStack)-1]
-					blockLines = blockLines[:len(blockLines)-1]
-				}
-			case "endstruct":
+			case lexer.C_Endstruct:
 				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "struct" {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
-			case "endtry":
+			case lexer.C_Endtry:
 				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "try" {
+					blockStack = blockStack[:len(blockStack)-1]
+					blockLines = blockLines[:len(blockLines)-1]
+				}
+			case lexer.C_Endcase:
+				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "case" {
+					blockStack = blockStack[:len(blockStack)-1]
+					blockLines = blockLines[:len(blockLines)-1]
+				}
+			case lexer.C_Endtest:
+				if len(blockStack) > 0 && blockStack[len(blockStack)-1] == "test" {
 					blockStack = blockStack[:len(blockStack)-1]
 					blockLines = blockLines[:len(blockLines)-1]
 				}
@@ -718,14 +1011,10 @@ func (s *LSPServer) getStructuralDiagnostics(uri string, content string) []Diagn
 		})
 	}
 
-	// Track multi-line state across all lines
+	// ---- Bracket/paren/quote tracking using real lexer tokens ----
 	fileParenDepth := 0
 	fileBracketDepth := 0
 	fileBraceDepth := 0
-	fileInString := false
-	fileStringChar := byte(0)
-	stringStartLine := -1
-	stringStartChar := 0
 	parenStartLine := -1
 	parenStartChar := 0
 	bracketStartLine := -1
@@ -733,94 +1022,64 @@ func (s *LSPServer) getStructuralDiagnostics(uri string, content string) []Diagn
 	braceStartLine := -1
 	braceStartChar := 0
 
-	for i, line := range lines {
-		lineParenDepth := 0
-		lineBracketDepth := 0
-		lineBraceDepth := 0
-
-		for j := 0; j < len(line); j++ {
-			ch := line[j]
-
-			// Handle strings: only close a multi-line string if we see the matching quote
-			if fileInString {
-				if ch == '\\' && j+1 < len(line) {
-					j++
-					continue
-				}
-				if ch == fileStringChar {
-					fileInString = false
-				}
+	for i := 0; i < len(lines); i++ {
+		toks, ok := tokenMap[i]
+		if !ok {
+			continue
+		}
+		for _, tok := range toks {
+			// Skip string and comment tokens entirely
+			if tok.Kind == TokString || tok.Kind == TokComment {
 				continue
 			}
 
-			// Not inside a string: check for comments
-			if ch == '#' {
-				break // skip rest of line
-			}
-
-			// Not inside a string: check for opening quotes
-			if ch == '"' || ch == '`' || ch == '\'' {
-				fileInString = true
-				fileStringChar = ch
-				stringStartLine = i
-				stringStartChar = j
-				continue
-			}
-
-			// Track brackets
-			switch ch {
-			case '(':
+			// Bracket/paren/brace tracking
+			switch tok.Kind {
+			case TokLParen:
 				if fileParenDepth == 0 {
 					parenStartLine = i
-					parenStartChar = j
+					parenStartChar = tok.Start
 				}
 				fileParenDepth++
-				lineParenDepth++
-			case ')':
+			case TokRParen:
 				fileParenDepth--
-				lineParenDepth--
 				if fileParenDepth < 0 {
-					// Extra closing paren on this line
 					diagnostics = append(diagnostics, Diagnostic{
-						Range:    Range{Start: Position{Line: i, Character: j}, End: Position{Line: i, Character: j + 1}},
+						Range:    Range{Start: Position{Line: i, Character: tok.Start}, End: Position{Line: i, Character: tok.End}},
 						Severity: 1,
 						Message:  "Extra closing parenthesis",
 						Source:   "za-lsp",
 					})
 					fileParenDepth = 0
 				}
-			case '[':
+			case TokLBracket:
 				if fileBracketDepth == 0 {
 					bracketStartLine = i
-					bracketStartChar = j
+					bracketStartChar = tok.Start
 				}
 				fileBracketDepth++
-				lineBracketDepth++
-			case ']':
+			case TokRBracket:
 				fileBracketDepth--
-				lineBracketDepth--
 				if fileBracketDepth < 0 {
 					diagnostics = append(diagnostics, Diagnostic{
-						Range:    Range{Start: Position{Line: i, Character: j}, End: Position{Line: i, Character: j + 1}},
+						Range:    Range{Start: Position{Line: i, Character: tok.Start}, End: Position{Line: i, Character: tok.End}},
 						Severity: 1,
 						Message:  "Extra closing bracket",
 						Source:   "za-lsp",
 					})
 					fileBracketDepth = 0
 				}
-			case '{':
+			case TokLBrace:
 				if fileBraceDepth == 0 {
 					braceStartLine = i
-					braceStartChar = j
+					braceStartChar = tok.Start
 				}
 				fileBraceDepth++
-				lineBraceDepth++
-			case '}':
+			case TokRBrace:
 				fileBraceDepth--
-				lineBraceDepth--
 				if fileBraceDepth < 0 {
 					diagnostics = append(diagnostics, Diagnostic{
-						Range:    Range{Start: Position{Line: i, Character: j}, End: Position{Line: i, Character: j + 1}},
+						Range:    Range{Start: Position{Line: i, Character: tok.Start}, End: Position{Line: i, Character: tok.End}},
 						Severity: 1,
 						Message:  "Extra closing brace",
 						Source:   "za-lsp",
@@ -832,14 +1091,6 @@ func (s *LSPServer) getStructuralDiagnostics(uri string, content string) []Diagn
 	}
 
 	// After scanning all lines, report anything still open at EOF
-	if fileInString {
-		diagnostics = append(diagnostics, Diagnostic{
-			Range:    Range{Start: Position{Line: stringStartLine, Character: stringStartChar}, End: Position{Line: stringStartLine, Character: stringStartChar + 1}},
-			Severity: 1,
-			Message:  fmt.Sprintf("Unclosed %s string literal (opened on line %d)", string(fileStringChar), stringStartLine+1),
-			Source:   "za-lsp",
-		})
-	}
 	if fileParenDepth > 0 {
 		diagnostics = append(diagnostics, Diagnostic{
 			Range:    Range{Start: Position{Line: parenStartLine, Character: parenStartChar}, End: Position{Line: parenStartLine, Character: parenStartChar + 1}},
@@ -887,124 +1138,110 @@ func stripANSI(s string) string {
 	return result.String()
 }
 
-// extractSymbols parses Za file for local definitions using token-based analysis
+// extractSymbols parses Za file for local definitions using the real lexer.
 func (s *LSPServer) extractSymbols(uri string, content string) {
 	doc := s.documents[uri]
 	doc.Symbols = make(map[string]*Symbol)
 
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		toks := tokenizeLine(line)
+	tokenMap := tokenizeDocument(content)
+
+	for line, toks := range tokenMap {
 		if len(toks) == 0 {
 			continue
 		}
 
-		// Find function definitions: def foo(...)
 		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokKeyword && toks[t].Text == "def" {
+			tok := toks[t]
+			if tok.Kind != TokKeyword {
+				continue
+			}
+
+			switch tok.Type {
+			case lexer.C_Define:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					doc.Symbols[name] = &Symbol{
-						Name: name,
-						Kind: "function",
-						Location: SourceLocation{Line: i + 1, Column: toks[t+1].Start},
-						Type: "function",
+						Name:     name,
+						Kind:     "function",
+						Location: SourceLocation{Line: line + 1, Column: toks[t+1].Start},
+						Type:     "function",
 					}
 				}
-			}
-		}
-
-		// Find struct definitions: struct Foo
-		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokKeyword && toks[t].Text == "struct" {
+			case lexer.C_Struct:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					doc.Symbols[name] = &Symbol{
-						Name: name,
-						Kind: "struct",
-						Location: SourceLocation{Line: i + 1, Column: toks[t+1].Start},
-						Type: "struct",
+						Name:     name,
+						Kind:     "struct",
+						Location: SourceLocation{Line: line + 1, Column: toks[t+1].Start},
+						Type:     "struct",
 					}
 				}
-			}
-		}
-
-		// Find enum definitions: enum Foo
-		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokKeyword && toks[t].Text == "enum" {
+			case lexer.C_Enum:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					doc.Symbols[name] = &Symbol{
-						Name: name,
-						Kind: "enum",
-						Location: SourceLocation{Line: i + 1, Column: toks[t+1].Start},
-						Type: "enum",
+						Name:     name,
+						Kind:     "enum",
+						Location: SourceLocation{Line: line + 1, Column: toks[t+1].Start},
+						Type:     "enum",
 					}
 				}
-			}
-		}
-
-		// Find variable assignments: x = ... (not preceded by def/struct/enum/foreach/etc)
-		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokIdentifier {
-				// Check if next token is =
-				if t+1 < len(toks) && toks[t+1].Kind == TokOperator && toks[t+1].Text == "=" {
-					// Check it's not preceded by a keyword that would make it a parameter
-					if t == 0 || !isControlKeyword(toks[t-1]) {
-						name := toks[t].Text
-						// Don't overwrite existing function/struct/enum symbols
-						if _, exists := doc.Symbols[name]; !exists {
-							doc.Symbols[name] = &Symbol{
-								Name:     name,
-								Kind:     "variable",
-								Location: SourceLocation{Line: i + 1, Column: toks[t].Start},
-								Type:     "variable",
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Find foreach variables: foreach x in ...
-		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokKeyword && toks[t].Text == "foreach" {
+			case lexer.C_Foreach:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					if _, exists := doc.Symbols[name]; !exists {
 						doc.Symbols[name] = &Symbol{
 							Name:     name,
 							Kind:     "variable",
-							Location: SourceLocation{Line: i + 1, Column: toks[t+1].Start},
+							Location: SourceLocation{Line: line + 1, Column: toks[t+1].Start},
 							Type:     "variable",
 						}
 					}
 				}
-			}
-		}
-
-		// Find local/global/const declarations: local x, global x, const x = ...
-		for t := 0; t < len(toks); t++ {
-			if toks[t].Kind == TokKeyword && (toks[t].Text == "local" || toks[t].Text == "global" || toks[t].Text == "const") {
+			case lexer.C_Var, lexer.C_SetGlob, lexer.C_Init:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					doc.Symbols[name] = &Symbol{
 						Name:     name,
 						Kind:     "variable",
-						Location: SourceLocation{Line: i + 1, Column: toks[t+1].Start},
+						Location: SourceLocation{Line: line + 1, Column: toks[t+1].Start},
 						Type:     "variable",
 					}
+				}
+			}
+		}
+
+		// Find variable assignments: x = ... (not preceded by control keyword)
+		for t := 0; t < len(toks); t++ {
+			if toks[t].Kind != TokIdentifier {
+				continue
+			}
+			if t+1 >= len(toks) {
+				continue
+			}
+			next := toks[t+1]
+			if (next.Kind != TokOperator && next.Kind != TokAssign) || next.Text != "=" {
+				continue
+			}
+			if t > 0 && toks[t-1].Kind == TokKeyword && isControlKeyword(toks[t-1].Text) {
+				continue
+			}
+			name := toks[t].Text
+			if _, exists := doc.Symbols[name]; !exists {
+				doc.Symbols[name] = &Symbol{
+					Name:     name,
+					Kind:     "variable",
+					Location: SourceLocation{Line: line + 1, Column: toks[t].Start},
+					Type:     "variable",
 				}
 			}
 		}
 	}
 }
 
-func isControlKeyword(tok Token) bool {
-	if tok.Kind != TokKeyword {
-		return false
-	}
-	switch tok.Text {
+func isControlKeyword(text string) bool {
+	switch text {
 	case "def", "struct", "enum", "foreach", "for", "if", "while", "case", "try", "catch", "then":
 		return true
 	}

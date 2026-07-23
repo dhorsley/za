@@ -781,6 +781,8 @@ func main() {
     var a_enable_asserts = flag.Bool("a", false, "enable assertions. default is false, unless -t specified.")
     var a_enable_profiling = flag.Bool("P", false, "enable profiling of Za interpreter phases.")
     var a_metrics_port = flag.Int("M", 0, "enable Prometheus metrics exporter on specified port (e.g. -M 9091)")
+    var a_parse_timing = flag.Bool("z", false, "report parse timing only")
+    var a_parse_timing_verbose = flag.Bool("zz", false, "report parse timing with diagnostics (syntax errors, missing modules, dynamic paths)")
 
     flag.Parse()
     cmdargs = flag.Args() // rest of the cli arguments
@@ -939,6 +941,24 @@ func main() {
     if isBundled {
         ExecuteFromBundle(cmdargs)
         return // Exit early, skip normal execution
+    }
+
+    // parse timing mode
+    if *a_parse_timing || *a_parse_timing_verbose {
+        if exec_file_name == "" || exec_file_name == "-" {
+            fmt.Fprintln(os.Stderr, "Error: -z requires a file path (-f file.za)")
+            os.Exit(1)
+        }
+        level := 1
+        if *a_parse_timing_verbose {
+            level = 2
+        }
+        success := runParseTiming(exec_file_name, level)
+        if success {
+            os.Exit(0)
+        } else {
+            os.Exit(1)
+        }
     }
 
     // command separator
@@ -1805,7 +1825,7 @@ func main() {
         if len(input) > 0 {
             fileMap.Store(uint32(0), exec_file_name)
             fileMap.Store(uint32(1), exec_file_name)
-            if debugMode {
+            if debugMode || *a_parse_timing {
                 start := time.Now()
                 phraseParse(ctx, "main", input, 0, 0)
                 elapsed := time.Since(start)

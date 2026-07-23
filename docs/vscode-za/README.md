@@ -1,11 +1,14 @@
 # ZA Language Extension for VS Code
 
-This extension provides syntax highlighting for the ZA programming language in Visual Studio Code.
+This extension provides language support for the ZA programming language in Visual Studio Code, including syntax highlighting, real-time diagnostics, and symbol navigation via the ZA Language Server.
 
 ## Features
 
 - **Syntax Highlighting**: Comprehensive syntax highlighting for ZA language constructs
-- **Language Support**: Full support for `.za` files
+- **Real-time Diagnostics**: Dual-layer error detection:
+  - **Instant structural diagnostics** (unclosed blocks, bracket/quote matching, basic syntax) on every keystroke
+  - **Full semantic validation** via `za -S -z` on save and at word boundaries (syntax errors, missing modules, dynamic path warnings)
+- **Symbol Navigation**: Jump-to-definition for functions, structs, enums, and variables within the current file
 - **Auto-closing**: Automatic bracket and quote pairing
 - **Indentation**: Smart indentation rules for ZA code blocks
 

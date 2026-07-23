@@ -5,7 +5,9 @@ exports.deactivate = deactivate;
 const path = require("path");
 const vscode_1 = require("vscode");
 const node_1 = require("vscode-languageclient/node");
+const diagnostics_1 = require("./diagnostics");
 let client;
+let diagnosticTimeout;
 function findZaBinary(outputChannel) {
     const fs = require('fs');
     const { execSync } = require('child_process');
@@ -39,6 +41,35 @@ function findZaBinary(outputChannel) {
 async function activate(context) {
     const outputChannel = vscode_1.window.createOutputChannel('ZA Language Extension');
     outputChannel.appendLine('[ZA] Extension activating...');
+    // Initialize client-side diagnostics
+    (0, diagnostics_1.createDiagnosticCollection)();
+    // Run diagnostics on all open Za documents
+    const zaDocs = vscode_1.workspace.textDocuments.filter(doc => doc.languageId === 'za');
+    for (const doc of zaDocs) {
+        (0, diagnostics_1.updateDiagnostics)(doc);
+    }
+    // Update diagnostics on document open and change
+    context.subscriptions.push(vscode_1.workspace.onDidOpenTextDocument((doc) => {
+        if (doc.languageId === 'za') {
+            (0, diagnostics_1.updateDiagnostics)(doc);
+        }
+    }));
+    context.subscriptions.push(vscode_1.workspace.onDidChangeTextDocument((event) => {
+        if (event.document.languageId !== 'za') {
+            return;
+        }
+        if (diagnosticTimeout) {
+            clearTimeout(diagnosticTimeout);
+        }
+        diagnosticTimeout = setTimeout(() => {
+            (0, diagnostics_1.updateDiagnostics)(event.document);
+        }, 200);
+    }));
+    context.subscriptions.push(vscode_1.workspace.onDidCloseTextDocument((doc) => {
+        if (doc.languageId === 'za') {
+            (0, diagnostics_1.clearDiagnostics)(doc);
+        }
+    }));
     const serverPath = path.join(context.extensionPath, 'bin', 'za-lsp');
     outputChannel.appendLine(`[ZA] Looking for server at: ${serverPath}`);
     const fs = require('fs');

@@ -1,0 +1,207 @@
+#!/usr/bin/env za
+
+# Test script for string interpolation format specifiers (Tier 5.1)
+# Tests {varname:format} and {=expr:format}
+permit("error_exit", false)
+
+println "=== Interpolation Format Specifier Tests ==="
+
+passed = 0
+failed = 0
+
+# --- Simple variable with format ---
+
+println "\n1. Variable with integer format"
+cost = 3.14
+n = 42
+s = "{n:04d}"
+if s == "0042"
+    println "PASS: {n:04d} -> 0042"
+    passed += 1
+else
+    println "FAIL: {n:04d} expected 0042, got:", s
+    failed += 1
+endif
+
+println "\n2. Variable with float format"
+s2 = "{cost:.2f}"
+if s2 == "3.14"
+    println "PASS: {cost:.2f} -> 3.14"
+    passed += 1
+else
+    println "FAIL: {cost:.2f} expected 3.14, got:", s2
+    failed += 1
+endif
+
+println "\n3. Variable with zero-padded float"
+s3 = "{cost:08.2f}"
+if s3 == "00003.14"
+    println "PASS: {cost:08.2f} -> 00003.14"
+    passed += 1
+else
+    println "FAIL: {cost:08.2f} expected 00003.14, got:", s3
+    failed += 1
+endif
+
+println "\n4. Variable with hex format"
+s4 = "{n:x}"
+if s4 == "2a"
+    println "PASS: {n:x} -> 2a"
+    passed += 1
+else
+    println "FAIL: {n:x} expected 2a, got:", s4
+    failed += 1
+endif
+
+println "\n5. Variable with zero-padded hex"
+s5 = "{n:08x}"
+if s5 == "0000002a"
+    println "PASS: {n:08x} -> 0000002a"
+    passed += 1
+else
+    println "FAIL: {n:08x} expected 0000002a, got:", s5
+    failed += 1
+endif
+
+println "\n6. Variable with no format (backward compat)"
+s6 = "{n}"
+if s6 == "42"
+    println "PASS: {n} -> 42"
+    passed += 1
+else
+    println "FAIL: {n} expected 42, got:", s6
+    failed += 1
+endif
+
+println "\n7. Variable with string content"
+name = "world"
+s7 = "hello {name}"
+if s7 == "hello world"
+    println "PASS: hello {name} -> hello world"
+    passed += 1
+else
+    println "FAIL: hello {name} expected hello world, got:", s7
+    failed += 1
+endif
+
+# --- Expression with format ---
+
+println "\n8. Expression with integer format"
+s8 = "{=1 + 2:04d}"
+if s8 == "0003"
+    println "PASS: {=1 + 2:04d} -> 0003"
+    passed += 1
+else
+    println "FAIL: {=1 + 2:04d} expected 0003, got:", s8
+    failed += 1
+endif
+
+println "\n9. Expression with no format"
+s9 = "{=1 + 2}"
+if s9 == "3"
+    println "PASS: {=1 + 2} -> 3"
+    passed += 1
+else
+    println "FAIL: {=1 + 2} expected 3, got:", s9
+    failed += 1
+endif
+
+println "\n10. Expression with hex format"
+s10 = "{=255:04x}"
+if s10 == "00ff"
+    println "PASS: {=255:04x} -> 00ff"
+    passed += 1
+else
+    println "FAIL: {=255:04x} expected 00ff, got:", s10
+    failed += 1
+endif
+
+# --- Ternary expressions in interpolation ---
+
+println "\n11. Ternary, no format"
+a = 3
+b = 5
+s11 = "{=a > b ? a : b}"
+if s11 == "5"
+    println "PASS: ternary no format -> 5"
+    passed += 1
+else
+    println "FAIL: ternary no format expected 5, got:", s11
+    failed += 1
+endif
+
+println "\n12. Ternary with format"
+s12 = "{=a > b ? a : b:04d}"
+if s12 == "0005"
+    println "PASS: ternary with format -> 0005"
+    passed += 1
+else
+    println "FAIL: ternary with format expected 0005, got:", s12
+    failed += 1
+endif
+
+println "\n13. Ternary with parens and format"
+s13 = "{=(a > b ? a : b):04d}"
+if s13 == "0005"
+    println "PASS: parens ternary with format -> 0005"
+    passed += 1
+else
+    println "FAIL: parens ternary with format expected 0005, got:", s13
+    failed += 1
+endif
+
+println "\n14. Nested ternary, no format"
+c = 7
+s14 = "{=a > b ? (a > c ? a : c) : b}"
+if s14 == "5" || s14 == "7"
+    println "PASS: nested ternary evaluated:", s14
+    passed += 1
+else
+    println "FAIL: nested ternary expected 5 or 7, got:", s14
+    failed += 1
+endif
+
+println "\n15. Nested ternary with format"
+s15 = "{=a > b ? (a > c ? a : c) : b:02d}"
+if s15 == "05" || s15 == "07"
+    println "PASS: nested ternary with format:", s15
+    passed += 1
+else
+    println "FAIL: nested ternary with format expected 05 or 07, got:", s15
+    failed += 1
+endif
+
+# --- Backward compatibility ---
+
+println "\n16. Multiple vars in one string"
+first = "John"
+last = "Doe"
+s16 = "{first} {last}"
+if s16 == "John Doe"
+    println "PASS: {first} {last} -> John Doe"
+    passed += 1
+else
+    println "FAIL: {first} {last} expected John Doe, got:", s16
+    failed += 1
+endif
+
+println "\n17. Braces without interpolation"
+s17 = "no braces here"
+if s17 == "no braces here"
+    println "PASS: plain string untouched"
+    passed += 1
+else
+    println "FAIL: plain string was modified, got:", s17
+    failed += 1
+endif
+
+# --- Summary ---
+
+println "\n=== Results ==="
+println "Passed:", passed
+println "Failed:", failed
+if failed == 0
+    println "ALL TESTS PASSED"
+else
+    println "SOME TESTS FAILED"
+endif
