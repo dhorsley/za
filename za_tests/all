@@ -4,7 +4,9 @@ foreach f in dir(".","\.za$")
     println "\n[#4][#ul][#bold]{=f.name}[#boff][#-]\n"
     r={za {=f.name}}
     println r.out
-    on not r.okay do println "-- [#2]failed on {=f.name} with code {=r.code}[#-]"
+    if not r.okay
+      println "-- [#blink][#2]failed on {=f.name} with code {=r.code}[#-]"
+    endif
 endfor
 
 

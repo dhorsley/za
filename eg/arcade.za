@@ -132,6 +132,8 @@ if c_ptr_is_null(display)
 endif
 
 println "Display opened successfully"
+lock_os_thread()
+println "OS thread locked for X11 context"
 
 # Get default screen
 screen = XDefaultScreen(display)
@@ -313,12 +315,12 @@ while running
                 # Apply power-up effect
                 on pu.type == "big_paddle" do paddle_width = 120
                 if pu.type == "slow_ball"
-                  ball_vx = (ball_vx / 2)
-                  ball_vy = (ball_vy / 2)
+                  ball_vx = ball_vx / 1.2f
+                  ball_vy = ball_vy / 1.4f
 
                   # ensure neg or pos but not 0
                   on ball_vx<0 do ball_vx=ball_vx[:-0.1f]
-                  on ball_vx>=0 do b all_vx=ball_vx[0.1f:]
+                  on ball_vx>=0 do ball_vx=ball_vx[0.1f:]
                   on ball_vy<0 do ball_vy=ball_vy[:-1f]
                   on ball_vy>=0 do ball_vy=ball_vy[1f:]
                 endif
@@ -449,6 +451,8 @@ while running
 endwhile
 
 # Cleanup
+unlock_os_thread()
+println "OS thread unlocked"
 c_free(event_ptr)
 XDestroyWindow(display, window)
 XCloseDisplay(display)

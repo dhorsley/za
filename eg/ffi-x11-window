@@ -27,6 +27,8 @@ if c_ptr_is_null(display)
 endif
 
 println "Display opened successfully"
+lock_os_thread()
+println "OS thread locked for X11 context"
 
 # Get default screen
 screen = XDefaultScreen(display)
@@ -127,6 +129,8 @@ while running
 endwhile
 
 # Free the event memory
+unlock_os_thread()
+println "OS thread unlocked"
 c_free(event_ptr)
 
 # Cleanup

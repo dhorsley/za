@@ -180,7 +180,7 @@ define showFiles()
         fin=open_inode.field(2,"\t")
         tin=open_inode.field(1,"\t").as_float
         at 4,2, "Free Inodes : [#6]{fin}[#-]"
-        at 5,2, "Total       : [#6]",format("%.7g",tin),"[#-]"
+        at 5,2, "Total       : [#6]{tin:.7g}[#-]"
 
     endif
 
