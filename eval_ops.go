@@ -2595,6 +2595,20 @@ func (p *leparser) callFunctionExt(evalfs uint32, ident *[]Variable, name string
     // pf("(cfe) kind_override -> %s\n",kind_override)
     // pf("cfe call for %s with [%#v] and arg_names [%#v] \n",name,args,arg_names)
 
+    // std:: namespace bypass: force stdlib lookup, skip all other resolution
+    if str.HasPrefix(name, "std::") {
+        bareName := name[5:]
+        if f, ok := stdlib[bareName]; ok {
+            p.std_call = true
+            ret, err := f(p.namespace, evalfs, ident, args...)
+            if err != nil {
+                return nil, true, nil, err
+            }
+            return ret, false, nil, nil
+        }
+        return nil, true, nil, fmt.Errorf("'%s' is not a stdlib function", bareName)
+    }
+
     // Extract bare name for stdlib lookup (stdlib functions have no prefix)
     bareName := name
     if idx := str.LastIndex(name, "::"); idx >= 0 {

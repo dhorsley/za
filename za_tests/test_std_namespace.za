@@ -1,0 +1,51 @@
+#!/usr/bin/env za
+println "═══ std:: Namespace Bypass Test ═══\n"
+
+# Load libc and add to USE chain
+module "libc.so.6" as libc
+lib libc::malloc(size:int) -> pointer
+lib libc::free(ptr:pointer) -> void
+use +libc
+
+# Test 1: std::abs bypasses USE chain
+println "Test 1: std::abs() bypasses USE chain shadowing"
+result = std::abs(-3.5)
+assert result == 3.5, "std::abs(-3.5) should return 3.5, got " + as_string(result)
+println "  ✓ std::abs(-3.5) = " + as_string(result)
+
+result = std::abs(7)
+assert result == 7, "std::abs(7) should return 7, got " + as_string(result)
+println "  ✓ std::abs(7) = " + as_string(result)
+
+# Test 2: std::sum bypasses USE chain
+println "\nTest 2: std::sum() bypasses USE chain shadowing"
+result = std::sum([1, 2, 3, 4])
+assert result == 10, "std::sum([1,2,3,4]) should return 10, got " + as_string(result)
+println "  ✓ std::sum([1,2,3,4]) = " + as_string(result)
+
+# Test 3: Regular function still works (use chain resolved)
+println "\nTest 3: malloc() still resolves through USE chain"
+ptr = malloc(128)
+assert ptr != 0, "malloc should return non-null pointer"
+println "  ✓ malloc(128) = " + as_string(ptr) + " (valid pointer)"
+free(ptr)
+
+# Test 4: Explicit namespace still works
+println "\nTest 4: libc::malloc() explicit namespace still works"
+ptr = libc::malloc(256)
+assert ptr != 0, "libc::malloc should return non-null pointer"
+println "  ✓ libc::malloc(256) = " + as_string(ptr) + " (valid pointer)"
+libc::free(ptr)
+
+# Test 5: std:: on non-existent function should error
+println "\nTest 5: std::nonexistent() should error"
+result = false
+try
+    result = std::nonexistent(1)
+    println "  ✗ Should have panicked"
+catch err
+    println "  ✓ Correctly failed"
+endtry
+assert !result, "std::nonexistent should have failed"
+
+println "\n[#2]═══ All std:: bypass tests passed ═══[#-]"

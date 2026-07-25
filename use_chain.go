@@ -98,38 +98,47 @@ func uc_show() {
 }
 
 func uc_match_func(s string) string {
-    chainlock.RLock()
-    defer chainlock.RUnlock()
-    for p := 0; p < len(uchain); p += 1 {
-        if fnlookup.lmexists(uchain[p] + "::" + s) {
-            return uchain[p]
-        }
-        // Check if this is a C library module and has the function
-        if lib, exists := loadedCLibraries[uchain[p]]; exists {
-            if _, symbolExists := lib.Symbols[s]; symbolExists {
-                return uchain[p]
-            }
-        }
-    }
-    return ""
+	if strings.HasPrefix(s, "std::") {
+		return ""
+	}
+	chainlock.RLock()
+	defer chainlock.RUnlock()
+	for p := 0; p < len(uchain); p += 1 {
+		if fnlookup.lmexists(uchain[p] + "::" + s) {
+			return uchain[p]
+		}
+		// Check if this is a C library module and has the function
+		if lib, exists := loadedCLibraries[uchain[p]]; exists {
+			if _, symbolExists := lib.Symbols[s]; symbolExists {
+				return uchain[p]
+			}
+		}
+	}
+	return ""
 }
 
 func uc_match_enum(s string) string {
-    chainlock.RLock()
-    globlock.RLock()
-    defer globlock.RUnlock()
-    defer chainlock.RUnlock()
-    for p := 0; p < len(uchain); p += 1 {
-        if _, found := enum[uchain[p]+"::"+s]; found {
-            return uchain[p]
-        }
-    }
-    return ""
+	if strings.HasPrefix(s, "std::") {
+		return ""
+	}
+	chainlock.RLock()
+	globlock.RLock()
+	defer globlock.RUnlock()
+	defer chainlock.RUnlock()
+	for p := 0; p < len(uchain); p += 1 {
+		if _, found := enum[uchain[p]+"::"+s]; found {
+			return uchain[p]
+		}
+	}
+	return ""
 }
 
 func uc_match_constant(s string) (string, any, bool) {
-    chainlock.RLock()
-    defer chainlock.RUnlock()
+	if strings.HasPrefix(s, "std::") {
+		return "", nil, false
+	}
+	chainlock.RLock()
+	defer chainlock.RUnlock()
 
     /*
     *  @note(DH):
@@ -155,10 +164,13 @@ func uc_match_constant(s string) (string, any, bool) {
 }
 
 func uc_match_struct(s string) string {
-    chainlock.RLock()
-    globlock.RLock()
-    defer globlock.RUnlock()
-    defer chainlock.RUnlock()
+	if strings.HasPrefix(s, "std::") {
+		return ""
+	}
+	chainlock.RLock()
+	globlock.RLock()
+	defer globlock.RUnlock()
+	defer chainlock.RUnlock()
     for p := 0; p < len(uchain); p += 1 {
         // Check Za-defined structs
         structmapslock.RLock()
@@ -180,10 +192,13 @@ func uc_match_struct(s string) string {
 }
 
 func uc_match_c_func(s string) string {
-    chainlock.RLock()
-    defer chainlock.RUnlock()
+	if strings.HasPrefix(s, "std::") {
+		return ""
+	}
+	chainlock.RLock()
+	defer chainlock.RUnlock()
 
-    // Single pass: iterate use chain in order
+	// Single pass: iterate use chain in order
     // declaredSignatures is the single source of truth for both MANUAL and AUTO LIB declarations
     // This ensures use chain order is respected, not random map iteration
     for p := 0; p < len(uchain); p += 1 {
@@ -212,8 +227,11 @@ func uc_match_ffi_struct(s string) string {
 // uc_match_typedef searches for a typedef through the use chain
 // Returns the library namespace where the typedef is defined, or empty string if not found
 func uc_match_typedef(typeName string) string {
-    chainlock.RLock()
-    // Make a copy of the chain so we can release the lock before checking typedefs
+	if strings.HasPrefix(typeName, "std::") {
+		return ""
+	}
+	chainlock.RLock()
+	// Make a copy of the chain so we can release the lock before checking typedefs
     searchChain := make([]string, len(uchain))
     copy(searchChain, uchain)
     chainlock.RUnlock()

@@ -1496,6 +1496,7 @@ If you want to use a different namespace then you need to create a new file and 
 The use_chain array will be consulted, when not empty, on function calls, enum references and struct references for
 matches ahead of the default behaviour, if no explicit name is supplied:
 
+	0. std:: namespace bypass (forces stdlib lookup, skips everything else)
 	1. explicit namespace (name::)
 	2. user-defined function in the current namespace (exact match)
 	3. use_chain match (user-defined functions, declared C functions, or discovered C library symbols)
@@ -1522,9 +1523,32 @@ Example:
 
 							# whenever there are conflicting names then the first match takes precedence.
 							#  i.e.
-							# explicit name > user-defined > use_chain > stdlib > current namespace > main
+							# std:: > explicit name > user-defined > use_chain > stdlib > current namespace > main
 
 ```
+
+#### std:: Namespace Bypass
+
+When a C library is added to the USE chain, its symbols can shadow Za built-in
+functions. For example, `libc.so.6` exports an `abs` symbol, so after `use +libc`
+a bare call to `abs()` resolves through the USE chain to the C library and fails
+with "not declared" (unless `lib libc::abs(...)` was explicitly declared).
+
+To force a call to the **stdlib built-in** regardless of USE chain state, prefix
+the function name with `std::`:
+
+```za
+module "libc.so.6" as libc
+lib libc::malloc(size:int) -> pointer
+use +libc
+
+# This now works — bypasses USE chain and calls the Za built-in
+result = std::abs(-3.5)
+```
+
+The `std::` prefix works for functions, and also prevents matching for enums,
+structs, constants, and typedefs through the USE chain. It is effectively a
+reserved namespace that always resolves to the standard library.
 
 ### Bundling (v.1.2.1+)
 
@@ -8124,7 +8148,14 @@ fp = fopen("/tmp/file", "w")      # Returns FILE* pointer, not Za pfile
 result = fclose(fp)                # Returns int, not void
 ```
 
-If you need the **Za built-in** version instead, remove the library from the USE chain so the built-in is no longer shadowed:
+If you need the **Za built-in** version while the C library is still in the USE chain,
+use the `std::` namespace bypass:
+```za
+std::fopen("/tmp/file", "w")         # Returns pfile (Za built-in), ignores USE chain
+```
+
+Alternatively, remove the library from the USE chain so the built-in is no longer
+shadowed (this only works at the top level, not inside functions):
 ```za
 use -c                               # Remove libc from USE chain
 fp = fopen("/tmp/file", "w")         # Returns pfile (Za built-in)
@@ -8136,11 +8167,14 @@ fp = fopen("/tmp/file", "w")         # Returns pfile (Za built-in)
 fp = c::fopen("/tmp/file", "w")   # ✓ Returns FILE* pointer
 result = c::fclose(fp)             # ✓ Returns int error code
 assert result == 0, "fclose failed"
+
+# std:: bypass - calls Za built-in explicitly, even with C library in USE chain
+fp = std::fopen("/tmp/file", "w")  # ✓ Returns pfile (Za built-in)
 ```
 
 #### Best Practices
 
-1. **Use explicit namespace qualifiers** when you need a specific variant: `c::fopen()` for C library, `fopen()` for Za built-in (if not shadowed by USE chain)
+1. **Use explicit namespace qualifiers** when you need a specific variant: `c::fopen()` for C library, `std::fopen()` for Za built-in (bypasses USE chain shadowing)
 2. **Prefer Za helpers** (`c_fopen`) over direct FFI for most C library usage
 3. **Check return types** - if function returns unexpected type, you're calling wrong version
 4. **Consult help** - use `help find fopen` to see all available versions

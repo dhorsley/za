@@ -292,10 +292,16 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
     case StringLiteral:
         left = interpolate(p.namespace, p.fs, p.ident, (*ct).tokText)
     case Identifier:
-        left, err = p.identifier(ct)
-        if err != nil {
-            // fmt.Printf("Identifer case will panic with %#+v\n",err)
-            panic(err)
+        // std:: namespace bypass: if this identifier is "std" and next token is ::,
+        // don't try to resolve "std" as a variable. Let the :: handler build the full name.
+        if ct.tokText == "std" && p.peek().tokType == SYM_DoubleColon {
+            left = ct.tokText
+        } else {
+            left, err = p.identifier(ct)
+            if err != nil {
+                // fmt.Printf("Identifer case will panic with %#+v\n",err)
+                panic(err)
+            }
         }
     case O_Sqr, O_Sqrt, O_InFile:
         left = p.unary(ct)
@@ -1360,6 +1366,11 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         var isFunc bool
         bareName := name
 
+        // Extract bare name if already qualified
+        if idx := str.LastIndex(name, "::"); idx >= 0 {
+            bareName = name[idx+2:]
+        }
+
         // Resolve fully-qualified name first
         if !str.Contains(name, "::") {
             var useName string
@@ -1378,9 +1389,11 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
         isFunc = fnlookup.lmexists(name)
 
         // Fallback to stdlib using the bare name (stdlib functions have no prefix)
+        // Note: for std:: prefixed names, keep the prefix so callFunctionExt
+        // can bypass use chain shadowing via the std:: guard.
         if !isFunc {
             _, isFunc = stdlib[bareName]
-            if isFunc {
+            if isFunc && !str.HasPrefix(name, "std::") {
                 name = bareName
             }
         }
@@ -2264,6 +2277,13 @@ func (p *leparser) identifier(token *Token) (any, error) {
             } else {
                 // For namespaced calls, check if namespace matches a C library
                 if p.prev.tokType == SYM_DoubleColon {
+                    // std:: namespace bypass: force stdlib lookup, skip use chain/C library
+                    if p.pos >= 2 && p.tokens[p.pos-2].tokText == "std" {
+                        if _, isStdFunc := stdlib[token.tokText]; isStdFunc {
+                            p.tokens[p.pos].subtype = subtypeStandard
+                            return token.tokText, nil
+                        }
+                    }
                     // fmt.Printf("[DEBUG] Namespaced call detected, namespace: '%s'\n", namespaceName)
                     p.tokens[p.pos].subtype = subtypeUser
                     return token.tokText, nil
