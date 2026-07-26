@@ -2788,18 +2788,31 @@ tco_reentry:
                 break
             }
 
-            // fmt.Printf("(sg) in fs %d (mident->%d) eval -> %+v\n",ifs,parser.mident,inbound.Tokens[1:])
-            atomic.StoreUint32(&has_global_lock, ifs)
-            sglock.Lock()
+            // Re-entrant lock: if the same goroutine already holds sglock (nested
+            // global mutation via expression evaluation), skip the lock to prevent
+            // deadlock. Only different goroutines block.
+            gid := getGoroutineID()
+            acquired := false
+            if atomic.LoadUint64(&has_global_lock) != gid {
+                sglock.Lock()
+                atomic.StoreUint64(&has_global_lock, gid)
+                acquired = true
+            }
+
             if res := parser.wrappedEval(parser.mident, &mident, ifs, ident, inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine, sf("Error in SETGLOB evaluation\n%+v\n", res.errVal))
-                atomic.StoreUint32(&has_global_lock, 0)
-                sglock.Unlock()
+                if acquired {
+                    atomic.StoreUint64(&has_global_lock, 0)
+                    sglock.Unlock()
+                }
                 finish(false, ERR_EVAL)
                 break
             }
-            sglock.Unlock()
-            atomic.StoreUint32(&has_global_lock, 0)
+
+            if acquired {
+                sglock.Unlock()
+                atomic.StoreUint64(&has_global_lock, 0)
+            }
 
         case C_Foreach:
 
