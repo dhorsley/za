@@ -2788,31 +2788,29 @@ tco_reentry:
                 break
             }
 
-            // Re-entrant lock: if the same goroutine already holds sglock (nested
-            // global mutation via expression evaluation), skip the lock to prevent
-            // deadlock. Only different goroutines block.
-            gid := getGoroutineID()
-            acquired := false
-            if atomic.LoadUint64(&has_global_lock) != gid {
+            // Re-entrant lock: atomically increment nesting depth. If we went from
+            // 0→1, this goroutine acquired sglock and must unlock on exit. Nested
+            // calls within the same goroutine simply increment the counter.
+            depth := atomic.AddUint32(&has_global_lock, 1)
+            acquired := depth == 1
+            if acquired {
                 sglock.Lock()
-                atomic.StoreUint64(&has_global_lock, gid)
-                acquired = true
             }
 
             if res := parser.wrappedEval(parser.mident, &mident, ifs, ident, inbound.Tokens[1:]); res.evalError {
                 parser.report(inbound.SourceLine, sf("Error in SETGLOB evaluation\n%+v\n", res.errVal))
                 if acquired {
-                    atomic.StoreUint64(&has_global_lock, 0)
                     sglock.Unlock()
                 }
+                atomic.AddUint32(&has_global_lock, ^uint32(0))
                 finish(false, ERR_EVAL)
                 break
             }
 
             if acquired {
                 sglock.Unlock()
-                atomic.StoreUint64(&has_global_lock, 0)
             }
+            atomic.AddUint32(&has_global_lock, ^uint32(0))
 
         case C_Foreach:
 

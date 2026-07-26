@@ -425,7 +425,7 @@ var PromptTemplate string
 var PromptTokens []Token
 
 var concurrent_funcs int32
-var has_global_lock uint64 // stores goroutine ID that holds sglock, 0 if unlocked
+var has_global_lock uint32 // nesting depth of sglock, 0 = unlocked
 
 var breaksig chan os.Signal
 
