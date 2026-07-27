@@ -1,0 +1,476 @@
+doc '
+lib/particles.za — Particle system
+------------------------------------
+
+CPU-updated particle positions uploaded to dynamic VBOs each frame.
+Demonstrates za persistent C buffers and glBufferSubData.
+'
+
+namespace main
+
+# Respawn particle i at a location appropriate for its type (dust/leaf/firefly/sparkle).
+define spawn_particle(i)
+    type = particle_type[i]
+    if type == PARTICLE_TYPE_DUST
+        px = rand_range(-38.0, 38.0)
+        py = rand_range(0.1, 0.6)
+        pz = rand_range(-38.0, 38.0)
+        pvx = rand_range(-0.2, 0.2)
+        pvy = rand_range(-0.05, 0.05)
+        pvz = rand_range(-0.2, 0.2)
+        ps = rand_range(0.01, 0.03)
+        pml = rand_range(3.0, 8.0)
+        @particle_x[i] = px
+        @particle_y[i] = py
+        @particle_z[i] = pz
+        @particle_vx[i] = pvx
+        @particle_vy[i] = pvy
+        @particle_vz[i] = pvz
+        @particle_size[i] = ps
+        @particle_r[i] = 0.7
+        @particle_g[i] = 0.7
+        @particle_b[i] = 0.6
+        @particle_a[i] = 0.25
+        @particle_max_life[i] = pml
+    else if type == PARTICLE_TYPE_LEAF
+        tree_count = tree_positions.len / 5
+        if tree_count > 0
+            # Skip dead trees (variant 4) when spawning leaves.
+            t = -1
+            for try_count = 0 to 4
+                candidate = as_int(rand_range(0.0, tree_count - 0.001))
+                if tree_positions[candidate * 5 + 4] != 4
+                    t = candidate
+                    break
+                endif
+            endfor
+            if t < 0
+                t = 0
+            endif
+            tx = tree_positions[t * 5]
+            tz = tree_positions[t * 5 + 1]
+            ts = tree_positions[t * 5 + 2]
+        else
+            tx = 0.0
+            tz = 0.0
+            ts = 2.0
+        endif
+        r = rand_range(0.0, ts * 0.6)
+        ang = rand_range(0.0, 6.283185)
+        px = tx + cos(ang) * r
+        pz = tz + sin(ang) * r
+        py = rand_range(ts * 1.5, ts * 3.0)
+        pvx = rand_range(-0.3, 0.3)
+        pvy = rand_range(-0.8, -0.2)
+        pvz = rand_range(-0.3, 0.3)
+        ps = rand_range(0.03, 0.06)
+        pr = rand_range(0.3, 0.5)
+        pg = rand_range(0.4, 0.6)
+        pb = rand_range(0.1, 0.2)
+        pml = rand_range(4.0, 10.0)
+        @particle_x[i] = px
+        @particle_z[i] = pz
+        @particle_y[i] = py
+        @particle_vx[i] = pvx
+        @particle_vy[i] = pvy
+        @particle_vz[i] = pvz
+        @particle_size[i] = ps
+        @particle_r[i] = pr
+        @particle_g[i] = pg
+        @particle_b[i] = pb
+        @particle_a[i] = 0.6
+        @particle_max_life[i] = pml
+    else if type == PARTICLE_TYPE_FIREFLY
+        tree_count = tree_positions.len / 5
+        if tree_count > 0
+            t = as_int(rand_range(0.0, tree_count - 0.001))
+            tx = tree_positions[t * 5]
+            tz = tree_positions[t * 5 + 1]
+            ts = tree_positions[t * 5 + 2]
+        else
+            tx = 0.0
+            tz = 0.0
+            ts = 2.0
+        endif
+        r = rand_range(0.0, ts * 0.8)
+        ang = rand_range(0.0, 6.283185)
+        px = tx + cos(ang) * r
+        pz = tz + sin(ang) * r
+        py = rand_range(0.5, ts * 2.0)
+        pvx = rand_range(-0.1, 0.1)
+        pvy = rand_range(-0.05, 0.05)
+        pvz = rand_range(-0.1, 0.1)
+        ps = rand_range(0.02, 0.04)
+        pml = rand_range(5.0, 12.0)
+        @particle_x[i] = px
+        @particle_z[i] = pz
+        @particle_y[i] = py
+        @particle_vx[i] = pvx
+        @particle_vy[i] = pvy
+        @particle_vz[i] = pvz
+        @particle_size[i] = ps
+        @particle_r[i] = 0.9
+        @particle_g[i] = 0.9
+        @particle_b[i] = 0.3
+        @particle_a[i] = 0.8
+        @particle_max_life[i] = pml
+    else
+        # PARTICLE_TYPE_SPARKLE — spawn over a random water surface
+        water_count = water_instances.len / 9
+        if water_count > 0
+            w = as_int(rand_range(0.0, water_count - 0.001))
+            wx = water_instances[w * 9]
+            wz = water_instances[w * 9 + 2]
+            wsx = water_instances[w * 9 + 3]
+            wsz = water_instances[w * 9 + 5]
+        else
+            wx = 0.0
+            wz = 0.0
+            wsx = 10.0
+            wsz = 10.0
+        endif
+        wrad = wsx * 0.45
+        if wsz < wsx
+            wrad = wsz * 0.45
+        endif
+        r = rand_range(0.0, wrad)
+        ang = rand_range(0.0, 6.283185)
+        px = wx + cos(ang) * r
+        pz = wz + sin(ang) * r
+        py = rand_range(0.02, 0.08)
+        pvx = rand_range(-0.03, 0.03)
+        pvy = rand_range(0.01, 0.05)
+        pvz = rand_range(-0.03, 0.03)
+        ps = rand_range(0.03, 0.06)
+        pml = rand_range(3.0, 7.0)
+        @particle_x[i] = px
+        @particle_z[i] = pz
+        @particle_y[i] = py
+        @particle_vx[i] = pvx
+        @particle_vy[i] = pvy
+        @particle_vz[i] = pvz
+        @particle_size[i] = ps
+        @particle_r[i] = 0.8
+        @particle_g[i] = 0.9
+        @particle_b[i] = 1.0
+        @particle_a[i] = 0.9
+        @particle_max_life[i] = pml
+    endif
+    pl = rand_range(0.0, particle_max_life[i])
+    @particle_life[i] = pl
+end
+
+define init_particles()
+    # Create dynamic VBOs for batched particle drawing.
+    @particle_vbo = gl_gen_buffer()
+    glBindBuffer(GL_ARRAY_BUFFER, particle_vbo)
+    glBufferData(GL_ARRAY_BUFFER, MAX_PARTICLES * 4 * 7 * 4, c_null(), GL_DYNAMIC_DRAW)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    @bf_vbo = gl_gen_buffer()
+    glBindBuffer(GL_ARRAY_BUFFER, bf_vbo)
+    glBufferData(GL_ARRAY_BUFFER, BONFIRE_PARTICLES * 4 * 7 * 4, c_null(), GL_DYNAMIC_DRAW)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    # Persistent CPU buffers to eliminate per-frame c_alloc / c_free overhead.
+    @particle_buf_ptr = c_alloc(MAX_PARTICLES * 4 * 7 * 4)
+    @bf_buf_ptr = c_alloc(BONFIRE_PARTICLES * 4 * 7 * 4)
+    for i = 0 to MAX_PARTICLES - 1
+        if i < 40
+            @particle_type[i] = PARTICLE_TYPE_DUST
+        else if i < 120
+            @particle_type[i] = PARTICLE_TYPE_LEAF
+        else if i < 180
+            @particle_type[i] = PARTICLE_TYPE_FIREFLY
+        else
+            @particle_type[i] = PARTICLE_TYPE_SPARKLE
+        endif
+        spawn_particle(i)
+    endfor
+end
+
+# Advance particle positions, age them, and respawn by type and time-of-day.
+define update_particles(dt)
+    if particle_display_mode == PARTICLE_MODE_NONE
+        return
+    endif
+    time = glfwGetTime()
+    for i = 0 to MAX_PARTICLES - 1
+        type = particle_type[i]
+        if particle_life[i] > 0.0
+            @particle_x[i] = particle_x[i] + particle_vx[i] * dt
+            @particle_y[i] = particle_y[i] + particle_vy[i] * dt
+            @particle_z[i] = particle_z[i] + particle_vz[i] * dt
+            @particle_life[i] = particle_life[i] - dt
+        endif
+        case type
+        is PARTICLE_TYPE_LEAF
+            @particle_vx[i] = particle_vx[i] + sin(time * 2.0 + i) * 0.02 * dt
+            @particle_vz[i] = particle_vz[i] + cos(time * 1.7 + i) * 0.02 * dt
+        is PARTICLE_TYPE_FIREFLY
+            @particle_vx[i] = particle_vx[i] + sin(time * 1.0 + i) * 0.02 * dt
+            @particle_vy[i] = particle_vy[i] + sin(time * 1.3 + i * 0.7) * 0.015 * dt
+            @particle_vz[i] = particle_vz[i] + cos(time * 0.9 + i) * 0.02 * dt
+        is PARTICLE_TYPE_SPARKLE
+            @particle_vy[i] = particle_vy[i] + sin(time * 2.0 + i) * 0.01 * dt
+        endcase
+        if particle_life[i] <= 0.0
+            visible = true
+            if type == PARTICLE_TYPE_DUST
+                visible = time_of_day == 1
+            else if type == PARTICLE_TYPE_FIREFLY
+                visible = time_of_day == 2 || time_of_day == 3
+            endif
+            if visible
+                spawn_particle(i)
+            else
+                @particle_life[i] = 0.0
+            endif
+        endif
+        # Hard out-of-bounds / ground contact respawn
+        if type == PARTICLE_TYPE_LEAF
+            if particle_y[i] < 0.0
+                spawn_particle(i)
+            endif
+        else if particle_x[i] < -85.0 || particle_x[i] > 85.0 || particle_z[i] < -85.0 || particle_z[i] > 85.0 || particle_y[i] < -0.5 || particle_y[i] > 6.0
+            spawn_particle(i)
+        endif
+    endfor
+end
+
+# Draw all active particles as camera-facing additive quads.
+# Writes vertex data into a persistent C buffer, uploads with glBufferSubData.
+define draw_particles()
+    if particle_display_mode == PARTICLE_MODE_NONE
+        return
+    endif
+    if free_camera
+        yaw = free_cam_yaw
+        pitch = free_cam_pitch
+    else
+        yaw = player_yaw
+        pitch = player_pitch
+    endif
+    cy = cos(yaw)
+    sy = sin(yaw)
+    cp = cos(pitch)
+    sp = sin(pitch)
+    # Camera forward and right vectors
+    fx = -sy * cp
+    fy = sp
+    fz = -cy * cp
+    rx = cy
+    ry = 0.0
+    rz = -sy
+    # Camera up = right x forward (so the billboard faces the camera)
+    ux = ry * fz - rz * fy
+    uy = rz * fx - rx * fz
+    uz = rx * fy - ry * fx
+
+    glDisable(GL_LIGHTING)
+    glDisable(GL_COLOR_MATERIAL)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_FOG)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glDepthMask(GL_FALSE)
+    glDisable(GL_CULL_FACE)
+
+    time = glfwGetTime()
+    # Build an interleaved VBO on the CPU: position(3) + color(4) per vertex.
+    stride = 7
+    v = 0
+    for i = 0 to MAX_PARTICLES - 1
+        if particle_life[i] <= 0.0
+            continue
+        endif
+        ptype = particle_type[i]
+        if particle_display_mode == PARTICLE_MODE_CYCLE
+            if ptype == PARTICLE_TYPE_DUST && time_of_day != 1
+                continue
+            endif
+            if ptype == PARTICLE_TYPE_FIREFLY && time_of_day != 2 && time_of_day != 3
+                continue
+            endif
+        endif
+        x = particle_x[i]
+        y = particle_y[i]
+        z = particle_z[i]
+        s = particle_size[i] * 0.5
+        r = particle_r[i]
+        g = particle_g[i]
+        b = particle_b[i]
+        a = particle_a[i]
+        if ptype == PARTICLE_TYPE_FIREFLY || ptype == PARTICLE_TYPE_SPARKLE
+            a = a * (0.5 + 0.5 * sin(time * 3.0 + i))
+        endif
+        # Quad vertices packed as (x,y,z,r,g,b,a) × 4
+        c_array_bulk_set_float32(particle_buf_ptr, v * stride,
+            [x + (-rx - ux) * s, y + (-ry - uy) * s, z + (-rz - uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(particle_buf_ptr, v * stride,
+            [x + (rx - ux) * s, y + (ry - uy) * s, z + (rz - uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(particle_buf_ptr, v * stride,
+            [x + (rx + ux) * s, y + (ry + uy) * s, z + (rz + uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(particle_buf_ptr, v * stride,
+            [x + (-rx + ux) * s, y + (-ry + uy) * s, z + (-rz + uz) * s, r, g, b, a])
+        v = v + 1
+    endfor
+    if v > 0
+        glBindBuffer(GL_ARRAY_BUFFER, particle_vbo)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, v * stride * 4, particle_buf_ptr)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_COLOR_ARRAY)
+        glVertexPointer(3, GL_FLOAT, stride * 4, 0)
+        glColorPointer(4, GL_FLOAT, stride * 4, 12)
+        glDrawArrays(GL_QUADS, 0, v)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glDisableClientState(GL_COLOR_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+    endif
+
+    glDepthMask(GL_TRUE)
+    glDisable(GL_BLEND)
+    glEnable(GL_FOG)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_CULL_FACE)
+end
+
+define update_bonfire_particles(dt)
+    # Find bonfire state (interactable type 2)
+    bonfire_lit = false
+    for i = 0 to interactables.len - 1 step 5
+        if interactables[i + 3] == 2
+            bonfire_lit = interactable_states[i / 5] != 0
+        endif
+    endfor
+    if !bonfire_lit
+        return
+    endif
+    for i = 0 to BONFIRE_PARTICLES - 1
+        if bf_life[i] > 0.0
+            @bf_px[i] = bf_px[i] + bf_vx[i] * dt
+            @bf_py[i] = bf_py[i] + bf_vy[i] * dt
+            @bf_pz[i] = bf_pz[i] + bf_vz[i] * dt
+            @bf_life[i] = bf_life[i] - dt
+        else
+            # Respawn at bonfire base
+            @bf_px[i] = bonfire_x + rand_range(-0.15, 0.15)
+            @bf_pz[i] = bonfire_z + rand_range(-0.15, 0.15)
+            @bf_py[i] = rand_range(0.05, 0.2)
+            @bf_vx[i] = rand_range(-0.1, 0.1)
+            @bf_vy[i] = rand_range(0.3, 0.8)
+            @bf_vz[i] = rand_range(-0.1, 0.1)
+            @bf_size[i] = rand_range(0.01, 0.04)
+            @bf_max_life[i] = rand_range(0.5, 1.5)
+            @bf_life[i] = bf_max_life[i]
+            # Mix of fire (orange), smoke (grey), and spark (yellow)
+            roll = __rnd_next() % 3
+            if roll == 0
+                @bf_r[i] = 0.9
+                @bf_g[i] = 0.4
+                @bf_b[i] = 0.1
+            else if roll == 1
+                @bf_r[i] = 0.6
+                @bf_g[i] = 0.6
+                @bf_b[i] = 0.6
+            else
+                @bf_r[i] = 0.9
+                @bf_g[i] = 0.8
+                @bf_b[i] = 0.2
+            endif
+        endif
+    endfor
+end
+
+define draw_bonfire_particles()
+    # Find bonfire state
+    bonfire_lit = false
+    for i = 0 to interactables.len - 1 step 5
+        if interactables[i + 3] == 2
+            bonfire_lit = interactable_states[i / 5] != 0
+        endif
+    endfor
+    if !bonfire_lit
+        return
+    endif
+    if free_camera
+        yaw = free_cam_yaw
+        pitch = free_cam_pitch
+    else
+        yaw = player_yaw
+        pitch = player_pitch
+    endif
+    cy = cos(yaw)
+    sy = sin(yaw)
+    cp = cos(pitch)
+    sp = sin(pitch)
+    fx = -sy * cp
+    fy = sp
+    fz = -cy * cp
+    rx = cy
+    ry = 0.0
+    rz = -sy
+    ux = ry * fz - rz * fy
+    uy = rz * fx - rx * fz
+    uz = rx * fy - ry * fx
+
+    glDisable(GL_LIGHTING)
+    glDisable(GL_COLOR_MATERIAL)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_FOG)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glDepthMask(GL_FALSE)
+    glDisable(GL_CULL_FACE)
+
+    # Build interleaved VBO for bonfire particles.
+    stride = 7
+    v = 0
+    for i = 0 to BONFIRE_PARTICLES - 1
+        if bf_life[i] <= 0.0
+            continue
+        endif
+        x = bf_px[i]
+        y = bf_py[i]
+        z = bf_pz[i]
+        s = bf_size[i] * 0.5
+        r = bf_r[i]
+        g = bf_g[i]
+        b = bf_b[i]
+        a = 1.0 - (bf_life[i] / bf_max_life[i])
+        c_array_bulk_set_float32(bf_buf_ptr, v * stride,
+            [x + (-rx - ux) * s, y + (-ry - uy) * s, z + (-rz - uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(bf_buf_ptr, v * stride,
+            [x + (rx - ux) * s, y + (ry - uy) * s, z + (rz - uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(bf_buf_ptr, v * stride,
+            [x + (rx + ux) * s, y + (ry + uy) * s, z + (rz + uz) * s, r, g, b, a])
+        v = v + 1
+        c_array_bulk_set_float32(bf_buf_ptr, v * stride,
+            [x + (-rx + ux) * s, y + (-ry + uy) * s, z + (-rz + uz) * s, r, g, b, a])
+        v = v + 1
+    endfor
+    if v > 0
+        glBindBuffer(GL_ARRAY_BUFFER, bf_vbo)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, v * stride * 4, bf_buf_ptr)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_COLOR_ARRAY)
+        glVertexPointer(3, GL_FLOAT, stride * 4, 0)
+        glColorPointer(4, GL_FLOAT, stride * 4, 12)
+        glDrawArrays(GL_QUADS, 0, v)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glDisableClientState(GL_COLOR_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+    endif
+
+    glDepthMask(GL_TRUE)
+    glDisable(GL_BLEND)
+    glEnable(GL_FOG)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_CULL_FACE)
+end
+

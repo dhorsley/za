@@ -1,0 +1,918 @@
+doc '
+lib/renderer.za — Scene rendering, instancing, sky, culling
+-----------------------------------------------------------
+
+The master draw loop and all per-frame object rendering.
+Demonstrates za arrays as instance data for OpenGL instancing.
+'
+
+namespace main
+
+# Draw animated skeletal character via external libskel.so library.
+# Saves/restores the active GL shader program to avoid state corruption.
+define draw_player_skeletal()
+    if c_ptr_is_null(player_skel)
+        return
+    endif
+
+    # Apply player transform, then read combined MVP and pass to skeletal shader
+    glPushMatrix()
+    glTranslatef(player_pos[0], player_pos[1], player_pos[2])
+    glRotatef(player_yaw * 57.29578, 0.0, 1.0, 0.0)
+    glRotatef(180.0, 0.0, 1.0, 0.0)
+    glScalef(0.25, 0.25, 0.25)
+
+    # Bind Quaternius character texture for skeletal model
+    glEnable(GL_TEXTURE_2D)
+    glBindTexture(GL_TEXTURE_2D, player_texture)
+
+    proj_ptr = c_alloc(64)
+    mv_ptr = c_alloc(64)
+    mvp_ptr = c_alloc(64)
+    glGetFloatv(GL_PROJECTION_MATRIX, proj_ptr)
+    glGetFloatv(GL_MODELVIEW_MATRIX, mv_ptr)
+    multiply_matrices_4x4_helper(mvp_ptr, proj_ptr, mv_ptr)
+    c_free(proj_ptr)
+    c_free(mv_ptr)
+
+    skel_draw(player_skel, mvp_ptr)
+    c_free(mvp_ptr)
+
+    glPopMatrix()
+end
+
+define draw_building(x, y, z, sx, sy, sz, yaw, cr, cg, cb, model_index)
+    on building_model_variants.len == 0 do return
+    idx = model_index
+    on idx >= building_model_variants.len do idx = 0
+    # Warm emissive tint at dusk/night: shift toward orange/yellow
+    if time_of_day >= 2
+        cr = cr * 1.6
+        cg = cg * 0.8
+        cb = cb * 0.3
+    endif
+    # Building textures are RGBA with mostly-transparent pixels;
+    # alpha-test so only opaque pixels render (no white fringe)
+    glEnable(GL_ALPHA_TEST)
+    glAlphaFunc(GL_GREATER, 0.1)
+    draw_textured_model_groups(building_model_variants[idx], x, y, z, sx, sy, sz, yaw, cr, cg, cb)
+    glDisable(GL_ALPHA_TEST)
+end
+
+define draw_tree(x, z, scale, yaw, time, model_index)
+    on tree_model_variants.len == 0 do return
+    idx = model_index
+    on idx >= tree_model_variants.len do idx = 0
+    # Tree sway animation: subtle Z-axis rotation (wind sway) based on time and position
+    sway_angle = sin(time * 1.5 + x * 0.3 + z * 0.2) * 2.0
+    # Ensure fixed-function state is clean (no shader/VBO leakage from instanced draws)
+    glUseProgram(0)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glPushMatrix()
+    glTranslatef(x, 0.0, z)
+    on yaw != 0.0 do glRotatef(yaw * 57.29578, 0.0, 1.0, 0.0)
+    glScalef(scale, scale, scale)
+    glColor3f(1.0, 1.0, 1.0)
+    # Alpha test: discard transparent pixels (leaf fringes) instead of blending
+    glEnable(GL_ALPHA_TEST)
+    glAlphaFunc(GL_GREATER, 0.1)
+    # Render bark groups without sway
+    for mg = 0 to tree_model_variants[idx].len - 1 step 5
+        tex_id = tree_model_variants[idx][mg + 4]
+        continue if tex_id == tree_leaves_texture || tex_id == pine_leaves_texture || tex_id == birch_leaves_texture
+        draw_raw_textured_group(tree_model_variants[idx][mg], tree_model_variants[idx][mg + 1], tree_model_variants[idx][mg + 2], tree_model_variants[idx][mg + 3], tex_id)
+    endfor
+    # Apply sway only to leaf groups
+    glPushMatrix()
+    glRotatef(sway_angle, 0.0, 0.0, 1.0)
+    for mg = 0 to tree_model_variants[idx].len - 1 step 5
+        tex_id = tree_model_variants[idx][mg + 4]
+        continue if tex_id != tree_leaves_texture && tex_id != pine_leaves_texture && tex_id != birch_leaves_texture
+        draw_raw_textured_group(tree_model_variants[idx][mg], tree_model_variants[idx][mg + 1], tree_model_variants[idx][mg + 2], tree_model_variants[idx][mg + 3], tex_id)
+    endfor
+    glPopMatrix()
+    glDisable(GL_ALPHA_TEST)
+    glPopMatrix()
+end
+
+define draw_tree_leaves(x, z, scale, yaw, time, model_index)
+    on tree_leaf_variants.len == 0 do return
+    idx = model_index
+    on idx >= tree_leaf_variants.len do idx = 0
+    sway_angle = sin(time * 1.5 + x * 0.3 + z * 0.2) * 2.0
+    # Ensure fixed-function state is clean (no shader/VBO leakage from instanced draws)
+    glUseProgram(0)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glPushMatrix()
+    glTranslatef(x, 0.0, z)
+    on yaw != 0.0 do glRotatef(yaw * 57.29578, 0.0, 1.0, 0.0)
+    glScalef(scale, scale, scale)
+    glColor3f(1.0, 1.0, 1.0)
+    glEnable(GL_ALPHA_TEST)
+    glAlphaFunc(GL_GREATER, 0.1)
+    glPushMatrix()
+    glRotatef(sway_angle, 0.0, 0.0, 1.0)
+    for mg = 0 to tree_leaf_variants[idx].len - 1 step 5
+        draw_raw_textured_group(tree_leaf_variants[idx][mg], tree_leaf_variants[idx][mg + 1], tree_leaf_variants[idx][mg + 2], tree_leaf_variants[idx][mg + 3], tree_leaf_variants[idx][mg + 4])
+    endfor
+    glPopMatrix()
+    glDisable(GL_ALPHA_TEST)
+    glPopMatrix()
+end
+
+define draw_prop(x, y, z, scale, yaw, y_offset, model_index)
+    on prop_model_variants.len == 0 do return
+    idx = model_index
+    on idx >= prop_model_variants.len do idx = 0
+    draw_colored_model_groups(prop_model_variants[idx], x, y + y_offset, z, scale, scale, scale, yaw, 1.0, 1.0, 1.0)
+end
+
+# Hardware instancing: draws many copies of one model in a single GPU call.
+# Uploads instance data (position/yaw/scale/color) via glBufferSubData.
+define draw_instanced_variant(model_groups, instance_vbo, instance_count)
+    on model_groups.len == 0 do return
+    on instance_count <= 0 do return
+    glUseProgram(instancing_program)
+    for mg = 0 to model_groups.len - 1 step 5
+        pos_vbo   = model_groups[mg]
+        tex_vbo   = model_groups[mg + 1]
+        norm_vbo  = model_groups[mg + 2]
+        num_verts = model_groups[mg + 3]
+        tex_id    = model_groups[mg + 4]
+        # Texture binding (active program will sample it via uniform)
+        on tex_id > 0 do glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, tex_id)
+        glUniform1i(uTexture_loc, 0)
+        # Geometry attributes (locations 0-2) via generic vertex attributes
+        # Do NOT use glVertexPointer/glTexCoordPointer/glNormalPointer —
+        # in shader mode they feed built-ins (gl_Vertex/gl_MultiTexCoord0/gl_Normal)
+        # instead of the generic attributes our shader declares at locations 0-2.
+        glBindBuffer(GL_ARRAY_BUFFER, pos_vbo)
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0)
+        glBindBuffer(GL_ARRAY_BUFFER, tex_vbo)
+        glEnableVertexAttribArray(1)
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0)
+        glBindBuffer(GL_ARRAY_BUFFER, norm_vbo)
+        glEnableVertexAttribArray(2)
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0)
+        # Instance attributes (locations 3-6) via generic vertex attributes + divisor
+        glBindBuffer(GL_ARRAY_BUFFER, instance_vbo)
+        glEnableVertexAttribArray(3)
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 40, 0)
+        glVertexAttribDivisor(3, 1)
+        glEnableVertexAttribArray(4)
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 40, 12)
+        glVertexAttribDivisor(4, 1)
+        glEnableVertexAttribArray(5)
+        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, 40, 16)
+        glVertexAttribDivisor(5, 1)
+        glEnableVertexAttribArray(6)
+        glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, 40, 28)
+        glVertexAttribDivisor(6, 1)
+        glDrawArraysInstanced(GL_TRIANGLES, 0, num_verts, instance_count)
+        # Disable everything we enabled
+        glDisableVertexAttribArray(0)
+        glDisableVertexAttribArray(1)
+        glDisableVertexAttribArray(2)
+        glDisableVertexAttribArray(3)
+        glDisableVertexAttribArray(4)
+        glDisableVertexAttribArray(5)
+        glDisableVertexAttribArray(6)
+        # CRITICAL: reset attribute divisors back to 0 so non-instanced draws
+        # (e.g. the skeletal library) read attributes per-vertex, not per-instance.
+        glVertexAttribDivisor(3, 0)
+        glVertexAttribDivisor(4, 0)
+        glVertexAttribDivisor(5, 0)
+        glVertexAttribDivisor(6, 0)
+        on tex_id > 0 do glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D)
+    endfor
+    # Reset to fixed-function pipeline so subsequent non-instanced draws
+    # (trees, props, skeletal) do not get corrupted by the instancing shader.
+    glUseProgram(0)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+end
+
+define draw_interactable_glow(time)
+    nearest_idx = -1
+    nearest_dist = 9999.0
+    for i = 0 to interactables.len - 1 step 5
+        ix = interactables[i]
+        iz = interactables[i + 1]
+        ir = interactables[i + 2]
+        dx = player_pos[0] - ix
+        dz = player_pos[2] - iz
+        d = sqrt(dx * dx + dz * dz)
+        if d < nearest_dist
+            nearest_dist = d
+            nearest_idx = i
+        endif
+    endfor
+    if nearest_idx < 0
+        return
+    endif
+    ix = interactables[nearest_idx]
+    iz = interactables[nearest_idx + 1]
+    ir = interactables[nearest_idx + 2]
+    # Only glow when the player is within interaction range + small margin
+    if nearest_dist > ir + 2.0
+        return
+    endif
+    gy = get_surface_height(ix, iz) + 0.02
+    pulse = 0.5 + 0.5 * sin(time * 3.0)
+    glDisable(GL_LIGHTING)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_CULL_FACE)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glDepthMask(GL_FALSE)
+    segs = 32
+    glBegin(GL_LINE_LOOP)
+    glColor4f(1.0, 0.9, 0.3, 0.4 + pulse * 0.4)
+    for s = 0 to segs - 1
+        ang = s * 6.283185 / segs
+        glVertex3f(ix + cos(ang) * (ir + 0.3), gy, iz + sin(ang) * (ir + 0.3))
+    endfor
+    glEnd()
+    glDepthMask(GL_TRUE)
+    glDisable(GL_BLEND)
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_LIGHTING)
+end
+
+# Extract 6 frustum planes from OpenGL projection*modelview matrix.
+# Uses the standard clip-space row extraction method for exact match.
+define extract_frustum_planes()
+    proj_ptr = c_alloc(64)
+    mv_ptr = c_alloc(64)
+    mvp_ptr = c_alloc(64)
+    glGetFloatv(GL_PROJECTION_MATRIX, proj_ptr)
+    glGetFloatv(GL_MODELVIEW_MATRIX, mv_ptr)
+    multiply_matrices_4x4_helper(mvp_ptr, proj_ptr, mv_ptr)
+    c_free(proj_ptr)
+    c_free(mv_ptr)
+
+    # mvp is column-major: index 0=M11, 1=M21, 2=M31, 3=M41,
+    # 4=M12, 5=M22, 6=M32, 7=M42, 8=M13, 9=M23, 10=M33, 11=M43,
+    # 12=M14, 13=M24, 14=M34, 15=M44
+    # Planes extracted as: left=row4+row1, right=row4-row1,
+    # bottom=row4+row2, top=row4-row2, near=row4+row3, far=row4-row3
+    # where row1=[0,4,8,12], row2=[1,5,9,13], row3=[2,6,10,14], row4=[3,7,11,15]
+
+    # Left
+    pl_a = c_get_float(mvp_ptr, 0) + c_get_float(mvp_ptr, 12)
+    pl_b = c_get_float(mvp_ptr, 16) + c_get_float(mvp_ptr, 28)
+    pl_c = c_get_float(mvp_ptr, 32) + c_get_float(mvp_ptr, 44)
+    pl_d = c_get_float(mvp_ptr, 48) + c_get_float(mvp_ptr, 60)
+    pl_len = sqrt(pl_a*pl_a + pl_b*pl_b + pl_c*pl_c)
+    on pl_len > 0 do pl_a = pl_a / pl_len; pl_b = pl_b / pl_len; pl_c = pl_c / pl_len; pl_d = pl_d / pl_len
+
+    # Right
+    pr_a = c_get_float(mvp_ptr, 12) - c_get_float(mvp_ptr, 0)
+    pr_b = c_get_float(mvp_ptr, 28) - c_get_float(mvp_ptr, 16)
+    pr_c = c_get_float(mvp_ptr, 44) - c_get_float(mvp_ptr, 32)
+    pr_d = c_get_float(mvp_ptr, 60) - c_get_float(mvp_ptr, 48)
+    pr_len = sqrt(pr_a*pr_a + pr_b*pr_b + pr_c*pr_c)
+    on pr_len > 0 do pr_a = pr_a / pr_len; pr_b = pr_b / pr_len; pr_c = pr_c / pr_len; pr_d = pr_d / pr_len
+
+    # Bottom
+    pb_a = c_get_float(mvp_ptr, 4) + c_get_float(mvp_ptr, 12)
+    pb_b = c_get_float(mvp_ptr, 20) + c_get_float(mvp_ptr, 28)
+    pb_c = c_get_float(mvp_ptr, 36) + c_get_float(mvp_ptr, 44)
+    pb_d = c_get_float(mvp_ptr, 52) + c_get_float(mvp_ptr, 60)
+    pb_len = sqrt(pb_a*pb_a + pb_b*pb_b + pb_c*pb_c)
+    on pb_len > 0 do pb_a = pb_a / pb_len; pb_b = pb_b / pb_len; pb_c = pb_c / pb_len; pb_d = pb_d / pb_len
+
+    # Top
+    pt_a = c_get_float(mvp_ptr, 12) - c_get_float(mvp_ptr, 4)
+    pt_b = c_get_float(mvp_ptr, 28) - c_get_float(mvp_ptr, 20)
+    pt_c = c_get_float(mvp_ptr, 44) - c_get_float(mvp_ptr, 36)
+    pt_d = c_get_float(mvp_ptr, 60) - c_get_float(mvp_ptr, 52)
+    pt_len = sqrt(pt_a*pt_a + pt_b*pt_b + pt_c*pt_c)
+    on pt_len > 0 do pt_a = pt_a / pt_len; pt_b = pt_b / pt_len; pt_c = pt_c / pt_len; pt_d = pt_d / pt_len
+
+    # Near
+    pn_a = c_get_float(mvp_ptr, 8) + c_get_float(mvp_ptr, 12)
+    pn_b = c_get_float(mvp_ptr, 24) + c_get_float(mvp_ptr, 28)
+    pn_c = c_get_float(mvp_ptr, 40) + c_get_float(mvp_ptr, 44)
+    pn_d = c_get_float(mvp_ptr, 56) + c_get_float(mvp_ptr, 60)
+    pn_len = sqrt(pn_a*pn_a + pn_b*pn_b + pn_c*pn_c)
+    on pn_len > 0 do pn_a = pn_a / pn_len; pn_b = pn_b / pn_len; pn_c = pn_c / pn_len; pn_d = pn_d / pn_len
+
+    # Far
+    pf_a = c_get_float(mvp_ptr, 12) - c_get_float(mvp_ptr, 8)
+    pf_b = c_get_float(mvp_ptr, 28) - c_get_float(mvp_ptr, 24)
+    pf_c = c_get_float(mvp_ptr, 44) - c_get_float(mvp_ptr, 40)
+    pf_d = c_get_float(mvp_ptr, 60) - c_get_float(mvp_ptr, 56)
+    pf_len = sqrt(pf_a*pf_a + pf_b*pf_b + pf_c*pf_c)
+    on pf_len > 0 do pf_a = pf_a / pf_len; pf_b = pf_b / pf_len; pf_c = pf_c / pf_len; pf_d = pf_d / pf_len
+
+    c_free(mvp_ptr)
+
+    return [pl_a, pl_b, pl_c, pl_d, pr_a, pr_b, pr_c, pr_d,
+            pb_a, pb_b, pb_c, pb_d, pt_a, pt_b, pt_c, pt_d,
+            pn_a, pn_b, pn_c, pn_d, pf_a, pf_b, pf_c, pf_d]
+end
+
+# Test if a bounding sphere is inside the camera frustum.
+# Returns false if the sphere is completely behind any plane.
+define sphere_in_frustum(cx, cy, cz, radius, planes)
+    for p = 0 to 5
+        base = p * 4
+        d = planes[base] * cx + planes[base + 1] * cy + planes[base + 2] * cz + planes[base + 3]
+        if d < -radius
+            return false
+        endif
+    endfor
+    return true
+end
+
+# Master render function: draws the entire frame in layers.
+# Order matters: sky -> terrain -> roads -> water -> objects -> particles -> skeletal -> HUD.
+define draw_scene()
+    # Extract frustum planes once per frame for CPU culling (disabled in free camera)
+    use_culling = !free_camera && culling_enabled
+    frustum_planes = []
+    if use_culling
+        frustum_planes = extract_frustum_planes()
+    endif
+    culled_count = 0
+    total_count = 0
+
+    # Save the currently active GL program before any instancing draws.
+    # The external libskel.so library relies on its own shader program
+    # staying active; we will restore this before the skeletal draw.
+    saved_program_ptr = c_alloc(4)
+    glGetIntegerv(GL_CURRENT_PROGRAM, saved_program_ptr)
+    saved_program = c_get_int32(saved_program_ptr, 0)
+    c_free(saved_program_ptr)
+
+    # Floor: either textured grass or grid lines
+    if floor_solid
+        draw_grass_floor_vbo(grass_floor_vbo, grass_texture_id)
+    else
+        draw_terrain_vao(terrain_vao)
+    endif
+
+    # Beach ring around the world boundary
+    draw_beach(sand_texture_id)
+
+    # Roads and water (always visible, flat ground-level)
+    draw_textured_merged_vbo(road_world_vbo, road_texture_id)
+    draw_merged_vbo(road_curb_vbo)
+    draw_water_vbo(water_texture_id, glfwGetTime(), frustum_planes, use_culling)
+
+    # Medieval Village prop models at interactable locations
+    if prop_model_variants.len > 0
+        for i = 0 to interactables.len - 1 step 5
+            ix = interactables[i]
+            iz = interactables[i + 1]
+            itype = interactables[i + 3]
+            state_idx = as_int(i / 5)
+            case itype
+            is 1
+                draw_prop(ix, 0.0, iz, prop_scales[0], 0.0, prop_y_offsets[0], 0)  # Well
+            is 2
+                bonfire_lit = interactable_states[state_idx]
+                bmodel = bonfire_lit != 0 ? 2 : 1
+                draw_prop(ix, 0.0, iz, prop_scales[bmodel], 0.0, prop_y_offsets[bmodel], bmodel)
+            is 4
+                draw_prop(ix, 0.0, iz, prop_scales[3], 0.0, prop_y_offsets[3], 3)  # MarketStand
+            is 5
+                draw_prop(ix, 0.0, iz, prop_scales[4], 0.0, prop_y_offsets[4], 4)  # Cart
+            is 6
+                draw_prop(ix, 0.0, iz, prop_scales[5], 0.0, prop_y_offsets[5], 5)  # Cauldron
+            endcase
+        endfor
+    endif
+
+    # Interactable markers (small colored cubes floating above interactables)
+    if !c_ptr_is_null(interactable_marker_vbo)
+        draw_merged_vbo(interactable_marker_vbo)
+    endif
+
+    # Draw buildings with frustum culling + hybrid instancing
+    if instancing_enabled
+        for v = 0 to building_variant_count - 1
+            data_ptr = c_alloc(200 * 40)
+            count = 0
+            for i = 0 to building_positions.len - 1 step 11
+                bidx = building_positions[i + 10]
+                if bidx != v
+                    continue
+                endif
+                total_count = total_count + 1
+                bx = building_positions[i]
+                bz = building_positions[i + 2]
+                bsx = building_positions[i + 3]
+                bsz = building_positions[i + 5]
+                bhw = building_collision_half_w[bidx]
+                bhd = building_collision_half_d[bidx]
+                br = max([bhw * bsx, bhd * bsz])
+                if use_culling
+                    bcy = building_positions[i + 1] + building_positions[i + 4] * 0.5
+                    if !sphere_in_frustum(bx, bcy, bz, br, frustum_planes)
+                        culled_count = culled_count + 1
+                        continue
+                    endif
+                endif
+                # Write instance data directly to C buffer
+                off = count * 40
+                c_set_float(data_ptr, off + 0, building_positions[i])
+                c_set_float(data_ptr, off + 4, building_positions[i+1])
+                c_set_float(data_ptr, off + 8, building_positions[i+2])
+                c_set_float(data_ptr, off + 12, building_positions[i+6])
+                c_set_float(data_ptr, off + 16, building_positions[i+3])
+                c_set_float(data_ptr, off + 20, building_positions[i+4])
+                c_set_float(data_ptr, off + 24, building_positions[i+5])
+                c_set_float(data_ptr, off + 28, building_positions[i+7])
+                c_set_float(data_ptr, off + 32, building_positions[i+8])
+                c_set_float(data_ptr, off + 36, building_positions[i+9])
+                count = count + 1
+            endfor
+            if count >= MIN_INSTANCES_FOR_INSTANCING
+                glBindBuffer(GL_ARRAY_BUFFER, building_instance_vbo)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, count * 40, data_ptr)
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+                draw_instanced_variant(building_model_variants[v], building_instance_vbo, count)
+            else if count > 0
+                # Small batch: draw individually (faster than instancing setup)
+                for j = 0 to count - 1
+                    off = j * 40
+                    px = c_get_float(data_ptr, off + 0)
+                    py = c_get_float(data_ptr, off + 4)
+                    pz = c_get_float(data_ptr, off + 8)
+                    yaw = c_get_float(data_ptr, off + 12)
+                    sx = c_get_float(data_ptr, off + 16)
+                    sy = c_get_float(data_ptr, off + 20)
+                    sz = c_get_float(data_ptr, off + 24)
+                    cr = c_get_float(data_ptr, off + 28)
+                    cg = c_get_float(data_ptr, off + 32)
+                    cb = c_get_float(data_ptr, off + 36)
+                    draw_building(px, py, pz, sx, sy, sz, yaw, cr, cg, cb, v)
+                endfor
+            endif
+            c_free(data_ptr)
+        endfor
+    else
+        # Fallback: draw each building individually
+        for i = 0 to building_positions.len - 1 step 11
+            total_count = total_count + 1
+            if use_culling
+                bidx = building_positions[i + 10]
+                bx = building_positions[i]
+                bz = building_positions[i + 2]
+                bsx = building_positions[i + 3]
+                bsz = building_positions[i + 5]
+                bhw = building_collision_half_w[bidx]
+                bhd = building_collision_half_d[bidx]
+                br = max([bhw * bsx, bhd * bsz])
+                bcy = building_positions[i + 1] + building_positions[i + 4] * 0.5
+                if !sphere_in_frustum(bx, bcy, bz, br, frustum_planes)
+                    culled_count = culled_count + 1
+                    continue
+                endif
+            endif
+            bidx = building_positions[i+10]
+            draw_building(building_positions[i], building_positions[i+1], building_positions[i+2], building_positions[i+3], building_positions[i+4], building_positions[i+5], building_positions[i+6], building_positions[i+7], building_positions[i+8], building_positions[i+9], bidx)
+        endfor
+    endif
+
+    # Draw trees with frustum culling + bark instancing
+    time = glfwGetTime()
+    for v = 0 to tree_model_variants.len - 1
+        count = 0
+        for i = 0 to tree_positions.len - 1 step 5
+            if tree_positions[i + 4] != v
+                continue
+            endif
+            total_count = total_count + 1
+            if use_culling
+                tx = tree_positions[i]
+                tz = tree_positions[i + 1]
+                tr = tree_positions[i + 2] * 2.0
+                tcy = tree_positions[i + 2] * 0.75
+                if !sphere_in_frustum(tx, tcy, tz, tr, frustum_planes)
+                    culled_count = culled_count + 1
+                    continue
+                endif
+            endif
+            ts = tree_positions[i+2]
+            tyaw = tree_positions[i+3]
+            off = count * 10
+            c_array_set_float32(tree_instance_buf_ptr, off + 0, tree_positions[i])
+            c_array_set_float32(tree_instance_buf_ptr, off + 1, 0.0)
+            c_array_set_float32(tree_instance_buf_ptr, off + 2, tree_positions[i+1])
+            c_array_set_float32(tree_instance_buf_ptr, off + 3, tyaw)
+            c_array_set_float32(tree_instance_buf_ptr, off + 4, ts)
+            c_array_set_float32(tree_instance_buf_ptr, off + 5, ts)
+            c_array_set_float32(tree_instance_buf_ptr, off + 6, ts)
+            c_array_set_float32(tree_instance_buf_ptr, off + 7, 1.0)
+            c_array_set_float32(tree_instance_buf_ptr, off + 8, 1.0)
+            c_array_set_float32(tree_instance_buf_ptr, off + 9, 1.0)
+            count = count + 1
+        endfor
+        if count >= MIN_TREE_INSTANCES_FOR_BARK
+            # Instance-draw bark for this variant
+            glBindBuffer(GL_ARRAY_BUFFER, tree_instance_vbo)
+            glBufferSubData(GL_ARRAY_BUFFER, 0, count * 40, tree_instance_buf_ptr)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            draw_instanced_variant(tree_bark_variants[v], tree_instance_vbo, count)
+            # Draw leaves individually with per-tree sway
+            for j = 0 to count - 1
+                off = j * 10
+                px = c_array_get_float32(tree_instance_buf_ptr, off + 0)
+                pz = c_array_get_float32(tree_instance_buf_ptr, off + 2)
+                ps = c_array_get_float32(tree_instance_buf_ptr, off + 4)
+                pyaw = c_array_get_float32(tree_instance_buf_ptr, off + 3)
+                draw_tree_leaves(px, pz, ps, pyaw, time, v)
+            endfor
+        else if count > 0
+            # Fallback: draw each tree individually (bark + leaves)
+            for j = 0 to count - 1
+                off = j * 10
+                px = c_array_get_float32(tree_instance_buf_ptr, off + 0)
+                pz = c_array_get_float32(tree_instance_buf_ptr, off + 2)
+                ps = c_array_get_float32(tree_instance_buf_ptr, off + 4)
+                pyaw = c_array_get_float32(tree_instance_buf_ptr, off + 3)
+                draw_tree(px, pz, ps, pyaw, time, v)
+            endfor
+        endif
+    endfor
+
+    # Draw grass clumps with frustum culling + hybrid instancing
+    if instancing_enabled
+        for v = 0 to grass_clump_variant_count - 1
+            data_ptr = c_alloc(200 * 40)
+            count = 0
+            for i = 0 to grass_clump_positions.len - 1 step 5
+                gidx = grass_clump_positions[i + 4]
+                if gidx != v
+                    continue
+                endif
+                total_count = total_count + 1
+                gx = grass_clump_positions[i]
+                gz = grass_clump_positions[i + 1]
+                gr = grass_clump_positions[i + 2] * 0.5
+                if use_culling
+                    if !sphere_in_frustum(gx, 0.0, gz, gr, frustum_planes)
+                        culled_count = culled_count + 1
+                        continue
+                    endif
+                endif
+                gs = grass_clump_positions[i+2]
+                gyaw = grass_clump_positions[i+3]
+                off = count * 40
+                c_set_float(data_ptr, off + 0, gx)
+                c_set_float(data_ptr, off + 4, 0.0)
+                c_set_float(data_ptr, off + 8, gz)
+                c_set_float(data_ptr, off + 12, gyaw)
+                c_set_float(data_ptr, off + 16, gs)
+                c_set_float(data_ptr, off + 20, gs)
+                c_set_float(data_ptr, off + 24, gs)
+                c_set_float(data_ptr, off + 28, 1.0)
+                c_set_float(data_ptr, off + 32, 1.0)
+                c_set_float(data_ptr, off + 36, 1.0)
+                count = count + 1
+            endfor
+            if count >= MIN_INSTANCES_FOR_INSTANCING
+                glBindBuffer(GL_ARRAY_BUFFER, grass_instance_vbo)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, count * 40, data_ptr)
+                glBindBuffer(GL_ARRAY_BUFFER, 0)
+                draw_instanced_variant(grass_clump_variants[v], grass_instance_vbo, count)
+            else if count > 0
+                for j = 0 to count - 1
+                    off = j * 40
+                    px = c_get_float(data_ptr, off + 0)
+                    pz = c_get_float(data_ptr, off + 8)
+                    yaw = c_get_float(data_ptr, off + 12)
+                    gs = c_get_float(data_ptr, off + 16)
+                    draw_textured_model_groups(grass_clump_variants[v], px, 0.0, pz, gs, gs, gs, yaw, 1.0, 1.0, 1.0)
+                endfor
+            endif
+            c_free(data_ptr)
+        endfor
+    else
+        for i = 0 to grass_clump_positions.len - 1 step 5
+            total_count = total_count + 1
+            if use_culling
+                gx = grass_clump_positions[i]
+                gz = grass_clump_positions[i + 1]
+                gr = grass_clump_positions[i + 2] * 0.5
+                if !sphere_in_frustum(gx, 0.0, gz, gr, frustum_planes)
+                    culled_count = culled_count + 1
+                    continue
+                endif
+            endif
+            gs = grass_clump_positions[i+2]
+            gidx = grass_clump_positions[i+4]
+            if gidx < grass_clump_variants.len
+                draw_textured_model_groups(grass_clump_variants[gidx], grass_clump_positions[i], 0.0, grass_clump_positions[i+1], gs, gs, gs, grass_clump_positions[i+3], 1.0, 1.0, 1.0)
+            endif
+        endfor
+    endif
+
+    # Draw rocks with frustum culling + hybrid instancing
+    if instancing_enabled && rock_variant.len > 0
+        data_ptr = c_alloc(100 * 40)
+        count = 0
+        for i = 0 to rock_positions.len - 1 step 4
+            total_count = total_count + 1
+            rx = rock_positions[i]
+            rz = rock_positions[i + 1]
+            rr = rock_positions[i + 2] * 0.4
+            if use_culling
+                if !sphere_in_frustum(rx, 0.0, rz, rr, frustum_planes)
+                    culled_count = culled_count + 1
+                    continue
+                endif
+            endif
+            rs = rock_positions[i+2]
+            ryaw = rock_positions[i+3]
+            off = count * 40
+            c_set_float(data_ptr, off + 0, rx)
+            c_set_float(data_ptr, off + 4, 0.0)
+            c_set_float(data_ptr, off + 8, rz)
+            c_set_float(data_ptr, off + 12, ryaw)
+            c_set_float(data_ptr, off + 16, rs)
+            c_set_float(data_ptr, off + 20, rs)
+            c_set_float(data_ptr, off + 24, rs)
+            c_set_float(data_ptr, off + 28, 1.0)
+            c_set_float(data_ptr, off + 32, 1.0)
+            c_set_float(data_ptr, off + 36, 1.0)
+            count = count + 1
+        endfor
+        if count >= MIN_INSTANCES_FOR_INSTANCING
+            glBindBuffer(GL_ARRAY_BUFFER, rock_instance_vbo)
+            glBufferSubData(GL_ARRAY_BUFFER, 0, count * 40, data_ptr)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            draw_instanced_variant(rock_variant, rock_instance_vbo, count)
+        else if count > 0
+            for j = 0 to count - 1
+                off = j * 40
+                px = c_get_float(data_ptr, off + 0)
+                pz = c_get_float(data_ptr, off + 8)
+                yaw = c_get_float(data_ptr, off + 12)
+                rs = c_get_float(data_ptr, off + 16)
+                draw_textured_model_groups(rock_variant, px, 0.0, pz, rs, rs, rs, yaw, 1.0, 1.0, 1.0)
+            endfor
+        endif
+        c_free(data_ptr)
+    else
+        for i = 0 to rock_positions.len - 1 step 4
+            total_count = total_count + 1
+            if use_culling
+                rx = rock_positions[i]
+                rz = rock_positions[i + 1]
+                rr = rock_positions[i + 2] * 0.4
+                if !sphere_in_frustum(rx, 0.0, rz, rr, frustum_planes)
+                    culled_count = culled_count + 1
+                    continue
+                endif
+            endif
+            rs = rock_positions[i+2]
+            if rock_variant.len > 0
+                draw_textured_model_groups(rock_variant, rock_positions[i], 0.0, rock_positions[i+1], rs, rs, rs, rock_positions[i+3], 1.0, 1.0, 1.0)
+            endif
+        endfor
+    endif
+
+    # Restore the GL program that was active before our instancing draws.
+    # The external libskel.so library may rely on its own shader program
+    # being active when skel_draw() is called.  Our instancing shader
+    # stays bound after the last instanced draw, so we must put the
+    # previous program back before the skeletal draw.
+    glUseProgram(saved_program)
+
+    draw_blob_shadow(player_pos[0], player_pos[2], SHADOW_RADIUS)
+    draw_player_skeletal()
+    @last_culled_count = culled_count
+    @last_total_count = total_count
+end
+
+# Linear interpolation between two RGB colors. factor 0 = a, 1 = b.
+define lerp_color(c1, c2, t)
+    on t < 0.0 do t = 0.0
+    on t > 1.0 do t = 1.0
+    return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t]
+end
+
+# Compute sun direction and light colors from continuous clock time.
+# Returns dawn/day/dusk/night index + blend factor for smooth transitions.
+define get_time_of_day_transition(mins)
+    h = (mins % MINUTES_PER_DAY) / 60.0
+    if h >= 22.0
+        return 3, 3, 0.0
+    endif
+    if h >= 20.0
+        return 2, 3, (h - 20.0) / 2.0
+    endif
+    if h >= 18.0
+        return 2, 2, 0.0
+    endif
+    if h >= 16.0
+        return 1, 2, (h - 16.0) / 2.0
+    endif
+    if h >= 10.0
+        return 1, 1, 0.0
+    endif
+    if h >= 8.0
+        return 0, 1, (h - 8.0) / 2.0
+    endif
+    if h >= 6.0
+        return 0, 0, 0.0
+    endif
+    if h >= 4.0
+        return 3, 0, (h - 4.0) / 2.0
+    endif
+    return 3, 3, 0.0
+end
+
+define update_time_of_day()
+    cur, nxt, mix = get_time_of_day_transition(world_clock_minutes)
+    @time_of_day = cur
+    amb = lerp_color(sun_ambients[cur], sun_ambients[nxt], mix)
+    diff = lerp_color(sun_diffuses[cur], sun_diffuses[nxt], mix)
+    spec = lerp_color(sun_speculars[cur], sun_speculars[nxt], mix)
+    sky = lerp_color(sky_colors[cur], sky_colors[nxt], mix)
+    horizon = lerp_color(horizon_colors[cur], horizon_colors[nxt], mix)
+    sdir = lerp_color(sun_directions[cur], sun_directions[nxt], mix)
+    @current_sky_color = sky
+    @current_horizon_color = horizon
+    @current_sun_dir = sdir
+    c_array_set_float32(light_ambient, 0, amb[0])
+    c_array_set_float32(light_ambient, 1, amb[1])
+    c_array_set_float32(light_ambient, 2, amb[2])
+    c_array_set_float32(light_ambient, 3, 1.0)
+    c_array_set_float32(light_diffuse, 0, diff[0])
+    c_array_set_float32(light_diffuse, 1, diff[1])
+    c_array_set_float32(light_diffuse, 2, diff[2])
+    c_array_set_float32(light_diffuse, 3, 1.0)
+    c_array_set_float32(light_specular, 0, spec[0])
+    c_array_set_float32(light_specular, 1, spec[1])
+    c_array_set_float32(light_specular, 2, spec[2])
+    c_array_set_float32(light_specular, 3, 1.0)
+    c_array_set_float32(fog_color, 0, horizon[0])
+    c_array_set_float32(fog_color, 1, horizon[1])
+    c_array_set_float32(fog_color, 2, horizon[2])
+    c_array_set_float32(fog_color, 3, 1.0)
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
+    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
+    glFogfv(GL_FOG_COLOR, fog_color)
+    glClearColor(sky[0], sky[1], sky[2], 1.0)
+end
+
+define create_sky_vbo()
+    stacks = 16
+    slices = 32
+    pi = 3.14159265359
+    tau = 6.28318530718
+    total_verts = stacks * (slices + 1) * 2
+    @sky_num_verts = total_verts
+    pos_ptr = c_alloc(total_verts * 3 * 4)
+    col_ptr = c_alloc(total_verts * 3 * 4)
+    v = 0
+    for i = 0 to stacks - 1
+        @sky_strip_offsets = concat(sky_strip_offsets, [v])
+        @sky_strip_counts = concat(sky_strip_counts, [(slices + 1) * 2])
+        phi0 = pi * 0.5 * (i / stacks)
+        phi1 = pi * 0.5 * ((i + 1) / stacks)
+        y0 = cos(phi0) * SKY_RADIUS
+        r0 = sin(phi0) * SKY_RADIUS
+        y1 = cos(phi1) * SKY_RADIUS
+        r1 = sin(phi1) * SKY_RADIUS
+        for j = 0 to slices
+            theta = tau * (j / slices)
+            c = cos(theta)
+            s = sin(theta)
+            # vertex j, stack i
+            c_set_float(pos_ptr, v * 3 * 4    , c * r0)
+            c_set_float(pos_ptr, v * 3 * 4 + 4, y0)
+            c_set_float(pos_ptr, v * 3 * 4 + 8, s * r0)
+            c_set_float(col_ptr, v * 3 * 4    , 1.0)
+            c_set_float(col_ptr, v * 3 * 4 + 4, 1.0)
+            c_set_float(col_ptr, v * 3 * 4 + 8, 1.0)
+            v = v + 1
+            # vertex j, stack i+1
+            c_set_float(pos_ptr, v * 3 * 4    , c * r1)
+            c_set_float(pos_ptr, v * 3 * 4 + 4, y1)
+            c_set_float(pos_ptr, v * 3 * 4 + 8, s * r1)
+            c_set_float(col_ptr, v * 3 * 4    , 1.0)
+            c_set_float(col_ptr, v * 3 * 4 + 4, 1.0)
+            c_set_float(col_ptr, v * 3 * 4 + 8, 1.0)
+            v = v + 1
+        endfor
+    endfor
+    @sky_pos_vbo = upload_vbo(pos_ptr, total_verts * 3 * 4)
+    @sky_col_vbo = upload_vbo(col_ptr, total_verts * 3 * 4)
+end
+
+define update_sky_colors()
+    sr = current_sky_color[0]
+    sg = current_sky_color[1]
+    sb = current_sky_color[2]
+    hr = current_horizon_color[0]
+    hg = current_horizon_color[1]
+    hb = current_horizon_color[2]
+    if sr == last_sky_r && sg == last_sky_g && sb == last_sky_b && hr == last_horizon_r && hg == last_horizon_g && hb == last_horizon_b
+        return
+    endif
+    @last_sky_r = sr; @last_sky_g = sg; @last_sky_b = sb
+    @last_horizon_r = hr; @last_horizon_g = hg; @last_horizon_b = hb
+    stacks = 16
+    slices = 32
+    pi = 3.14159265359
+    col_ptr = c_alloc(sky_num_verts * 3 * 4)
+    v = 0
+    for i = 0 to stacks - 1
+        phi0 = pi * 0.5 * (i / stacks)
+        phi1 = pi * 0.5 * ((i + 1) / stacks)
+        t0 = cos(phi0)
+        t1 = cos(phi1)
+        c0r = hr + (sr - hr) * t0
+        c0g = hg + (sg - hg) * t0
+        c0b = hb + (sb - hb) * t0
+        c1r = hr + (sr - hr) * t1
+        c1g = hg + (sg - hg) * t1
+        c1b = hb + (sb - hb) * t1
+        for j = 0 to slices
+            c_set_float(col_ptr, v * 3 * 4    , c0r)
+            c_set_float(col_ptr, v * 3 * 4 + 4, c0g)
+            c_set_float(col_ptr, v * 3 * 4 + 8, c0b)
+            v = v + 1
+            c_set_float(col_ptr, v * 3 * 4    , c1r)
+            c_set_float(col_ptr, v * 3 * 4 + 4, c1g)
+            c_set_float(col_ptr, v * 3 * 4 + 8, c1b)
+            v = v + 1
+        endfor
+    endfor
+    glBindBuffer(GL_ARRAY_BUFFER, sky_col_vbo)
+    glBufferData(GL_ARRAY_BUFFER, sky_num_verts * 3 * 4, col_ptr, GL_DYNAMIC_DRAW)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    c_free(col_ptr)
+end
+
+define draw_sky(cx, cy, cz)
+    glDisable(GL_LIGHTING)
+    glDisable(GL_FOG)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_CULL_FACE)
+    glDisable(GL_DEPTH_TEST)
+    glDepthMask(GL_FALSE)
+    update_sky_colors()
+    glPushMatrix()
+    glTranslatef(cx, cy, cz)
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_COLOR_ARRAY)
+    glBindBuffer(GL_ARRAY_BUFFER, sky_pos_vbo)
+    glVertexPointer(3, GL_FLOAT, 0, 0)
+    glBindBuffer(GL_ARRAY_BUFFER, sky_col_vbo)
+    glColorPointer(3, GL_FLOAT, 0, 0)
+    for strip = 0 to 15
+        glDrawArrays(GL_TRIANGLE_STRIP, sky_strip_offsets[strip], sky_strip_counts[strip])
+    endfor
+    glDisableClientState(GL_VERTEX_ARRAY)
+    glDisableClientState(GL_COLOR_ARRAY)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glPopMatrix()
+    glDepthMask(GL_TRUE)
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_TEXTURE_2D)
+    glEnable(GL_FOG)
+    glEnable(GL_LIGHTING)
+    glColor3f(1.0, 1.0, 1.0)
+end
+
+define draw_blob_shadow(x, z, radius)
+    shadow_y = get_surface_height(x, z) + 0.03
+    glDisable(GL_LIGHTING)
+    glDisable(GL_COLOR_MATERIAL)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_CULL_FACE)
+    glDepthMask(GL_FALSE)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    # Use LEQUAL so the shadow does not lose the depth fight with the ground.
+    glDepthFunc(GL_LEQUAL)
+    segs = 24
+    tau = 6.28318530718
+    glBegin(GL_TRIANGLE_FAN)
+    glColor4f(0.0, 0.0, 0.0, 0.55)
+    glVertex3f(x, shadow_y, z)
+    for i = 0 to segs
+        angle = tau * (i / segs)
+        glColor4f(0.0, 0.0, 0.0, 0.0)
+        glVertex3f(x + cos(angle) * radius, shadow_y, z + sin(angle) * radius)
+    endfor
+    glEnd()
+    glDepthFunc(GL_LESS)
+    glDepthMask(GL_TRUE)
+    glDisable(GL_BLEND)
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_TEXTURE_2D)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_LIGHTING)
+    glColor3f(1.0, 1.0, 1.0)
+end
+

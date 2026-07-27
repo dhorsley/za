@@ -1,0 +1,480 @@
+doc '
+lib/world.za — World generation, collision, surface queries
+-----------------------------------------------------------
+
+Procedural town layout, tree/grass/rock placement, and collision.
+All functions write to global arrays declared in the main file.
+'
+
+namespace main
+
+define can_place(x, z, my_radius)
+    for i = 0 to colliders.len - 1 step 3
+        cx = colliders[i]
+        cz = colliders[i + 1]
+        cr = colliders[i + 2]
+        dx = x - cx
+        dz = z - cz
+        if sqrt(dx * dx + dz * dz) < (cr + my_radius)
+            return false
+        endif
+    endfor
+    return true
+end
+
+# Place a row of buildings along an X-aligned street with collision checks.
+# Skips the central town square (-8..+8).
+define place_building_row_x(start_x, end_x, z, yaw, count)
+    on count <= 0 do return
+    spacing = (end_x - start_x) / count
+    for i = 0 to count - 1
+        x = start_x + spacing * (i + 0.5)
+        # Skip central town square
+        on x > -8.0 && x < 8.0 && z > -8.0 && z < 8.0 do continue
+        sx = BUILDING_BASE_SCALE * rand_range(0.8, 1.2)
+        sy = rand_range(2.5, 5.0)
+        sz = BUILDING_BASE_SCALE * rand_range(0.8, 1.2)
+        model_idx = as_int(randf() * building_variant_count)
+        hw = building_collision_half_w[model_idx]
+        hd = building_collision_half_d[model_idx]
+        spacing_r = sqrt((hw * sx) * (hw * sx) + (hd * sz) * (hd * sz)) + 0.05
+        gameplay_r = max([hw * sx, hd * sz]) + 0.05
+        if can_place(x, z, spacing_r)
+            yaw_jitter = yaw + rand_range(-0.1745, 0.1745)
+            cr = rand_range(0.5, 1.0)
+            cg = rand_range(0.5, 1.0)
+            cb = rand_range(0.5, 1.0)
+            @building_positions = concat(building_positions, [x, 0.01, z, sx, sy, sz, yaw_jitter, cr, cg, cb, model_idx])
+            @colliders = concat(colliders, [x, z, gameplay_r])
+            # AABB for precise player collision (axis-aligned box)
+            # Shrink slightly so player can get closer to walls than exact bounds
+            bw = hw * sx - 0.50
+            bd = hd * sz - 0.50
+            if bw < 0.1
+                bw = 0.1
+            endif
+            if bd < 0.1
+                bd = 0.1
+            endif
+            @building_colliders = concat(building_colliders, [x, z, bw, bd])
+            # Small step in front of the entrance so feet align when entering
+            step_raw = building_variant_step_raw[model_idx]
+            if step_raw > 0.0
+                step_top_y = 0.01 + step_raw * sy
+                add_doorstep(x, z, yaw_jitter, hw, sx, hd, sz, cr, cg, cb, step_top_y)
+            endif
+        endif
+    endfor
+end
+
+define place_building_row_z(x, start_z, end_z, yaw, count)
+    on count <= 0 do return
+    spacing = (end_z - start_z) / count
+    for i = 0 to count - 1
+        z = start_z + spacing * (i + 0.5)
+        # Skip central town square
+        on x > -8.0 && x < 8.0 && z > -8.0 && z < 8.0 do continue
+        sx = BUILDING_BASE_SCALE * rand_range(0.8, 1.2)
+        sy = rand_range(2.5, 5.0)
+        sz = BUILDING_BASE_SCALE * rand_range(0.8, 1.2)
+        model_idx = as_int(randf() * building_variant_count)
+        hw = building_collision_half_w[model_idx]
+        hd = building_collision_half_d[model_idx]
+        spacing_r = sqrt((hw * sx) * (hw * sx) + (hd * sz) * (hd * sz)) + 0.05
+        gameplay_r = max([hw * sx, hd * sz]) + 0.05
+        if can_place(x, z, spacing_r)
+            yaw_jitter = yaw + rand_range(-0.1745, 0.1745)
+            cr = rand_range(0.5, 1.0)
+            cg = rand_range(0.5, 1.0)
+            cb = rand_range(0.5, 1.0)
+            @building_positions = concat(building_positions, [x, 0.01, z, sx, sy, sz, yaw_jitter, cr, cg, cb, model_idx])
+            @colliders = concat(colliders, [x, z, gameplay_r])
+            bw = hw * sx - 0.50
+            bd = hd * sz - 0.50
+            if bw < 0.1
+                bw = 0.1
+            endif
+            if bd < 0.1
+                bd = 0.1
+            endif
+            @building_colliders = concat(building_colliders, [x, z, bw, bd])
+            # Small step in front of the entrance so feet align when entering
+            step_raw = building_variant_step_raw[model_idx]
+            if step_raw > 0.0
+                step_top_y = 0.01 + step_raw * sy
+                add_doorstep(x, z, yaw_jitter, hw, sx, hd, sz, cr, cg, cb, step_top_y)
+            endif
+        endif
+    endfor
+end
+
+define overlaps_road(px, pz, half_size)
+    for i = 0 to road_instances.len - 1 step 9
+        rx = road_instances[i].as_float
+        rz = road_instances[i + 2].as_float
+        rsx = road_instances[i + 3].as_float
+        rsz = road_instances[i + 5].as_float
+        dx = px - rx
+        if dx < 0
+            dx = -dx
+        endif
+        dz = pz - rz
+        if dz < 0
+            dz = -dz
+        endif
+        if dx < (half_size + rsx * 0.5) && dz < (half_size + rsz * 0.5)
+            return true
+        endif
+    endfor
+    return false
+end
+
+# Raycast-like query: returns Y height at (px,pz) considering doorsteps > roads > grass.
+# Uses a spatial cache to avoid recomputing for nearby queries.
+define get_surface_height(px, pz)
+    # Spatial cache: if query is within 0.05 units of the last query, return cached value
+    if surface_cache_valid
+        dx_cache = px - surface_cache_x
+        dz_cache = pz - surface_cache_z
+        if dx_cache < 0.0
+            dx_cache = -dx_cache
+        endif
+        if dz_cache < 0.0
+            dz_cache = -dz_cache
+        endif
+        if dx_cache < 0.05 && dz_cache < 0.05
+            return surface_cache_h
+        endif
+    endif
+
+    result = GRID_GROUND_HEIGHT
+    if floor_solid
+        result = SOLID_FLOOR_HEIGHT
+    endif
+    if overlaps_road(px, pz, 0.1)
+        result = ROAD_TOP_HEIGHT
+    endif
+    for i = 0 to doorstep_zones.len - 1 step 11
+        cx = doorstep_zones[i].as_float
+        cz = doorstep_zones[i + 1].as_float
+        hw = doorstep_zones[i + 3].as_float
+        hd = doorstep_zones[i + 4].as_float
+        top = doorstep_zones[i + 5].as_float
+        cyaw = doorstep_zones[i + 9].as_float
+        syaw = doorstep_zones[i + 10].as_float
+        dx = px - cx
+        dz = pz - cz
+        lx = dx * cyaw - dz * syaw
+        lz = dx * syaw + dz * cyaw
+        if lx < 0.0
+            lx = -lx
+        endif
+        if lz < 0.0
+            lz = -lz
+        endif
+        if lx <= hw && lz <= hd
+            result = top
+            break
+        endif
+    endfor
+
+    @surface_cache_x = px
+    @surface_cache_z = pz
+    @surface_cache_h = result
+    @surface_cache_valid = true
+    return result
+end
+
+define add_road(x, z, length, width, x_aligned)
+    if x_aligned
+        @road_instances = concat(road_instances, [x, 0.04, z, length, 0.08, width, 0.35, 0.35, 0.35])
+    else
+        @road_instances = concat(road_instances, [x, 0.04, z, width, 0.08, length, 0.35, 0.35, 0.35])
+    endif
+end
+
+# Register a small zone in front of a building for feet-snapping collision.
+# The zone is rotated to match the building's yaw.
+define add_doorstep(x, z, yaw, hw, sx, hd, sz, r, g, b, top_y)
+    half_w = hw * sx * 0.9
+    syaw = sin(yaw)
+    cyaw = cos(yaw)
+    front_x = x + syaw * hd * sz
+    front_z = z + cyaw * hd * sz
+    step_cx = front_x + syaw * DOORSTEP_DEPTH * 0.5
+    step_cz = front_z + cyaw * DOORSTEP_DEPTH * 0.5
+    @doorstep_zones = concat(doorstep_zones, [step_cx, step_cz, yaw, half_w, DOORSTEP_DEPTH * 0.5, top_y, r * 0.7, g * 0.7, b * 0.7, cyaw, syaw])
+end
+
+define nearest_building_variant(x, z)
+    best_idx = -1
+    best_d2 = 99999999.0
+    best_name = ""
+    for i = 0 to building_positions.len - 1 step 11
+        bx = building_positions[i]
+        bz = building_positions[i + 2]
+        dx = x - bx
+        dz = z - bz
+        d2 = dx * dx + dz * dz
+        if d2 < best_d2
+            best_d2 = d2
+            best_idx = i
+        endif
+    endfor
+    if best_idx < 0
+        return 0, ""
+    endif
+    model_idx = building_positions[best_idx + 10].as_int
+    best_name = building_variant_files[model_idx][0]
+    return model_idx, best_name
+end
+
+define rebuild_doorstep_zones()
+    @doorstep_zones = []
+    for i = 0 to building_positions.len - 1 step 11
+        x = building_positions[i]
+        z = building_positions[i + 2]
+        sx = building_positions[i + 3]
+        sy = building_positions[i + 4]
+        sz = building_positions[i + 5]
+        yaw = building_positions[i + 6]
+        cr = building_positions[i + 7]
+        cg = building_positions[i + 8]
+        cb = building_positions[i + 9]
+        model_idx = building_positions[i + 10].as_int
+        hw = building_collision_half_w[model_idx]
+        hd = building_collision_half_d[model_idx]
+        step_raw = building_variant_step_raw[model_idx]
+        if step_raw > 0.0
+            step_top_y = 0.01 + step_raw * sy
+            add_doorstep(x, z, yaw, hw, sx, hd, sz, cr, cg, cb, step_top_y)
+        endif
+    endfor
+end
+
+define place_tree_cluster(cx, cz, radius, count)
+    for t = 0 to count - 1
+        angle = rand_range(0, 6.283185)
+        dist = rand_range(0, radius)
+        x = cx + cos(angle) * dist
+        z = cz + sin(angle) * dist
+        # Skip central town square
+        if x > -8.0 && x < 8.0 && z > -8.0 && z < 8.0
+            continue
+        endif
+        th = rand_range(1.0, 2.5)
+        scale = th / 1.75 * TREE_BASE_SCALE
+        model_idx = as_int(randf() * tree_variant_count)
+        spacing_r = scale * tree_collision_half_w[model_idx] * 0.5
+        gameplay_r = scale * 0.12
+        if can_place(x, z, spacing_r) && !overlaps_road(x, z, spacing_r)
+            yaw = rand_range(0, 6.283185)
+            @tree_positions = concat(tree_positions, [x, z, scale, yaw, model_idx])
+            @colliders = concat(colliders, [x, z, gameplay_r])
+        endif
+    endfor
+end
+
+define place_grass_patch(cx, cz, radius, count)
+    for g = 0 to count - 1
+        angle = rand_range(0, 6.283185)
+        dist = rand_range(0, radius)
+        x = cx + cos(angle) * dist
+        z = cz + sin(angle) * dist
+        # Skip central town square
+        if x > -8.0 && x < 8.0 && z > -8.0 && z < 8.0
+            continue
+        endif
+        scale = rand_range(0.3, 0.8)
+        model_idx = as_int(randf() * grass_clump_variant_count)
+        gr = scale * 0.5
+        if can_place(x, z, gr)
+            yaw = rand_range(0, 6.283185)
+            @grass_clump_positions = concat(grass_clump_positions, [x, z, scale, yaw, model_idx])
+        endif
+    endfor
+end
+
+define place_shore_rock(x, z)
+    on rock_variant.len == 0 do return
+    scale = rand_range(2.0, 4.0)
+    rr = scale * 0.18
+    yaw = rand_range(0, 6.283185)
+    @rock_positions = concat(rock_positions, [x, z, scale, yaw])
+    @colliders = concat(colliders, [x, z, rr])
+end
+
+# Hybrid collision: circular test for buildings/trees, AABB for roads/ponds.
+# Returns true if (px,pz) is inside any collider.
+define check_collision(px, pz)
+    if !collision_enabled
+        return false
+    endif
+    # Circle colliders: trees, rocks, ponds, spawn zone
+    for i = 0 to colliders.len - 1 step 3
+        cx = colliders[i]
+        cz = colliders[i + 1]
+        cr = colliders[i + 2]
+        dx = px - cx
+        dz = pz - cz
+        if sqrt(dx * dx + dz * dz) < (cr + PLAYER_RADIUS)
+            return true
+        endif
+    endfor
+    # Building AABB colliders: precise axis-aligned box collision
+    for i = 0 to building_colliders.len - 1 step 4
+        cx = building_colliders[i]
+        cz = building_colliders[i + 1]
+        hw = building_colliders[i + 2]
+        hd = building_colliders[i + 3]
+        if std::abs(px - cx) < (hw + PLAYER_RADIUS) && std::abs(pz - cz) < (hd + PLAYER_RADIUS)
+            return true
+        endif
+    endfor
+    # Pond deep center: circular collider that blocks movement
+    for i = 0 to water_colliders.len - 1 step 4
+        cx = water_colliders[i]
+        cz = water_colliders[i + 1]
+        inner_r = water_colliders[i + 2]
+        dx = px - cx
+        dz = pz - cz
+        if sqrt(dx * dx + dz * dz) < (inner_r + PLAYER_RADIUS)
+            return true
+        endif
+    endfor
+    return false
+end
+
+define get_water_slowdown(px, pz)
+    for i = 0 to water_colliders.len - 1 step 4
+        cx = water_colliders[i]
+        cz = water_colliders[i + 1]
+        inner_r = water_colliders[i + 2]
+        outer_r = water_colliders[i + 3]
+        dx = px - cx
+        dz = pz - cz
+        dist = sqrt(dx * dx + dz * dz)
+        if dist >= inner_r && dist < outer_r
+            return 0.85
+        endif
+    endfor
+    return 1.0
+end
+
+define camera_raycast_distance(px, pz, target_x, target_z)
+    dx = target_x - px
+    dz = target_z - pz
+    max_len = sqrt(dx * dx + dz * dz)
+    if max_len <= 0.0001
+        return 0.0
+    endif
+    nearest = max_len
+    # Circle colliders
+    for i = 0 to colliders.len - 1 step 3
+        cx = colliders[i]
+        cz = colliders[i + 1]
+        cr = colliders[i + 2]
+        wx = cx - px
+        wz = cz - pz
+        proj = (wx * dx + wz * dz) / max_len
+        if proj < 0.0
+            continue
+        endif
+        # Stable perpendicular distance via cross-product magnitude
+        area = wx * dz - wz * dx
+        perp2 = (area * area) / (dx * dx + dz * dz)
+        if perp2 >= cr * cr
+            continue
+        endif
+        hit = proj - sqrt(cr * cr - perp2)
+        if hit < 0.0
+            hit = 0.0
+        endif
+        if hit < nearest
+            nearest = hit
+        endif
+    endfor
+    # AABB colliders (buildings, moat) — slab method on X/Z axes
+    for i = 0 to building_colliders.len - 1 step 4
+        cx = building_colliders[i]
+        cz = building_colliders[i + 1]
+        hw = building_colliders[i + 2]
+        hd = building_colliders[i + 3]
+        min_x = cx - hw
+        max_x = cx + hw
+        min_z = cz - hd
+        max_z = cz + hd
+        # Ray-AABB slab intersection in 2D. tmin/tmax are parameters along the
+        # unnormalised ray vector (dx,dz), so t=1 is the target point. Convert the
+        # entry parameter to an actual distance before returning it.
+        tmin = 0.0
+        tmax = 1.0
+        if dx != 0.0
+            tx1 = (min_x - px) / dx
+            tx2 = (max_x - px) / dx
+            if tx1 > tx2
+                tx1,tx2=[tx2,tx1]
+            endif
+            if tx1 > tmin
+                tmin = tx1
+            endif
+            if tx2 < tmax
+                tmax = tx2
+            endif
+        else
+            continue if px < min_x || px > max_x
+        endif
+        if dz != 0.0
+            tz1 = (min_z - pz) / dz
+            tz2 = (max_z - pz) / dz
+            if tz1 > tz2
+                tz1,tz2=[tz2,tz1]
+            endif
+            if tz1 > tmin
+                tmin = tz1
+            endif
+            if tz2 < tmax
+                tmax = tz2
+            endif
+        else
+            continue if pz < min_z || pz > max_z
+        endif
+        if tmin <= tmax && tmin >= 0.0 && tmin <= 1.0
+            hit_dist = tmin * max_len
+            if hit_dist < nearest
+                nearest = hit_dist
+            endif
+        endif
+    endfor
+    return nearest
+end
+
+define add_pond(wx, wz, ws)
+    wr = ws * 0.5 + 0.5
+    @water_instances = concat(water_instances, [wx, 0.005, wz, ws, 0.01, ws, 0.2, 0.45, 0.7])
+    blobs = 4 + __rnd_next() % 5
+    for b = 0 to blobs - 1
+        bangle = rand_range(0, 6.283185)
+        bdist = ws * rand_range(0.3, 0.6)
+        bx = wx + cos(bangle) * bdist
+        bz = wz + sin(bangle) * bdist
+        bs = ws * rand_range(0.25, 0.6)
+        @water_instances = concat(water_instances, [bx, 0.005, bz, bs, 0.01, bs, 0.2, 0.45, 0.7])
+    endfor
+    # Deep center blocks movement; shallow edge slows but allows walking.
+    inner_r = ws * 0.25
+    outer_r = wr
+    @water_colliders = concat(water_colliders, [wx, wz, inner_r, outer_r])
+end
+
+define add_river(x_start, x_end, z_base, width, segments)
+    dx = (x_end - x_start) / segments
+    for s = 0 to segments - 1
+        x = x_start + (s + 0.5) * dx
+        z_offset = sin(x * 0.15) * 4.0
+        z = z_base + z_offset
+        seg_len = dx + 1.0
+        @water_instances = concat(water_instances, [x, 0.005, z, seg_len, 0.01, width, 0.2, 0.45, 0.7])
+    endfor
+end
+

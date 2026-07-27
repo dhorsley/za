@@ -1,0 +1,440 @@
+doc '
+lib/utils.za — Low-level helpers, RNG, GL one-shots, shader compilation
+------------------------------------------------------------------------
+
+This module contains utility functions with no game-specific state.
+They demonstrate za FFI to OpenGL and basic math patterns.
+'
+
+namespace main
+
+define __rnd_next()
+    @__rnd_seed = (__rnd_seed * 1103515245 + 12345) & 0x7fffffff
+    return __rnd_seed
+end
+
+define randf()
+    return __rnd_next() / 2147483647.0
+end
+
+define rand_range(min, max)
+    return min + randf() * (max - min)
+end
+
+define on_framebuffer_resize(window, width, height)
+    @actual_window_width = width
+    @actual_window_height = height
+end
+
+define on_mouse_move(window, xpos:double, ypos:double)
+    if mouse_first
+        @last_mouse_x = xpos
+        @last_mouse_y = ypos
+        @mouse_first = false
+        return
+    endif
+    dx = xpos - last_mouse_x
+    dy = ypos - last_mouse_y
+    @last_mouse_x = xpos
+    @last_mouse_y = ypos
+    @mouse_dx = mouse_dx + dx
+    @mouse_dy = mouse_dy + dy
+end
+
+define on_mouse_button(window, button:int, action:int, mods:int)
+    @mouse_btn_state = action
+end
+
+# GLFW scroll callback: zooms the minimap when cursor is over the panel.
+define on_mouse_scroll(window, xoffset:double, yoffset:double)
+    if minimap_panel.len >= 35 && minimap_panel[PANEL_VISIBLE]
+        px = minimap_panel[PANEL_X]
+        py = minimap_panel[PANEL_Y]
+        pw = minimap_panel[PANEL_W]
+        ph = minimap_panel[PANEL_H]
+        if mouse_x >= px && mouse_x <= px + pw && mouse_y_gl >= py && mouse_y_gl <= py + ph
+            if yoffset > 0.0
+                minimap_zoom = minimap_zoom * 0.9
+            else
+                minimap_zoom = minimap_zoom * 1.1
+            endif
+            minimap_zoom = minimap_zoom[minimap_min_zoom:minimap_max_zoom]
+        endif
+    endif
+end
+
+define apply_mouse_look()
+    if cursor_mode_normal
+        @mouse_dx = 0.0
+        @mouse_dy = 0.0
+        return
+    endif
+    on mouse_dx == 0.0 && mouse_dy == 0.0 do return
+    if free_camera
+        @free_cam_yaw = free_cam_yaw - mouse_dx * MOUSE_SENSITIVITY
+        @free_cam_pitch = (free_cam_pitch - mouse_dy * MOUSE_SENSITIVITY)[-1.5:1.5]
+    else
+        @player_yaw = player_yaw - mouse_dx * MOUSE_SENSITIVITY
+        @player_pitch = (player_pitch - mouse_dy * MOUSE_SENSITIVITY)[-1.5:1.5]
+    endif
+    @mouse_dx = 0.0
+    @mouse_dy = 0.0
+end
+
+define gl_gen_buffer()
+    ptr = c_alloc(4)
+    glGenBuffers(1, ptr)
+    id = c_get_int32(ptr, 0)
+    c_free(ptr)
+    return id
+end
+
+define gl_gen_texture()
+    ptr = c_alloc(4)
+    glGenTextures(1, ptr)
+    id = c_get_int32(ptr, 0)
+    c_free(ptr)
+    return id
+end
+
+define gl_gen_vao()
+    ptr = c_alloc(4)
+    glGenVertexArrays(1, ptr)
+    id = c_get_int32(ptr, 0)
+    c_free(ptr)
+    return id
+end
+
+define gl_delete_texture(tex_id)
+    ptr = c_alloc(4)
+    c_set_int32(ptr, 0, tex_id)
+    glDeleteTextures(1, ptr)
+    c_free(ptr)
+end
+
+define upload_rgba_to_texture(buffer, w, h)
+    tex_id = gl_gen_texture()
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer)
+    return tex_id
+end
+
+define upload_vbo(data_ptr, size_bytes)
+    vbo = gl_gen_buffer()
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glBufferData(GL_ARRAY_BUFFER, size_bytes, data_ptr, GL_STATIC_DRAW)
+    c_free(data_ptr)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    return vbo
+end
+
+define pack_vbo_pair(vbo1, vbo2)
+    return [vbo1, vbo2]
+end
+
+define pack_vbo_triple(vbo1, vbo2, num_verts)
+    return [vbo1, vbo2, num_verts]
+end
+
+define pack_vbo_quad(vbo1, vbo2, vbo3, num_verts)
+    return [vbo1, vbo2, vbo3, num_verts]
+end
+
+define extract_sub_tris(all_vi, all_ti, tri_off, tri_count)
+    sv = []
+    st = []
+    for t = 0 to tri_count - 1
+        gt = tri_off + t
+        sv = concat(sv, [all_vi[gt*3], all_vi[gt*3+1], all_vi[gt*3+2]])
+        st = concat(st, [all_ti[gt*3], all_ti[gt*3+1], all_ti[gt*3+2]])
+    endfor
+    return sv, st
+end
+
+define make_planar_uvs(verts, vert_indices)
+    min_x = verts[0]; max_x = verts[0]
+    min_z = verts[2]; max_z = verts[2]
+    for i = 0 to verts.len / 3 - 1
+        vx = verts[i * 3]
+        vz = verts[i * 3 + 2]
+        on vx < min_x do min_x = vx
+        on vx > max_x do max_x = vx
+        on vz < min_z do min_z = vz
+        on vz > max_z do max_z = vz
+    endfor
+    w = max_x - min_x
+    d = max_z - min_z
+    on w < 0.001 do w = 1.0
+    on d < 0.001 do d = 1.0
+    uvs = []
+    for i = 0 to verts.len / 3 - 1
+        u = (verts[i * 3] - min_x) / w
+        v = (verts[i * 3 + 2] - min_z) / d
+        uvs = concat(uvs, [u, v])
+    endfor
+    vi_copy = []
+    for i = 0 to vert_indices.len - 1
+        vi_copy = concat(vi_copy, [vert_indices[i]])
+    endfor
+    return uvs, vi_copy
+end
+
+# Compile a GLSL shader from source string. Returns 0 on failure.
+define compile_shader(shader_type, source_code)
+    shader_handle = glCreateShader(shader_type)
+    on shader_handle == 0 do return 0
+    # za FFI handles []string as char** automatically
+    sources = [source_code]
+    glShaderSource(shader_handle, 1, sources, c_null())
+    glCompileShader(shader_handle)
+    status_ptr = c_alloc(4)
+    glGetShaderiv(shader_handle, GL_COMPILE_STATUS, status_ptr)
+    compile_status = c_get_int32(status_ptr, 0)
+    c_free(status_ptr)
+    if compile_status == 0
+        println format("Shader compile FAILED (type=0x%x)", shader_type)
+        glDeleteShader(shader_handle)
+        return 0
+    endif
+    return shader_handle
+end
+
+# Link vertex + fragment shaders into a usable program. Returns 0 on failure.
+define create_shader_program(vertex_source, fragment_source)
+    vs_shader = compile_shader(GL_VERTEX_SHADER, vertex_source)
+    fs_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_source)
+    if vs_shader == 0
+        on fs_shader != 0 do glDeleteShader(fs_shader)
+        return 0
+    endif
+    if fs_shader == 0
+        on vs_shader != 0 do glDeleteShader(vs_shader)
+        return 0
+    endif
+    program_handle = glCreateProgram()
+    glAttachShader(program_handle, vs_shader)
+    glAttachShader(program_handle, fs_shader)
+    glLinkProgram(program_handle)
+    status_ptr = c_alloc(4)
+    glGetProgramiv(program_handle, GL_LINK_STATUS, status_ptr)
+    link_status = c_get_int32(status_ptr, 0)
+    c_free(status_ptr)
+    if link_status == 0
+        println "Program link FAILED"
+        glDeleteProgram(program_handle)
+        glDeleteShader(vs_shader)
+        glDeleteShader(fs_shader)
+        return 0
+    endif
+    # Shaders can be detached/deleted after linking; program keeps them internally
+    glDetachShader(program_handle, vs_shader)
+    glDetachShader(program_handle, fs_shader)
+    glDeleteShader(vs_shader)
+    glDeleteShader(fs_shader)
+    return program_handle
+end
+
+define create_moat_shader_program()
+    program = create_shader_program(MOAT_VS, MOAT_FS)
+    if program == 0
+        println "Moat shader compilation failed; falling back to CPU moat"
+        return 0
+    endif
+    @moat_u_time = glGetUniformLocation(program, "u_time")
+    @moat_u_world_half = glGetUniformLocation(program, "u_world_half")
+    return program
+end
+
+define draw_raw_textured_group(vbo, tex_vbo, norm_vbo, num_verts, tex_id)
+    on tex_id > 0 do glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, tex_id); glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo)
+    glVertexPointer(3, GL_FLOAT, 0, 0)
+    glBindBuffer(GL_ARRAY_BUFFER, tex_vbo)
+    glTexCoordPointer(2, GL_FLOAT, 0, 0)
+    glBindBuffer(GL_ARRAY_BUFFER, norm_vbo)
+    glNormalPointer(GL_FLOAT, 0, 0)
+    glDrawArrays(GL_TRIANGLES, 0, num_verts)
+    glDisableClientState(GL_VERTEX_ARRAY)
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+    glDisableClientState(GL_NORMAL_ARRAY)
+    on tex_id > 0 do glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+end
+
+define toggle_pressed(window, key, last)
+    now = glfwGetKey(window, key) != 0
+    return (now && !last), now
+end
+
+define check_gl_error(context)
+    err = glGetError()
+    on err == 0 do return
+    case err
+    is 1280
+        println "[GL ERROR in {=context}] GL_INVALID_ENUM (1280)"
+    is 1281
+        println "[GL ERROR in {=context}] GL_INVALID_VALUE (1281)"
+    is 1282
+        println "[GL ERROR in {=context}] GL_INVALID_OPERATION (1282)"
+    is 1285
+        println "[GL ERROR in {=context}] GL_OUT_OF_MEMORY (1285)"
+    or
+        println "[GL ERROR in {=context}] Unknown error code: {=err}"
+    endcase
+end
+
+# Load a PNG file via libpng and upload to an OpenGL texture.
+# Handles RGB, RGBA, grayscale, and palette images.
+define load_png_texture(filename)
+    fp = c_fopen(filename, "rb")
+    if c_ptr_is_null(fp)
+        println format("Failed to open texture file: {filename}")
+        return 0
+    endif
+
+    png_ptr = png_create_read_struct("1.6.58", c_null(), c_null(), c_null())
+    if c_ptr_is_null(png_ptr)
+        c_fclose(fp)
+        return 0
+    endif
+
+    info_ptr = png_create_info_struct(png_ptr)
+    if c_ptr_is_null(info_ptr)
+        c_fclose(fp)
+        return 0
+    endif
+
+    png_init_io(png_ptr, fp)
+    png_read_info(png_ptr, info_ptr)
+
+    # Force 8-bit output regardless of source bit depth (prevents heap overflow on 16-bit PNGs)
+    png_set_strip_16(png_ptr)
+    png_set_gray_to_rgb(png_ptr)
+    png_read_update_info(png_ptr, info_ptr)
+
+    width_ptr = c_alloc(4)
+    height_ptr = c_alloc(4)
+    bit_depth_ptr = c_alloc(4)
+    color_type_ptr = c_alloc(4)
+
+    png_get_IHDR(png_ptr, info_ptr, width_ptr, height_ptr, bit_depth_ptr, color_type_ptr, c_null(), c_null(), c_null())
+
+    width = c_get_int32(width_ptr, 0)
+    height = c_get_int32(height_ptr, 0)
+    bit_depth = c_get_int32(bit_depth_ptr, 0)
+    color_type = c_get_int32(color_type_ptr, 0)
+
+    c_free(width_ptr)
+    c_free(height_ptr)
+    c_free(bit_depth_ptr)
+    c_free(color_type_ptr)
+
+    case color_type
+    is 3
+        png_set_palette_to_rgb(png_ptr)
+        gl_format = GL_RGB
+        gl_internal = GL_RGB
+        channels = 3
+    is 2
+        # Truecolor RGB (no alpha)
+        gl_format = GL_RGB
+        gl_internal = GL_RGB
+        channels = 3
+    is 0
+        # Grayscale
+        gl_format = GL_LUMINANCE
+        gl_internal = GL_LUMINANCE
+        channels = 1
+    or
+        # RGBA or other with alpha
+        gl_format = GL_RGBA
+        gl_internal = GL_RGBA
+        channels = 4
+    endcase
+
+    tex_id = gl_gen_texture()
+
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+
+    row_bytes = width * channels
+    image_buffer = c_alloc(height * row_bytes)
+    row_pointers = c_alloc(height * 8)
+
+    buf_addr = c_ptr_to_int(image_buffer)
+    for y = 0 to height - 1
+        row_ptr = buf_addr + y * row_bytes
+        c_set_int64(row_pointers, y * 8, row_ptr)
+    endfor
+
+    png_read_image(png_ptr, row_pointers)
+
+    glTexImage2D(GL_TEXTURE_2D, 0, gl_internal, width, height, 0, gl_format, GL_UNSIGNED_BYTE, image_buffer)
+
+    c_free(row_pointers)
+    c_free(image_buffer)
+
+    png_ptr_ptr = c_alloc(8)
+    c_set_int64(png_ptr_ptr, 0, c_ptr_to_int(png_ptr))
+    info_ptr_ptr = c_alloc(8)
+    c_set_int64(info_ptr_ptr, 0, c_ptr_to_int(info_ptr))
+    png_destroy_read_struct(png_ptr_ptr, info_ptr_ptr, c_null())
+    c_free(png_ptr_ptr)
+    c_free(info_ptr_ptr)
+
+    c_fclose(fp)
+
+    glBindTexture(GL_TEXTURE_2D, 0)
+    return tex_id
+end
+
+define find_safe_start_position()
+    # First try the default starting position (0, 5)
+    if !check_collision(0.0, 5.0)
+        player_pos[0] = 0.0
+        player_pos[2] = 5.0
+        return
+    endif
+    # Default is blocked; do a fine spiral search from origin outward
+    # Use small radius steps (0.5) and many angles (24) for dense coverage
+    for r = 0 to 80
+        radius = r * 0.5
+        for a = 0 to 23
+            angle = a * 0.261799
+            sx = cos(angle) * radius
+            sz = sin(angle) * radius
+            if !check_collision(sx, sz)
+                player_pos[0] = sx
+                player_pos[2] = sz
+                return
+            endif
+        endfor
+    endfor
+end
+
+define multiply_matrices_4x4_helper(result, a, b)
+    for i = 0 to 3
+        for j = 0 to 3
+            sum = 0.0
+            for k = 0 to 3
+                # Column-major indexing: (col*4 + row)*4 bytes
+                a_val = c_get_float(a, (k*4 + i)*4)  # a[i][k]
+                b_val = c_get_float(b, (j*4 + k)*4)  # b[k][j]
+                sum = sum + a_val * b_val
+            endfor
+            c_set_float(result, (j*4 + i)*4, sum)  # result[i][j]
+        endfor
+    endfor
+end
+

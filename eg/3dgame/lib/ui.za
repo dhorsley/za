@@ -1,0 +1,671 @@
+doc '
+lib/ui.za — HUD panels, text rendering, minimap, save/load
+----------------------------------------------------------
+
+Draggable/resizable panel framework and a classic radar minimap.
+Demonstrates za string formatting and file I/O for persistence.
+'
+
+namespace main
+
+define render_text_to_texture(text, font_path, r, g, b)
+    width_ptr = c_alloc(4)
+    height_ptr = c_alloc(4)
+    buffer = render_string_gdlib_colored(text, font_path, width_ptr, height_ptr, r, g, b)
+    if c_ptr_is_null(buffer)
+        c_free(width_ptr)
+        c_free(height_ptr)
+        return 0, 0, 0
+    endif
+    w = c_get_int32(width_ptr, 0)
+    h = c_get_int32(height_ptr, 0)
+    tex_id = upload_rgba_to_texture(buffer, w, h)
+    free_gd_bitmap(buffer)
+    c_free(width_ptr)
+    c_free(height_ptr)
+    return tex_id, w, h
+end
+
+define render_text_to_texture_markup(text, font_path, r, g, b)
+    width_ptr = c_alloc(4)
+    height_ptr = c_alloc(4)
+    buffer = render_string_gdlib_markup(text, font_path, width_ptr, height_ptr, r, g, b)
+    if c_ptr_is_null(buffer)
+        c_free(width_ptr)
+        c_free(height_ptr)
+        return 0, 0, 0
+    endif
+    w = c_get_int32(width_ptr, 0)
+    h = c_get_int32(height_ptr, 0)
+
+    tex_id = upload_rgba_to_texture(buffer, w, h)
+    free_gd_bitmap(buffer)
+    c_free(width_ptr)
+    c_free(height_ptr)
+    return tex_id, w, h
+end
+
+define format_world_clock()
+    total_mins = as_int(world_clock_minutes)
+    h = total_mins / 60
+    m = total_mins % 60
+    ampm = h >= 12 ? "PM" : "AM"
+    display_h = h % 12
+    on display_h == 0 do display_h = 12
+    return format("%02d:%02d %s", display_h, m, ampm)
+end
+
+define build_legend_text()
+    on_text = "{0,255,0}[ON]{}"
+    off_text = "{255,0,0}[OFF]{}"
+    floor_grid = "{255,255,0}[Grid]{}"
+    floor_solid_text = "{0,255,0}[Solid]{}"
+    time_text = "{128,255,255}" + time_speed_names[time_speed_index] + "{}"
+    cam_coll_text = "{128,255,255}" + (camera_collision_enabled ? "On" : "Off") + "{}"
+    cull_text = "{128,255,255}" + (culling_enabled ? "On" : "Off") + "{}"
+    floor_text = floor_solid ? floor_solid_text : floor_grid
+    part_text = "{128,255,255}" + particle_mode_names[particle_display_mode] + "{}"
+    # Four compact lines so no line exceeds the panel width at font_scale 0.70
+    fmt = "F1 Wire%s F2 Part[%s] F3 VSync%s F4 Coll%s F5 Save\nF6 Floor%s F7 Speed[%s] F8 CamColl[%s] F9 Load\nM Cull[%s] F10 NoStep F11 Step F12 Survey\nWASD QE AD RF Space Jump C FreeCam Z Interact T Mouse Home Reset ESC"
+    return format(fmt, wireframe_mode ? on_text : off_text, part_text, vsync_on ? on_text : off_text, collision_enabled ? on_text : off_text, floor_text, time_text, cam_coll_text, cull_text)
+end
+
+define create_panel(x, y, text, text_r, text_g, text_b, font_scale, bg_r, bg_g, bg_b, bg_a, border_r, border_g, border_b, border_a, padding)
+    tex_id, w, h = render_text_to_texture_markup(text, font_path, text_r, text_g, text_b)
+    panel = [x, y, (w + padding * 2) * font_scale, (h + padding * 2) * font_scale, tex_id, text, text_r, text_g, text_b, font_scale, bg_r, bg_g, bg_b, bg_a, border_r, border_g, border_b, border_a, padding, true, false, 0, false, false, 0.0, 0.0, w, h, false, false, 0, 0.0, 0.0, 0.0, 0.0]
+    return panel
+end
+
+define update_panel_text(panel, new_text)
+    on panel[PANEL_TEXT] == new_text && !panel[PANEL_NEEDS_UPDATE] do return
+    # Delete old texture if it exists
+    on panel[PANEL_TEX] > 0 do gl_delete_texture(panel[PANEL_TEX])
+    tex_id, w, h = render_text_to_texture_markup(new_text, font_path, panel[PANEL_TEXT_R], panel[PANEL_TEXT_G], panel[PANEL_TEXT_B])
+    scale = panel[PANEL_FONT_SCALE]
+    padding = panel[PANEL_PADDING]
+    panel[PANEL_TEX] = tex_id
+    panel[PANEL_TEXT] = new_text
+    panel[PANEL_W] = (w + padding * 2) * scale
+    panel[PANEL_H] = (h + padding * 2) * scale
+    panel[PANEL_TEX_W] = w
+    panel[PANEL_TEX_H] = h
+    panel[PANEL_NEEDS_UPDATE] = false
+end
+
+define draw_panel(panel, mouse_x, mouse_y)
+    on panel.len < 28 || !panel[PANEL_VISIBLE] do return
+    x = panel[PANEL_X]
+    y = panel[PANEL_Y]
+    w = panel[PANEL_W]
+    h = panel[PANEL_H]
+
+    # Hover detection for draggable panels
+    is_hover = mouse_x >= x && mouse_x <= x + w && mouse_y >= y && mouse_y <= y + h
+
+    # Background
+    glDisable(GL_TEXTURE_2D)
+    glColor4f(panel[PANEL_BG_R], panel[PANEL_BG_G], panel[PANEL_BG_B], panel[PANEL_BG_A])
+    glBegin(GL_QUADS)
+    glVertex2f(x, y)
+    glVertex2f(x + w, y)
+    glVertex2f(x + w, y + h)
+    glVertex2f(x, y + h)
+    glEnd()
+
+    # Border (brighter if hovering over a draggable panel)
+    br = panel[PANEL_BORDER_R]
+    bg = panel[PANEL_BORDER_G]
+    bb = panel[PANEL_BORDER_B]
+    ba = panel[PANEL_BORDER_A]
+    if is_hover && panel[PANEL_DRAGGABLE]
+        br = 1.0
+        bg = 1.0
+        bb = 1.0
+        ba = 1.0
+    endif
+    glColor4f(br, bg, bb, ba)
+    glLineWidth(2.0)
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(x, y)
+    glVertex2f(x + w, y)
+    glVertex2f(x + w, y + h)
+    glVertex2f(x, y + h)
+    glEnd()
+
+    # Text texture
+    tex_id = panel[PANEL_TEX]
+    if tex_id > 0
+        padding = panel[PANEL_PADDING]
+        scale = panel[PANEL_FONT_SCALE]
+        align = panel[PANEL_TEXT_ALIGN]
+        tex_w = panel[PANEL_TEX_W] * scale
+        # Compute horizontal offset based on alignment
+        tx1 = x + padding * scale
+        tx2 = x + w - padding * scale
+        case align
+        is 1  # center
+            offset = (w - tex_w) * 0.5
+            on offset > padding * scale do tx1 = x + offset; tx2 = x + offset + tex_w
+        is 2  # right
+            tx1 = x + w - tex_w - padding * scale
+            tx2 = x + w - padding * scale
+        endcase
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, tex_id)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 1.0); glVertex2f(tx1, y + padding * scale)
+        glTexCoord2f(1.0, 1.0); glVertex2f(tx2, y + padding * scale)
+        glTexCoord2f(1.0, 0.0); glVertex2f(tx2, y + h - padding * scale)
+        glTexCoord2f(0.0, 0.0); glVertex2f(tx1, y + h - padding * scale)
+        glEnd()
+        glDisable(GL_TEXTURE_2D)
+        glDisable(GL_BLEND)
+    endif
+end
+
+define save_panel_position(panel, filename)
+    on panel.len < 28 do return
+    if panel[PANEL_RESIZABLE]
+        "{=panel[PANEL_X]:.1f} {=panel[PANEL_Y]:.1f} {=panel[PANEL_W]:.1f} {=panel[PANEL_H]:.1f}" $out filename
+    else
+        "{=panel[PANEL_X]:.1f} {=panel[PANEL_Y]:.1f}" $out filename
+    endif
+end
+
+define load_panel_position(panel, filename)
+    on panel.len < 28 do return false
+    text = $in filename
+    on text.len == 0 do return false
+    foreach line in text
+        parts = line.split(" ")
+        if parts.len >= 4 && panel[PANEL_RESIZABLE]
+            panel[PANEL_X] = as_float(parts[0])
+            panel[PANEL_Y] = as_float(parts[1])
+            panel[PANEL_W] = as_float(parts[2])
+            panel[PANEL_H] = as_float(parts[3])
+            return true
+        endif
+        on parts.len >= 2 do panel[PANEL_X] = as_float(parts[0]); panel[PANEL_Y] = as_float(parts[1]); return true
+    endfor
+    return false
+end
+
+define draw_panel_resize_handles(panel)
+    on panel.len < 35 || !panel[PANEL_VISIBLE] || !panel[PANEL_RESIZABLE] do return
+    x = panel[PANEL_X]
+    y = panel[PANEL_Y]
+    w = panel[PANEL_W]
+    h = panel[PANEL_H]
+    handle_size = 24.0
+    glDisable(GL_TEXTURE_2D)
+    glColor4f(0.0, 1.0, 1.0, 1.0)
+    glBegin(GL_QUADS)
+    # Top-left
+    glVertex2f(x, y)
+    glVertex2f(x + handle_size, y)
+    glVertex2f(x + handle_size, y + handle_size)
+    glVertex2f(x, y + handle_size)
+    # Top-right
+    glVertex2f(x + w - handle_size, y)
+    glVertex2f(x + w, y)
+    glVertex2f(x + w, y + handle_size)
+    glVertex2f(x + w - handle_size, y + handle_size)
+    # Bottom-left
+    glVertex2f(x, y + h - handle_size)
+    glVertex2f(x + handle_size, y + h - handle_size)
+    glVertex2f(x + handle_size, y + h)
+    glVertex2f(x, y + h)
+    # Bottom-right
+    glVertex2f(x + w - handle_size, y + h - handle_size)
+    glVertex2f(x + w, y + h - handle_size)
+    glVertex2f(x + w, y + h)
+    glVertex2f(x + w - handle_size, y + h)
+    glEnd()
+end
+
+define save_game_state(filename)
+    content = "px {=player_pos[0]:.6f}\n"
+    content += "py {=player_pos[1]:.6f}\n"
+    content += "pz {=player_pos[2]:.6f}\n"
+    content += "yaw {=player_yaw:.6f}\n"
+    content += "pitch {=player_pitch:.6f}\n"
+    content += "char {=character_index}\n"
+    content += "world_clock {=world_clock_minutes:.2f}\n"
+    content += "time_speed {=time_speed_index}\n"
+    content += "wireframe {=wireframe_mode ? \"1\" : \"0\"}\n"
+    content += "particles {=particle_display_mode}\n"
+    content += "vsync {=vsync_on ? \"1\" : \"0\"}\n"
+    content += "collision {=collision_enabled ? \"1\" : \"0\"}\n"
+    content += "floor_solid {=floor_solid ? \"1\" : \"0\"}\n"
+    content += "cam_coll {=camera_collision_enabled ? \"1\" : \"0\"}\n"
+    content += "free_cam {=free_camera ? \"1\" : \"0\"}\n"
+    if free_camera
+        content += "free_cam_x {=player_pos[0]:.6f}\n"
+        content += "free_cam_y {=player_pos[1]:.6f}\n"
+        content += "free_cam_z {=player_pos[2]:.6f}\n"
+        content += "free_cam_yaw {=free_cam_yaw:.6f}\n"
+        content += "free_cam_pitch {=free_cam_pitch:.6f}\n"
+    endif
+    for i = 0 to interactable_states.len - 1
+        content += "interact_{=i} {=interactable_states[i]}\n"
+    endfor
+    content $out filename
+end
+
+define load_game_state(filename)
+    text = $in filename
+    if text.len == 0
+        return false
+    endif
+    foreach line in text
+        parts = line.split(" ")
+        if parts.len < 2
+            continue
+        endif
+        key = parts[0]
+        val = parts[1]
+        case key
+        is "px"
+            @player_pos[0] = as_float(val)
+        is "py"
+            @player_pos[1] = as_float(val)
+        is "pz"
+            @player_pos[2] = as_float(val)
+        is "yaw"
+            @player_yaw = as_float(val)
+        is "pitch"
+            @player_pitch = as_float(val)
+        is "char"
+            @character_index = as_int(val)
+            on character_index < 0 do @character_index = 0
+            on character_index >= character_count do @character_index = character_count - 1
+            @player_skel = character_skeles[character_index]
+            @player_texture = character_textures[character_index]
+        is "world_clock"
+            @world_clock_minutes = as_float(val)
+        is "time_speed"
+            @time_speed_index = as_int(val)
+            on time_speed_index < 0 do @time_speed_index = 0
+            on time_speed_index >= time_speeds.len do @time_speed_index = 0
+        is "wireframe"
+            @wireframe_mode = val == "1"
+        is "particles"
+            @particle_display_mode = as_int(val)
+        is "vsync"
+            @vsync_on = val == "1"
+        is "collision"
+            @collision_enabled = val == "1"
+        is "floor_solid"
+            @floor_solid = val == "1"
+        is "cam_coll"
+            @camera_collision_enabled = val == "1"
+        is "free_cam"
+            @free_camera = val == "1"
+        is "free_cam_x"
+            @player_pos[0] = as_float(val)
+        is "free_cam_y"
+            @player_pos[1] = as_float(val)
+        is "free_cam_z"
+            @player_pos[2] = as_float(val)
+        is "free_cam_yaw"
+            @free_cam_yaw = as_float(val)
+        is "free_cam_pitch"
+            @free_cam_pitch = as_float(val)
+        or
+            if key[0:9] == "interact_"
+                idx = as_int(key[9:])
+                if idx >= 0 && idx < interactable_states.len
+                    @interactable_states[idx] = as_int(val)
+                endif
+            endif
+        endcase
+    endfor
+    return true
+end
+
+define any_panel_active()
+    on clock_panel.len >= 35 && (clock_panel[PANEL_DRAGGING] || clock_panel[PANEL_RESIZING]) do return true
+    on legend_panel.len >= 35 && (legend_panel[PANEL_DRAGGING] || legend_panel[PANEL_RESIZING]) do return true
+    on minimap_panel.len >= 35 && (minimap_panel[PANEL_DRAGGING] || minimap_panel[PANEL_RESIZING]) do return true
+    return false
+end
+
+define handle_panel_drag(panel, filename)
+    on !cursor_mode_normal do return
+    on !panel[PANEL_DRAGGABLE] do return
+    # If another panel is already active, don't start a new drag on this one
+    if !panel[PANEL_DRAGGING]
+        on any_panel_active() do return
+    endif
+    # If resizable and mouse is over a resize handle, let handle_panel_resize take priority
+    if panel[PANEL_RESIZABLE]
+        px = panel[PANEL_X]
+        py = panel[PANEL_Y]
+        pw = panel[PANEL_W]
+        ph = panel[PANEL_H]
+        handle = 24.0
+        on mouse_x >= px && mouse_x <= px + handle && mouse_y_gl >= py && mouse_y_gl <= py + handle do return
+        on mouse_x >= px + pw - handle && mouse_x <= px + pw && mouse_y_gl >= py && mouse_y_gl <= py + handle do return
+        on mouse_x >= px && mouse_x <= px + handle && mouse_y_gl >= py + ph - handle && mouse_y_gl <= py + ph do return
+        on mouse_x >= px + pw - handle && mouse_x <= px + pw && mouse_y_gl >= py + ph - handle && mouse_y_gl <= py + ph do return
+    endif
+    if mouse_btn == 1  # GLFW_PRESS
+        if panel[PANEL_DRAGGING]
+            panel[PANEL_X] = mouse_x - panel[PANEL_DRAG_OFF_X]
+            panel[PANEL_Y] = mouse_y_gl - panel[PANEL_DRAG_OFF_Y]
+            # Clamp to screen so the panel can't be dragged off-screen
+            panel[PANEL_X] = panel[PANEL_X][0.0:actual_window_width - panel[PANEL_W]]
+            panel[PANEL_Y] = panel[PANEL_Y][0.0:actual_window_height - panel[PANEL_H]]
+        else
+            # Hit test: is mouse over panel?
+            hit_x = mouse_x >= panel[PANEL_X] && mouse_x <= panel[PANEL_X] + panel[PANEL_W]
+            hit_y = mouse_y_gl >= panel[PANEL_Y] && mouse_y_gl <= panel[PANEL_Y] + panel[PANEL_H]
+            on hit_x && hit_y do panel[PANEL_DRAGGING] = true; panel[PANEL_DRAG_OFF_X] = mouse_x - panel[PANEL_X]; panel[PANEL_DRAG_OFF_Y] = mouse_y_gl - panel[PANEL_Y]; save_panel_position(panel, filename)
+        endif
+    else
+        on panel[PANEL_DRAGGING] do panel[PANEL_DRAGGING] = false; save_panel_position(panel, filename)
+    endif
+end
+
+# Resize a panel by dragging any of its 4 corner handles.
+# Clamps to minimum size and screen bounds.
+define handle_panel_resize(panel, filename)
+    on !cursor_mode_normal do return
+    on !panel[PANEL_RESIZABLE] do return
+    if mouse_btn != 1
+        on panel[PANEL_RESIZING] do panel[PANEL_RESIZING] = false; save_panel_position(panel, filename)
+        return
+    endif
+    x = panel[PANEL_X]
+    y = panel[PANEL_Y]
+    w = panel[PANEL_W]
+    h = panel[PANEL_H]
+    mx = mouse_x
+    my = mouse_y_gl
+    handle = 24.0
+    if panel[PANEL_RESIZING]
+        corner = panel[PANEL_RESIZE_CORNER]
+        min_w = panel[PANEL_MIN_W]
+        min_h = panel[PANEL_MIN_H]
+        if corner == 0  # top-left
+            new_x = mx - panel[PANEL_RESIZE_OFF_X]
+            new_y = my - panel[PANEL_RESIZE_OFF_Y]
+            new_w = x + w - new_x
+            new_h = y + h - new_y
+            if new_w >= min_w && new_h >= min_h
+                panel[PANEL_X] = new_x
+                panel[PANEL_Y] = new_y
+                panel[PANEL_W] = new_w
+                panel[PANEL_H] = new_h
+            endif
+        else if corner == 1  # top-right
+            new_w = mx - x - panel[PANEL_RESIZE_OFF_X]
+            new_y = my - panel[PANEL_RESIZE_OFF_Y]
+            new_h = y + h - new_y
+            if new_w >= min_w && new_h >= min_h
+                panel[PANEL_Y] = new_y
+                panel[PANEL_W] = new_w
+                panel[PANEL_H] = new_h
+            endif
+        else if corner == 2  # bottom-left
+            new_x = mx - panel[PANEL_RESIZE_OFF_X]
+            new_w = x + w - new_x
+            new_h = my - y - panel[PANEL_RESIZE_OFF_Y]
+            if new_w >= min_w && new_h >= min_h
+                panel[PANEL_X] = new_x
+                panel[PANEL_W] = new_w
+                panel[PANEL_H] = new_h
+            endif
+        else if corner == 3  # bottom-right
+            new_w = mx - x - panel[PANEL_RESIZE_OFF_X]
+            new_h = my - y - panel[PANEL_RESIZE_OFF_Y]
+            if new_w >= min_w && new_h >= min_h
+                panel[PANEL_W] = new_w
+                panel[PANEL_H] = new_h
+            endif
+        endif
+        # Clamp to screen: width/height first, then position
+        panel[PANEL_W] = panel[PANEL_W][panel[PANEL_MIN_W]:actual_window_width]
+        panel[PANEL_H] = panel[PANEL_H][panel[PANEL_MIN_H]:actual_window_height]
+        panel[PANEL_X] = panel[PANEL_X][0.0:actual_window_width - panel[PANEL_W]]
+        panel[PANEL_Y] = panel[PANEL_Y][0.0:actual_window_height - panel[PANEL_H]]
+    else
+        # Hit test: is mouse over a resize handle?
+        # 0=TL, 1=TR, 2=BL, 3=BR
+        if mx >= x && mx <= x + handle && my >= y && my <= y + handle
+            panel[PANEL_RESIZING] = true
+            panel[PANEL_RESIZE_CORNER] = 0
+            panel[PANEL_RESIZE_OFF_X] = mx - x
+            panel[PANEL_RESIZE_OFF_Y] = my - y
+            save_panel_position(panel, filename)
+            return
+        endif
+        if mx >= x + w - handle && mx <= x + w && my >= y && my <= y + handle
+            panel[PANEL_RESIZING] = true
+            panel[PANEL_RESIZE_CORNER] = 1
+            panel[PANEL_RESIZE_OFF_X] = mx - (x + w)
+            panel[PANEL_RESIZE_OFF_Y] = my - y
+            save_panel_position(panel, filename)
+            return
+        endif
+        if mx >= x && mx <= x + handle && my >= y + h - handle && my <= y + h
+            panel[PANEL_RESIZING] = true
+            panel[PANEL_RESIZE_CORNER] = 2
+            panel[PANEL_RESIZE_OFF_X] = mx - x
+            panel[PANEL_RESIZE_OFF_Y] = my - (y + h)
+            save_panel_position(panel, filename)
+            return
+        endif
+        if mx >= x + w - handle && mx <= x + w && my >= y + h - handle && my <= y + h
+            panel[PANEL_RESIZING] = true
+            panel[PANEL_RESIZE_CORNER] = 3
+            panel[PANEL_RESIZE_OFF_X] = mx - (x + w)
+            panel[PANEL_RESIZE_OFF_Y] = my - (y + h)
+            save_panel_position(panel, filename)
+            return
+        endif
+    endif
+end
+
+# Draw a classic radar minimap: player faces up, world rotates around them.
+# Scales world coordinates to panel pixels using minimap_zoom.
+define draw_minimap(panel)
+    on panel.len < 35 || !panel[PANEL_VISIBLE] do return
+    x = panel[PANEL_X]
+    y = panel[PANEL_Y]
+    w = panel[PANEL_W]
+    h = panel[PANEL_H]
+
+    # Clip to panel bounds
+    glEnable(GL_SCISSOR_TEST)
+    glScissor(as_int(x), as_int(y), as_int(w), as_int(h))
+
+    # Disable states that interfere with immediate-mode flat color
+    glDisable(GL_CULL_FACE)
+    glDisable(GL_LIGHTING)
+    glDisable(GL_TEXTURE_2D)
+    glDisable(GL_ALPHA_TEST)
+
+    # Setup modelview transform: panel origin -> center -> rotate -> scale -> world origin
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glTranslatef(x, y, 0.0)              # move to panel origin
+    half_w = w * 0.5
+    half_h = h * 0.5
+    sc = (w < h ? w : h) / minimap_zoom  # scale factor
+    glTranslatef(half_w, half_h, 0.0)    # move to panel center
+    glRotatef(-player_yaw * 57.29578, 0.0, 0.0, 1.0)  # rotate world by -yaw
+    glScalef(sc, -sc, 1.0)               # scale; flip Y because world +Z maps to screen DOWN
+    glTranslatef(-player_pos[0], -player_pos[2], 0.0)  # center on player
+
+    # Grass / floor (inside the beach ring)
+    glColor4f(0.35, 0.55, 0.25, 1.0)
+    glBegin(GL_QUADS)
+    glVertex2f(-WORLD_HALF, -WORLD_HALF)
+    glVertex2f(WORLD_HALF, -WORLD_HALF)
+    glVertex2f(WORLD_HALF, WORLD_HALF)
+    glVertex2f(-WORLD_HALF, WORLD_HALF)
+    glEnd()
+
+    # Beach ring (from init_beach_vbo geometry: inner=WORLD_HALF-3, outer=WORLD_HALF+6)
+    binner = WORLD_HALF - 3.0
+    bouter = WORLD_HALF + 6.0
+    glColor4f(0.76, 0.70, 0.50, 1.0)
+    glBegin(GL_QUADS)
+    # North strip
+    glVertex2f(-bouter, -bouter)
+    glVertex2f(bouter, -bouter)
+    glVertex2f(bouter, -binner)
+    glVertex2f(-bouter, -binner)
+    # South strip
+    glVertex2f(-bouter, binner)
+    glVertex2f(bouter, binner)
+    glVertex2f(bouter, bouter)
+    glVertex2f(-bouter, bouter)
+    # West strip (corners already covered by N/S)
+    glVertex2f(-bouter, -binner)
+    glVertex2f(-binner, -binner)
+    glVertex2f(-binner, binner)
+    glVertex2f(-bouter, binner)
+    # East strip
+    glVertex2f(binner, -binner)
+    glVertex2f(bouter, -binner)
+    glVertex2f(bouter, binner)
+    glVertex2f(binner, binner)
+    glEnd()
+
+    # Sea / deep water (outside the beach ring, drawn over any gaps)
+    glColor4f(0.05, 0.25, 0.45, 1.0)
+    glBegin(GL_QUADS)
+    # North sea strip
+    glVertex2f(-300.0, -300.0)
+    glVertex2f(300.0, -300.0)
+    glVertex2f(300.0, -bouter)
+    glVertex2f(-300.0, -bouter)
+    # South sea strip
+    glVertex2f(-300.0, bouter)
+    glVertex2f(300.0, bouter)
+    glVertex2f(300.0, 300.0)
+    glVertex2f(-300.0, 300.0)
+    # West sea strip (corners already covered by N/S)
+    glVertex2f(-300.0, -bouter)
+    glVertex2f(-bouter, -bouter)
+    glVertex2f(-bouter, bouter)
+    glVertex2f(-300.0, bouter)
+    # East sea strip
+    glVertex2f(bouter, -bouter)
+    glVertex2f(300.0, -bouter)
+    glVertex2f(300.0, bouter)
+    glVertex2f(bouter, bouter)
+    glEnd()
+
+    # Roads (gray rectangles)
+    glColor4f(0.35, 0.35, 0.35, 1.0)
+    glBegin(GL_QUADS)
+    for i = 0 to road_instances.len - 1 step 9
+        rx = road_instances[i]
+        rz = road_instances[i + 2]
+        rsx = road_instances[i + 3]
+        rsz = road_instances[i + 5]
+        glVertex2f(rx - rsx * 0.5, rz - rsz * 0.5)
+        glVertex2f(rx + rsx * 0.5, rz - rsz * 0.5)
+        glVertex2f(rx + rsx * 0.5, rz + rsz * 0.5)
+        glVertex2f(rx - rsx * 0.5, rz + rsz * 0.5)
+    endfor
+    glEnd()
+
+    # Water (blue shapes)
+    glColor4f(0.2, 0.45, 0.7, 1.0)
+    glBegin(GL_QUADS)
+    for i = 0 to water_instances.len - 1 step 9
+        wx = water_instances[i]
+        wz = water_instances[i + 2]
+        wsx = water_instances[i + 3]
+        wsz = water_instances[i + 5]
+        glVertex2f(wx - wsx * 0.5, wz - wsz * 0.5)
+        glVertex2f(wx + wsx * 0.5, wz - wsz * 0.5)
+        glVertex2f(wx + wsx * 0.5, wz + wsz * 0.5)
+        glVertex2f(wx - wsx * 0.5, wz + wsz * 0.5)
+    endfor
+    glEnd()
+
+    # Buildings (brown rectangles, rotated by building yaw to match game Y-rotation)
+    glColor4f(0.55, 0.27, 0.07, 1.0)
+    glBegin(GL_QUADS)
+    for i = 0 to building_positions.len - 1 step 11
+        bx = building_positions[i]
+        bz = building_positions[i + 2]
+        bsx = building_positions[i + 3]
+        bsz = building_positions[i + 5]
+        byaw = building_positions[i + 6]
+        bsy = sin(byaw)
+        bcy = cos(byaw)
+        bidx = building_positions[i + 10].as_int
+        # Scale collision half dims by the actual placed scale
+        bhw = building_collision_half_w[bidx] * bsx
+        bhd = building_collision_half_d[bidx] * bsz
+        # Manually rotate 4 corners by building yaw (matches glRotatef(yaw, 0, 1, 0))
+        c1x = -bhw * bcy + (-bhd) * bsy
+        c1z = -(-bhw) * bsy + (-bhd) * bcy
+        c2x =  bhw * bcy + (-bhd) * bsy
+        c2z = -( bhw) * bsy + (-bhd) * bcy
+        c3x =  bhw * bcy +  bhd * bsy
+        c3z = -( bhw) * bsy +  bhd * bcy
+        c4x = -bhw * bcy +  bhd * bsy
+        c4z = -(-bhw) * bsy +  bhd * bcy
+        glVertex2f(bx + c1x, bz + c1z)
+        glVertex2f(bx + c2x, bz + c2z)
+        glVertex2f(bx + c3x, bz + c3z)
+        glVertex2f(bx + c4x, bz + c4z)
+    endfor
+    glEnd()
+
+    # Trees (green circles via smoothed points)
+    glColor4f(0.1, 0.7, 0.1, 1.0)
+    glEnable(GL_POINT_SMOOTH)
+    glPointSize(8.0)
+    glBegin(GL_POINTS)
+    for i = 0 to tree_positions.len - 1 step 5
+        glVertex2f(tree_positions[i], tree_positions[i + 1])
+    endfor
+    glEnd()
+    glDisable(GL_POINT_SMOOTH)
+
+    # Rocks (gray squares)
+    glColor4f(0.5, 0.5, 0.5, 1.0)
+    glBegin(GL_QUADS)
+    for i = 0 to rock_positions.len - 1 step 4
+        rx = rock_positions[i]
+        rz = rock_positions[i + 1]
+        rs = rock_positions[i + 2]
+        half = 0.35 * rs
+        glVertex2f(rx - half, rz - half)
+        glVertex2f(rx + half, rz - half)
+        glVertex2f(rx + half, rz + half)
+        glVertex2f(rx - half, rz + half)
+    endfor
+    glEnd()
+
+    # Restore matrices and state (keep scissor for player marker overlay)
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_LIGHTING)
+
+    # Player marker: drawn OUTSIDE the world transform, fixed at panel center
+    glDisable(GL_TEXTURE_2D)
+    glColor4f(1.0, 0.0, 0.0, 1.0)
+    cx = x + half_w
+    cy = y + half_h
+    glBegin(GL_TRIANGLES)
+    glVertex2f(cx, cy + 10.0)
+    glVertex2f(cx - 6.0, cy - 4.0)
+    glVertex2f(cx + 6.0, cy - 4.0)
+    glEnd()
+
+    glDisable(GL_SCISSOR_TEST)
+end
+
