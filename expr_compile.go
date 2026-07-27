@@ -431,26 +431,28 @@ func (c *exprCompiler) compileIdentifier(tok Token) error {
 			c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
 			return nil
 		}
-	}
 
-	// Check if it's a global in mident
-	var midentFS uint32
-	if interactive {
-		midentFS = 1
-	} else {
-		midentFS = 2
-	}
-	gbin := bind_int(midentFS, tok.tokText)
-	if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == tok.tokText {
-		var hint typeHint
-		if mident[gbin].ITyped {
-			hint = kindOverrideToHint(mident[gbin].Kind_override)
+		// Check if it's a global in mident (only safe when we have a local
+		// scope context — for-loop compilation passes ident, so OpLoadLocal
+		// above correctly shadows globals for loop variables).
+		var midentFS uint32
+		if interactive {
+			midentFS = 1
 		} else {
-			hint = c.typeToHint(mident[gbin].IValue)
+			midentFS = 2
 		}
-		c.emit(OpLoadGlobal, uint16(gbin))
-		c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
-		return nil
+		gbin := bind_int(midentFS, tok.tokText)
+		if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == tok.tokText {
+			var hint typeHint
+			if mident[gbin].ITyped {
+				hint = kindOverrideToHint(mident[gbin].Kind_override)
+			} else {
+				hint = c.typeToHint(mident[gbin].IValue)
+			}
+			c.emit(OpLoadGlobal, uint16(gbin))
+			c.pushValue(compileValue{hint: hint, constVal: nil, instrIdx: -1})
+			return nil
+		}
 	}
 
 	// Fallback: parse-time type hints from VAR/def/for declarations
