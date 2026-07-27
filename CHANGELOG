@@ -8,22 +8,21 @@ CHANGE LOG
 language changes
 ----------------
 
-  * Removed `uses` clause from try blocks. Try blocks now execute in the parent
-    variable scope transparently — all reads and writes operate on the parent
-    ident directly. This eliminates the copy-in/copy-out machinery and aligns
-    try/catch scope behavior (catch already shared parent scope).
+  * Removed `uses` clause from try blocks.
+    - Try blocks now execute in the parent variable scope transparently.
+    - all reads and writes operate on the parent ident directly. This eliminates
+        the copy-in/copy-out machinery and aligns try/catch scope behavior (catch
+        already shared parent scope).
     - `capturedVars` field removed from `tryBlockInfo`
     - `MODE_TRY` added to call modes
     - `captured_vars` parameter in `Call()` retained for future closure use
     - `C_Uses` token type retained in lexer/constants for future closure syntax
 
   * Format specifiers in string interpolation (`{varname:format}` and `{=expr:format}`)
-    - `{varname:fmt}` — format a variable: `{n:04d}`, `{cost:.2f}`, `{n:08x}`
-    - `{=expr:fmt}` — format an expression result: `{=1+2:04d}`, `{=255:08x}`
+    - `{varname:fmt}` : format a variable:           `{n:04d}`, `{cost:.2f}`, `{n:08x}`
+    - `{=expr:fmt}`   : format an expression result: `{=1+2:04d}`, `{=255:08x}`
     - Format specs are Go `fmt.Sprintf` verbs without the leading `%`
-    - Ternary expressions work in `{=...}`; `hasUnbalancedTernary()` prevents
-      format extraction from stealing ternary `:` colons
-    - `ev()` gains `defer/recover` so expression panics return errors instead of crashing
+    - Ternary expressions work in `{=...}`;
     - test coverage: za_tests/test_interpolation.za (17 tests)
 
   * `sort()` key-extractor option: `sort(list, map(.key `#.field`, .reverse true))`
@@ -33,13 +32,18 @@ language changes
     - Fixed unclosed paren in sort help text
     - test coverage: za_tests/test_sort_key.za (8 tests)
 
+  * added support for 'else if <cond>' and 'return if <cond>[,expr[,...]]'
+    - test coverage: za_tests/test_return_if.za and za_tests/test_else_if.za
+
+
 tooling changes
 ---------------
 
-  * LSP: `-S -zz` subprocess (was `-z`); module error filtering to main file only;
-    statement-modifier if and pane define false positive fixes
+  * LSP: `-S -zz` subprocess (was `-z`)
+    - module error filtering to main file only;
+    - statement-modifier if and pane define false positive fixes
 
-    * TAP 13 test output (`--tap` flag)
+  * TAP 13 test output (`--tap` flag)
     - `--tap` emits test results in TAP 13 format instead of colored text
     - `--tap` without `-o` writes to stderr; with `-o file` writes to file
     - `ok`/`not ok` per assertion with expression text in the description (`group/name : expr`)
@@ -48,8 +52,10 @@ tooling changes
     - `Bail out!` emitted on `ASSERT FAIL` exits
     - DOC statements suppressed in TAP mode to avoid corrupting the stream
     - `appendToTestReportRaw()` helper for plain-text (no sparkle/ANSI) output
+
   * VS Code extension: client-side regex diagnostics for escape/backslash patterns
     (removed), exponent regex fix, keyword exclusion fix
+
 
 library changes
 ---------------
@@ -61,22 +67,32 @@ library changes
       routine/FFI call to a different OS thread between calls.
 
   * Typed array allocators and index-based accessors (FFI)
-    - `c_alloc_array(type_string, count)` — allocate a zeroed buffer for `count`
-      elements of any scalar type (`float32`, `float64`, `int`, `uint8`,
-      `pointer`, etc.). Rejects non-scalar types (string, slices, arrays).
-    - `c_alloc_floats32(count)` / `c_alloc_floats64(count)` — helpers that wrap
+
+    - `c_alloc_array(type_string, count)` - allocate a zeroed buffer for `count`
+       elements of any scalar type (`float32`, `float64`, `int`, `uint8`,
+       `pointer`, etc.). Rejects non-scalar types (string, slices, arrays).
+
+    - `c_alloc_floats32(count)` / `c_alloc_floats64(count)` - helpers that wrap
       `c_alloc_array("float32", count)` and `c_alloc_array("float64", count)`.
+
     - `c_array_get_float32(ptr, index)` / `c_array_set_float32(ptr, index, value)`
-      — element-wise float32 read/write (offset = index * 4).
+      - element-wise float32 read/write (offset = index * 4).
+
     - `c_array_get_float64(ptr, index)` / `c_array_set_float64(ptr, index, value)`
-      — element-wise float64 read/write (offset = index * 8).
+      - element-wise float64 read/write (offset = index * 8).
+
     - `c_array_bulk_set_float32(ptr, start_index, values)` / `c_array_bulk_set_float64(ptr, start_index, values)`
-      — batch write of multiple float values from a Za array in a single FFI call.
-      Reduces per-element overhead for large interleaved buffers (e.g. OpenGL VBOs).
-    - `c_alloc_uninit(size)` / `c_alloc_array_uninit(type_string, count)` — raw
-      allocation variants that skip `memset` zeroing for performance-critical
-      buffers that are completely overwritten before use.
+      - batch write of multiple float values from a Za array in a single FFI call.
+      - Reduces per-element overhead for large interleaved buffers (e.g. OpenGL VBOs).
+
+    - `c_alloc_uninit(size)` / `c_alloc_array_uninit(type_string, count)`
+      - allocation variants that skip `memset` zeroing for performance-critical
+         buffers that are completely overwritten before use.
+
     - `Typemap["float32"]` and `Typemap["float64"]` added for type resolution.
+      - no support yet for []float32 as an iterable, (not urgent for FFI work)
+      - most other support done
+
     - test coverage: `za_tests/ffi/test_c_alloc_array.za`
 
 
@@ -241,7 +257,7 @@ interpreter/vm changes
       - instrumented at every fold site: arithmetic, comparison, bitwise, unary,
         string transforms, range, and membership
 
-  * added full simple-assignment bytecode (vmAssigned) — VM stores the value
+  * added full simple-assignment bytecode (vmAssigned) - VM stores the value
       - compileSimpleAssign() in expr_compile.go compiles "identifier = expr" end-to-end:
         RHS expression + OpStoreLocal instead of RHS-only + doAssign()/vset() fallback
       - scope: single untyped or typed scalar identifier on LHS; rejects strings
@@ -275,7 +291,7 @@ interpreter/vm changes
       - bytecode compiler compileLand/compileLor use prec+1 for right-side parsing
       - test coverage: za_tests/test_vm.za sections 19 and 21
 
-  * asBool() optimised for *big.Int / *big.Float — uses .Sign() instead of .Cmp(GetAsBigInt(0))
+  * asBool() optimised for *big.Int / *big.Float - uses .Sign() instead of .Cmp(GetAsBigInt(0))
       - eliminates heap allocation per boolean coercion of big types
       - thread-safe: no shared mutable state (GetAsBigInt(0) returned an escaped local)
 
@@ -284,11 +300,11 @@ interpreter/vm changes
       - falls back to reflect.TypeOf().Comparable() only for slices/maps/etc
 
   * bind_int() uses RLock for read-only lookup path (phraser.go)
-      - most common case is "already bound" — now reads in parallel under contention
+      - most common case is "already bound" - now reads in parallel under contention
       - write lock (Lock) only taken when inserting a new binding
       - double-check after upgrading to prevent lost inserts
 
-  * added GetAsBigIntInto / GetAsBigFloatInto (actor.go) — zero-allocation big conversions
+  * added GetAsBigIntInto / GetAsBigFloatInto (actor.go) - zero-allocation big conversions
       - writes directly into an existing *big.Int / *big.Float instead of heap-allocating
       - used in VM storeLocal (kbigi/kbigf) and interpreter big-type assignments
       - eliminates the allocation waste where .Set() copied and immediately discarded it
@@ -298,7 +314,7 @@ interpreter/vm changes
       - reuses the existing slot via GetAsBigIntInto / GetAsBigFloatInto instead of allocating new
       - only allocates when the slot is nil (first write or after append growth)
 
-  * added OpLoadConstBool opcode — bools encoded directly in instruction arg
+  * added OpLoadConstBool opcode - bools encoded directly in instruction arg
       - eliminates pool lookup for boolean constants (true/false)
       - Arg1 = 0 for false, 1 for true; VM pushes bool(Arg1 != 0)
 
@@ -380,7 +396,7 @@ fixes
         at cache load time, preventing stale caches from reintroducing phantom symbols
         after library updates or fixes
 
-  * fixed constant-folding integer overflow — foldAdd/foldSub/foldMul now detect
+  * fixed constant-folding integer overflow - foldAdd/foldSub/foldMul now detect
     overflow via math/bits and defer to runtime
       - foldAdd: bits.Add64 overflow check
       - foldSub: bits.Sub64 overflow check
@@ -388,7 +404,7 @@ fixes
       - foldNeg: guards MinInt64 (promotes to *big.Int)
       - prevents silent wraparound for large int literals (e.g. 999999999999999 * 2)
 
-  * fixed intPow overflow — returns (int, bool) using bits.Mul64
+  * fixed intPow overflow - returns (int, bool) using bits.Mul64
       - callers (foldPow, OpPowInt, ev_pow) fall back to math.Pow(float64) on overflow
       - prevents silent wraparound for large power results (e.g. 1000000 ** 2)
 
@@ -432,21 +448,21 @@ Now considered supported
 interpreter/vm changes
 ----------------------
 
-  * ternary operator (`? :`) now short-circuits — only evaluates the matching
+  * ternary operator (`? :`) now short-circuits - only evaluates the matching
     branch, not both (eval.go)
 
-  * comma operator (`O_Comma`) respects brace_level in skip loop — fixes
+  * comma operator (`O_Comma`) respects brace_level in skip loop - fixes
     nested expression parsing where commas inside braces were incorrectly
     breaking out of the skip loop (eval.go)
 
-  * `OpStoreLocal` now interpolates strings — values stored in local
+  * `OpStoreLocal` now interpolates strings - values stored in local
     variables are interpolated via `interpolate()` when they are strings
     (expr_vm.go)
 
   * added `\uXXXX` and `\UXXXXXXXX` unicode escape support in string literals
-    (lex.go) — requires `unicode/utf8` import
+    (lex.go) - requires `unicode/utf8` import
 
-  * exception info line numbers fixed — `exceptionInfo.line` now uses
+  * exception info line numbers fixed - `exceptionInfo.line` now uses
     `int(p.line) + 1` instead of hardcoded 0 (eval_ops.go)
 
   * `report()` shows "line unknown" when `line < 0` instead of a negative
@@ -461,7 +477,7 @@ library changes (additional)
       - optional currency symbol (default $)
       - supports int, int64, float64, uint, and *big.Float input types
 
-  * `json_decode()` help text corrected — now says "map|array" instead of
+  * `json_decode()` help text corrected - now says "map|array" instead of
     "[]any", and added array fallback decode for JSON arrays
 
   * `getFieldValue()` in lib-list.go now supports `map[string]any`
@@ -483,7 +499,7 @@ library changes (additional)
 script changes
 --------------
 
-  * added `eg/awsbilling` — AWS Billing TUI demo script
+  * added `eg/awsbilling` - AWS Billing TUI demo script
       - interactive table view of AWS Cost Explorer data
       - profile/region switching, currency conversion, sort, forecast
 
