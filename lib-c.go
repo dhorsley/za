@@ -1678,6 +1678,60 @@ func buildFfiLib() {
         }
         return nil, nil
     }
+
+    slhelp["c_array_bulk_set_float32"] = LibHelp{in: "ptr,start_index,values", out: "", action: "Writes multiple float32 values starting at the given element index."}
+    stdlib["c_array_bulk_set_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_bulk_set_float32", args, 1, "3", "any", "int", "[]any"); !ok {
+            return nil, err
+        }
+        p, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, nil
+        }
+        start := args[1].(int)
+        vals, ok := args[2].([]interface{})
+        if !ok {
+            return nil, fmt.Errorf("c_array_bulk_set_float32: values must be an array")
+        }
+        for i, v := range vals {
+            switch fv := v.(type) {
+            case float64:
+                CSetFloat(p, (start+i)*4, fv)
+            case int:
+                CSetFloat(p, (start+i)*4, float64(fv))
+            default:
+                return nil, fmt.Errorf("c_array_bulk_set_float32: value at index %d is not numeric (%T)", i, v)
+            }
+        }
+        return nil, nil
+    }
+
+    slhelp["c_array_bulk_set_float64"] = LibHelp{in: "ptr,start_index,values", out: "", action: "Writes multiple float64 values starting at the given element index."}
+    stdlib["c_array_bulk_set_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_bulk_set_float64", args, 1, "3", "any", "int", "[]any"); !ok {
+            return nil, err
+        }
+        p, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, nil
+        }
+        start := args[1].(int)
+        vals, ok := args[2].([]interface{})
+        if !ok {
+            return nil, fmt.Errorf("c_array_bulk_set_float64: values must be an array")
+        }
+        for i, v := range vals {
+            switch fv := v.(type) {
+            case float64:
+                CSetDouble(p, (start+i)*8, fv)
+            case int:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            default:
+                return nil, fmt.Errorf("c_array_bulk_set_float64: value at index %d is not numeric (%T)", i, v)
+            }
+        }
+        return nil, nil
+    }
 }
 
 // cAllocArray validates a scalar type string and allocates a zero-initialized buffer.

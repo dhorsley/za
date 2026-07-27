@@ -6819,6 +6819,22 @@ value = c_array_get_float64(buf, 3)
 
 Writes a float64 at element `index` (offset = `index * 8`).
 
+### c_array_bulk_set_float32(ptr:pointer, start_index:int, values:[]any)
+
+Writes multiple float32 values starting at element `start_index` in a single FFI call. Each element in `values` is converted to float32 and written at consecutive indices. This is significantly faster than calling `c_array_set_float32` (or `c_set_float`) in a loop because it amortizes the FFI overhead across many elements.
+
+```za
+buf = c_alloc_floats32(20)
+c_array_bulk_set_float32(buf, 0, [1.0, 2.0, 3.0, 4.0, 5.0])
+c_array_bulk_set_float32(buf, 5, [6.0, 7.0, 8.0])
+```
+
+Use cases: filling interleaved OpenGL VBOs, particle buffers, instance attribute arrays.
+
+### c_array_bulk_set_float64(ptr:pointer, start_index:int, values:[]any)
+
+Same as `c_array_bulk_set_float32` but writes float64 values (offset = `index * 8`).
+
 ### Struct Allocation and Marshaling Functions
 
 #### c_alloc_struct(struct_type_name:string) -> pointer

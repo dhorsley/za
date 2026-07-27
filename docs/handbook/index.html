@@ -6324,6 +6324,97 @@ c_set_double(matrix, 16, 3.1415926535897932)
 c_set_double(matrix, 24, 1.4142135623730951)
 
 val = c_get_double(matrix, 8)  # Read back with precision</code></pre>
+<h3
+id="c_alloc_arraytype_stringstring-countint---pointer">c_alloc_array(type_string:string,
+count:int) -&gt; pointer</h3>
+<p>Allocates a zero-initialized buffer for <code>count</code> elements
+of a scalar type. The type string must be a primitive scalar
+(e.g. <code>"float32"</code>, <code>"float64"</code>,
+<code>"int"</code>, <code>"uint8"</code>, <code>"pointer"</code>) — no
+brackets, no slices, no arrays.</p>
+<pre class="za"><code># Allocate 100 float32 elements (400 bytes)
+verts = c_alloc_array(&quot;float32&quot;, 100)
+
+# Allocate 50 int elements
+ids = c_alloc_array(&quot;int&quot;, 50)
+
+# Allocate 10 pointer slots (80 bytes on 64-bit)
+handles = c_alloc_array(&quot;pointer&quot;, 10)</code></pre>
+<h3 id="c_alloc_floats32countint---pointer">c_alloc_floats32(count:int)
+-&gt; pointer</h3>
+<p>Helper for <code>c_alloc_array("float32", count)</code>.</p>
+<pre class="za"><code>buf = c_alloc_floats32(100)  # 400 bytes for 100 float32s</code></pre>
+<h3 id="c_alloc_floats64countint---pointer">c_alloc_floats64(count:int)
+-&gt; pointer</h3>
+<p>Helper for <code>c_alloc_array("float64", count)</code>.</p>
+<pre class="za"><code>buf = c_alloc_floats64(100)  # 800 bytes for 100 float64s</code></pre>
+<h3 id="c_alloc_uninitsizeint---pointer">c_alloc_uninit(size:int) -&gt;
+pointer</h3>
+<p>Allocates a raw byte buffer <strong>without
+zero-initialization</strong>. The caller must write every byte before
+reading, or behavior is undefined (garbage data). Useful for
+performance-critical scratch buffers that are completely overwritten
+before use.</p>
+<pre class="za"><code># 10 KB scratch buffer — we will write all of it before reading
+scratch = c_alloc_uninit(10240)
+# ... write every byte ...</code></pre>
+<h3
+id="c_alloc_array_uninittype_stringstring-countint---pointer">c_alloc_array_uninit(type_string:string,
+count:int) -&gt; pointer</h3>
+<p>Typed variant of <code>c_alloc_uninit</code> — allocates raw
+(non-zeroed) memory for <code>count</code> scalar elements. Same
+validation rules as <code>c_alloc_array</code>.</p>
+<pre class="za"><code># 100 float32s — will be fully written before any read
+verts = c_alloc_array_uninit(&quot;float32&quot;, 100)</code></pre>
+<p>⚠️ <strong>Warning:</strong> Only use <code>_uninit</code> variants
+when you are certain every byte will be written before it is read.
+Otherwise, use the standard <code>c_alloc</code> /
+<code>c_alloc_array</code> functions which zero-initialize.</p>
+<h3
+id="c_array_get_float32ptrpointer-indexint---float">c_array_get_float32(ptr:pointer,
+index:int) -&gt; float</h3>
+<p>Reads a float32 at element <code>index</code> (offset =
+<code>index * 4</code>).</p>
+<pre class="za"><code>buf = c_alloc_floats32(10)
+c_array_set_float32(buf, 5, 3.14)
+value = c_array_get_float32(buf, 5)  # ~3.14</code></pre>
+<h3
+id="c_array_set_float32ptrpointer-indexint-valuefloat">c_array_set_float32(ptr:pointer,
+index:int, value:float)</h3>
+<p>Writes a float32 at element <code>index</code> (offset =
+<code>index * 4</code>).</p>
+<h3
+id="c_array_get_float64ptrpointer-indexint---float">c_array_get_float64(ptr:pointer,
+index:int) -&gt; float</h3>
+<p>Reads a float64 at element <code>index</code> (offset =
+<code>index * 8</code>).</p>
+<pre class="za"><code>buf = c_alloc_floats64(10)
+c_array_set_float64(buf, 3, 2.718281828)
+value = c_array_get_float64(buf, 3)</code></pre>
+<h3
+id="c_array_set_float64ptrpointer-indexint-valuefloat">c_array_set_float64(ptr:pointer,
+index:int, value:float)</h3>
+<p>Writes a float64 at element <code>index</code> (offset =
+<code>index * 8</code>).</p>
+<h3
+id="c_array_bulk_set_float32ptrpointer-start_indexint-valuesany">c_array_bulk_set_float32(ptr:pointer,
+start_index:int, values:[]any)</h3>
+<p>Writes multiple float32 values starting at element
+<code>start_index</code> in a single FFI call. Each element in
+<code>values</code> is converted to float32 and written at consecutive
+indices. This is significantly faster than calling
+<code>c_array_set_float32</code> (or <code>c_set_float</code>) in a loop
+because it amortizes the FFI overhead across many elements.</p>
+<pre class="za"><code>buf = c_alloc_floats32(20)
+c_array_bulk_set_float32(buf, 0, [1.0, 2.0, 3.0, 4.0, 5.0])
+c_array_bulk_set_float32(buf, 5, [6.0, 7.0, 8.0])</code></pre>
+<p>Use cases: filling interleaved OpenGL VBOs, particle buffers,
+instance attribute arrays.</p>
+<h3
+id="c_array_bulk_set_float64ptrpointer-start_indexint-valuesany">c_array_bulk_set_float64(ptr:pointer,
+start_index:int, values:[]any)</h3>
+<p>Same as <code>c_array_bulk_set_float32</code> but writes float64
+values (offset = <code>index * 8</code>).</p>
 <h3 id="struct-allocation-and-marshaling-functions">Struct Allocation
 and Marshaling Functions</h3>
 <h4
@@ -8267,8 +8358,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb354"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb354-1"><a href="#cb354-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb362"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb362-1"><a href="#cb362-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

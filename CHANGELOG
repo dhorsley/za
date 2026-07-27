@@ -70,6 +70,9 @@ library changes
       — element-wise float32 read/write (offset = index * 4).
     - `c_array_get_float64(ptr, index)` / `c_array_set_float64(ptr, index, value)`
       — element-wise float64 read/write (offset = index * 8).
+    - `c_array_bulk_set_float32(ptr, start_index, values)` / `c_array_bulk_set_float64(ptr, start_index, values)`
+      — batch write of multiple float values from a Za array in a single FFI call.
+      Reduces per-element overhead for large interleaved buffers (e.g. OpenGL VBOs).
     - `c_alloc_uninit(size)` / `c_alloc_array_uninit(type_string, count)` — raw
       allocation variants that skip `memset` zeroing for performance-critical
       buffers that are completely overwritten before use.
