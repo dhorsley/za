@@ -950,7 +950,8 @@ Available commands:
 [#5]MACRO [!] [-+] name ` + "`value`" + ` | macro [!] - [name][#-]- add/remove/clear macro definitions
 [#5]MACRO LIST[#-]                                      - list macro definitions
 [#4]ON [#i1]condition[#i0] DO [#i1]command[#i0][#-]                         - perform a single command if condition evaluates to true.
-[#4]IF [#i1]condition[#i0][#-] ... [#4]ELSE[#-] ... [#4]ENDIF[#-]                 - conditional execution.
+[#4]IF [#i1]condition[#i0][#-] ... [#4]ELSE IF[#-] ... [#4]ELSE[#-] ... [#4]ENDIF[#-]     - conditional execution with else-if chaining.
+[#4]RETURN [#i1]retval[#i0] IF [#i1]condition[#i0][#-]                      - return value(s) only if condition is true.
 [#4]WHILE [#i1]condition[#i0][#-]                                 - start while...end loop block.
 [#4]ENDWHILE[#-]                                        - end of while...end loop block.
 [#4]FOR [#i1]var[#i0] = [#i1]start[#i0] TO [#i1]end[#i0] [ STEP [#i1]step[#i0] ][#-]            - start FOR loop block. (integer iteration only)

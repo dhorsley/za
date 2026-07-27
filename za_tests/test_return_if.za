@@ -1,0 +1,79 @@
+# Test return-if statement modifier
+# Syntax: return if expr, val1, val2
+
+define test_return_if_true()
+    x = 5
+    return if x > 3, "yes"
+    return "no"
+end
+
+define test_return_if_false()
+    x = 1
+    return if x > 3, "yes"
+    return "no"
+end
+
+define test_return_if_no_value()
+    x = 10
+    return if x > 5
+    return "after"
+end
+
+define test_return_if_multi()
+    x = 7
+    return if x > 5, "a", "b"
+    return "c", "d"
+end
+
+define test_return_if_in_loop()
+    for i = 0 to 10
+        return if i == 5, "found"
+    endfor
+    return "not-found"
+end
+
+define test_return_if_expr()
+    a = 3
+    b = 4
+    return if a + b == 7, "correct"
+    return "wrong"
+end
+
+define test_return_if_fallthrough()
+    flag = false
+    return if flag, "early"
+    return "late"
+end
+
+# Run tests
+println "=== return-if tests ==="
+
+result = test_return_if_true()
+println format("test_return_if_true: %s (expected: yes)", result)
+assert result == "yes", "test_return_if_true"
+
+result = test_return_if_false()
+println format("test_return_if_false: %s (expected: no)", result)
+assert result == "no", "test_return_if_false"
+
+result = test_return_if_no_value()
+println format("test_return_if_no_value: %s (expected: nil)", result)
+# return if with no values returns nil when condition is true
+
+result = test_return_if_multi()
+println format("test_return_if_multi: %s (expected: [a, b])", result)
+assert result[0] == "a" && result[1] == "b", "test_return_if_multi"
+
+result = test_return_if_in_loop()
+println format("test_return_if_in_loop: %s (expected: found)", result)
+assert result == "found", "test_return_if_in_loop"
+
+result = test_return_if_expr()
+println format("test_return_if_expr: %s (expected: correct)", result)
+assert result == "correct", "test_return_if_expr"
+
+result = test_return_if_fallthrough()
+println format("test_return_if_fallthrough: %s (expected: late)", result)
+assert result == "late", "test_return_if_fallthrough"
+
+println "All return-if tests passed!"

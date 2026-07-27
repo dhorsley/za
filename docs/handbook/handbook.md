@@ -1264,10 +1264,14 @@ Block conditional:
 ```za
 if condition
     # action
+[ else if other_condition
+    # action ]
 [ else
     # action ]
 endif
 ```
+
+`else if` chains additional conditions without nested `endif` blocks. You can have any number of `else if` clauses between the initial `if` and the final `else`.
 
 Single-statement guard:
 
@@ -1275,6 +1279,15 @@ Single-statement guard:
 on condition1 do break
 on condition2 do println "ok"
 # etc
+```
+
+Statement-modifier conditionals on `break`, `continue`, and `return`:
+
+```za
+break if condition
+continue if condition
+return value if condition
+return if condition, value1, value2
 ```
 
 `on … do` executes exactly one statement when condition is true.
@@ -1441,6 +1454,19 @@ end
 
 `return` may be used without a value.
 `return` may also return multiple values (comma separated expressions).
+
+Conditional return (statement-modifier form):
+
+```za
+def process(x)
+    return "negative" if x < 0
+    return "small" if x < 10, x
+    return "large", x
+end
+```
+
+`return if condition` exits the function immediately when the condition is true, returning no value.
+`return if condition, val1, val2` exits and returns the specified values only when the condition is true.
 
 The return values may also be unpacked on return:
 

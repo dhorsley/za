@@ -3730,7 +3730,10 @@ floop1:
         if !standardAssign {
             if lfs != fs {
                 if newEval[0].tokType == Identifier {
-                    if !(*lident)[newEval[0].bindpos].declared {
+                    bindlock.RLock()
+                    _, exists := bindings[lfs][newEval[0].tokText]
+                    bindlock.RUnlock()
+                    if !exists {
                         p.report(-1, "you may only amend existing variables outside of local scope")
                         expr.evalError = true
                         finish(false, ERR_SYNTAX)

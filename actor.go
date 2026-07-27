@@ -5477,11 +5477,69 @@ tco_reentry:
 
         case C_Return:
 
+            // --- NEW: return-if support ---
+            argtoks := inbound.Tokens[1:]
+            returnIfSkip := false
+            if len(argtoks) > 0 && argtoks[0].tokType == C_If {
+                // Find first top-level comma to split condition from return values
+                nest := 0
+                splitAt := -1
+                for i, t := range argtoks[1:] { // skip the 'if' token itself
+                    if t.tokType == LParen || t.tokType == LeftSBrace {
+                        nest += 1
+                    }
+                    if t.tokType == RParen || t.tokType == RightSBrace {
+                        nest -= 1
+                    }
+                    if nest == 0 && t.tokType == O_Comma {
+                        splitAt = i + 1 // +1 because we skipped argtoks[0]
+                        break
+                    }
+                }
+
+                var condTokens []Token
+                if splitAt == -1 {
+                    // No comma: return if expr  (no values)
+                    condTokens = argtoks[1:]
+                } else {
+                    condTokens = argtoks[1:splitAt]
+                }
+
+                we = parser.wrappedEval(ifs, ident, ifs, ident, condTokens)
+                if we.evalError {
+                    parser.report(inbound.SourceLine, "could not evaluate RETURN IF condition")
+                    finish(false, ERR_EVAL)
+                    break
+                }
+
+                switch we.result.(type) {
+                case bool:
+                    if !we.result.(bool) {
+                        // condition false -> skip the return entirely
+                        returnIfSkip = true
+                    } else {
+                        // condition true -> fall through to normal return logic
+                        if splitAt != -1 {
+                            argtoks = argtoks[splitAt+1:] // skip comma
+                        } else {
+                            argtoks = []Token{}
+                        }
+                    }
+                default:
+                    parser.report(inbound.SourceLine, "RETURN IF condition must evaluate to boolean")
+                    finish(false, ERR_EVAL)
+                    break
+                }
+            }
+            if returnIfSkip {
+                break
+            }
+            // --- END NEW ---
+
             // split return args by comma in evaluable lumps
             var rargs = make([][]Token, 1)
             var curArg uint8
             evnest := 0
-            argtoks := inbound.Tokens[1:]
 
             rargs[0] = make([]Token, 0)
             ppos := 0
@@ -7681,13 +7739,77 @@ tco_reentry:
                 break
             } else {
                 if elsefound && (elsedistance < enddistance) {
-                    parser.pc += elsedistance
+                    // Check if the else target is actually an else-if
+                    elseLine := parser.pc + elsedistance
+                    if elseLine >= 0 && elseLine < int16(len(functionspaces[source_base])) {
+                        elsePhrase := functionspaces[source_base][elseLine]
+                        if elsePhrase.TokenCount > 1 && elsePhrase.Tokens[0].tokType == C_Else && elsePhrase.Tokens[1].tokType == C_If {
+                            // else-if: land ON the line so it gets executed
+                            parser.pc += elsedistance - 1
+                        } else {
+                            // plain else: skip over it (current behavior)
+                            parser.pc += elsedistance
+                        }
+                    } else {
+                        parser.pc += elsedistance
+                    }
                 } else {
                     parser.pc += enddistance
                 }
             }
 
         case C_Else:
+
+            // --- NEW: else-if support ---
+            if inbound.TokenCount > 1 && inbound.Tokens[1].tokType == C_If {
+                // Evaluate the else-if condition
+                expr, err = evalExprOrVM(inbound.bc, inbound.Tokens[2:], parser, ifs, ident, inbound.SourceLine, "else-if-condition")
+                if err != nil {
+                    parser.report(inbound.SourceLine, sf("Could not evaluate ELSE IF expression.\n%#v\n%+v", expr, err))
+                    finish(false, ERR_SYNTAX)
+                    break
+                }
+
+                if isBool(expr.(bool)) && expr.(bool) {
+                    // Condition true: fall through and execute the body on the next line
+                    break
+                }
+
+                // Condition false: jump to next else or endif
+                var nextElseFound, nextEndFound bool
+                var nextElseDist, nextEndDist int16
+                // Search from the line AFTER the current else-if.
+                // indent=1 accounts for the outer if block we are inside.
+                nextElseFound, nextElseDist, _ = lookahead(source_base, parser.pc+1, 1, 1, C_Else, []int64{C_If}, []int64{C_Endif})
+                nextEndFound, nextEndDist, _ = lookahead(source_base, parser.pc+1, 1, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
+
+                if nextElseFound && (!nextEndFound || nextElseDist < nextEndDist) {
+                    // Determine if the next else is plain else or else-if
+                    nextElseLine := parser.pc + 1 + nextElseDist
+                    isElseIf := false
+                    if nextElseLine >= 0 && nextElseLine < int16(len(functionspaces[source_base])) {
+                        nextPhrase := functionspaces[source_base][nextElseLine]
+                        if nextPhrase.TokenCount > 1 && nextPhrase.Tokens[0].tokType == C_Else && nextPhrase.Tokens[1].tokType == C_If {
+                            isElseIf = true
+                        }
+                    }
+                    if isElseIf {
+                        // Jump to the next else-if line so it gets evaluated
+                        parser.pc += nextElseDist
+                    } else {
+                        // Plain else: jump past it into its body (C_Else handler would skip body)
+                        parser.pc += nextElseDist + 1
+                    }
+                } else if nextEndFound {
+                    // Jump past endif (loop increment lands after it)
+                    parser.pc += nextEndDist + 1
+                } else {
+                    parser.report(inbound.SourceLine, "ELSE IF without an ENDIF\n")
+                    finish(false, ERR_SYNTAX)
+                }
+                break
+            }
+            // --- END NEW ---
 
             // we already jumped to else+1 to deal with a failed IF test
             // so jump straight to the endif here

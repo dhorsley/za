@@ -1,0 +1,109 @@
+# Test else-if control flow construct
+
+# Test 1: Simple else-if chain
+define test_simple_else_if()
+    x = 5
+    if x < 3
+        return "first"
+    else if x < 7
+        return "second"
+    else
+        return "third"
+    endif
+end
+
+# Test 2: else-if with no trailing else
+define test_else_if_no_else()
+    x = 10
+    if x < 5
+        return "low"
+    else if x < 15
+        return "mid"
+    endif
+    return "fallthrough"
+end
+
+# Test 3: Multiple else-if clauses
+define test_multiple_else_if()
+    x = 20
+    if x < 10
+        return "a"
+    else if x < 15
+        return "b"
+    else if x < 25
+        return "c"
+    else
+        return "d"
+    endif
+end
+
+# Test 4: Nested if inside else-if
+define test_nested_else_if()
+    x = 3
+    y = 7
+    if x < 5
+        if y < 5
+            return "inner-low"
+        else if y < 10
+            return "inner-mid"
+        else
+            return "inner-high"
+        endif
+    else
+        return "outer"
+    endif
+end
+
+# Test 5: else-if false falls through to else
+define test_else_if_false()
+    x = 100
+    if x < 50
+        return "small"
+    else if x < 80
+        return "medium"
+    else
+        return "large"
+    endif
+end
+
+# Test 6: else-if with expression evaluation
+define test_else_if_expr()
+    a = 3
+    b = 4
+    if a + b < 5
+        return "low"
+    else if a + b == 7
+        return "correct"
+    else
+        return "high"
+    endif
+end
+
+# Run tests
+println "=== else-if tests ==="
+
+result = test_simple_else_if()
+println format("test_simple_else_if: %s (expected: second)", result)
+assert result == "second"
+
+result = test_else_if_no_else()
+println format("test_else_if_no_else: %s (expected: mid)", result)
+assert result == "mid"
+
+result = test_multiple_else_if()
+println format("test_multiple_else_if: %s (expected: c)", result)
+assert result == "c"
+
+result = test_nested_else_if()
+println format("test_nested_else_if: %s (expected: inner-mid)", result)
+assert result == "inner-mid"
+
+result = test_else_if_false()
+println format("test_else_if_false: %s (expected: large)", result)
+assert result == "large"
+
+result = test_else_if_expr()
+println format("test_else_if_expr: %s (expected: correct)", result)
+assert result == "correct"
+
+println "All else-if tests passed!"

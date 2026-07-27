@@ -592,12 +592,33 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                                     }
                                 }
                             }
-                            // Attempt to compile IF/WHILE conditions.
+                            // Attempt to compile IF/WHILE/ELSE-IF conditions.
                             if phrase.bc == nil {
                                 switch phrase.Tokens[0].tokType {
                                 case C_If, C_While:
                                     if len(phrase.Tokens) > 1 {
                                         condCode, condPool, condErr := compileExpr(phrase.Tokens[1:], lmv, nil, fnTypeHints[lmv], currentModule)
+                                        if condErr == nil {
+                                            phrase.bc = &phraseBytecode{
+                                                code:     condCode,
+                                                pool:     condPool,
+                                                compiled: true,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, condCode, condPool, true, "")
+                                            }
+                                        } else {
+                                            phrase.bc = &phraseBytecode{
+                                                fallback: true,
+                                            }
+                                            if bcDebugCompile {
+                                                bcDumpCompile(&phrase, base.Original, nil, nil, false, condErr.Error())
+                                            }
+                                        }
+                                    }
+                                case C_Else:
+                                    if len(phrase.Tokens) > 2 && phrase.Tokens[1].tokType == C_If {
+                                        condCode, condPool, condErr := compileExpr(phrase.Tokens[2:], lmv, nil, fnTypeHints[lmv], currentModule)
                                         if condErr == nil {
                                             phrase.bc = &phraseBytecode{
                                                 code:     condCode,
