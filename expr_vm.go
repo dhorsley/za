@@ -530,11 +530,17 @@ func (vm *ExprVM) resolveIdent(name string) (any, bool) {
 	// Try local first
 	bin := bind_int(vm.fs, name)
 	if bin < uint64(len(*vm.ident)) && (*vm.ident)[bin].declared && (*vm.ident)[bin].IName == name {
+		if name == "WORLD_HALF" || name == "s" || name == "j" {
+			println(fmt.Sprintf("  -> found local"))
+		}
 		return (*vm.ident)[bin].IValue, true
 	}
 	// Try global
 	gbin := bind_int(vm.midentFS, name)
 	if gbin < uint64(len(mident)) && mident[gbin].declared && mident[gbin].IName == name {
+		if name == "WORLD_HALF" || name == "s" || name == "j" {
+			println(fmt.Sprintf("  -> found global at %d", gbin))
+		}
 		return mident[gbin].IValue, true
 	}
 	// Try module constants (current namespace first, then USE chain)

@@ -558,7 +558,11 @@ func (p *leparser) doAssign(lfs uint32, lident *[]Variable, rfs uint32, rident *
 			if p.ifDepth > 0 || p.onDoAction {
 				value = maybeCorrectAssignmentType(assignee[0].tokText, value, p.sourceBase)
 			}
-			vset(&assignee[0], lfs, lident, assignee[0].tokText, value)
+			if lfs == rfs {
+				vset(&assignee[0], lfs, lident, assignee[0].tokText, value)
+			} else {
+				vset(nil, lfs, lident, assignee[0].tokText, value)
+			}
 			return
 		}
         if la == 3 && assignee[1].tokType == SYM_DOT { // a.f = val

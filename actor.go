@@ -1937,18 +1937,55 @@ tco_reentry:
         if defining && statement != C_Enddef {
             lmv, _ := fnlookup.lmget(definitionName)
             fspacelock.Lock()
+            // Recompile bytecode for the function's own function space.
+            // The phraser compiled it using main-space bindpos and shared
+            // fnTypeHints[main], which causes wrong slot numbers and cross-
+            // function type leakage. We fix the tokens' bindpos and recompile
+            // with nil type hints so the bytecode is correct for this space.
+            for i := range inbound.Tokens {
+                if inbound.Tokens[i].tokType == Identifier {
+                    inbound.Tokens[i].bindpos = bind_int(lmv, inbound.Tokens[i].tokText)
+                    inbound.Tokens[i].bound = true
+                }
+            }
+            if inbound.bc != nil && inbound.bc.compiled && !inbound.bc.fallback {
+                var newBC *phraseBytecode
+                switch {
+                case inbound.bc.vmAssigned:
+                    code, pool, err := compileSimpleAssign(inbound.Tokens, lmv, nil, nil, currentModule)
+                    if err == nil {
+                        newBC = &phraseBytecode{code: code, pool: pool, compiled: true, vmAssigned: true}
+                    }
+                case inbound.bc.isAssign:
+                    assignPos, hasComma := findAssignment(inbound.Tokens)
+                    if assignPos >= 0 && !hasComma && assignPos+1 < len(inbound.Tokens) {
+                        rhsCode, rhsPool, rhsErr := compileExpr(inbound.Tokens[assignPos+1:], lmv, nil, nil, currentModule)
+                        if rhsErr == nil {
+                            newBC = &phraseBytecode{code: rhsCode, pool: rhsPool, compiled: true, isAssign: true, assignPos: assignPos}
+                        }
+                    }
+                case inbound.Tokens[0].tokType == C_If || inbound.Tokens[0].tokType == C_While:
+                    if len(inbound.Tokens) > 1 {
+                        condCode, condPool, condErr := compileExpr(inbound.Tokens[1:], lmv, nil, nil, currentModule)
+                        if condErr == nil {
+                            newBC = &phraseBytecode{code: condCode, pool: condPool, compiled: true}
+                        }
+                    }
+                default:
+                    code, pool, err := compileExpr(inbound.Tokens, lmv, nil, nil, currentModule)
+                    if err == nil {
+                        newBC = &phraseBytecode{code: code, pool: pool, compiled: true}
+                    }
+                }
+                if newBC != nil {
+                    inbound.bc = newBC
+                } else {
+                    inbound.bc = &phraseBytecode{fallback: true}
+                }
+            }
             functionspaces[lmv] = append(functionspaces[lmv], *inbound)
             basecode_entry = &basecode[source_base][parser.pc]
             basecode[lmv] = append(basecode[lmv], *basecode_entry)
-            // although we have added all the tokens in to the new source_base,
-            // we still have to add identifier bindings in the new source_base
-            // for the replicated inbound lines.
-            for _, itok := range inbound.Tokens {
-                if itok.tokType == Identifier {
-                    itok.bindpos = bind_int(lmv, itok.tokText)
-                    itok.bound = true
-                }
-            }
             fspacelock.Unlock()
             continue
         }
