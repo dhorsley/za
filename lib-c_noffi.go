@@ -76,6 +76,10 @@ func CAllocBytes(size int) *CPointerValue {
     return NullPointer()
 }
 
+func CAllocBytesUninit(size int) *CPointerValue {
+    return NullPointer()
+}
+
 func CFreePtr(p *CPointerValue) {
 }
 

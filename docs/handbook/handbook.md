@@ -6739,6 +6739,86 @@ c_set_double(matrix, 24, 1.4142135623730951)
 val = c_get_double(matrix, 8)  # Read back with precision
 ```
 
+### c_alloc_array(type_string:string, count:int) -> pointer
+
+Allocates a zero-initialized buffer for `count` elements of a scalar type. The type string must be a primitive scalar (e.g. `"float32"`, `"float64"`, `"int"`, `"uint8"`, `"pointer"`) — no brackets, no slices, no arrays.
+
+```za
+# Allocate 100 float32 elements (400 bytes)
+verts = c_alloc_array("float32", 100)
+
+# Allocate 50 int elements
+ids = c_alloc_array("int", 50)
+
+# Allocate 10 pointer slots (80 bytes on 64-bit)
+handles = c_alloc_array("pointer", 10)
+```
+
+### c_alloc_floats32(count:int) -> pointer
+
+Helper for `c_alloc_array("float32", count)`.
+
+```za
+buf = c_alloc_floats32(100)  # 400 bytes for 100 float32s
+```
+
+### c_alloc_floats64(count:int) -> pointer
+
+Helper for `c_alloc_array("float64", count)`.
+
+```za
+buf = c_alloc_floats64(100)  # 800 bytes for 100 float64s
+```
+
+### c_alloc_uninit(size:int) -> pointer
+
+Allocates a raw byte buffer **without zero-initialization**. The caller must write every byte before reading, or behavior is undefined (garbage data). Useful for performance-critical scratch buffers that are completely overwritten before use.
+
+```za
+# 10 KB scratch buffer — we will write all of it before reading
+scratch = c_alloc_uninit(10240)
+# ... write every byte ...
+```
+
+### c_alloc_array_uninit(type_string:string, count:int) -> pointer
+
+Typed variant of `c_alloc_uninit` — allocates raw (non-zeroed) memory for `count` scalar elements. Same validation rules as `c_alloc_array`.
+
+```za
+# 100 float32s — will be fully written before any read
+verts = c_alloc_array_uninit("float32", 100)
+```
+
+⚠️ **Warning:** Only use `_uninit` variants when you are certain every byte will be written before it is read. Otherwise, use the standard `c_alloc` / `c_alloc_array` functions which zero-initialize.
+
+### c_array_get_float32(ptr:pointer, index:int) -> float
+
+Reads a float32 at element `index` (offset = `index * 4`).
+
+```za
+buf = c_alloc_floats32(10)
+c_array_set_float32(buf, 5, 3.14)
+value = c_array_get_float32(buf, 5)  # ~3.14
+```
+
+### c_array_set_float32(ptr:pointer, index:int, value:float)
+
+Writes a float32 at element `index` (offset = `index * 4`).
+
+### c_array_get_float64(ptr:pointer, index:int) -> float
+
+Reads a float64 at element `index` (offset = `index * 8`).
+
+```za
+buf = c_alloc_floats64(10)
+c_array_set_float64(buf, 3, 2.718281828)
+value = c_array_get_float64(buf, 3)
+```
+
+### c_array_set_float64(ptr:pointer, index:int, value:float)
+
+Writes a float64 at element `index` (offset = `index * 8`).
+
 ### Struct Allocation and Marshaling Functions
 
 #### c_alloc_struct(struct_type_name:string) -> pointer

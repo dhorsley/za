@@ -1,0 +1,184 @@
+#!/usr/bin/env za
+
+println "Testing c_alloc_array and helper functions..."
+
+# Test Group 1: Basic float32 allocation
+println "\nGroup 1: c_alloc_array('float32', 10)"
+buf32 = c_alloc_array("float32", 10)
+on c_ptr_is_null(buf32) do exit 1, "ERROR: float32 allocation failed"
+
+# Write/read at various offsets
+c_set_float(buf32, 0, 1.0)
+c_set_float(buf32, 4, 2.0)
+c_set_float(buf32, 36, 3.14)
+
+v0 = c_get_float(buf32, 0)
+v1 = c_get_float(buf32, 4)
+v9 = c_get_float(buf32, 36)
+
+if v0 == 1.0 && v1 == 2.0
+    diff = v9 - 3.14
+    if diff < 0.0001 && diff > -0.0001
+        println "  ✓ float32 allocation and offset access works"
+    else
+        println "  ✗ float32 offset 36 failed (expected 3.14, got " + string(v9) + ")"
+    endif
+else
+    println "  ✗ float32 basic access failed"
+endif
+
+# Test Group 2: Basic float64 allocation
+println "\nGroup 2: c_alloc_array('float64', 10)"
+buf64 = c_alloc_array("float64", 10)
+on c_ptr_is_null(buf64) do exit 1, "ERROR: float64 allocation failed"
+
+c_set_double(buf64, 0, 1.0)
+c_set_double(buf64, 8, 2.0)
+c_set_double(buf64, 72, 3.1415926535)
+
+v0d = c_get_double(buf64, 0)
+v1d = c_get_double(buf64, 8)
+v9d = c_get_double(buf64, 72)
+
+if v0d == 1.0 && v1d == 2.0
+    diff = v9d - 3.1415926535
+    if diff < 0.0000001 && diff > -0.0000001
+        println "  ✓ float64 allocation and offset access works"
+    else
+        println "  ✗ float64 offset 72 failed (expected 3.1415926535, got " + string(v9d) + ")"
+    endif
+else
+    println "  ✗ float64 basic access failed"
+endif
+
+# Test Group 3: int allocation
+println "\nGroup 3: c_alloc_array('int', 10)"
+bufi = c_alloc_array("int", 10)
+on c_ptr_is_null(bufi) do exit 1, "ERROR: int allocation failed"
+
+c_set_int32(bufi, 0, -2147483648)
+c_set_int32(bufi, 4, 0)
+c_set_int32(bufi, 36, 2147483647)
+
+vi0 = c_get_int32(bufi, 0)
+vi1 = c_get_int32(bufi, 4)
+vi9 = c_get_int32(bufi, 36)
+
+if vi0 == -2147483648 && vi1 == 0 && vi9 == 2147483647
+    println "  ✓ int allocation and offset access works"
+else
+    println "  ✗ int access failed (" + string(vi0) + ", " + string(vi1) + ", " + string(vi9) + ")"
+endif
+
+# Test Group 4: pointer allocation
+println "\nGroup 4: c_alloc_array('pointer', 10)"
+bufptr = c_alloc_array("pointer", 10)
+on c_ptr_is_null(bufptr) do exit 1, "ERROR: pointer allocation failed"
+
+# Write opaque addresses as uint64 at pointer-sized slots
+c_set_uint64(bufptr, 0, 0x12345678)
+c_set_uint64(bufptr, 72, 0xDEADBEEF)
+
+vp0 = c_get_uint64(bufptr, 0)
+vp9 = c_get_uint64(bufptr, 72)
+
+if vp0 == 0x12345678 && vp9 == 0xDEADBEEF
+    println "  ✓ pointer allocation and slot access works"
+else
+    println "  ✗ pointer access failed (" + string(vp0) + ", " + string(vp9) + ")"
+endif
+
+# Test Group 5: Helper functions
+println "\nGroup 5: c_alloc_floats32 and c_alloc_floats64"
+h32 = c_alloc_floats32(10)
+h64 = c_alloc_floats64(10)
+on c_ptr_is_null(h32) do exit 1, "ERROR: c_alloc_floats32 failed"
+on c_ptr_is_null(h64) do exit 1, "ERROR: c_alloc_floats64 failed"
+
+c_set_float(h32, 0, 1.23)
+c_set_double(h64, 0, 4.56)
+
+hv32 = c_get_float(h32, 0)
+hv64 = c_get_double(h64, 0)
+
+d32 = hv32 - 1.23
+d64 = hv64 - 4.56
+
+if d32 < 0.0001 && d32 > -0.0001 && d64 < 0.0001 && d64 > -0.0001
+    println "  ✓ Helper functions produce correct allocations"
+else
+    println "  ✗ Helper functions failed"
+endif
+
+# Test Group 6: Index-based accessors
+println "\nGroup 6: c_array_set/get_float32/64"
+abuf = c_alloc_floats32(20)
+c_array_set_float32(abuf, 0, 1.1)
+c_array_set_float32(abuf, 5, 2.2)
+c_array_set_float32(abuf, 19, 3.3)
+
+av0 = c_array_get_float32(abuf, 0)
+av5 = c_array_get_float32(abuf, 5)
+av19 = c_array_get_float32(abuf, 19)
+
+dav0 = av0 - 1.1
+dav5 = av5 - 2.2
+dav19 = av19 - 3.3
+
+if dav0 < 0.001 && dav0 > -0.001 && dav5 < 0.001 && dav5 > -0.001 && dav19 < 0.001 && dav19 > -0.001
+    println "  ✓ c_array_set_float32 / c_array_get_float32 works"
+else
+    println "  ✗ float32 index accessors failed"
+endif
+
+adbuf = c_alloc_floats64(20)
+c_array_set_float64(adbuf, 0, 1.1111111111)
+c_array_set_float64(adbuf, 5, 2.2222222222)
+c_array_set_float64(adbuf, 19, 3.3333333333)
+
+adv0 = c_array_get_float64(adbuf, 0)
+adv5 = c_array_get_float64(adbuf, 5)
+adv19 = c_array_get_float64(adbuf, 19)
+
+d0 = adv0 - 1.1111111111
+d5 = adv5 - 2.2222222222
+d19 = adv19 - 3.3333333333
+
+if d0 < 0.0000001 && d0 > -0.0000001 && d5 < 0.0000001 && d5 > -0.0000001 && d19 < 0.0000001 && d19 > -0.0000001
+    println "  ✓ c_array_set_float64 / c_array_get_float64 works"
+else
+    println "  ✗ float64 index accessors failed"
+endif
+
+# Test Group 7: Edge cases
+println "\nGroup 7: Edge cases"
+
+# Zero count
+zbuf = c_alloc_array("float32", 0)
+if !c_ptr_is_null(zbuf)
+    println "  ✓ Zero-count allocation returns non-null pointer"
+else
+    println "  ✗ Zero-count allocation returned null"
+endif
+
+# Null pointer safety
+c_array_set_float32(c_null(), 0, 1.0)
+r = c_array_get_float32(c_null(), 0)
+if r == 0.0
+    println "  ✓ Null pointer operations handled safely"
+else
+    println "  ✗ Null pointer operation unexpected result: " + string(r)
+endif
+
+println "  (Error-case tests omitted — c_alloc_array errors would halt the script)"
+
+c_free(buf32)
+c_free(buf64)
+c_free(bufi)
+c_free(bufptr)
+c_free(h32)
+c_free(h64)
+c_free(abuf)
+c_free(adbuf)
+
+println "\n✅ All c_alloc_array tests completed!"

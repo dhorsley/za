@@ -60,6 +60,22 @@ library changes
       context bindings) where the scheduler may otherwise migrate the
       routine/FFI call to a different OS thread between calls.
 
+  * Typed array allocators and index-based accessors (FFI)
+    - `c_alloc_array(type_string, count)` — allocate a zeroed buffer for `count`
+      elements of any scalar type (`float32`, `float64`, `int`, `uint8`,
+      `pointer`, etc.). Rejects non-scalar types (string, slices, arrays).
+    - `c_alloc_floats32(count)` / `c_alloc_floats64(count)` — helpers that wrap
+      `c_alloc_array("float32", count)` and `c_alloc_array("float64", count)`.
+    - `c_array_get_float32(ptr, index)` / `c_array_set_float32(ptr, index, value)`
+      — element-wise float32 read/write (offset = index * 4).
+    - `c_array_get_float64(ptr, index)` / `c_array_set_float64(ptr, index, value)`
+      — element-wise float64 read/write (offset = index * 8).
+    - `c_alloc_uninit(size)` / `c_alloc_array_uninit(type_string, count)` — raw
+      allocation variants that skip `memset` zeroing for performance-critical
+      buffers that are completely overwritten before use.
+    - `Typemap["float32"]` and `Typemap["float64"]` added for type resolution.
+    - test coverage: `za_tests/ffi/test_c_alloc_array.za`
+
 
 1.2.3
 =====

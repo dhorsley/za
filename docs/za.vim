@@ -689,7 +689,16 @@ syntax match unsorted_functions "\(^|.\|\s*\)ini_write\s*("he=e-1
 
 
 syntax match c_functions "\(^|.\|\s*\)c_alloc\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_array\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_array_uninit\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_floats32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_floats64\s*("he=e-1
 syntax match c_functions "\(^|.\|\s*\)c_alloc_struct\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_alloc_uninit\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_array_get_float32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_array_get_float64\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_array_set_float32\s*("he=e-1
+syntax match c_functions "\(^|.\|\s*\)c_array_set_float64\s*("he=e-1
 syntax match c_functions "\(^|.\|\s*\)c_as_function_ptr\s*("he=e-1
 syntax match c_functions "\(^|.\|\s*\)c_call_function_ptr\s*("he=e-1
 syntax match c_functions "\(^|.\|\s*\)c_fclose\s*("he=e-1

@@ -628,7 +628,7 @@ func CPtrIsNull(p *CPointerValue) bool {
     return p == nil || p.Ptr == nil
 }
 
-// CAllocBytes allocates a byte buffer and returns it as a pointer
+// CAllocBytes allocates a zero-initialized byte buffer and returns it as a pointer
 func CAllocBytes(size int) *CPointerValue {
     ptr := C.malloc(C.size_t(size))
     if ptr == nil {
@@ -637,6 +637,17 @@ func CAllocBytes(size int) *CPointerValue {
     // Zero the memory
     C.memset(ptr, 0, C.size_t(size))
     return NewCPointer(ptr, "byte_buffer")
+}
+
+// CAllocBytesUninit allocates a raw byte buffer (NOT zeroed) and returns it as a pointer.
+// The caller must write every byte before reading. Useful for performance-critical
+// buffers that are completely overwritten before use.
+func CAllocBytesUninit(size int) *CPointerValue {
+    ptr := C.malloc(C.size_t(size))
+    if ptr == nil {
+        return NullPointer()
+    }
+    return NewCPointer(ptr, "byte_buffer_uninit")
 }
 
 // CFreePtr frees a pointer allocated by CAllocBytes

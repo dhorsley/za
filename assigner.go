@@ -80,6 +80,7 @@ func init() {
     var tu64 uint64
     var ti int
     var ti64 int64
+    var tf32 float32
     var tf64 float64
     var ts string
     var tbi *big.Int
@@ -113,6 +114,8 @@ func init() {
     Typemap["byte"] = reflect.TypeOf(tu8)
     Typemap["int"] = reflect.TypeOf(ti)
     Typemap["int64"] = reflect.TypeOf(ti64)
+    Typemap["float32"] = reflect.TypeOf(tf32)
+    Typemap["float64"] = reflect.TypeOf(tf64)
     Typemap["float"] = reflect.TypeOf(tf64)
     Typemap["bigi"] = reflect.TypeOf(tbi)
     Typemap["bigf"] = reflect.TypeOf(tbf)

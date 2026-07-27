@@ -8,6 +8,7 @@ import (
     "os/exec"
     "path/filepath"
     "plugin"
+    "reflect"
     "regexp"
     "runtime"
     "strconv"
@@ -1072,7 +1073,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1592,7 +1593,121 @@ func buildFfiLib() {
         }
         return nil, fmt.Errorf("c_ptr_to_string: argument must be a C pointer")
     }
+
+    // ---- Typed array allocators and index-based accessors ----
+    slhelp["c_alloc_array"] = LibHelp{in: "type_string,count", out: "cpointer", action: "Allocates a zero-initialized buffer for 'count' elements of the scalar type named by type_string."}
+    stdlib["c_alloc_array"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_array", args, 1, "2", "string", "int"); !ok {
+            return nil, err
+        }
+        return cAllocArray(args[0].(string), args[1].(int), true)
+    }
+
+    slhelp["c_alloc_floats32"] = LibHelp{in: "count", out: "cpointer", action: "Allocates a zero-initialized buffer for 'count' float32 elements."}
+    stdlib["c_alloc_floats32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_floats32", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        return cAllocArray("float32", args[0].(int), true)
+    }
+
+    slhelp["c_alloc_floats64"] = LibHelp{in: "count", out: "cpointer", action: "Allocates a zero-initialized buffer for 'count' float64 elements."}
+    stdlib["c_alloc_floats64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_floats64", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        return cAllocArray("float64", args[0].(int), true)
+    }
+
+    slhelp["c_alloc_uninit"] = LibHelp{in: "size", out: "cpointer", action: "Allocates a raw byte buffer (NOT zero-initialized). Caller must write every byte before reading."}
+    stdlib["c_alloc_uninit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_uninit", args, 1, "1", "int"); !ok {
+            return nil, err
+        }
+        return CAllocBytesUninit(args[0].(int)), nil
+    }
+
+    slhelp["c_alloc_array_uninit"] = LibHelp{in: "type_string,count", out: "cpointer", action: "Allocates a raw buffer (NOT zero-initialized) for 'count' scalar elements. Caller must write every element before reading."}
+    stdlib["c_alloc_array_uninit"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_alloc_array_uninit", args, 1, "2", "string", "int"); !ok {
+            return nil, err
+        }
+        return cAllocArray(args[0].(string), args[1].(int), false)
+    }
+
+    slhelp["c_array_get_float32"] = LibHelp{in: "ptr,index", out: "float", action: "Reads a float32 at the given element index in a buffer."}
+    stdlib["c_array_get_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_get_float32", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetFloat(p, args[1].(int)*4), nil
+        }
+        return 0.0, nil
+    }
+
+    slhelp["c_array_set_float32"] = LibHelp{in: "ptr,index,value", out: "", action: "Writes a float32 at the given element index in a buffer."}
+    stdlib["c_array_set_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_set_float32", args, 1, "3", "any", "int", "float"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetFloat(p, args[1].(int)*4, args[2].(float64))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_array_get_float64"] = LibHelp{in: "ptr,index", out: "float", action: "Reads a float64 at the given element index in a buffer."}
+    stdlib["c_array_get_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_get_float64", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetDouble(p, args[1].(int)*8), nil
+        }
+        return 0.0, nil
+    }
+
+    slhelp["c_array_set_float64"] = LibHelp{in: "ptr,index,value", out: "", action: "Writes a float64 at the given element index in a buffer."}
+    stdlib["c_array_set_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_set_float64", args, 1, "3", "any", "int", "float"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetDouble(p, args[1].(int)*8, args[2].(float64))
+        }
+        return nil, nil
+    }
 }
+
+// cAllocArray validates a scalar type string and allocates a zero-initialized buffer.
+func cAllocArray(typeStr string, count int, zero bool) (*CPointerValue, error) {
+    if count < 0 {
+        return NullPointer(), fmt.Errorf("c_alloc_array: count must be >= 0, got %d", count)
+    }
+    if strings.ContainsAny(typeStr, "[]") {
+        return NullPointer(), fmt.Errorf("c_alloc_array: type must be a scalar (no brackets), got '%s'", typeStr)
+    }
+    typ, exists := Typemap[typeStr]
+    if !exists {
+        return NullPointer(), fmt.Errorf("c_alloc_array: unknown type '%s'", typeStr)
+    }
+    switch typ.Kind() {
+    case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+        reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+        reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128,
+        reflect.Ptr, reflect.Uintptr:
+        // scalar or pointer — allowed
+    default:
+        return NullPointer(), fmt.Errorf("c_alloc_array: type '%s' (%v) is not a scalar", typeStr, typ.Kind())
+    }
+    elemSize := int(typ.Size())
+    if zero {
+        return CAllocBytes(count * elemSize), nil
+    }
+    return CAllocBytesUninit(count * elemSize), nil
+}
+
 // FunctionSignature represents a parsed C function signature from man pages
 type FunctionSignature struct {
     ReturnType         CType
