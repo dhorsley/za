@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/particles.za — Particle system
 ------------------------------------
 
 CPU-updated particle positions uploaded to dynamic VBOs each frame.
 Demonstrates za persistent C buffers and glBufferSubData.
-'
+"
 
 namespace main
 

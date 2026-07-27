@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/models.za — OBJ/MTL parsing and VBO factory
 -----------------------------------------------
 
 Converts Wavefront OBJ + MTL files into OpenGL VBOs. Demonstrates
 za string manipulation and C memory buffer patterns.
-'
+"
 
 namespace main
 

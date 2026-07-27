@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/utils.za — Low-level helpers, RNG, GL one-shots, shader compilation
 ------------------------------------------------------------------------
 
 This module contains utility functions with no game-specific state.
 They demonstrate za FFI to OpenGL and basic math patterns.
-'
+"
 
 namespace main
 

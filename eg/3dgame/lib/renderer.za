@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/renderer.za — Scene rendering, instancing, sky, culling
 -----------------------------------------------------------
 
 The master draw loop and all per-frame object rendering.
 Demonstrates za arrays as instance data for OpenGL instancing.
-'
+"
 
 namespace main
 

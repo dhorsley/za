@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/world.za — World generation, collision, surface queries
 -----------------------------------------------------------
 
 Procedural town layout, tree/grass/rock placement, and collision.
 All functions write to global arrays declared in the main file.
-'
+"
 
 namespace main
 

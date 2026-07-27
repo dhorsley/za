@@ -38,7 +38,7 @@ module "lib/ui.za" as ui
 
 # 3D Demo - VBO Batched Vertex Version
 
-doc '
+doc "
 3D Town Tech Demo for the Za Scripting Language
 ================================================
 
@@ -100,7 +100,7 @@ Attribution is not required but we acknowledge the authors:
   - FBX2glTF by Facebook/Meta — BSD-3-Clause, used for conversion.
 
 Full asset documentation: see MODELS.md and CREDITS in the project root.
-'
+"
 
 input res_string optarg 1
 # input future_arg_2 optarg 2   # reserved for future use

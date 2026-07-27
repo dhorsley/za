@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/ui.za — HUD panels, text rendering, minimap, save/load
 ----------------------------------------------------------
 
 Draggable/resizable panel framework and a classic radar minimap.
 Demonstrates za string formatting and file I/O for persistence.
-'
+"
 
 namespace main
 

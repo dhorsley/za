@@ -1,10 +1,10 @@
-doc '
+doc "
 lib/geometry.za — World geometry VBO builders
 ---------------------------------------------
 
 Pre-computes and uploads terrain, roads, water, beach, and grass
 geometry to the GPU. All functions here run once at init time.
-'
+"
 
 namespace main
 
