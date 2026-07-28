@@ -41,6 +41,30 @@ PREREQUISITES
 For debian, redhat and similar builds as well as FreeBSD and similar you
 should be fine generating a 'normal' glibc build.
 
+Recent ubuntu distributions (and probably others) have deprecated/removed pcre3(-dev) support.
+For those you may also need to install it from source. Example installation from GRbit/go-pcre repo page:
+'
+wget https://sourceforge.net/projects/pcre/files/pcre/8.45/pcre-8.45.tar.gz/download \
+    -O pcre-8.45.tar.gz
+
+tar xf pcre-8.45.tar.gz
+cd pcre-8.45
+
+./configure \
+    --prefix=/usr/local \
+    --enable-utf \
+    --enable-unicode-properties \
+    --enable-jit \
+    --enable-shared
+
+make -j"$(nproc)"
+sudo make install
+sudo ldconfig
+'
+
+We will eventually either remove pcre3 support (and alias the stdlib calls to the equivalent built-in go
+regex calls if go regex improves performance) or will migrate to pcre2 without the GRbit module/helpers.
+ 
 
 For Debian, Ubuntu, Redhat and similar:
 ---------------------------------------
