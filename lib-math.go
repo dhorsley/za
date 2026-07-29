@@ -552,12 +552,25 @@ func buildMathLib() {
     slhelp["randf"] = LibHelp{in: "?number", out: "float", action: "Generate a random float. With no argument, returns a float between 0 and 1. With a number argument, returns a float between 0 and that value."}
     stdlib["randf"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("randf", args, 2,
-            "1", "int",
+            "1", "number",
             "0"); !ok {
             return nil, err
         }
         if len(args) == 1 {
-            return rand.Float64() * float64(args[0].(int)), nil
+            var scale float64
+            switch v := args[0].(type) {
+            case int:
+                scale = float64(v)
+            case int64:
+                scale = float64(v)
+            case uint:
+                scale = float64(v)
+            case uint64:
+                scale = float64(v)
+            case float64:
+                scale = v
+            }
+            return rand.Float64() * scale, nil
         }
         return rand.Float64(), nil
     }
