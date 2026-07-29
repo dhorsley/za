@@ -6861,6 +6861,35 @@ Use cases: filling interleaved OpenGL VBOs, particle buffers, instance attribute
 
 Same as `c_array_bulk_set_float32` but writes float64 values (offset = `index * 8`).
 
+### c_array_bulk_get_float32(ptr:pointer, start_index:int, count:int) -> []float
+
+Reads multiple float32 values starting at element `start_index` and returns them as a Za array.
+This is the read counterpart to `c_array_bulk_set_float32`. It performs a single FFI call to
+read `count` consecutive float32 elements, then returns them as a Za array for native indexing.
+
+```za
+buf = c_alloc_floats32(16)
+c_array_bulk_set_float32(buf, 0, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+                               9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0])
+
+# Read back all 16 values in one call
+vals = c_array_bulk_get_float32(buf, 0, 16)
+println vals[0]   # 1.0
+println vals[15]  # 16.0
+
+# Read a subset starting at element 4, length 3
+subset = c_array_bulk_get_float32(buf, 4, 3)
+println subset  # [5.0, 6.0, 7.0]
+```
+
+Use cases: reading back OpenGL matrices (MVP, projection, modelview), frustum planes,
+instance attribute arrays, particle buffers, and any other C-side float data that needs
+to be accessed from Za scripts.
+
+### c_array_bulk_get_float64(ptr:pointer, start_index:int, count:int) -> []float
+
+Same as `c_array_bulk_get_float32` but reads float64 values (offset = `index * 8`).
+
 ### Struct Allocation and Marshaling Functions
 
 #### c_alloc_struct(struct_type_name:string) -> pointer

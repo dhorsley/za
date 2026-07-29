@@ -1732,6 +1732,48 @@ func buildFfiLib() {
         }
         return nil, nil
     }
+
+    slhelp["c_array_bulk_get_float32"] = LibHelp{in: "ptr,start_index,count", out: "[]float", action: "Reads multiple float32 values starting at the given element index and returns them as a Za array."}
+    stdlib["c_array_bulk_get_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_bulk_get_float32", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        p, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, nil
+        }
+        start := args[1].(int)
+        count := args[2].(int)
+        if count < 0 {
+            return nil, fmt.Errorf("c_array_bulk_get_float32: count must be non-negative")
+        }
+        result := make([]any, count)
+        for i := 0; i < count; i++ {
+            result[i] = CGetFloat(p, (start+i)*4)
+        }
+        return result, nil
+    }
+
+    slhelp["c_array_bulk_get_float64"] = LibHelp{in: "ptr,start_index,count", out: "[]float", action: "Reads multiple float64 values starting at the given element index and returns them as a Za array."}
+    stdlib["c_array_bulk_get_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_bulk_get_float64", args, 1, "3", "any", "int", "int"); !ok {
+            return nil, err
+        }
+        p, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, nil
+        }
+        start := args[1].(int)
+        count := args[2].(int)
+        if count < 0 {
+            return nil, fmt.Errorf("c_array_bulk_get_float64: count must be non-negative")
+        }
+        result := make([]any, count)
+        for i := 0; i < count; i++ {
+            result[i] = CGetDouble(p, (start+i)*8)
+        }
+        return result, nil
+    }
 }
 
 // cAllocArray validates a scalar type string and allocates a zero-initialized buffer.

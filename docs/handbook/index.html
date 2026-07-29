@@ -6437,6 +6437,34 @@ id="c_array_bulk_set_float64ptrpointer-start_indexint-valuesany">c_array_bulk_se
 start_index:int, values:[]any)</h3>
 <p>Same as <code>c_array_bulk_set_float32</code> but writes float64
 values (offset = <code>index * 8</code>).</p>
+<h3
+id="c_array_bulk_get_float32ptrpointer-start_indexint-countint---float">c_array_bulk_get_float32(ptr:pointer,
+start_index:int, count:int) -&gt; []float</h3>
+<p>Reads multiple float32 values starting at element
+<code>start_index</code> and returns them as a Za array. This is the
+read counterpart to <code>c_array_bulk_set_float32</code>. It performs a
+single FFI call to read <code>count</code> consecutive float32 elements,
+then returns them as a Za array for native indexing.</p>
+<pre class="za"><code>buf = c_alloc_floats32(16)
+c_array_bulk_set_float32(buf, 0, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+                               9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0])
+
+# Read back all 16 values in one call
+vals = c_array_bulk_get_float32(buf, 0, 16)
+println vals[0]   # 1.0
+println vals[15]  # 16.0
+
+# Read a subset starting at element 4, length 3
+subset = c_array_bulk_get_float32(buf, 4, 3)
+println subset  # [5.0, 6.0, 7.0]</code></pre>
+<p>Use cases: reading back OpenGL matrices (MVP, projection, modelview),
+frustum planes, instance attribute arrays, particle buffers, and any
+other C-side float data that needs to be accessed from Za scripts.</p>
+<h3
+id="c_array_bulk_get_float64ptrpointer-start_indexint-countint---float">c_array_bulk_get_float64(ptr:pointer,
+start_index:int, count:int) -&gt; []float</h3>
+<p>Same as <code>c_array_bulk_get_float32</code> but reads float64
+values (offset = <code>index * 8</code>).</p>
 <h3 id="struct-allocation-and-marshaling-functions">Struct Allocation
 and Marshaling Functions</h3>
 <h4
@@ -8380,8 +8408,8 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 <li>Useful for minimal builds or restricted environments</li>
 </ul>
 <p><strong>Build flags:</strong></p>
-<div class="sourceCode" id="cb364"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb364-1"><a href="#cb364-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+<div class="sourceCode" id="cb365"><pre
+class="sourceCode go"><code class="sourceCode go"><span id="cb365-1"><a href="#cb365-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>

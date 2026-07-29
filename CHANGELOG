@@ -85,6 +85,12 @@ library changes
       - batch write of multiple float values from a Za array in a single FFI call.
       - Reduces per-element overhead for large interleaved buffers (e.g. OpenGL VBOs).
 
+    - `c_array_bulk_get_float32(ptr, start_index, count)` / `c_array_bulk_get_float64(ptr, start_index, count)`
+      - batch read of multiple float values from C memory into a Za array in a single FFI call.
+      - Complements the existing bulk_set helpers; essential for reducing FFI boundary
+        crossings when reading back computed matrices, frustum planes, or instance data.
+      - Returns a Za array of length `count` containing float values.
+
     - `c_alloc_uninit(size)` / `c_alloc_array_uninit(type_string, count)`
       - allocation variants that skip `memset` zeroing for performance-critical
          buffers that are completely overwritten before use.

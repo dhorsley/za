@@ -170,6 +170,73 @@ else
     println "  ✗ Null pointer operation unexpected result: " + string(r)
 endif
 
+# Test Group 8: Bulk get operations
+println "\nGroup 8: c_array_bulk_get_float32 / c_array_bulk_get_float64"
+
+bg32 = c_alloc_floats32(8)
+c_array_bulk_set_float32(bg32, 0, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+
+# Read all 8 back
+all32 = c_array_bulk_get_float32(bg32, 0, 8)
+if all32.len == 8 && all32[0] == 1.0 && all32[3] == 4.0 && all32[7] == 8.0
+    println "  ✓ c_array_bulk_get_float32 reads full array correctly"
+else
+    println "  ✗ c_array_bulk_get_float32 full read failed: " + string(all32)
+endif
+
+# Read subset starting at offset 3, count 4
+sub32 = c_array_bulk_get_float32(bg32, 3, 4)
+if sub32.len == 4 && sub32[0] == 4.0 && sub32[1] == 5.0 && sub32[2] == 6.0 && sub32[3] == 7.0
+    println "  ✓ c_array_bulk_get_float32 reads subset correctly"
+else
+    println "  ✗ c_array_bulk_get_float32 subset read failed: " + string(sub32)
+endif
+
+# Read zero count
+empty32 = c_array_bulk_get_float32(bg32, 5, 0)
+if empty32.len == 0
+    println "  ✓ c_array_bulk_get_float32 zero-count returns empty array"
+else
+    println "  ✗ c_array_bulk_get_float32 zero-count failed"
+endif
+
+# Read from null pointer
+null32 = c_array_bulk_get_float32(c_null(), 0, 3)
+if null32.len == 3 && null32[0] == 0.0 && null32[1] == 0.0 && null32[2] == 0.0
+    println "  ✓ c_array_bulk_get_float32 handles null pointer safely"
+else
+    println "  ✗ c_array_bulk_get_float32 null pointer failed"
+endif
+
+bg64 = c_alloc_floats64(5)
+c_array_bulk_set_float64(bg64, 0, [1.1, 2.2, 3.3, 4.4, 5.5])
+
+all64 = c_array_bulk_get_float64(bg64, 0, 5)
+if all64.len == 5
+    d0 = all64[0] - 1.1
+    d4 = all64[4] - 5.5
+    if d0 < 0.0000001 && d0 > -0.0000001 && d4 < 0.0000001 && d4 > -0.0000001
+        println "  ✓ c_array_bulk_get_float64 reads full array correctly"
+    else
+        println "  ✗ c_array_bulk_get_float64 precision failed"
+    endif
+else
+    println "  ✗ c_array_bulk_get_float64 full read failed"
+endif
+
+sub64 = c_array_bulk_get_float64(bg64, 2, 2)
+if sub64.len == 2
+    d2 = sub64[0] - 3.3
+    d3 = sub64[1] - 4.4
+    if d2 < 0.0000001 && d2 > -0.0000001 && d3 < 0.0000001 && d3 > -0.0000001
+        println "  ✓ c_array_bulk_get_float64 reads subset correctly"
+    else
+        println "  ✗ c_array_bulk_get_float64 subset precision failed"
+    endif
+else
+    println "  ✗ c_array_bulk_get_float64 subset read failed"
+endif
+
 println "  (Error-case tests omitted — c_alloc_array errors would halt the script)"
 
 c_free(buf32)
@@ -180,5 +247,7 @@ c_free(h32)
 c_free(h64)
 c_free(abuf)
 c_free(adbuf)
+c_free(bg32)
+c_free(bg64)
 
 println "\n✅ All c_alloc_array tests completed!"

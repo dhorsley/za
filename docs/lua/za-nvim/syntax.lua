@@ -796,6 +796,8 @@ local za_functions = {
     "c_array_get_float64",
     "c_array_set_float32",
     "c_array_set_float64",
+    "c_array_bulk_get_float32",
+    "c_array_bulk_get_float64",
     "c_array_bulk_set_float32",
     "c_array_bulk_set_float64",
     "c_set_uint16",
