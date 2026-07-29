@@ -1062,7 +1062,19 @@ func buildArrayLib() {
 
         // Convert to [][]any using same pattern as matmul
         var rows [][]any
-        if slice, ok := matrix.([]interface{}); ok {
+        if slice, ok := matrix.([][]float64); ok {
+            // Direct case: [][]float64
+            rows = make([][]any, len(slice))
+            for i, val := range slice {
+                rows[i] = make([]any, len(val))
+                for j, subVal := range val {
+                    rows[i][j] = subVal
+                }
+            }
+        } else if slice, ok := matrix.([][]any); ok {
+            // Direct case: [][]any
+            rows = slice
+        } else if slice, ok := matrix.([]interface{}); ok {
             // Convert []interface{} to [][]interface{}
             rows = make([][]any, len(slice))
             for i, val := range slice {
@@ -1129,7 +1141,16 @@ func buildArrayLib() {
 
         // Convert to [][]any using same pattern as matmul
         var rows [][]any
-        if slice, ok := matrix.([][]interface{}); ok {
+        if slice, ok := matrix.([][]float64); ok {
+            // Direct case: [][]float64
+            rows = make([][]any, len(slice))
+            for i, val := range slice {
+                rows[i] = make([]any, len(val))
+                for j, subVal := range val {
+                    rows[i][j] = subVal
+                }
+            }
+        } else if slice, ok := matrix.([][]interface{}); ok {
             // Direct case: [][]interface{}
             rows = make([][]any, len(slice))
             for i, val := range slice {
@@ -1223,7 +1244,19 @@ func buildArrayLib() {
 
         // Convert to [][]any using same pattern as matmul
         var rows [][]any
-        if slice, ok := matrix.([]interface{}); ok {
+        if slice, ok := matrix.([][]float64); ok {
+            // Direct case: [][]float64
+            rows = make([][]any, len(slice))
+            for i, val := range slice {
+                rows[i] = make([]any, len(val))
+                for j, subVal := range val {
+                    rows[i][j] = subVal
+                }
+            }
+        } else if slice, ok := matrix.([][]any); ok {
+            // Direct case: [][]any
+            rows = slice
+        } else if slice, ok := matrix.([]interface{}); ok {
             // Convert []interface{} to [][]interface{}
             rows = make([][]any, len(slice))
             for i, val := range slice {
@@ -1379,7 +1412,16 @@ func buildArrayLib() {
 
         // Convert to [][]any using same pattern as matmul
         var rows [][]any
-        if slice, ok := matrix.([][]interface{}); ok {
+        if slice, ok := matrix.([][]float64); ok {
+            // Direct case: [][]float64
+            rows = make([][]any, len(slice))
+            for i, val := range slice {
+                rows[i] = make([]any, len(val))
+                for j, subVal := range val {
+                    rows[i][j] = subVal
+                }
+            }
+        } else if slice, ok := matrix.([][]interface{}); ok {
             // Direct case: [][]interface{}
             rows = make([][]any, len(slice))
             for i, val := range slice {

@@ -662,9 +662,9 @@ func buildMathLib() {
         }
 
         // Create result matrix
-        result := make([][]float64, rowsA)
+        result := make([][]any, rowsA)
         for i := range result {
-            result[i] = make([]float64, colsB)
+            result[i] = make([]any, colsB)
         }
 
         // Perform matrix multiplication
