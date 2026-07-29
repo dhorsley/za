@@ -7701,6 +7701,13 @@ tco_reentry:
             ifDepth += 1
             parser.ifDepth = ifDepth
 
+            // Ensure ifMatchedStack has an entry for this nesting level and reset it.
+            // Index 0 corresponds to depth 1, index 1 to depth 2, etc.
+            if int(ifDepth) > len(parser.ifMatchedStack) {
+                parser.ifMatchedStack = append(parser.ifMatchedStack, make([]bool, int(ifDepth)-len(parser.ifMatchedStack))...)
+            }
+            parser.ifMatchedStack[ifDepth-1] = false
+
             // lookahead
             var elsefound, endfound, er bool
             var elsedistance, enddistance int16
@@ -7735,7 +7742,8 @@ tco_reentry:
             }
 
             if isBool(expr.(bool)) && expr.(bool) {
-                // was true
+                // Condition true — mark this nesting level as matched.
+                parser.ifMatchedStack[ifDepth-1] = true
                 break
             } else {
                 if elsefound && (elsedistance < enddistance) {
@@ -7762,6 +7770,16 @@ tco_reentry:
 
             // --- NEW: else-if support ---
             if inbound.TokenCount > 1 && inbound.Tokens[1].tokType == C_If {
+
+                // If a previous IF or ELSE IF already matched, skip this entire else-if block
+                if int(ifDepth) <= len(parser.ifMatchedStack) && parser.ifMatchedStack[ifDepth-1] {
+                    // Jump so the next loop iteration lands ON the matching ENDIF
+                    // (the loop's own +1 will execute it, which resets the stack entry)
+                    _, endDist, _ := lookahead(source_base, parser.pc+1, 1, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
+                    parser.pc += endDist
+                    break
+                }
+
                 // Evaluate the else-if condition
                 expr, err = evalExprOrVM(inbound.bc, inbound.Tokens[2:], parser, ifs, ident, inbound.SourceLine, "else-if-condition")
                 if err != nil {
@@ -7771,7 +7789,11 @@ tco_reentry:
                 }
 
                 if isBool(expr.(bool)) && expr.(bool) {
-                    // Condition true: fall through and execute the body on the next line
+                    // Condition true: mark this nesting level as matched and fall through to execute the body
+                    if int(ifDepth) > len(parser.ifMatchedStack) {
+                        parser.ifMatchedStack = append(parser.ifMatchedStack, make([]bool, int(ifDepth)-len(parser.ifMatchedStack))...)
+                    }
+                    parser.ifMatchedStack[ifDepth-1] = true
                     break
                 }
 
@@ -7811,6 +7833,19 @@ tco_reentry:
             }
             // --- END NEW ---
 
+            // If a previous IF or ELSE IF already matched, plain ELSE should also skip
+            if int(ifDepth) <= len(parser.ifMatchedStack) && parser.ifMatchedStack[ifDepth-1] {
+                endfound, enddistance, _ := lookahead(source_base, parser.pc, 1, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
+                if endfound {
+                    // Jump so loop increment lands ON endif (which resets the stack entry)
+                    parser.pc += enddistance - 1
+                } else {
+                    parser.report(inbound.SourceLine, "ELSE without an ENDIF\n")
+                    finish(false, ERR_SYNTAX)
+                }
+                break
+            }
+
             // we already jumped to else+1 to deal with a failed IF test
             // so jump straight to the endif here
 
@@ -7829,6 +7864,11 @@ tco_reentry:
             if ifDepth > 0 {
                 ifDepth -= 1
                 parser.ifDepth = ifDepth
+            }
+
+            // Truncate the matched stack to reflect the closed nesting level
+            if len(parser.ifMatchedStack) > int(ifDepth) {
+                parser.ifMatchedStack = parser.ifMatchedStack[:ifDepth]
             }
 
         case C_Debug:

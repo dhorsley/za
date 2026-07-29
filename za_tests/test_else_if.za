@@ -79,6 +79,64 @@ define test_else_if_expr()
     endif
 end
 
+# Test 7: true if followed by else-if (ASSIGNMENT, not return) — bug reproduction
+# Prior to the fix, the else-if would execute even though the first if was true,
+# overwriting 'result' with 2 instead of keeping it at 1.
+define test_else_if_after_true_if()
+    x = 21.0
+    result = 0
+    if x >= 20.0
+        result = 1
+    else if x >= 18.0
+        result = 2
+    else if x >= 5.0 && x < 7.0
+        result = 3
+    else
+        result = 4
+    endif
+    return result
+end
+
+# Test 8: true if with || followed by else-if
+define test_else_if_with_or()
+    h = 21.0
+    opacity = 0.0
+    if h >= 20.0 || h < 5.0
+        opacity = 1.0
+    else if h >= 18.0 && h < 20.0
+        opacity = 0.5
+    else if h >= 5.0 && h < 7.0
+        opacity = 0.25
+    endif
+    return opacity
+end
+
+# Test 9: plain else should not execute after true if
+define test_else_skipped_after_true_if()
+    y = 10
+    result = 0
+    if y < 20
+        result = 1
+    else
+        result = 2
+    endif
+    return result
+end
+
+# Test 10: else-if chain where second condition is true but first already matched
+define test_else_if_second_true_but_first_matched()
+    z = 5
+    result = 0
+    if z < 10
+        result = 1
+    else if z < 20
+        result = 2
+    else
+        result = 3
+    endif
+    return result
+end
+
 # Run tests
 println "=== else-if tests ==="
 
@@ -106,4 +164,22 @@ result = test_else_if_expr()
 println format("test_else_if_expr: %s (expected: correct)", result)
 assert result == "correct"
 
+result = test_else_if_after_true_if()
+println format("test_else_if_after_true_if: %d (expected: 1)", result)
+assert result == 1
+
+result = test_else_if_with_or()
+println format("test_else_if_with_or: %v (expected: 1.0)", result)
+assert result == 1.0
+
+result = test_else_skipped_after_true_if()
+println format("test_else_skipped_after_true_if: %d (expected: 1)", result)
+assert result == 1
+
+result = test_else_if_second_true_but_first_matched()
+println format("test_else_if_second_true_but_first_matched: %d (expected: 1)", result)
+assert result == 1
+
 println "All else-if tests passed!"
+
+

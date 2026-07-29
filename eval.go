@@ -89,6 +89,11 @@ type leparser struct {
 
     // sourceBase holds the original functionspace index where the bytecode was parsed.
     sourceBase uint32
+
+    // ifMatchedStack tracks, per IF nesting depth, whether that IF block has already
+    // had a true condition. Index 0 = depth 1, etc. Used to prevent ELSE IF from executing
+    // after a preceding IF or ELSE IF was true, while correctly handling nested IF blocks.
+    ifMatchedStack []bool
 }
 
 func (p *leparser) next() Token {
