@@ -1617,7 +1617,22 @@ func (p *leparser) reference(mut bool) any {
             }
         }
 
-        // Variable not found in local scope, check globals
+        // Check mident (main function ident) for top-level var-declared and @-global user variables
+        mbin := bind_int(p.mident, fullName)
+        if mbin < uint64(len(mident)) && mident[mbin].declared {
+            varValue, ok := vget(nil, p.mident, &mident, fullName)
+            if ok {
+                return &MutableArg{
+                    Value:    varValue,
+                    Binding:  mbin,
+                    IdentPtr: &mident,
+                    IsGlobal: false,
+                    // CPtr and StructDef will be set by FFI layer during marshaling
+                }
+            }
+        }
+
+        // Last resort: check system globals (gident) — only for runtime variables like @echo
         gbin := bind_int(0, fullName)
         if gbin < uint64(len(gident)) && gident[gbin].declared {
             // Get global variable value with proper locking

@@ -1073,7 +1073,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_array_bulk_set_float32", "c_array_bulk_set_float64", "c_array_bulk_get_float32", "c_array_bulk_get_float64", "c_array_copy_to_c_float32", "c_array_copy_to_c_float64", "c_array_copy_from_c_float32", "c_array_copy_from_c_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1771,6 +1771,118 @@ func buildFfiLib() {
         result := make([]any, count)
         for i := 0; i < count; i++ {
             result[i] = CGetDouble(p, (start+i)*8)
+        }
+        return result, nil
+    }
+
+    // ── Whole-array copy helpers (Za ↔ C) ──────────────────────────────
+
+    slhelp["c_array_copy_to_c_float32"] = LibHelp{in: "src_za_array,dst_c_ptr", out: "", action: "Copies an entire Za array into a C float32 buffer."}
+    stdlib["c_array_copy_to_c_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_copy_to_c_float32", args, 1, "2", "any", "any"); !ok {
+            return nil, err
+        }
+        dst, ok := args[1].(*CPointerValue)
+        if !ok {
+            return nil, fmt.Errorf("c_array_copy_to_c_float32: destination must be a C pointer")
+        }
+        switch src := args[0].(type) {
+        case []interface{}:
+            for i, v := range src {
+                switch fv := v.(type) {
+                case float64:
+                    CSetFloat(dst, i*4, fv)
+                case int:
+                    CSetFloat(dst, i*4, float64(fv))
+                default:
+                    return nil, fmt.Errorf("c_array_copy_to_c_float32: element %d is not numeric (%T)", i, v)
+                }
+            }
+        case []float64:
+            for i, v := range src {
+                CSetFloat(dst, i*4, v)
+            }
+        case []float32:
+            for i, v := range src {
+                CSetFloat(dst, i*4, float64(v))
+            }
+        default:
+            return nil, fmt.Errorf("c_array_copy_to_c_float32: source must be an array, got %T", src)
+        }
+        return nil, nil
+    }
+
+    slhelp["c_array_copy_to_c_float64"] = LibHelp{in: "src_za_array,dst_c_ptr", out: "", action: "Copies an entire Za array into a C float64 buffer."}
+    stdlib["c_array_copy_to_c_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_copy_to_c_float64", args, 1, "2", "any", "any"); !ok {
+            return nil, err
+        }
+        dst, ok := args[1].(*CPointerValue)
+        if !ok {
+            return nil, fmt.Errorf("c_array_copy_to_c_float64: destination must be a C pointer")
+        }
+        switch src := args[0].(type) {
+        case []interface{}:
+            for i, v := range src {
+                switch fv := v.(type) {
+                case float64:
+                    CSetDouble(dst, i*8, fv)
+                case int:
+                    CSetDouble(dst, i*8, float64(fv))
+                default:
+                    return nil, fmt.Errorf("c_array_copy_to_c_float64: element %d is not numeric (%T)", i, v)
+                }
+            }
+        case []float64:
+            for i, v := range src {
+                CSetDouble(dst, i*8, v)
+            }
+        case []float32:
+            for i, v := range src {
+                CSetDouble(dst, i*8, float64(v))
+            }
+        default:
+            return nil, fmt.Errorf("c_array_copy_to_c_float64: source must be an array, got %T", src)
+        }
+        return nil, nil
+    }
+
+    slhelp["c_array_copy_from_c_float32"] = LibHelp{in: "src_c_ptr,count", out: "[]float", action: "Reads count float32 values from a C buffer into a Za array."}
+    stdlib["c_array_copy_from_c_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_copy_from_c_float32", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        src, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, fmt.Errorf("c_array_copy_from_c_float32: source must be a C pointer")
+        }
+        count := args[1].(int)
+        if count < 0 {
+            return nil, fmt.Errorf("c_array_copy_from_c_float32: count must be non-negative")
+        }
+        result := make([]any, count)
+        for i := 0; i < count; i++ {
+            result[i] = CGetFloat(src, i*4)
+        }
+        return result, nil
+    }
+
+    slhelp["c_array_copy_from_c_float64"] = LibHelp{in: "src_c_ptr,count", out: "[]float", action: "Reads count float64 values from a C buffer into a Za array."}
+    stdlib["c_array_copy_from_c_float64"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_array_copy_from_c_float64", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        src, ok := args[0].(*CPointerValue)
+        if !ok {
+            return nil, fmt.Errorf("c_array_copy_from_c_float64: source must be a C pointer")
+        }
+        count := args[1].(int)
+        if count < 0 {
+            return nil, fmt.Errorf("c_array_copy_from_c_float64: count must be non-negative")
+        }
+        result := make([]any, count)
+        for i := 0; i < count; i++ {
+            result[i] = CGetDouble(src, i*8)
         }
         return result, nil
     }
