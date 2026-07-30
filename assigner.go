@@ -381,7 +381,11 @@ struct back.
 func handleFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, fieldName string, value any) error {
 
     // ts is target struct
-    ts, found := vget(&varToken, lfs, lident, varToken.tokText)
+    var getTok *Token
+    if lfs == rfs {
+        getTok = &varToken
+    }
+    ts, found := vget(getTok, lfs, lident, varToken.tokText)
     if !found {
         return fmt.Errorf("record variable %v not found", varToken.tokText)
     }
@@ -456,7 +460,11 @@ field on the copy, and then replaces the original struct in the container with
 the modified version.
 */
 func handleMapOrArrayFieldAssignment(lfs, rfs uint32, lident *[]Variable, varToken Token, key any, fieldName string, value any) error {
-    container, found := vget(&varToken, lfs, lident, varToken.tokText)
+    var getTok *Token
+    if lfs == rfs {
+        getTok = &varToken
+    }
+    container, found := vget(getTok, lfs, lident, varToken.tokText)
     if !found {
         return fmt.Errorf("container variable %v not found", varToken.tokText)
     }
