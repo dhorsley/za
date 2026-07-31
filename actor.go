@@ -649,6 +649,40 @@ func GetAsFloat(unk any) (float64, bool) {
     }
 }
 
+// GetAsFloat32 : converts a variety of types to a float32
+func GetAsFloat32(unk any) (float32, bool) {
+	switch i := unk.(type) {
+	case int:
+		return float32(i), false
+	case int16:
+		return float32(i), false
+	case int32:
+		return float32(i), false
+	case int64:
+		return float32(i), false
+	case uint:
+		return float32(i), false
+	case uint8:
+		return float32(i), false
+	case uint32:
+		return float32(i), false
+	case uint64:
+		return float32(i), false
+	case float32:
+		return i, false
+	case float64:
+		return float32(i), false
+	case *big.Float:
+		f32, _ := i.Float32()
+		return f32, false
+	case string:
+		p, e := strconv.ParseFloat(i, 32)
+		return float32(p), e != nil
+	default:
+		return float32(math.NaN()), true
+	}
+}
+
 // GetAsInt64 : converts a variety of types to int64
 func GetAsInt64(expr any) (int64, bool) {
     switch i := expr.(type) {

@@ -914,6 +914,40 @@ func CSetFloat(p *CPointerValue, offset int, value float64) {
     }
 }
 
+// CGetFloat32 reads a float32 at an offset in a buffer and returns as float32
+func CGetFloat32(p *CPointerValue, offset int) float32 {
+	if p != nil && p.Ptr != nil {
+		floatPtr := (*float32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+		return *floatPtr
+	}
+	return 0.0
+}
+
+// CSetFloat32 writes a float32 at an offset in a buffer
+func CSetFloat32(p *CPointerValue, offset int, value float32) {
+	if p != nil && p.Ptr != nil {
+		floatPtr := (*float32)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+		*floatPtr = value
+	}
+}
+
+// CGetFloat32AtAddr reads a float32 at an int64 address + offset and returns as float32
+func CGetFloat32AtAddr(addr int64, offset int) float32 {
+	if addr != 0 {
+		floatPtr := (*float32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+		return *floatPtr
+	}
+	return 0.0
+}
+
+// CSetFloat32AtAddr writes a float32 at an int64 address + offset
+func CSetFloat32AtAddr(addr int64, offset int, value float32) {
+	if addr != 0 {
+		floatPtr := (*float32)(unsafe.Pointer(uintptr(addr) + uintptr(offset)))
+		*floatPtr = value
+	}
+}
+
 // CGetDouble reads a float64 at an offset in a buffer
 func CGetDouble(p *CPointerValue, offset int) float64 {
     if p != nil && p.Ptr != nil {

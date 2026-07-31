@@ -903,6 +903,9 @@ func buildListLib() {
             case float64:
                 l := make([]float64, 0, 31)
                 return append(l, args[0].(float64)), nil
+            case float32:
+                l := make([]float32, 0, 31)
+                return append(l, args[0].(float32)), nil
             case bool:
                 l := make([]bool, 0, 31)
                 return append(l, args[0].(bool)), nil
@@ -967,6 +970,8 @@ func buildListLib() {
             switch args[1].(type) {
             case float64:
                 args[0] = make([]float64, 0, 31)
+            case float32:
+                args[0] = make([]float32, 0, 31)
             case int:
                 args[0] = make([]int, 0, 31)
             case uint:
@@ -1007,6 +1012,18 @@ func buildListLib() {
                 s = l
             }
             l := append(s, args[1].(float64))
+            return l, nil
+        case []float32:
+            if "float32" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:float32,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]float32, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            }
+            l := append(s, args[1].(float32))
             return l, nil
         case []bool:
             if "bool" != sf("%T", args[1]) {
@@ -2895,6 +2912,8 @@ func buildListLib() {
             return append(args[0].([]string), args[1].([]string)...), nil
         case []float64:
             return append(args[0].([]float64), args[1].([]float64)...), nil
+        case []float32:
+            return append(args[0].([]float32), args[1].([]float32)...), nil
         case []any:
             return append(args[0].([]any), args[1].([]any)...), nil
         }

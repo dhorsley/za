@@ -111,6 +111,20 @@ library changes
     - Stdlib: `as_float32()`, `list_float32()`, `min_float32()`, `max_float32()`
     - test coverage: `za_tests/test_float32.za` (6 phases, 25 assertions)
 
+  * Byte-level float32 FFI helpers (no float64 bounce)
+    - `c_get_float32(ptr, offset)` / `c_set_float32(ptr, offset, value)` — native float32
+    - `c_get_float32_at_addr(address, offset)` / `c_set_float32_at_addr(address, offset, value)`
+    - `c_array_get_float32` now returns `float32` (was `float64` via promotion)
+    - `c_array_set_float32` now accepts `float32` via `GetAsFloat32()` (was hard-cast `float64`)
+    - `c_array_bulk_set_float32` / `c_array_bulk_get_float32` / `c_array_copy_to_c_float32` /
+      `c_array_copy_from_c_float32` all use native `CGetFloat32()` / `CSetFloat32()` paths
+
+  * `randf32()` stdlib — random float32 generator
+    - Returns `float32` using Go `rand.Float32()`; accepts optional `number` scale argument
+    - Complements existing `randf()` (float64)
+
+  * `concat()` and `append()` now support `[]float32`
+
 
 1.2.3
 =====

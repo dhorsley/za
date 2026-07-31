@@ -617,6 +617,34 @@ func buildMathLib() {
         return rand.Float64(), nil
     }
 
+    slhelp["randf32"] = LibHelp{in: "?number", out: "float32", action: "Generate a random float32. With no argument, returns a float32 between 0 and 1. With a number argument, returns a float32 between 0 and that value."}
+    stdlib["randf32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("randf32", args, 2,
+            "1", "number",
+            "0"); !ok {
+            return nil, err
+        }
+        if len(args) == 1 {
+            var scale float32
+            switch v := args[0].(type) {
+            case int:
+                scale = float32(v)
+            case int64:
+                scale = float32(v)
+            case uint:
+                scale = float32(v)
+            case uint64:
+                scale = float32(v)
+            case float32:
+                scale = v
+            case float64:
+                scale = float32(v)
+            }
+            return rand.Float32() * scale, nil
+        }
+        return rand.Float32(), nil
+    }
+
     slhelp["seed"] = LibHelp{in: "number", out: "", action: "Set the random seed. [#i1]number[#i0] of -1 sets the seed using current nano-second time."}
     stdlib["seed"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("seed", args, 2, "1", "int64", "1", "int"); !ok {

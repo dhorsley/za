@@ -227,28 +227,42 @@ func CSetInt64AtAddr(addr int64, offset int, value int64) {
 }
 
 func CGetFloat(p *CPointerValue, offset int) float64 {
-    return 0.0
+	return 0.0
 }
 
 func CSetFloat(p *CPointerValue, offset int, value float64) {
 }
 
+func CGetFloat32(p *CPointerValue, offset int) float32 {
+	return 0.0
+}
+
+func CSetFloat32(p *CPointerValue, offset int, value float32) {
+}
+
 func CGetDouble(p *CPointerValue, offset int) float64 {
-    return 0.0
+	return 0.0
 }
 
 func CSetDouble(p *CPointerValue, offset int, value float64) {
 }
 
 func CGetFloatAtAddr(addr int64, offset int) float64 {
-    return 0.0
+	return 0.0
 }
 
 func CSetFloatAtAddr(addr int64, offset int, value float64) {
 }
 
+func CGetFloat32AtAddr(addr int64, offset int) float32 {
+	return 0.0
+}
+
+func CSetFloat32AtAddr(addr int64, offset int, value float32) {
+}
+
 func CGetDoubleAtAddr(addr int64, offset int) float64 {
-    return 0.0
+	return 0.0
 }
 
 func CSetDoubleAtAddr(addr int64, offset int, value float64) {

@@ -4565,7 +4565,7 @@ sort(items, map(.key `#.name`))
 **Functions (38):**
 
 
-abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot, e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma, phi, pi, pow, prec, rad2deg, rand, randf, round, seed, sin, sinh, tan, tanh, transpose, ubin8, uhex32
+abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot, e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma, phi, pi, pow, prec, rad2deg, rand, randf, randf32, round, seed, sin, sinh, tan, tanh, transpose, ubin8, uhex32
 
 
 **Commonly used (from examples/tests):**
@@ -6372,6 +6372,7 @@ All 21 `*_at_addr` functions follow the same pattern and work with opaque pointe
 - `c_get_uint64_at_addr(address, offset)` → uint
 - `c_get_int64_at_addr(address, offset)` → int
 - `c_get_float_at_addr(address, offset)` → float
+- `c_get_float32_at_addr(address, offset)` → float32
 - `c_get_double_at_addr(address, offset)` → float
 
 **Write functions** - signature: `function_name(address:int64, offset:int, value:type)`
@@ -6382,7 +6383,8 @@ All 21 `*_at_addr` functions follow the same pattern and work with opaque pointe
 - `c_set_int32_at_addr(address, offset, value)` - writes int32
 - `c_set_uint64_at_addr(address, offset, value)` - writes uint64
 - `c_set_int64_at_addr(address, offset, value)` - writes int64
-- `c_set_float_at_addr(address, offset, value)` - writes 32-bit float
+- `c_set_float_at_addr(address, offset, value)` - writes float64 as 32-bit float
+- `c_set_float32_at_addr(address, offset, value)` - writes float32 (native, no bounce)
 - `c_set_double_at_addr(address, offset, value)` - writes 64-bit double
 
 All functions:
@@ -6742,6 +6744,25 @@ c_set_float(constants, 4, 299792458.0)  # Speed of light
 c_set_float(constants, 8, 6.626e-34)    # Planck's constant
 
 g = c_get_float(constants, 0)
+```
+
+### c_get_float32(ptr:pointer, offset:int) -> float32
+
+Reads a float32 (32-bit) at a specific byte offset and returns it as a native Za `float32` — no promotion to `float64`.
+
+```za
+buf = c_alloc(256)
+c_set_float32(buf, 0, 3.14159h)     # Write float32
+value = c_get_float32(buf, 0)       # Read back: float32, ~3.14
+```
+
+### c_set_float32(ptr:pointer, offset:int, value:float32)
+
+Writes a float32 at a specific offset. Accepts `float32` natively; use this when working with `[]float32` arrays to avoid the `float64` → `float32` conversion overhead of `c_set_float`.
+
+```za
+buf = c_alloc(256)
+c_set_float32(buf, 0, 9.81h)    # Write native float32
 ```
 
 ### c_get_double(ptr:pointer, offset:int) -> float

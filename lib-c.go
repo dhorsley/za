@@ -1113,7 +1113,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_array_bulk_set_float32", "c_array_bulk_set_float64", "c_array_bulk_get_float32", "c_array_bulk_get_float64", "c_array_copy_to_c_float32", "c_array_copy_to_c_float64", "c_array_copy_from_c_float32", "c_array_copy_from_c_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_float32", "c_set_float32", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_float32_at_addr", "c_set_float32_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_array_bulk_set_float32", "c_array_bulk_set_float64", "c_array_bulk_get_float32", "c_array_bulk_get_float64", "c_array_copy_to_c_float32", "c_array_copy_to_c_float64", "c_array_copy_from_c_float32", "c_array_copy_from_c_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1466,13 +1466,14 @@ func buildFfiLib() {
         return 0.0, nil
     }
 
-    slhelp["c_set_float"] = LibHelp{in: "ptr,offset,value", out: "", action: "Writes a float (32-bit) at the given offset in a buffer."}
+    slhelp["c_set_float"] = LibHelp{in: "ptr,offset,value", out: "", action: "Writes a float (32-bit) at the given offset in a buffer. Accepts float64 or float32."}
     stdlib["c_set_float"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("c_set_float", args, 1, "3", "any", "int", "float"); !ok {
+        if ok, err := expect_args("c_set_float", args, 2, "3", "any", "int", "float", "3", "any", "int", "float32"); !ok {
             return nil, err
         }
         if p, ok := args[0].(*CPointerValue); ok {
-            CSetFloat(p, args[1].(int), args[2].(float64))
+            v, _ := GetAsFloat(args[2])
+            CSetFloat(p, args[1].(int), v)
         }
         return nil, nil
     }
@@ -1513,6 +1514,45 @@ func buildFfiLib() {
             return nil, err
         }
         CSetFloatAtAddr(int64(args[0].(int)), args[1].(int), args[2].(float64))
+        return nil, nil
+    }
+
+    slhelp["c_get_float32"] = LibHelp{in: "ptr,offset", out: "float32", action: "Reads a float32 (32-bit) at the given offset in a buffer."}
+    stdlib["c_get_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_float32", args, 1, "2", "any", "int"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            return CGetFloat32(p, args[1].(int)), nil
+        }
+        return float32(0.0), nil
+    }
+
+    slhelp["c_set_float32"] = LibHelp{in: "ptr,offset,value", out: "", action: "Writes a float32 (32-bit) at the given offset in a buffer."}
+    stdlib["c_set_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_float32", args, 1, "3", "any", "int", "float32"); !ok {
+            return nil, err
+        }
+        if p, ok := args[0].(*CPointerValue); ok {
+            CSetFloat32(p, args[1].(int), args[2].(float32))
+        }
+        return nil, nil
+    }
+
+    slhelp["c_get_float32_at_addr"] = LibHelp{in: "address,offset", out: "float32", action: "Reads a float32 (32-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_get_float32_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_get_float32_at_addr", args, 1, "2", "int", "int"); !ok {
+            return nil, err
+        }
+        return CGetFloat32AtAddr(int64(args[0].(int)), args[1].(int)), nil
+    }
+
+    slhelp["c_set_float32_at_addr"] = LibHelp{in: "address,offset,value", out: "", action: "Writes a float32 (32-bit) at the given int64 address + offset. For opaque pointers returned from FFI calls."}
+    stdlib["c_set_float32_at_addr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("c_set_float32_at_addr", args, 1, "3", "int", "int", "float32"); !ok {
+            return nil, err
+        }
+        CSetFloat32AtAddr(int64(args[0].(int)), args[1].(int), args[2].(float32))
         return nil, nil
     }
 
@@ -1681,18 +1721,19 @@ func buildFfiLib() {
             return nil, err
         }
         if p, ok := args[0].(*CPointerValue); ok {
-            return CGetFloat(p, args[1].(int)*4), nil
+            return CGetFloat32(p, args[1].(int)*4), nil
         }
-        return 0.0, nil
+        return float32(0.0), nil
     }
 
     slhelp["c_array_set_float32"] = LibHelp{in: "ptr,index,value", out: "", action: "Writes a float32 at the given element index in a buffer."}
     stdlib["c_array_set_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("c_array_set_float32", args, 1, "3", "any", "int", "float"); !ok {
+        if ok, err := expect_args("c_array_set_float32", args, 2, "3", "any", "int", "float32", "3", "any", "int", "float"); !ok {
             return nil, err
         }
         if p, ok := args[0].(*CPointerValue); ok {
-            CSetFloat(p, args[1].(int)*4, args[2].(float64))
+            v, _ := GetAsFloat32(args[2])
+            CSetFloat32(p, args[1].(int)*4, v)
         }
         return nil, nil
     }
@@ -1734,20 +1775,22 @@ func buildFfiLib() {
             for i, v := range vals {
                 switch fv := v.(type) {
                 case float64:
-                    CSetFloat(p, (start+i)*4, fv)
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case float32:
+                    CSetFloat32(p, (start+i)*4, fv)
                 case int:
-                    CSetFloat(p, (start+i)*4, float64(fv))
+                    CSetFloat32(p, (start+i)*4, float32(fv))
                 default:
                     return nil, fmt.Errorf("c_array_bulk_set_float32: value at index %d is not numeric (%T)", i, v)
                 }
             }
         case []float32:
             for i, v := range vals {
-                CSetFloat(p, (start+i)*4, float64(v))
+                CSetFloat32(p, (start+i)*4, v)
             }
         case []float64:
             for i, v := range vals {
-                CSetFloat(p, (start+i)*4, v)
+                CSetFloat32(p, (start+i)*4, float32(v))
             }
         default:
             return nil, fmt.Errorf("c_array_bulk_set_float32: values must be an array, got %T", args[2])
@@ -1798,7 +1841,7 @@ func buildFfiLib() {
         }
         result := make([]float32, count)
         for i := 0; i < count; i++ {
-            result[i] = float32(CGetFloat(p, (start+i)*4))
+            result[i] = CGetFloat32(p, (start+i)*4)
         }
         return result, nil
     }
@@ -1840,20 +1883,22 @@ func buildFfiLib() {
             for i, v := range src {
                 switch fv := v.(type) {
                 case float64:
-                    CSetFloat(dst, i*4, fv)
+                    CSetFloat32(dst, i*4, float32(fv))
+                case float32:
+                    CSetFloat32(dst, i*4, fv)
                 case int:
-                    CSetFloat(dst, i*4, float64(fv))
+                    CSetFloat32(dst, i*4, float32(fv))
                 default:
                     return nil, fmt.Errorf("c_array_copy_to_c_float32: element %d is not numeric (%T)", i, v)
                 }
             }
         case []float64:
             for i, v := range src {
-                CSetFloat(dst, i*4, v)
+                CSetFloat32(dst, i*4, float32(v))
             }
         case []float32:
             for i, v := range src {
-                CSetFloat(dst, i*4, float64(v))
+                CSetFloat32(dst, i*4, v)
             }
         default:
             return nil, fmt.Errorf("c_array_copy_to_c_float32: source must be an array, got %T", src)
@@ -1911,7 +1956,7 @@ func buildFfiLib() {
         }
         result := make([]float32, count)
         for i := 0; i < count; i++ {
-            result[i] = float32(CGetFloat(src, i*4))
+            result[i] = CGetFloat32(src, i*4)
         }
         return result, nil
     }
