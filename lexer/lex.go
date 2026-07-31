@@ -11,7 +11,7 @@ import (
 const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 const alphaplus = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$"
 const alphanumeric = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-const numeric = "0123456789.fn"
+const numeric = "0123456789.fnh"
 const numSeps = "_"
 const identifier_set = alphanumeric + "_"
 const doubleterms = "<>=|&-+*.:?"
@@ -174,7 +174,7 @@ func NextToken(input string, fs uint32, curLine *int16, start int, binder Binder
             }
 
             // number
-            if firstChar != 'f' && firstChar != 'n' && str.IndexByte(numeric, firstChar) != -1 {
+            if firstChar != 'f' && firstChar != 'n' && firstChar != 'h' && str.IndexByte(numeric, firstChar) != -1 {
                 tokType = NumericLiteral
                 nonterm = numeric + "xeE" + numSeps
                 term = "\n;"
@@ -292,6 +292,12 @@ func NextToken(input string, fs uint32, curLine *int16, start int, binder Binder
             }
             // deal with 'f' at end of number
             if !thisHex && input[currentChar] == 'f' {
+                word = input[thisWordStart : currentChar+1]
+                startNextTokenAt = currentChar + 1
+                break
+            }
+            // deal with 'h' at end of number
+            if !thisHex && input[currentChar] == 'h' {
                 word = input[thisWordStart : currentChar+1]
                 startNextTokenAt = currentChar + 1
                 break
@@ -536,6 +542,14 @@ func NextToken(input string, fs uint32, curLine *int16, start int, binder Binder
 
                 case tl[len(tl)-1] == 'f':
                     carton.TokVal, _ = strconv.ParseFloat(tl[:len(tl)-1], 64)
+                    startNextTokenAt = currentChar + 1
+                    carton.TokType = tokType
+                    carton.TokText = word
+                    goto get_nt_exit_point
+
+                case tl[len(tl)-1] == 'h':
+                    v, _ := strconv.ParseFloat(tl[:len(tl)-1], 32)
+                    carton.TokVal = float32(v)
                     startNextTokenAt = currentChar + 1
                     carton.TokType = tokType
                     carton.TokText = word

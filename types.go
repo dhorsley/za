@@ -109,6 +109,13 @@ const (
     OpLor
     OpToBool
     OpLorResult
+    OpAddFloat32
+    OpSubFloat32
+    OpMulFloat32
+    OpDivFloat32
+    OpModFloat32
+    OpNegFloat32
+    OpPowFloat32
     OpEnd
 )
 

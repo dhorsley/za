@@ -633,6 +633,8 @@ func GetAsFloat(unk any) (float64, bool) {
         return float64(i), false
     case uint64:
         return float64(i), false
+    case float32:
+        return float64(i), false
     case float64:
         return i, false
     case *big.Float:
@@ -650,6 +652,8 @@ func GetAsFloat(unk any) (float64, bool) {
 // GetAsInt64 : converts a variety of types to int64
 func GetAsInt64(expr any) (int64, bool) {
     switch i := expr.(type) {
+    case float32:
+        return int64(i), false
     case float64:
         return int64(i), false
     case uint:
@@ -2461,6 +2465,8 @@ tco_reentry:
                             t.IKind = kuint
                         case "float":
                             t.IKind = kfloat
+                        case "float32":
+                            t.IKind = kfloat32
                         case "string":
                             t.IKind = kstring
                         case "uint8", "byte":
@@ -2491,6 +2497,9 @@ tco_reentry:
                         case "[]float":
                             t.IKind = ksfloat
                             t.IValue = make([]float64, size, size)
+                        case "[]float32":
+                            t.IKind = ksfloat32
+                            t.IValue = make([]float32, size, size)
                         case "[]string":
                             t.IKind = ksstring
                             t.IValue = make([]string, size, size)
@@ -2549,6 +2558,7 @@ tco_reentry:
                         } else {
                             // ... then other types:
                             new_type_token_string = str.Replace(new_type_token_string, "float", "float64", -1)
+                            new_type_token_string = str.Replace(new_type_token_string, "float6432", "float32", -1)
                             new_type_token_string = str.Replace(new_type_token_string, "any", "interface {}", -1)
                             if sf("%T", we.result) != new_type_token_string {
                                 parser.report(inbound.SourceLine, sf("type mismatch in VAR assignment (need %s, got %T)", new_type_token_string, we.result))
@@ -2947,6 +2957,8 @@ tco_reentry:
                     l = len(lv)
                 case []float64:
                     l = len(lv)
+                case []float32:
+                    l = len(lv)
                 case []bool:
                     l = len(lv)
                 case []tui:
@@ -3208,12 +3220,28 @@ tco_reentry:
                         condEndPos = len(we.result.([]float64)) - 1
                     }
 
+                case []float32:
+
+                    if len(we.result.([]float32)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]float32)[0])
+                        condEndPos = len(we.result.([]float32)) - 1
+                    }
+
                 case float64: // special case: float
                     we.result = []float64{we.result.(float64)}
                     if len(we.result.([]float64)) > 0 {
                         vset(nil, ifs, ident, "key_"+fid, 0)
                         vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]float64)[0])
                         condEndPos = len(we.result.([]float64)) - 1
+                    }
+
+                case float32: // special case: float32
+                    we.result = []float32{we.result.(float32)}
+                    if len(we.result.([]float32)) > 0 {
+                        vset(nil, ifs, ident, "key_"+fid, 0)
+                        vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]float32)[0])
+                        condEndPos = len(we.result.([]float32)) - 1
                     }
 
                 case []uint:
@@ -3892,6 +3920,9 @@ tco_reentry:
                         case []float64:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float64)[(*thisLoop).counter])
+                        case []float32:
+                            vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+                            vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]float32)[(*thisLoop).counter])
                         case []*big.Int:
                             vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
                             vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]*big.Int)[(*thisLoop).counter])

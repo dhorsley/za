@@ -1,0 +1,248 @@
+#!/usr/bin/env za
+
+# Comprehensive float32 / []float32 first-class type test
+
+println "=== Phase 1: Literals and VAR declarations ==="
+
+# float32 literal suffix 'h'
+s = 1.5h
+println "  literal 1.5h kind: " + kind(s)
+if kind(s) != "float32"
+    println "  FAIL: expected kind float32, got " + kind(s)
+    exit 1
+endif
+
+# var declaration
+var f32 float32 = 2.5h
+println "  var f32 kind: " + kind(f32)
+if kind(f32) != "float32"
+    println "  FAIL: expected kind float32 for var"
+    exit 1
+endif
+
+# []float32 var declaration
+var a32 [3]float32
+println "  var a32 kind: " + kind(a32)
+if kind(a32) != "[]float32"
+    println "  FAIL: expected kind []float32"
+    exit 1
+endif
+
+# len
+if len(a32) != 3
+    println "  FAIL: len(a32) expected 3, got " + string(len(a32))
+    exit 1
+endif
+
+println "  PASS: Phase 1"
+
+println "\n=== Phase 2: Array access and assignment ==="
+
+a32[0] = 1.0h
+a32[1] = 2.0h
+a32[2] = 3.0h
+
+if a32[0] != 1.0h
+    println "  FAIL: a32[0]"
+    exit 1
+endif
+if a32[1] != 2.0h
+    println "  FAIL: a32[1]"
+    exit 1
+endif
+if a32[2] != 3.0h
+    println "  FAIL: a32[2]"
+    exit 1
+endif
+
+# slice
+sub = a32[1:3]
+if len(sub) != 2
+    println "  FAIL: slice len"
+    exit 1
+endif
+if sub[0] != 2.0h
+    println "  FAIL: sub[0]"
+    exit 1
+endif
+
+println "  PASS: Phase 2"
+
+println "\n=== Phase 3: Iteration ==="
+
+sum = 0.0h
+foreach v in a32 do
+    sum = sum + v
+endfor
+if sum != 6.0h
+    println "  FAIL: foreach sum expected 6.0h, got " + string(sum)
+    exit 1
+endif
+
+# for loop
+sum2 = 0.0h
+for i = 0 to len(a32)-1 step 1 do
+    sum2 = sum2 + a32[i]
+endfor
+if sum2 != 6.0h
+    println "  FAIL: for sum"
+    exit 1
+endif
+
+println "  PASS: Phase 3"
+
+println "\n=== Phase 4: Scalar arithmetic ==="
+
+x = 2.0h
+y = 3.0h
+
+# same-type stays float32
+r1 = x + y
+if kind(r1) != "float32"
+    println "  FAIL: x+y kind expected float32, got " + kind(r1)
+    exit 1
+endif
+if r1 != 5.0h
+    println "  FAIL: x+y value"
+    exit 1
+endif
+
+# float32 + float64 → float64
+r2 = x + 1.0
+if kind(r2) != "float"
+    println "  FAIL: x+1.0 kind expected float, got " + kind(r2)
+    exit 1
+endif
+if r2 != 3.0
+    println "  FAIL: x+1.0 value expected 3.0, got " + string(r2)
+    exit 1
+endif
+
+# float32 + int → float32
+r3 = x + 1
+if kind(r3) != "float32"
+    println "  FAIL: x+1 kind expected float32, got " + kind(r3)
+    exit 1
+endif
+if r3 != 3.0h
+    println "  FAIL: x+1 value"
+    exit 1
+endif
+
+# subtraction
+r4 = y - x
+if r4 != 1.0h
+    println "  FAIL: y-x"
+    exit 1
+endif
+
+# multiplication
+r5 = x * y
+if r5 != 6.0h
+    println "  FAIL: x*y"
+    exit 1
+endif
+
+# division
+r6 = y / x
+if r6 != 1.5h
+    println "  FAIL: y/x"
+    exit 1
+endif
+
+println "  PASS: Phase 4"
+
+println "\n=== Phase 5: Array arithmetic (broadcasting) ==="
+
+b32 = [1.0h, 2.0h, 3.0h]
+
+# scalar + array → []float32
+r7 = 1.0h + b32
+if kind(r7) != "[]float32"
+    println "  FAIL: scalar+array kind"
+    exit 1
+endif
+if r7[0] != 2.0h
+    println "  FAIL: scalar+array[0]"
+    exit 1
+endif
+
+# array + float64 → []float64
+r8 = b32 + 1.0
+if kind(r8) != "[]float"
+    println "  FAIL: array+float64 kind expected []float, got " + kind(r8)
+    exit 1
+endif
+
+# array + array same-type → []float32
+r9 = b32 + b32
+if kind(r9) != "[]float32"
+    println "  FAIL: array+array kind"
+    exit 1
+endif
+if r9[1] != 4.0h
+    println "  FAIL: array+array[1]"
+    exit 1
+endif
+
+println "  PASS: Phase 5"
+
+println "\n=== Phase 6: Stdlib ==="
+
+# as_float32
+f = as_float32(1.7)
+if kind(f) != "float32"
+    println "  FAIL: as_float32 kind"
+    exit 1
+endif
+
+# list_float32
+lf = list_float32([1, 2, 3])
+if kind(lf) != "[]float32"
+    println "  FAIL: list_float32 kind"
+    exit 1
+endif
+if lf[1] != 2.0h
+    println "  FAIL: list_float32[1]"
+    exit 1
+endif
+
+# sort
+s32 = [3.0h, 1.0h, 2.0h]
+sorted = sort(s32)
+if sorted[0] != 1.0h
+    println "  FAIL: sort ascending"
+    exit 1
+endif
+if sorted[2] != 3.0h
+    println "  FAIL: sort ascending end"
+    exit 1
+endif
+
+desc = sort(s32, true)
+if desc[0] != 3.0h
+    println "  FAIL: sort descending"
+    exit 1
+endif
+
+# sum
+if sum(b32) != 6.0
+    println "  FAIL: sum"
+    exit 1
+endif
+
+# min
+if min(b32) != 1.0
+    println "  FAIL: min"
+    exit 1
+endif
+
+# max
+if max(b32) != 3.0
+    println "  FAIL: max"
+    exit 1
+endif
+
+println "  PASS: Phase 6"
+
+println "\n=== All float32 tests passed ==="

@@ -347,6 +347,34 @@ func ev_add(val1 any, val2 any) (r any) {
         return r.Add(GetAsBigInt(val1), val2.(*big.Int))
     }
 
+    // float32 handling (before float64 to preserve float32 + int → float32)
+    f32_1, f32_1OK := val1.(float32)
+    f32_2, f32_2OK := val2.(float32)
+
+    if f32_1OK && f32_2OK {
+        return f32_1 + f32_2
+    }
+    if f32_1OK {
+        switch v2 := val2.(type) {
+        case float64:
+            return float64(f32_1) + v2
+        case int:
+            return f32_1 + float32(v2)
+        case int64:
+            return f32_1 + float32(v2)
+        }
+    }
+    if f32_2OK {
+        switch v1 := val1.(type) {
+        case float64:
+            return v1 + float64(f32_2)
+        case int:
+            return float32(v1) + f32_2
+        case int64:
+            return float32(v1) + f32_2
+        }
+    }
+
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
@@ -590,6 +618,34 @@ func ev_sub(val1 any, val2 any) any {
         return r.Sub(GetAsBigInt(val1), GetAsBigInt(val2))
     }
 
+    // float32 handling (before float64 to preserve float32 - int → float32)
+    f32_1, f32_1OK := val1.(float32)
+    f32_2, f32_2OK := val2.(float32)
+
+    if f32_1OK && f32_2OK {
+        return f32_1 - f32_2
+    }
+    if f32_1OK {
+        switch v2 := val2.(type) {
+        case float64:
+            return float64(f32_1) - v2
+        case int:
+            return f32_1 - float32(v2)
+        case int64:
+            return f32_1 - float32(v2)
+        }
+    }
+    if f32_2OK {
+        switch v1 := val1.(type) {
+        case float64:
+            return v1 - float64(f32_2)
+        case int:
+            return float32(v1) - f32_2
+        case int64:
+            return float32(v1) - f32_2
+        }
+    }
+
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
@@ -746,6 +802,34 @@ func ev_mul(val1 any, val2 any) any {
     if bint1 || bint2 {
         var r big.Int
         return r.Mul(GetAsBigInt(val1), GetAsBigInt(val2))
+    }
+
+    // float32 handling (before float64 to preserve float32 * int → float32)
+    f32_1, f32_1OK := val1.(float32)
+    f32_2, f32_2OK := val2.(float32)
+
+    if f32_1OK && f32_2OK {
+        return f32_1 * f32_2
+    }
+    if f32_1OK {
+        switch v2 := val2.(type) {
+        case float64:
+            return float64(f32_1) * v2
+        case int:
+            return f32_1 * float32(v2)
+        case int64:
+            return f32_1 * float32(v2)
+        }
+    }
+    if f32_2OK {
+        switch v1 := val1.(type) {
+        case float64:
+            return v1 * float64(f32_2)
+        case int:
+            return float32(v1) * f32_2
+        case int64:
+            return float32(v1) * f32_2
+        }
     }
 
     float1, float1OK := val1.(float64)
@@ -946,6 +1030,55 @@ func ev_div(val1 any, val2 any) any {
         return r.Div(GetAsBigInt(val1), b)
     }
 
+    // float32 handling (before float64 to preserve float32 / int → float32)
+    f32_1, f32_1OK := val1.(float32)
+    f32_2, f32_2OK := val2.(float32)
+
+    if f32_1OK && f32_2OK {
+        if f32_2 == 0 {
+            panic(fmt.Errorf("eval error: divide by zero"))
+        }
+        return f32_1 / f32_2
+    }
+    if f32_1OK {
+        switch v2 := val2.(type) {
+        case float64:
+            if v2 == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return float64(f32_1) / v2
+        case int:
+            if v2 == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return f32_1 / float32(v2)
+        case int64:
+            if v2 == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return f32_1 / float32(v2)
+        }
+    }
+    if f32_2OK {
+        switch v1 := val1.(type) {
+        case float64:
+            if float64(f32_2) == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return v1 / float64(f32_2)
+        case int:
+            if float32(v1) == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return float32(v1) / f32_2
+        case int64:
+            if float32(v1) == 0 {
+                panic(fmt.Errorf("eval error: divide by zero"))
+            }
+            return float32(v1) / f32_2
+        }
+    }
+
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
 
@@ -1108,6 +1241,55 @@ func ev_mod(val1 any, val2 any) any {
 
     if bf1 || bf2 {
         panic(fmt.Errorf("type error: cannot perform modulo on type %s and %s", typeOf(val1), typeOf(val2)))
+    }
+
+    // float32 handling (before float64 to preserve float32 % int → float32)
+    f32_1, f32_1OK := val1.(float32)
+    f32_2, f32_2OK := val2.(float32)
+
+    if f32_1OK && f32_2OK {
+        if f32_2 == 0 {
+            panic(fmt.Errorf("divide by zero"))
+        }
+        return float32(math.Mod(float64(f32_1), float64(f32_2)))
+    }
+    if f32_1OK {
+        switch v2 := val2.(type) {
+        case float64:
+            if v2 == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return math.Mod(float64(f32_1), v2)
+        case int:
+            if v2 == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return float32(math.Mod(float64(f32_1), float64(v2)))
+        case int64:
+            if v2 == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return float32(math.Mod(float64(f32_1), float64(v2)))
+        }
+    }
+    if f32_2OK {
+        switch v1 := val1.(type) {
+        case float64:
+            if float64(f32_2) == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return math.Mod(v1, float64(f32_2))
+        case int:
+            if v1 == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return float32(math.Mod(float64(v1), float64(f32_2)))
+        case int64:
+            if v1 == 0 {
+                panic(fmt.Errorf("divide by zero"))
+            }
+            return float32(math.Mod(float64(v1), float64(f32_2)))
+        }
     }
 
     float1, float1OK := val1.(float64)
@@ -1390,6 +1572,10 @@ func deepEqual(val1 any, val2 any) bool {
         if math.IsNaN(val1.(float64)) {
             nt1 = true
         }
+    case float32:
+        if math.IsNaN(float64(val1.(float32))) {
+            nt1 = true
+        }
     }
     switch val2.(type) {
     case *big.Int:
@@ -1398,6 +1584,10 @@ func deepEqual(val1 any, val2 any) bool {
         bf2 = true
     case float64:
         if math.IsNaN(val2.(float64)) {
+            nt2 = true
+        }
+    case float32:
+        if math.IsNaN(float64(val2.(float32))) {
             nt2 = true
         }
     }
@@ -1782,6 +1972,29 @@ func deepEqual(val1 any, val2 any) bool {
         }
         return false
 
+    case float32:
+        switch v2 := val2.(type) {
+        case float32:
+            return float64(typ1) == float64(v2)
+        case float64:
+            return float64(typ1) == v2
+        case int:
+            return float64(typ1) == float64(v2)
+        case int64:
+            return float64(typ1) == float64(v2)
+        case uint:
+            return float64(typ1) == float64(v2)
+        case uint8:
+            return float64(typ1) == float64(v2)
+        case uint16:
+            return float64(typ1) == float64(v2)
+        case uint32:
+            return float64(typ1) == float64(v2)
+        case uint64:
+            return float64(typ1) == float64(v2)
+        }
+        return false
+
     case float64:
         float2, ok := val2.(float64)
         if ok {
@@ -1817,6 +2030,16 @@ func compare(val1 any, val2 any, operation int64) any {
 
     float1, float1OK := val1.(float64)
     float2, float2OK := val2.(float64)
+
+    // Promote float32 to float64 for comparison logic
+    if f32_1, ok := val1.(float32); ok {
+        float1 = float64(f32_1)
+        float1OK = true
+    }
+    if f32_2, ok := val2.(float32); ok {
+        float2 = float64(f32_2)
+        float2OK = true
+    }
 
     // Check for uint types and int64
     var uint1, uint2, int64_1, int64_2 bool
@@ -2171,6 +2394,10 @@ func accessArray(ident *[]Variable, obj any, field any) any {
                     if len(obj) > ifield {
                         return obj[ifield]
                     }
+                case []float32:
+                    if len(obj) > ifield {
+                        return obj[ifield]
+                    }
                 case []*big.Int:
                     if len(obj) > ifield {
                         return obj[ifield]
@@ -2275,11 +2502,11 @@ func accessArray(ident *[]Variable, obj any, field any) any {
 }
 
 func slice(v any, from, to any) any {
-    str, isStr := v.(string)
-    isArr := false
-    var arl int
-    switch v.(type) {
-    case []bool:
+	str, isStr := v.(string)
+	isArr := false
+	var arl int
+	switch v.(type) {
+	case []bool:
         isArr = true
         arl = len(v.([]bool))
     case []int:
@@ -2288,6 +2515,9 @@ func slice(v any, from, to any) any {
     case []float64:
         isArr = true
         arl = len(v.([]float64))
+    case []float32:
+        isArr = true
+        arl = len(v.([]float32))
     case []*big.Int:
         isArr = true
         arl = len(v.([]*big.Int))
@@ -2414,6 +2644,8 @@ func slice(v any, from, to any) any {
         return v.([]int)[fromInt:toInt]
     case []float64:
         return v.([]float64)[fromInt:toInt]
+    case []float32:
+        return v.([]float32)[fromInt:toInt]
     case []*big.Int:
         return v.([]*big.Int)[fromInt:toInt]
     case []*big.Float:

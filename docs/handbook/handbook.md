@@ -489,6 +489,7 @@ Numeric literal type is determined by suffix and decimal point:
 
 - `10` → int
 - `10.0` or `10f` → float (64-bit)
+- `1.5h` → float32 (32-bit)
 - `10n` → bigi
 - `10.5n` → bigf
 
@@ -562,6 +563,7 @@ Za is dynamically typed by default. `var` is used when you want explicit intent:
 
 ```za
 var z int
+var x float32
 var user struct_user
 var cow,pig,sheep animal
 ```
@@ -604,7 +606,7 @@ Dynamic arrays will be resized on demand on out-of-bounds assignment.
 Za provides the scalar types used most often in operational scripting:
 
 - `int`, `uint`, `byte`
-- `float`
+- `float`, `float32`
 - `bigi`, `bigf`
 - `string`, `bool`
 - `any`
@@ -4296,7 +4298,7 @@ argmax, argmin, concatenate, det, det_big, find, flatten, identity, inverse, inv
 **Functions (42):**
 
 
-as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, format_currency, hex_decode, hex_encode, is_number, itob, json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed, type, typeof, url_decode, url_encode, write_struct
+as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, format_currency, hex_decode, hex_encode, is_number, itob, json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed, type, typeof, url_decode, url_encode, write_struct
 
 
 **Commonly used (from examples/tests):**
@@ -4529,7 +4531,7 @@ ansi, argc, argv, array_colours, array_format, ast, await, bash_versinfo, bash_v
 **Functions (35):**
 
 
-alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen, esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool, list_fill, list_float, list_int, list_int64, list_string, max, min, msplit, peek, pop, push_front, remove, scan_left, sort, ssort, sum, tail, uniq, zip
+alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen, esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool, list_fill, list_float, list_float32, list_int, list_int64, list_string, max, max_float32, min, min_float32, msplit, peek, pop, push_front, remove, scan_left, sort, ssort, sum, tail, uniq, zip
 
 
 **Commonly used (from examples/tests):**
@@ -6180,6 +6182,8 @@ Supported return types are automatically determined:
 | `int[]` | `[]int` | `ksint` |
 | `float64` | `float` | `kfloat` |
 | `float64[]` | `[]float` | `ksfloat` |
+| `float32` | `float32` | `kfloat32` |
+| `float32[]` | `[]float32` | `ksfloat32` |
 | Struct/pointer | `any` | `kany` |
 | Map data | `map` | `kmap` |
 | All other types | (mapped accordingly) | (appropriate kind) |
@@ -7208,6 +7212,7 @@ Functions:
 |---------|-------------|-------|
 | `[]int` | `int*` | Dynamic array of integers, automatically converted to pointer |
 | `[]float64` | `double*` | Dynamic array of doubles, automatically converted to pointer |
+| `[]float32` | `float*` | Dynamic array of floats, automatically converted to pointer |
 | `[]uint8` | `uint8_t*`, `unsigned char*` | Byte array, useful for binary data and buffers |
 | `[]int64` | `long long*`, `int64_t*` | Dynamic array of 64-bit integers |
 | `[]uint` | `unsigned int*` | Dynamic array of unsigned integers |

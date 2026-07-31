@@ -1681,7 +1681,7 @@ func buildFfiLib() {
 
     slhelp["c_array_bulk_set_float32"] = LibHelp{in: "ptr,start_index,values", out: "", action: "Writes multiple float32 values starting at the given element index."}
     stdlib["c_array_bulk_set_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("c_array_bulk_set_float32", args, 1, "3", "any", "int", "[]any"); !ok {
+        if ok, err := expect_args("c_array_bulk_set_float32", args, 1, "3", "any", "int", "any"); !ok {
             return nil, err
         }
         p, ok := args[0].(*CPointerValue)
@@ -1689,19 +1689,28 @@ func buildFfiLib() {
             return nil, nil
         }
         start := args[1].(int)
-        vals, ok := args[2].([]interface{})
-        if !ok {
-            return nil, fmt.Errorf("c_array_bulk_set_float32: values must be an array")
-        }
-        for i, v := range vals {
-            switch fv := v.(type) {
-            case float64:
-                CSetFloat(p, (start+i)*4, fv)
-            case int:
-                CSetFloat(p, (start+i)*4, float64(fv))
-            default:
-                return nil, fmt.Errorf("c_array_bulk_set_float32: value at index %d is not numeric (%T)", i, v)
+        switch vals := args[2].(type) {
+        case []interface{}:
+            for i, v := range vals {
+                switch fv := v.(type) {
+                case float64:
+                    CSetFloat(p, (start+i)*4, fv)
+                case int:
+                    CSetFloat(p, (start+i)*4, float64(fv))
+                default:
+                    return nil, fmt.Errorf("c_array_bulk_set_float32: value at index %d is not numeric (%T)", i, v)
+                }
             }
+        case []float32:
+            for i, v := range vals {
+                CSetFloat(p, (start+i)*4, float64(v))
+            }
+        case []float64:
+            for i, v := range vals {
+                CSetFloat(p, (start+i)*4, v)
+            }
+        default:
+            return nil, fmt.Errorf("c_array_bulk_set_float32: values must be an array, got %T", args[2])
         }
         return nil, nil
     }
@@ -1733,7 +1742,7 @@ func buildFfiLib() {
         return nil, nil
     }
 
-    slhelp["c_array_bulk_get_float32"] = LibHelp{in: "ptr,start_index,count", out: "[]float", action: "Reads multiple float32 values starting at the given element index and returns them as a Za array."}
+    slhelp["c_array_bulk_get_float32"] = LibHelp{in: "ptr,start_index,count", out: "[]float32", action: "Reads multiple float32 values starting at the given element index and returns them as a []float32 Za array."}
     stdlib["c_array_bulk_get_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("c_array_bulk_get_float32", args, 1, "3", "any", "int", "int"); !ok {
             return nil, err
@@ -1747,9 +1756,9 @@ func buildFfiLib() {
         if count < 0 {
             return nil, fmt.Errorf("c_array_bulk_get_float32: count must be non-negative")
         }
-        result := make([]any, count)
+        result := make([]float32, count)
         for i := 0; i < count; i++ {
-            result[i] = CGetFloat(p, (start+i)*4)
+            result[i] = float32(CGetFloat(p, (start+i)*4))
         }
         return result, nil
     }
@@ -1847,7 +1856,7 @@ func buildFfiLib() {
         return nil, nil
     }
 
-    slhelp["c_array_copy_from_c_float32"] = LibHelp{in: "src_c_ptr,count", out: "[]float", action: "Reads count float32 values from a C buffer into a Za array."}
+    slhelp["c_array_copy_from_c_float32"] = LibHelp{in: "src_c_ptr,count", out: "[]float32", action: "Reads count float32 values from a C buffer into a []float32 Za array."}
     stdlib["c_array_copy_from_c_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("c_array_copy_from_c_float32", args, 1, "2", "any", "int"); !ok {
             return nil, err
@@ -1860,9 +1869,9 @@ func buildFfiLib() {
         if count < 0 {
             return nil, fmt.Errorf("c_array_copy_from_c_float32: count must be non-negative")
         }
-        result := make([]any, count)
+        result := make([]float32, count)
         for i := 0; i < count; i++ {
-            result[i] = CGetFloat(src, i*4)
+            result[i] = float32(CGetFloat(src, i*4))
         }
         return result, nil
     }

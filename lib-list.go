@@ -196,6 +196,11 @@ type sortStructFloat struct {
     v float64
 }
 
+type sortStructFloat32 struct {
+    k string
+    v float32
+}
+
 ///////////////////////////////////////////////////////////////////////
 
 // readUnexportedField uses unsafe to access an unexported field of an addressable struct.
@@ -1957,6 +1962,9 @@ func buildListLib() {
             case []float64:
                 elements = make([]any, len(v))
                 for i, x := range v { elements[i] = x }
+            case []float32:
+                elements = make([]any, len(v))
+                for i, x := range v { elements[i] = x }
             case []string:
                 elements = make([]any, len(v))
                 for i, x := range v { elements[i] = x }
@@ -2013,6 +2021,10 @@ func buildListLib() {
                 result := make([]float64, len(elements))
                 for i, idx := range indices { result[i] = elements[idx].(float64) }
                 return result, nil
+            case []float32:
+                result := make([]float32, len(elements))
+                for i, idx := range indices { result[i] = elements[idx].(float32) }
+                return result, nil
             case []string:
                 result := make([]string, len(elements))
                 for i, idx := range indices { result[i] = elements[idx].(string) }
@@ -2042,6 +2054,10 @@ func buildListLib() {
             }
         case []float64:
             if len(list.([]float64)) < 2 {
+                return list, nil
+            }
+        case []float32:
+            if len(list.([]float32)) < 2 {
                 return list, nil
             }
         case []string:
@@ -2076,6 +2092,10 @@ func buildListLib() {
 
             case []float64:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]float64)[i] < list.([]float64)[j] })
+                return list, nil
+
+            case []float32:
+                sort.SliceStable(list, func(i, j int) bool { return list.([]float32)[i] < list.([]float32)[j] })
                 return list, nil
 
             case []string:
@@ -2164,6 +2184,17 @@ func buildListLib() {
                         l[v.k] = v.v
                     }
                     return l, nil
+                case float32:
+                    kv := make([]sortStructFloat32, 0, len(list.(map[string]any)))
+                    for k, v := range list.(map[string]any) {
+                        kv = append(kv, sortStructFloat32{k: k, v: v.(float32)})
+                    }
+                    sort.Slice(kv, func(i, j int) bool { return kv[i].v < kv[j].v })
+                    l := make(map[string]float32)
+                    for _, v := range kv {
+                        l[v.k] = v.v
+                    }
+                    return l, nil
                 case string:
                     kv := make([]sortStructString, 0, len(list.(map[string]any)))
                     for k, v := range list.(map[string]any) {
@@ -2207,6 +2238,10 @@ func buildListLib() {
 
             case []float64:
                 sort.SliceStable(list, func(i, j int) bool { return list.([]float64)[i] > list.([]float64)[j] })
+                return list, nil
+
+            case []float32:
+                sort.SliceStable(list, func(i, j int) bool { return list.([]float32)[i] > list.([]float32)[j] })
                 return list, nil
 
             case []string:
@@ -2290,6 +2325,17 @@ func buildListLib() {
                     }
                     sort.Slice(kv, func(i, j int) bool { return kv[i].v > kv[j].v })
                     l := make(map[string]float64)
+                    for _, v := range kv {
+                        l[v.k] = v.v
+                    }
+                    return kv, nil
+                case float32:
+                    kv := make([]sortStructFloat32, 0, len(list.(map[string]any)))
+                    for k, v := range list.(map[string]any) {
+                        kv = append(kv, sortStructFloat32{k: k, v: v.(float32)})
+                    }
+                    sort.Slice(kv, func(i, j int) bool { return kv[i].v > kv[j].v })
+                    l := make(map[string]float32)
                     for _, v := range kv {
                         l[v.k] = v.v
                     }
@@ -2426,6 +2472,58 @@ func buildListLib() {
                 v, invalid := GetAsFloat(sf("%v", q))
                 if !invalid {
                     float_list = append(float_list, v)
+                }
+            }
+        }
+        return float_list, nil
+    }
+
+    slhelp["list_float32"] = LibHelp{in: "int_or_string_list", out: "[]float32_list", action: "Returns [#i1]int_or_string_list[#i0] as a list of float32s, with invalid items removed."}
+    stdlib["list_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("list_float32", args, 6,
+            "1", "[]int",
+            "1", "[]uint",
+            "1", "[]float64",
+            "1", "[]float32",
+            "1", "[]string",
+            "1", "[]interface {}"); !ok {
+            return nil, err
+        }
+
+        var float_list []float32
+        switch args[0].(type) {
+        case []float32:
+            return args[0].([]float32), nil
+        case []float64:
+            for _, q := range args[0].([]float64) {
+                float_list = append(float_list, float32(q))
+            }
+        case []int:
+            for _, q := range args[0].([]int) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, float32(v))
+                }
+            }
+        case []uint:
+            for _, q := range args[0].([]uint) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, float32(v))
+                }
+            }
+        case []string:
+            for _, q := range args[0].([]string) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, float32(v))
+                }
+            }
+        case []any:
+            for _, q := range args[0].([]any) {
+                v, invalid := GetAsFloat(sf("%v", q))
+                if !invalid {
+                    float_list = append(float_list, float32(v))
                 }
             }
         }

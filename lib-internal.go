@@ -61,6 +61,8 @@ func ulen(args any) (int, error) {
         return len(args), nil
     case []float64:
         return len(args), nil
+    case []float32:
+        return len(args), nil
     case []bool:
         return len(args), nil
     case []dirent:

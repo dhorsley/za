@@ -225,6 +225,20 @@ func bcDisasmInstr(instr Instr, pool []any) string {
 		sb.WriteString("ToBool")
 	case OpLorResult:
 		sb.WriteString("LorResult")
+	case OpAddFloat32:
+		sb.WriteString("AddFloat32")
+	case OpSubFloat32:
+		sb.WriteString("SubFloat32")
+	case OpMulFloat32:
+		sb.WriteString("MulFloat32")
+	case OpDivFloat32:
+		sb.WriteString("DivFloat32")
+	case OpModFloat32:
+		sb.WriteString("ModFloat32")
+	case OpNegFloat32:
+		sb.WriteString("NegFloat32")
+	case OpPowFloat32:
+		sb.WriteString("PowFloat32")
 	case OpEnd:
 		sb.WriteString("End")
 	default:

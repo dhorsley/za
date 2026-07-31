@@ -568,6 +568,7 @@ with a format spec, wrap in parens for clarity:
 <ul>
 <li><code>10</code> → int</li>
 <li><code>10.0</code> or <code>10f</code> → float (64-bit)</li>
+<li><code>1.5h</code> → float32 (32-bit)</li>
 <li><code>10n</code> → bigi</li>
 <li><code>10.5n</code> → bigf</li>
 </ul>
@@ -625,6 +626,7 @@ end</code></pre>
 want explicit intent:</p>
 <h3 id="scalars-and-structs">7.1 Scalars and structs</h3>
 <pre class="za"><code>var z int
+var x float32
 var user struct_user
 var cow,pig,sheep animal</code></pre>
 <p>Namespaced struct types are supported:</p>
@@ -649,7 +651,7 @@ Structures</h1>
 scripting:</p>
 <ul>
 <li><code>int</code>, <code>uint</code>, <code>byte</code></li>
-<li><code>float</code></li>
+<li><code>float</code>, <code>float32</code></li>
 <li><code>bigi</code>, <code>bigf</code></li>
 <li><code>string</code>, <code>bool</code></li>
 <li><code>any</code></li>
@@ -3916,12 +3918,12 @@ stack, std, trace, variance, where, zeros</p>
 </ul>
 <h2 id="conversion">conversion</h2>
 <p><strong>Functions (42):</strong></p>
-<p>as_bigf, as_bigi, as_bool, as_float, as_int, as_int64, as_string,
-as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n,
-format_currency, hex_decode, hex_encode, is_number, itob, json_decode,
-json_encode, json_format, json_query, kind, m2s, maxfloat, maxint,
-maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed,
-type, typeof, url_decode, url_encode, write_struct</p>
+<p>as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int64,
+as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo,
+explain, f2n, format_currency, hex_decode, hex_encode, is_number, itob,
+json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat,
+maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table,
+to_typed, type, typeof, url_decode, url_encode, write_struct</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>as_float</li>
@@ -4116,9 +4118,9 @@ winterm, zainfo, zsh_version</p>
 <p><strong>Functions (35):</strong></p>
 <p>alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen,
 esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool,
-list_fill, list_float, list_int, list_int64, list_string, max, min,
-msplit, peek, pop, push_front, remove, scan_left, sort, ssort, sum,
-tail, uniq, zip</p>
+list_fill, list_float, list_float32, list_int, list_int64, list_string,
+max, max_float32, min, min_float32, msplit, peek, pop, push_front,
+remove, scan_left, sort, ssort, sum, tail, uniq, zip</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>append</li>
@@ -5797,6 +5799,16 @@ kmap, etc.)</li>
 <td><code>ksfloat</code></td>
 </tr>
 <tr>
+<td><code>float32</code></td>
+<td><code>float32</code></td>
+<td><code>kfloat32</code></td>
+</tr>
+<tr>
+<td><code>float32[]</code></td>
+<td><code>[]float32</code></td>
+<td><code>ksfloat32</code></td>
+</tr>
+<tr>
 <td>Struct/pointer</td>
 <td><code>any</code></td>
 <td><code>kany</code></td>
@@ -6922,6 +6934,11 @@ detailed evaluation diagnostics</li>
 <td><code>[]float64</code></td>
 <td><code>double*</code></td>
 <td>Dynamic array of doubles, automatically converted to pointer</td>
+</tr>
+<tr>
+<td><code>[]float32</code></td>
+<td><code>float*</code></td>
+<td>Dynamic array of floats, automatically converted to pointer</td>
 </tr>
 <tr>
 <td><code>[]uint8</code></td>

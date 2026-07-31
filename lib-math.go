@@ -914,6 +914,15 @@ func min_float64(s []float64) (m float64) {
     return m
 }
 
+func min_float32(s []float32) (m float32) {
+    for i, e := range s {
+        if i == 0 || e < m {
+            m = e
+        }
+    }
+    return m
+}
+
 func min_inter(s []any) (m float64) {
     for i, e := range s {
         ee, err := GetAsFloat(sf("%v", e))
@@ -961,6 +970,15 @@ func max_uint(s []uint) (m uint) {
 }
 
 func max_float64(s []float64) (m float64) {
+    for i, e := range s {
+        if i == 0 || e > m {
+            m = e
+        }
+    }
+    return m
+}
+
+func max_float32(s []float32) (m float32) {
     for i, e := range s {
         if i == 0 || e > m {
             m = e
@@ -1132,6 +1150,12 @@ func sum_fast_1d(v any) (float64, bool) {
             sum += val // No conversion needed
         }
         return sum, true
+    case []float32:
+        sum := 0.0
+        for _, val := range arr {
+            sum += float64(val)
+        }
+        return sum, true
     case []uint8:
         sum := 0.0
         for _, val := range arr {
@@ -1182,6 +1206,12 @@ func sum_multi(v any) float64 {
             return float64(sum_uint(v.([]uint)))
         case []float64:
             return sum_float64(v.([]float64))
+        case []float32:
+            sum := 0.0
+            for _, val := range v.([]float32) {
+                sum += float64(val)
+            }
+            return sum
         case []any:
             // Check if this is actually a multi-dimensional array
             anySlice := v.([]any)
@@ -1274,6 +1304,8 @@ func min_multi(v any) float64 {
             return float64(min_uint(v.([]uint)))
         case []float64:
             return min_float64(v.([]float64))
+        case []float32:
+            return float64(min_float32(v.([]float32)))
         case []any:
             // Check if this is actually a multi-dimensional array
             anySlice := v.([]any)
@@ -1320,6 +1352,8 @@ func max_multi(v any) float64 {
             return float64(max_uint(v.([]uint)))
         case []float64:
             return max_float64(v.([]float64))
+        case []float32:
+            return float64(max_float32(v.([]float32)))
         case []any:
             // Check if this is actually a multi-dimensional array
             anySlice := v.([]any)

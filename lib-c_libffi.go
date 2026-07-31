@@ -1363,6 +1363,48 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
                 mutArg.ArrayElemType = "float64"
             }
 
+        case []float32:
+            argTypesSlice[i] = 7 // CPointer
+            arrayLen := len(v)
+
+            // Handle empty arrays
+            if arrayLen == 0 {
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = nil
+                argValuesSlice[i] = ptrPtr
+                continue
+            }
+
+            // Allocate C array
+            elementSize := unsafe.Sizeof(C.float(0))
+            totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+            arrayPtr := C.malloc(totalSize)
+            if arrayPtr == nil {
+                return nil, fmt.Errorf("argument %d: failed to allocate float32 array", i)
+            }
+            allocatedMem = append(allocatedMem, arrayPtr)
+            C.memset(arrayPtr, 0, totalSize)
+
+            // Copy elements
+            for idx, elem := range v {
+                elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+                *(*C.float)(elemPtr) = C.float(elem)
+            }
+
+            // Create pointer slot for libffi
+            ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+            allocatedMem = append(allocatedMem, ptrPtr)
+            *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+            argValuesSlice[i] = ptrPtr
+
+            // Track for mutable arrays
+            if mutArg, ok := mutableArgIndices[i]; ok {
+                mutArg.CPtr = arrayPtr
+                mutArg.ArrayLen = arrayLen
+                mutArg.ArrayElemType = "float32"
+            }
+
         case []uint8:
             argTypesSlice[i] = 7 // CPointer
             arrayLen := len(v)
@@ -1812,6 +1854,34 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
                     mutArg.CPtr = arrayPtr
                     mutArg.ArrayLen = len(v)
                     mutArg.ArrayElemType = "float64"
+                }
+
+            case reflect.Float32:
+                // Convert to []float32 and marshal
+                floatArray := make([]C.float, len(v))
+                for j, elem := range v {
+                    if val, ok := elem.(float32); ok {
+                        floatArray[j] = C.float(val)
+                    } else {
+                        return nil, fmt.Errorf("argument %d: array element %d is not float32", i, j)
+                    }
+                }
+                arrayPtr := C.malloc(C.size_t(len(v)) * C.size_t(unsafe.Sizeof(C.float(0))))
+                if arrayPtr == nil {
+                    return nil, fmt.Errorf("argument %d: failed to allocate float32 array", i)
+                }
+                allocatedMem = append(allocatedMem, arrayPtr)
+                C.memcpy(arrayPtr, unsafe.Pointer(unsafe.SliceData(floatArray)), C.size_t(len(floatArray))*C.size_t(unsafe.Sizeof(C.float(0))))
+
+                ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+                allocatedMem = append(allocatedMem, ptrPtr)
+                *(*unsafe.Pointer)(ptrPtr) = arrayPtr
+                argValuesSlice[i] = ptrPtr
+
+                if mutArg, ok := mutableArgIndices[i]; ok {
+                    mutArg.CPtr = arrayPtr
+                    mutArg.ArrayLen = len(v)
+                    mutArg.ArrayElemType = "float32"
                 }
 
             case reflect.String:
@@ -2528,6 +2598,8 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
                     newKind = ksuint64
                 case []float64:
                     newKind = ksfloat
+                case []float32:
+                    newKind = ksfloat32
                 case []string:
                     newKind = ksstring
                 case []*big.Int:
@@ -3070,6 +3142,14 @@ func unmarshalArrayFromC(cPtr unsafe.Pointer, length int, elemType string) (any,
         for i := 0; i < length; i++ {
             elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.double(0)))
             result[i] = float64(*(*C.double)(elemPtr))
+        }
+        return result, nil
+
+    case "float32":
+        result := make([]float32, length)
+        for i := 0; i < length; i++ {
+            elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.float(0)))
+            result[i] = float32(*(*C.float)(elemPtr))
         }
         return result, nil
 

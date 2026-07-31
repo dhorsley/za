@@ -1268,7 +1268,7 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
+        "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_float32", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
         "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
         "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
@@ -1756,6 +1756,18 @@ func buildConversionLib() {
             return math.NaN(), nil
         }
         return i, nil
+    }
+
+    slhelp["as_float32"] = LibHelp{in: "var", out: "float32", action: "Convert [#i1]var[#i0] to a float32. Returns NaN on error."}
+    stdlib["as_float32"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if len(args) != 1 {
+            return -1, errors.New("invalid arguments provided to as_float32()")
+        }
+        i, e := GetAsFloat(args[0])
+        if e {
+            return float32(math.NaN()), nil
+        }
+        return float32(i), nil
     }
 
     slhelp["byte"] = LibHelp{in: "var", out: "byte", action: "Convert to a uint8 sized integer, or errors."}

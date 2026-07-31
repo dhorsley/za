@@ -95,6 +95,7 @@ func init() {
     var sti []int
     var sti64 []int64
     var stmatrix [][]int
+    var stf32 []float32
     var stf64 []float64
     var sts []string
     var stbi []*big.Int
@@ -131,6 +132,7 @@ func init() {
     Typemap["[]uint64"] = reflect.TypeOf(stu64)
     Typemap["[]int64"] = reflect.TypeOf(sti64)
     Typemap["[][]int"] = reflect.TypeOf(stmatrix)
+    Typemap["[]float32"] = reflect.TypeOf(stf32)
     Typemap["[]float"] = reflect.TypeOf(stf64)
     Typemap["[]string"] = reflect.TypeOf(sts)
     Typemap["[]bigi"] = reflect.TypeOf(stbi)

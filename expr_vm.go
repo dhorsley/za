@@ -157,6 +157,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
 			vm.push(a + b)
+		case OpAddFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
+			vm.push(a + b)
 		case OpAddString:
 			b := vm.pop().(string)
 			a := vm.pop().(string)
@@ -173,6 +177,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
 			vm.push(a - b)
+		case OpSubFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
+			vm.push(a - b)
 		case OpSubGeneric:
 			b := vm.pop()
 			a := vm.pop()
@@ -184,6 +192,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 		case OpMulFloat:
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
+			vm.push(a * b)
+		case OpMulFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
 			vm.push(a * b)
 		case OpMulGeneric:
 			b := vm.pop()
@@ -200,6 +212,13 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
 			vm.push(a / b)
+		case OpDivFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
+			if b == 0 {
+				panic("divide by zero")
+			}
+			vm.push(a / b)
 		case OpDivGeneric:
 			b := vm.pop()
 			a := vm.pop()
@@ -215,6 +234,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
 			vm.push(math.Mod(a, b))
+		case OpModFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
+			vm.push(float32(math.Mod(float64(a), float64(b))))
 		case OpModGeneric:
 			b := vm.pop()
 			a := vm.pop()
@@ -308,6 +331,9 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 		case OpNegFloat:
 			a := vm.pop().(float64)
 			vm.push(-a)
+		case OpNegFloat32:
+			a := vm.pop().(float32)
+			vm.push(-a)
 		case OpNegGeneric:
 			a := vm.pop()
 			switch v := a.(type) {
@@ -333,6 +359,10 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			b := vm.pop().(float64)
 			a := vm.pop().(float64)
 			vm.push(math.Pow(a, b))
+		case OpPowFloat32:
+			b := vm.pop().(float32)
+			a := vm.pop().(float32)
+			vm.push(float32(math.Pow(float64(a), float64(b))))
 		case OpPowGeneric:
 			b := vm.pop()
 			a := vm.pop()

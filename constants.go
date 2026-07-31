@@ -156,6 +156,7 @@ const (
     kuint
     kuint64
     kfloat
+    kfloat32
     kbigi
     kbigf
     kstring
@@ -166,6 +167,7 @@ const (
     ksuint
     ksuint64
     ksfloat
+    ksfloat32
     ksbigi
     ksbigf
     ksstring

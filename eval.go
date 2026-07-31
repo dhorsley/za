@@ -2628,6 +2628,11 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kfloat32:
+            _, ok = value.(float32)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
 
         case kbigi:
             switch value.(type) {
@@ -2669,6 +2674,11 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             }
         case ksfloat:
             _, ok = value.([]float64)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksfloat32:
+            _, ok = value.([]float32)
             if ok {
                 (*ident)[bin].IValue = value
             }
@@ -2796,6 +2806,9 @@ func vgetElementi(fs uint32, ident *[]Variable, name string, el string) (any, bo
         iel, _ := GetAsInt(el)
         return v[iel], ok
     case []float64:
+        iel, _ := GetAsInt(el)
+        return v[iel], ok
+    case []float32:
         iel, _ := GetAsInt(el)
         return v[iel], ok
     case []string:
@@ -3101,6 +3114,30 @@ func vsetElement(tok *Token, fs uint32, ident *[]Variable, name string, el any, 
         if fault {
             panic(fmt.Errorf("Could not append to float array (ele:%v) a value '%+v' of type '%T'", numel, value, value))
         }
+
+    case []float32:
+        sz := cap((*ident)[bin].IValue.([]float32))
+        ll := len((*ident)[bin].IValue.([]float32))
+        if numel >= sz || numel >= ll {
+            newend := sz
+            if numel >= sz {
+                newend = sz * 2
+            }
+            if sz == 0 {
+                newend = 1
+            }
+            if numel >= newend {
+                newend = numel + 1
+            }
+            newar := make([]float32, numel+1, newend)
+            copy(newar, (*ident)[bin].IValue.([]float32))
+            (*ident)[bin].IValue = newar
+        }
+        fv, fault := GetAsFloat(value)
+        if fault {
+            panic(fmt.Errorf("Could not append to float32 array (ele:%v) a value '%+v' of type '%T'", numel, value, value))
+        }
+        (*ident)[bin].IValue.([]float32)[numel] = float32(fv)
 
     case []*big.Int:
         sz := cap((*ident)[bin].IValue.([]*big.Int))

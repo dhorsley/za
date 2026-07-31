@@ -58,6 +58,11 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     n += 1
                     continue
                 }
+            case float32:
+                if types[p] == "float32" || types[p] == "number" {
+                    n += 1
+                    continue
+                }
             case uint, uint64, uint8:
                 if types[p] == "uint" || types[p] == "number" {
                     n += 1
@@ -110,6 +115,11 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                 }
             case []float64:
                 if types[p] == "[]float" {
+                    n += 1
+                    continue
+                }
+            case []float32:
+                if types[p] == "[]float32" {
                     n += 1
                     continue
                 }

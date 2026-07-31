@@ -16,6 +16,7 @@ const (
 	hintUnknown typeHint = iota
 	hintInt
 	hintFloat
+	hintFloat32
 	hintString
 	hintBool
 	hintSlice
@@ -261,6 +262,9 @@ func (c *exprCompiler) nud(tok Token) error {
 		case hintFloat:
 			c.emit(OpNegFloat)
 			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
+		case hintFloat32:
+			c.emit(OpNegFloat32)
+			c.pushValue(compileValue{hint: hintFloat32, constVal: nil, instrIdx: -1})
 		case hintInt:
 			c.emit(OpNegInt)
 			c.pushValue(compileValue{hint: hintInt, constVal: nil, instrIdx: -1})
@@ -387,6 +391,10 @@ func (c *exprCompiler) compileLiteral(tok Token) error {
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstFloat, idx)
 		c.pushValue(compileValue{hint: hintFloat, constVal: v, instrIdx: len(c.code) - 1})
+	case float32:
+		idx := c.poolIndex(v)
+		c.emit(OpLoadConstFloat, idx)
+		c.pushValue(compileValue{hint: hintFloat32, constVal: v, instrIdx: len(c.code) - 1})
 	case *big.Int:
 		idx := c.poolIndex(v)
 		c.emit(OpLoadConstInt, idx)
@@ -485,8 +493,10 @@ func kindOverrideToHint(s string) typeHint {
 	switch s {
 	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
 		return hintInt
-	case "float64", "float32":
+	case "float64":
 		return hintFloat
+	case "float32":
+		return hintFloat32
 	case "string":
 		return hintString
 	case "bool":
@@ -513,6 +523,8 @@ func (c *exprCompiler) typeToHint(v any) typeHint {
 		return hintInt
 	case float64:
 		return hintFloat
+	case float32:
+		return hintFloat32
 	case string:
 		return hintString
 	case bool:
@@ -521,7 +533,7 @@ func (c *exprCompiler) typeToHint(v any) typeHint {
 		return hintBigInt
 	case *big.Float:
 		return hintBigFloat
-	case []any, []int, []string, []float64:
+	case []any, []int, []string, []float64, []float32:
 		return hintSlice
 	case map[string]any:
 		return hintMap
@@ -547,17 +559,20 @@ func (c *exprCompiler) emitBinary(op int64) {
 		}
 	}
 
-	choose := func(intOp, floatOp, stringOp, genericOp OpCode) {
+	choose := func(intOp, floatOp, float32Op, stringOp, genericOp OpCode) {
 		if left.hint == hintInt && right.hint == hintInt {
 			c.emit(intOp)
 			c.pushValue(compileValue{hint: hintInt, constVal: nil, instrIdx: -1})
 		} else if left.hint == hintFloat && right.hint == hintFloat {
 			c.emit(floatOp)
 			c.pushValue(compileValue{hint: hintFloat, constVal: nil, instrIdx: -1})
-	} else if (left.hint == hintInt || left.hint == hintFloat) && (right.hint == hintInt || right.hint == hintFloat) {
-		c.emit(genericOp)
-		c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
-	} else if left.hint == hintString && right.hint == hintString && op == O_Plus {
+		} else if left.hint == hintFloat32 && right.hint == hintFloat32 {
+			c.emit(float32Op)
+			c.pushValue(compileValue{hint: hintFloat32, constVal: nil, instrIdx: -1})
+		} else if (left.hint == hintInt || left.hint == hintFloat || left.hint == hintFloat32) && (right.hint == hintInt || right.hint == hintFloat || right.hint == hintFloat32) {
+			c.emit(genericOp)
+			c.pushValue(compileValue{hint: hintUnknown, constVal: nil, instrIdx: -1})
+		} else if left.hint == hintString && right.hint == hintString && op == O_Plus {
 			c.emit(stringOp)
 			c.pushValue(compileValue{hint: hintString, constVal: nil, instrIdx: -1})
 		} else {
@@ -568,17 +583,17 @@ func (c *exprCompiler) emitBinary(op int64) {
 
 	switch op {
 	case O_Plus:
-		choose(OpAddInt, OpAddFloat, OpAddString, OpAddGeneric)
+		choose(OpAddInt, OpAddFloat, OpAddFloat32, OpAddString, OpAddGeneric)
 	case O_Minus:
-		choose(OpSubInt, OpSubFloat, 0, OpSubGeneric)
+		choose(OpSubInt, OpSubFloat, OpSubFloat32, 0, OpSubGeneric)
 	case O_Multiply:
-		choose(OpMulInt, OpMulFloat, 0, OpMulGeneric)
+		choose(OpMulInt, OpMulFloat, OpMulFloat32, 0, OpMulGeneric)
 	case O_Divide:
-		choose(OpDivInt, OpDivFloat, 0, OpDivGeneric)
+		choose(OpDivInt, OpDivFloat, OpDivFloat32, 0, OpDivGeneric)
 	case O_Percent:
-		choose(OpModInt, OpModFloat, 0, OpModGeneric)
+		choose(OpModInt, OpModFloat, OpModFloat32, 0, OpModGeneric)
 	case SYM_POW:
-		choose(OpPowInt, OpPowFloat, 0, OpPowGeneric)
+		choose(OpPowInt, OpPowFloat, OpPowFloat32, 0, OpPowGeneric)
 	}
 }
 
@@ -981,6 +996,8 @@ func compileValueFromResult(v any, instrIdx int) compileValue {
 		return compileValue{hint: hintInt, constVal: val, instrIdx: instrIdx}
 	case float64:
 		return compileValue{hint: hintFloat, constVal: val, instrIdx: instrIdx}
+	case float32:
+		return compileValue{hint: hintFloat32, constVal: val, instrIdx: instrIdx}
 	case string:
 		return compileValue{hint: hintString, constVal: val, instrIdx: instrIdx}
 	case bool:
