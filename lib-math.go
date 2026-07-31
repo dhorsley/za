@@ -76,6 +76,8 @@ func buildMathLib() {
         switch args[0].(type) {
         case float64:
             return RenderFloat("#,###"+precString, args[0].(float64)), nil
+        case float32:
+            return RenderFloat("#,###"+precString, float64(args[0].(float32))), nil
         case int:
         case int64:
         default:
@@ -96,7 +98,7 @@ func buildMathLib() {
 
         var n float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             n, _ = GetAsFloat(args[0])
             n = math.Log(n)
         }
@@ -110,7 +112,7 @@ func buildMathLib() {
         }
         var n float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             n, _ = GetAsFloat(args[0])
             n = math.Log10(n)
         }
@@ -124,7 +126,7 @@ func buildMathLib() {
         }
         var n float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             n, _ = GetAsFloat(args[0])
             n = math.Log2(n)
         }
@@ -142,11 +144,11 @@ func buildMathLib() {
 
         var n, b float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             n, _ = GetAsFloat(args[0])
         }
         switch args[1].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             b, _ = GetAsFloat(args[1])
             if b <= 0 {
                 return 0, errors.New("Base must be positive in log()")
@@ -168,7 +170,7 @@ func buildMathLib() {
         }
         var radians float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             deg, _ := GetAsFloat(args[0])
             radians = deg * (math.Pi / 180)
         default:
@@ -184,7 +186,7 @@ func buildMathLib() {
         }
         var degrees float64
         switch args[0].(type) {
-        case float64, int, int64:
+        case float64, int, int64, float32:
             rad, _ := GetAsFloat(args[0])
             degrees = rad * (180 / math.Pi)
         default:
@@ -204,6 +206,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Asin(r), err
     }
@@ -219,6 +223,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Acos(r), err
     }
@@ -234,6 +240,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Atan(r), err
     }
@@ -249,6 +257,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Sinh(r), err
     }
@@ -264,6 +274,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Asinh(r), err
     }
@@ -279,6 +291,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Cosh(r), err
     }
@@ -294,6 +308,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Acosh(r), err
     }
@@ -309,6 +325,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Tanh(r), err
     }
@@ -324,6 +342,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Atanh(r), err
     }
@@ -339,6 +359,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Sin(r), err
     }
@@ -354,6 +376,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Cos(r), err
     }
@@ -369,6 +393,8 @@ func buildMathLib() {
             r = float64(args[0].(int))
         case float64:
             r = args[0].(float64)
+        case float32:
+            r = float64(args[0].(float32))
         }
         return math.Tan(r), err
     }
@@ -389,12 +415,16 @@ func buildMathLib() {
             p1 = float64(args[0].(int))
         case float64:
             p1 = args[0].(float64)
+        case float32:
+            p1 = float64(args[0].(float32))
         }
         switch args[1].(type) {
         case int:
             p2 = float64(args[1].(int))
         case float64:
             p2 = args[1].(float64)
+        case float32:
+            p2 = float64(args[1].(float32))
         }
         return math.Pow(p1, p2), err
     }
@@ -447,6 +477,8 @@ func buildMathLib() {
             return (n ^ y) - y, nil
         case float64:
             return math.Abs(args[0].(float64)), nil
+        case float32:
+            return math.Abs(float64(args[0].(float32))), nil
         default:
             return -1, errors.New("argument to abs() must be a number.")
         }
@@ -462,6 +494,11 @@ func buildMathLib() {
             switch len(args) {
             case 1:
                 return math.Round(args[0].(float64)), nil
+            }
+        case float32:
+            switch len(args) {
+            case 1:
+                return math.Round(float64(args[0].(float32))), nil
             }
         case int:
             switch len(args) {
@@ -482,6 +519,11 @@ func buildMathLib() {
             switch len(args) {
             case 1:
                 return math.Floor(args[0].(float64)), nil
+            }
+        case float32:
+            switch len(args) {
+            case 1:
+                return math.Floor(float64(args[0].(float32))), nil
             }
         case int:
             switch len(args) {

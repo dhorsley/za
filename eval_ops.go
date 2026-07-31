@@ -1505,6 +1505,11 @@ func unaryPlus(val any) any {
         return floatVal
     }
 
+    float32Val, ok := val.(float32)
+    if ok {
+        return float32Val
+    }
+
     panic(fmt.Errorf("type error: unary positive requires number, but was %s", typeOf(val)))
 }
 
@@ -1515,6 +1520,8 @@ func unaryMinus(val any) any {
         return -int(i)
     case int64:
         return -int(i)
+    case float32:
+        return -i
     case *big.Int:
         var r big.Int
         r.Neg(GetAsBigInt(i))

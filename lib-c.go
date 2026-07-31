@@ -380,6 +380,8 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
             return v, nil
         case float64:
             return int(v), nil
+        case float32:
+            return int(v), nil
         case string:
             ival, err := strconv.Atoi(v)
             if err != nil {
@@ -410,6 +412,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
                 return nil, fmt.Errorf("cannot convert negative float %f to C uint", v)
             }
             return uint(v), nil
+        case float32:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative float %f to C uint", v)
+            }
+            return uint(v), nil
         case string:
             uival, err := strconv.ParseUint(v, 10, 32)
             if err != nil {
@@ -431,6 +438,8 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
             return result, nil
         case float64:
             return v, nil
+        case float32:
+            return float64(v), nil
         case string:
             fval, err := strconv.ParseFloat(v, 64)
             if err != nil {
@@ -462,6 +471,8 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
             return v != 0, nil
         case float64:
             return v != 0.0, nil
+        case float32:
+            return v != 0.0, nil
         case string:
             return v != "" && v != "0" && v != "false", nil
         default:
@@ -492,6 +503,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
         case uint8:
             return int16(v), nil // uint8 always fits in int16
         case float64:
+            if v < -32768 || v > 32767 {
+                return nil, fmt.Errorf("value %f out of range for int16 (-32768 to 32767)", v)
+            }
+            return int16(v), nil
+        case float32:
             if v < -32768 || v > 32767 {
                 return nil, fmt.Errorf("value %f out of range for int16 (-32768 to 32767)", v)
             }
@@ -539,6 +555,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
                 return nil, fmt.Errorf("value %f out of range for uint16 (0 to 65535)", v)
             }
             return uint16(v), nil
+        case float32:
+            if v < 0 || v > 65535 {
+                return nil, fmt.Errorf("value %f out of range for uint16 (0 to 65535)", v)
+            }
+            return uint16(v), nil
         case string:
             uival, err := strconv.ParseUint(v, 10, 16)
             if err != nil {
@@ -569,6 +590,8 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
         case uint8:
             return int64(v), nil
         case float64:
+            return int64(v), nil
+        case float32:
             return int64(v), nil
         case string:
             ival, err := strconv.ParseInt(v, 10, 64)
@@ -607,6 +630,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
                 return nil, fmt.Errorf("cannot convert negative float %f to C uint64", v)
             }
             return uint64(v), nil
+        case float32:
+            if v < 0 {
+                return nil, fmt.Errorf("cannot convert negative float %f to C uint64", v)
+            }
+            return uint64(v), nil
         case string:
             uival, err := strconv.ParseUint(v, 10, 64)
             if err != nil {
@@ -628,6 +656,8 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
             return float64(v), nil
         case float64:
             return v, nil
+        case float32:
+            return float64(v), nil
         case string:
             fval, err := strconv.ParseFloat(v, 64)
             if err != nil {
@@ -674,6 +704,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
                 return nil, fmt.Errorf("value %f out of range for int8 (-128 to 127)", v)
             }
             return int8(v), nil
+        case float32:
+            if v < -128 || v > 127 {
+                return nil, fmt.Errorf("value %f out of range for int8 (-128 to 127)", v)
+            }
+            return int8(v), nil
         case string:
             ival, err := strconv.ParseInt(v, 10, 8)
             if err != nil {
@@ -713,6 +748,11 @@ func ConvertZaToCValue(zval any, expectedType CType) (any, error) {
             }
             return uint8(v), nil
         case float64:
+            if v < 0 || v > 255 {
+                return nil, fmt.Errorf("value %f out of range for uint8 (0 to 255)", v)
+            }
+            return uint8(v), nil
+        case float32:
             if v < 0 || v > 255 {
                 return nil, fmt.Errorf("value %f out of range for uint8 (0 to 255)", v)
             }

@@ -1808,6 +1808,12 @@ func unOpSqr(n any) any {
         return n * n
     case uint:
         return n * n
+    case float32:
+        fv := float64(n) * float64(n)
+        if fv > math.MaxFloat32 || fv < -math.MaxFloat32 {
+            return fv
+        }
+        return float32(fv)
     case float64:
         return n * n
     case *big.Int:
@@ -1829,6 +1835,8 @@ func unOpSqrt(n any) any {
         return math.Sqrt(float64(n))
     case uint:
         return math.Sqrt(float64(n))
+    case float32:
+        return float32(math.Sqrt(float64(n)))
     case float64:
         return math.Sqrt(n)
     case *big.Int:
