@@ -1,0 +1,3 @@
+s = "hello"
+x = 1
+s2 = "value: {x}"

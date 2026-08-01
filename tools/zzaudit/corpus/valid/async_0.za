@@ -1,0 +1,4 @@
+def t()
+  return 1
+end
+async h t()

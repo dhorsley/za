@@ -1,0 +1,6 @@
+struct person
+  name string
+  age int
+endstruct
+var p person
+p.name = "Billy"

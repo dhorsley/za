@@ -146,6 +146,10 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
     pos := start
     lstart := start
 
+    if lexSoftErrors {
+        lastSoftErrorMsg = ""
+    }
+
     var tempToken *lcstruct
     phrase := Phrase{
         Tokens: make([]Token, 0, 8),
@@ -670,6 +674,22 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
     // Try block extraction happens during phrasing, not after
 
     recordPhase(ctx, "parse", time.Since(startTime))
+
+    if lexSoftErrors {
+        // In checker mode, an EOF with unterminated parens/brackets means the
+        // phraser swallowed the rest of the file into a phrase that was never
+        // finalized; surface it instead of silently accepting.
+        if braceNestLevel > 0 {
+            lastSoftErrorMsg = "unclosed parenthesis at end of file"
+            badword = true
+        } else if sbraceNestLevel > 0 {
+            lastSoftErrorMsg = "unclosed bracket at end of file"
+            badword = true
+        }
+        if lastSoftErrorMsg != "" {
+            badword = true
+        }
+    }
 
     return badword, eof
 

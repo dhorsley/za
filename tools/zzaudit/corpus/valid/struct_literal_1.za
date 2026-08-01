@@ -1,0 +1,4 @@
+struct thing
+  x int
+endstruct
+p = thing(.x 5)

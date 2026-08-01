@@ -1,0 +1,4 @@
+test "t1" GROUP "g"
+  assert 1 == 1, "ok"
+  doc 
+endtest

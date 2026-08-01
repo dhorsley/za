@@ -1,0 +1,5 @@
+def f(x)
+  return 1, 2 if x > 0
+  return x
+end
+f(1)

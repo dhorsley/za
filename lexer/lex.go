@@ -476,6 +476,15 @@ func NextToken(input string, fs uint32, curLine *int16, start int, binder Binder
         }
     }
 
+    // unterminated string or block literal: the loop above exhausted the
+    // input without finding the closing terminator.
+    if matchQuote || matchBlock {
+        if matchQuote {
+            return nil, fmt.Errorf("unterminated string literal (missing closing '%s')", string(term))
+        }
+        return nil, fmt.Errorf("unterminated block literal (missing closing '}')")
+    }
+
     // skip past empty word results
     if word == "" {
         word = input[thisWordStart:]

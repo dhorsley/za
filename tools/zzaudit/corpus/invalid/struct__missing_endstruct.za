@@ -1,0 +1,2 @@
+struct person
+  name string

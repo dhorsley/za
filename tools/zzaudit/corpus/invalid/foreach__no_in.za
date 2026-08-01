@@ -1,0 +1,4 @@
+items = [1]
+foreach item items
+  x = item
+endfor

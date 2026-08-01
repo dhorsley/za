@@ -7926,10 +7926,13 @@ tco_reentry:
         case C_Endif:
 
             // ENDIF *should* just be an end-of-block marker
-            if ifDepth > 0 {
-                ifDepth -= 1
-                parser.ifDepth = ifDepth
+            if ifDepth <= 0 {
+                parser.report(inbound.SourceLine, "Not currently in an IF block.")
+                finish(false, ERR_SYNTAX)
+                break
             }
+            ifDepth -= 1
+            parser.ifDepth = ifDepth
 
             // Truncate the matched stack to reflect the closed nesting level
             if len(parser.ifMatchedStack) > int(ifDepth) {

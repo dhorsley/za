@@ -1,0 +1,4 @@
+struct thing
+  x int = 5
+  y string = "d"
+endstruct

@@ -1,0 +1,3 @@
+for i=0 3 to
+  continue if i == 1
+endfor

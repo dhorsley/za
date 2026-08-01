@@ -1,0 +1,10 @@
+enum status ( idle,  )
+s = status.done
+with enum status
+  case s full
+  is idle
+    y = 1
+  is done
+    y = 2
+  endcase
+endwith

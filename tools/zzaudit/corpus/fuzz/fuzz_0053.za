@@ -1,0 +1,2 @@
+p = "/tmp/a/b.txt"
+n == $pn p

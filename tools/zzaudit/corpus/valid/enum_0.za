@@ -1,0 +1,2 @@
+enum color ( red, green, blue )
+x = color.red

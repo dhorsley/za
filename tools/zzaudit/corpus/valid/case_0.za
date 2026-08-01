@@ -1,0 +1,9 @@
+x = 1
+case x
+is 1
+  y = 10
+is 2
+  y = 20
+or
+  y = 99
+endcase

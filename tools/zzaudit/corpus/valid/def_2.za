@@ -1,0 +1,4 @@
+def f(a,b)
+  return b,a
+end
+a, b = f(1,2)

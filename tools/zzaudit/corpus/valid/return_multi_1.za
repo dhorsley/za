@@ -1,0 +1,4 @@
+def g(a,b)
+  return [b,a]
+end
+x,y = g(1,2)

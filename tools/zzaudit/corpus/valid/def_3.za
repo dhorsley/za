@@ -1,0 +1,4 @@
+def noargs()
+  return
+end
+noargs()

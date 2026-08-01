@@ -1,0 +1,4 @@
+def f(a,b,c)
+  return b,c,a
+end
+x,y,z = f(1,2,3)

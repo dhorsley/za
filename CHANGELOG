@@ -39,10 +39,6 @@ language changes
 tooling changes
 ---------------
 
-  * LSP: `-S -zz` subprocess (was `-z`)
-    - module error filtering to main file only;
-    - statement-modifier if and pane define false positive fixes
-
   * TAP 13 test output (`--tap` flag)
     - `--tap` emits test results in TAP 13 format instead of colored text
     - `--tap` without `-o` writes to stderr; with `-o file` writes to file
@@ -55,6 +51,17 @@ tooling changes
 
   * VS Code extension: client-side regex diagnostics for escape/backslash patterns
     (removed), exponent regex fix, keyword exclusion fix
+
+  * syntax checker (`za -z` / `za -zz`)
+    - unterminated string literals now error at the lexer (previously swallowed to EOF)
+    - stray `endif` at top level now errors consistently with other end* statements
+    - new statement-shape validation: missing assignment RHS, trailing operators,
+      bare `::`, chained ranges, malformed `var` declarations, unbalanced parens/brackets
+    - keyword arity checks for `if`/`while`/`for`/`foreach`/`break`/`continue`/`return`/
+      `on`/`with`/`async`/`throw`/`struct`/`assert`/`exit`/`pause`/`require`/`module`/`namespace`
+    - `with`/`endwith` block nesting validation (was missing)
+    - LSP switched from `-zz` to `-z` to avoid false-positive module warnings for `.so` libs
+    - `ERR_SYNTAX` shifted from `iota` (0) to `iota + 1` so syntax errors exit non-zero
 
 
 library changes

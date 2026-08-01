@@ -1,0 +1,4 @@
+x = "hello"
+if x ~ "ell"
+  y = 1
+endif

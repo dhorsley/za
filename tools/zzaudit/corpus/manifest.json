@@ -1,0 +1,1760 @@
+[
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_scalar_0.za",
+  "kind": "valid",
+  "rule": "assign_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_scalar_1.za",
+  "kind": "valid",
+  "rule": "assign_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_scalar_2.za",
+  "kind": "valid",
+  "rule": "assign_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_scalar__no_rhs.za",
+  "kind": "invalid",
+  "rule": "assign_scalar",
+  "mut": "no_rhs"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_scalar__trailing_op.za",
+  "kind": "invalid",
+  "rule": "assign_scalar",
+  "mut": "trailing_op"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_scalar__double_assign.za",
+  "kind": "invalid",
+  "rule": "assign_scalar",
+  "mut": "double_assign"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_scalar__leading_op.za",
+  "kind": "invalid",
+  "rule": "assign_scalar",
+  "mut": "leading_op"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_op_0.za",
+  "kind": "valid",
+  "rule": "assign_op",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_op__bare_plus_eq.za",
+  "kind": "invalid",
+  "rule": "assign_op",
+  "mut": "bare_plus_eq"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_op__double_plus.za",
+  "kind": "invalid",
+  "rule": "assign_op",
+  "mut": "double_plus"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_multi_target_0.za",
+  "kind": "valid",
+  "rule": "assign_multi_target",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_multi_target_1.za",
+  "kind": "valid",
+  "rule": "assign_multi_target",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_multi_target__multi_no_targets.za",
+  "kind": "invalid",
+  "rule": "assign_multi_target",
+  "mut": "multi_no_targets"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/assign_global_0.za",
+  "kind": "valid",
+  "rule": "assign_global",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_global__bare_at.za",
+  "kind": "invalid",
+  "rule": "assign_global",
+  "mut": "bare_at"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/assign_global__double_at.za",
+  "kind": "invalid",
+  "rule": "assign_global",
+  "mut": "double_at"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_0.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_1.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_2.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_3.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_4.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_5.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_6.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_7.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_8.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_9.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/var_scalar_10.za",
+  "kind": "valid",
+  "rule": "var_scalar",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__missing_type.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "missing_type"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__assign_form.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "assign_form"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__no_rhs_typed.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "no_rhs_typed"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__no_rhs_no_type.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "no_rhs_no_type"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__unclosed_array.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "unclosed_array"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/var_scalar__comma_tail.za",
+  "kind": "invalid",
+  "rule": "var_scalar",
+  "mut": "comma_tail"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/struct_0.za",
+  "kind": "valid",
+  "rule": "struct",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/struct_1.za",
+  "kind": "valid",
+  "rule": "struct",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/struct__missing_endstruct.za",
+  "kind": "invalid",
+  "rule": "struct",
+  "mut": "missing_endstruct"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/struct__stray_field.za",
+  "kind": "invalid",
+  "rule": "struct",
+  "mut": "stray_field"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/struct__no_identifier.za",
+  "kind": "invalid",
+  "rule": "struct",
+  "mut": "no_identifier"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/enum_0.za",
+  "kind": "valid",
+  "rule": "enum",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/enum_1.za",
+  "kind": "valid",
+  "rule": "enum",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/enum__unclosed_paren.za",
+  "kind": "invalid",
+  "rule": "enum",
+  "mut": "unclosed_paren"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/enum__no_members.za",
+  "kind": "invalid",
+  "rule": "enum",
+  "mut": "no_members"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/enum__trailing_comma.za",
+  "kind": "invalid",
+  "rule": "enum",
+  "mut": "trailing_comma"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/if_0.za",
+  "kind": "valid",
+  "rule": "if",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/if_1.za",
+  "kind": "valid",
+  "rule": "if",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/if_2.za",
+  "kind": "valid",
+  "rule": "if",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__missing_endif.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "missing_endif"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__inline_endif.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "inline_endif"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__no_condition.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "no_condition"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__bare_else.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "bare_else"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__stray_endif.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "stray_endif"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/if__mismatched_closer.za",
+  "kind": "invalid",
+  "rule": "if",
+  "mut": "mismatched_closer"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/on_do_0.za",
+  "kind": "valid",
+  "rule": "on_do",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/on_do__no_do.za",
+  "kind": "invalid",
+  "rule": "on_do",
+  "mut": "no_do"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/on_do__bare_on.za",
+  "kind": "invalid",
+  "rule": "on_do",
+  "mut": "bare_on"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/on_do__no_condition.za",
+  "kind": "invalid",
+  "rule": "on_do",
+  "mut": "no_condition"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/stmt_modifier_0.za",
+  "kind": "valid",
+  "rule": "stmt_modifier",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/stmt_modifier_1.za",
+  "kind": "valid",
+  "rule": "stmt_modifier",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/stmt_modifier_2.za",
+  "kind": "valid",
+  "rule": "stmt_modifier",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/stmt_modifier_3.za",
+  "kind": "valid",
+  "rule": "stmt_modifier",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/stmt_modifier__break_no_cond.za",
+  "kind": "invalid",
+  "rule": "stmt_modifier",
+  "mut": "break_no_cond"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/stmt_modifier__continue_no_cond.za",
+  "kind": "invalid",
+  "rule": "stmt_modifier",
+  "mut": "continue_no_cond"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/stmt_modifier__return_no_cond.za",
+  "kind": "invalid",
+  "rule": "stmt_modifier",
+  "mut": "return_no_cond"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/for_to_0.za",
+  "kind": "valid",
+  "rule": "for_to",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/for_to_1.za",
+  "kind": "valid",
+  "rule": "for_to",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/for_to__missing_endfor.za",
+  "kind": "invalid",
+  "rule": "for_to",
+  "mut": "missing_endfor"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/for_to__no_to.za",
+  "kind": "invalid",
+  "rule": "for_to",
+  "mut": "no_to"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/for_to__inline_endfor.za",
+  "kind": "invalid",
+  "rule": "for_to",
+  "mut": "inline_endfor"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/for_c_0.za",
+  "kind": "valid",
+  "rule": "for_c",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/for_c_1.za",
+  "kind": "valid",
+  "rule": "for_c",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/for_c__no_terms.za",
+  "kind": "invalid",
+  "rule": "for_c",
+  "mut": "no_terms"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/for_c__missing_endfor.za",
+  "kind": "invalid",
+  "rule": "for_c",
+  "mut": "missing_endfor"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/foreach_0.za",
+  "kind": "valid",
+  "rule": "foreach",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/foreach__missing_iterable.za",
+  "kind": "invalid",
+  "rule": "foreach",
+  "mut": "missing_iterable"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/foreach__missing_endfor.za",
+  "kind": "invalid",
+  "rule": "foreach",
+  "mut": "missing_endfor"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/foreach__no_in.za",
+  "kind": "invalid",
+  "rule": "foreach",
+  "mut": "no_in"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/while_0.za",
+  "kind": "valid",
+  "rule": "while",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/while__missing_endwhile.za",
+  "kind": "invalid",
+  "rule": "while",
+  "mut": "missing_endwhile"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/while__inline_endwhile.za",
+  "kind": "invalid",
+  "rule": "while",
+  "mut": "inline_endwhile"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/while__no_condition.za",
+  "kind": "invalid",
+  "rule": "while",
+  "mut": "no_condition"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/case_0.za",
+  "kind": "valid",
+  "rule": "case",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/case_1.za",
+  "kind": "valid",
+  "rule": "case",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/case_2.za",
+  "kind": "valid",
+  "rule": "case",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/case__missing_endcase.za",
+  "kind": "invalid",
+  "rule": "case",
+  "mut": "missing_endcase"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/case__bare_is.za",
+  "kind": "invalid",
+  "rule": "case",
+  "mut": "bare_is"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/case__inline_endcase.za",
+  "kind": "invalid",
+  "rule": "case",
+  "mut": "inline_endcase"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/with_enum_0.za",
+  "kind": "valid",
+  "rule": "with_enum",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/with_enum__with_no_enum.za",
+  "kind": "invalid",
+  "rule": "with_enum",
+  "mut": "with_no_enum"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/with_enum__missing_endwith.za",
+  "kind": "invalid",
+  "rule": "with_enum",
+  "mut": "missing_endwith"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/def_0.za",
+  "kind": "valid",
+  "rule": "def",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/def_1.za",
+  "kind": "valid",
+  "rule": "def",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/def_2.za",
+  "kind": "valid",
+  "rule": "def",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/def_3.za",
+  "kind": "valid",
+  "rule": "def",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/def__missing_paren.za",
+  "kind": "invalid",
+  "rule": "def",
+  "mut": "missing_paren"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/def__missing_end.za",
+  "kind": "invalid",
+  "rule": "def",
+  "mut": "missing_end"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/def__unclosed_paren.za",
+  "kind": "invalid",
+  "rule": "def",
+  "mut": "unclosed_paren"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/def__stray_end.za",
+  "kind": "invalid",
+  "rule": "def",
+  "mut": "stray_end"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/def__bare_end_in_def.za",
+  "kind": "invalid",
+  "rule": "def",
+  "mut": "bare_end_in_def"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/return_multi_0.za",
+  "kind": "valid",
+  "rule": "return_multi",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/return_multi_1.za",
+  "kind": "valid",
+  "rule": "return_multi",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/return_multi__return_pack_mismatch.za",
+  "kind": "invalid",
+  "rule": "return_multi",
+  "mut": "return_pack_mismatch"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/async_0.za",
+  "kind": "valid",
+  "rule": "async",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/async__bare_async.za",
+  "kind": "invalid",
+  "rule": "async",
+  "mut": "bare_async"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/async__async_no_call.za",
+  "kind": "invalid",
+  "rule": "async",
+  "mut": "async_no_call"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/try_catch_0.za",
+  "kind": "valid",
+  "rule": "try_catch",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/try_catch_1.za",
+  "kind": "valid",
+  "rule": "try_catch",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/try_catch_2.za",
+  "kind": "valid",
+  "rule": "try_catch",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/try_catch_3.za",
+  "kind": "valid",
+  "rule": "try_catch",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/try_catch_4.za",
+  "kind": "valid",
+  "rule": "try_catch",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/try_catch__missing_endtry.za",
+  "kind": "invalid",
+  "rule": "try_catch",
+  "mut": "missing_endtry"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/try_catch__stray_endtry.za",
+  "kind": "invalid",
+  "rule": "try_catch",
+  "mut": "stray_endtry"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/try_catch__bare_catch.za",
+  "kind": "invalid",
+  "rule": "try_catch",
+  "mut": "bare_catch"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/try_catch__no_try_body.za",
+  "kind": "invalid",
+  "rule": "try_catch",
+  "mut": "no_try_body"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/throw_0.za",
+  "kind": "valid",
+  "rule": "throw",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/throw__throw_no_expr.za",
+  "kind": "invalid",
+  "rule": "throw",
+  "mut": "throw_no_expr"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/test_0.za",
+  "kind": "valid",
+  "rule": "test",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/test__missing_endtest.za",
+  "kind": "invalid",
+  "rule": "test",
+  "mut": "missing_endtest"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/test__missing_quote.za",
+  "kind": "invalid",
+  "rule": "test",
+  "mut": "missing_quote"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/string_literal_0.za",
+  "kind": "valid",
+  "rule": "string_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/string_literal_1.za",
+  "kind": "valid",
+  "rule": "string_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/string_literal_2.za",
+  "kind": "valid",
+  "rule": "string_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/string_literal_3.za",
+  "kind": "valid",
+  "rule": "string_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/string_literal__unterminated.za",
+  "kind": "invalid",
+  "rule": "string_literal",
+  "mut": "unterminated"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/string_literal__empty_expr_string.za",
+  "kind": "invalid",
+  "rule": "string_literal",
+  "mut": "empty_expr_string"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/string_literal__bad_fmt.za",
+  "kind": "invalid",
+  "rule": "string_literal",
+  "mut": "bad_fmt"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/numeric_literal_0.za",
+  "kind": "valid",
+  "rule": "numeric_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/numeric_literal__double_dot.za",
+  "kind": "invalid",
+  "rule": "numeric_literal",
+  "mut": "double_dot"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/numeric_literal__bare_dot.za",
+  "kind": "invalid",
+  "rule": "numeric_literal",
+  "mut": "bare_dot"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/map_literal_0.za",
+  "kind": "valid",
+  "rule": "map_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/map_literal_1.za",
+  "kind": "valid",
+  "rule": "map_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/map_literal_2.za",
+  "kind": "valid",
+  "rule": "map_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/map_literal__map_no_key.za",
+  "kind": "invalid",
+  "rule": "map_literal",
+  "mut": "map_no_key"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/map_literal__map_unclosed.za",
+  "kind": "invalid",
+  "rule": "map_literal",
+  "mut": "map_unclosed"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/struct_literal_0.za",
+  "kind": "valid",
+  "rule": "struct_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/struct_literal_1.za",
+  "kind": "valid",
+  "rule": "struct_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/struct_literal__struct_no_paren.za",
+  "kind": "invalid",
+  "rule": "struct_literal",
+  "mut": "struct_no_paren"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/array_literal_0.za",
+  "kind": "valid",
+  "rule": "array_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/array_literal_1.za",
+  "kind": "valid",
+  "rule": "array_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/array_literal_2.za",
+  "kind": "valid",
+  "rule": "array_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/array_literal_3.za",
+  "kind": "valid",
+  "rule": "array_literal",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/array_literal__array_no_close.za",
+  "kind": "invalid",
+  "rule": "array_literal",
+  "mut": "array_no_close"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/array_literal__double_comma.za",
+  "kind": "invalid",
+  "rule": "array_literal",
+  "mut": "double_comma"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/index_slice_clamp_0.za",
+  "kind": "valid",
+  "rule": "index_slice_clamp",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/index_slice_clamp_1.za",
+  "kind": "valid",
+  "rule": "index_slice_clamp",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/index_slice_clamp_2.za",
+  "kind": "valid",
+  "rule": "index_slice_clamp",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/index_slice_clamp__slice_no_bounds.za",
+  "kind": "invalid",
+  "rule": "index_slice_clamp",
+  "mut": "slice_no_bounds"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/index_slice_clamp__empty_index.za",
+  "kind": "invalid",
+  "rule": "index_slice_clamp",
+  "mut": "empty_index"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_0.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_1.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_2.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_3.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_4.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_5.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_6.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_7.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_8.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_9.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_10.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_11.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_12.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_13.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_14.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_15.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_16.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_17.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_18.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_19.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/operators_20.za",
+  "kind": "valid",
+  "rule": "operators",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__trailing_and.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "trailing_and"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__double_and_op.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "double_and_op"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__range_no_end.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "range_no_end"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__bare_double_colon.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "bare_double_colon"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__ternary_no_then.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "ternary_no_then"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/operators__ternary_no_else.za",
+  "kind": "invalid",
+  "rule": "operators",
+  "mut": "ternary_no_else"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/unary_ops_0.za",
+  "kind": "valid",
+  "rule": "unary_ops",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/unary_ops_1.za",
+  "kind": "valid",
+  "rule": "unary_ops",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/unary_ops_2.za",
+  "kind": "valid",
+  "rule": "unary_ops",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/unary_ops_3.za",
+  "kind": "valid",
+  "rule": "unary_ops",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/unary_ops__bare_unary.za",
+  "kind": "invalid",
+  "rule": "unary_ops",
+  "mut": "bare_unary"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/unary_ops__double_minus.za",
+  "kind": "invalid",
+  "rule": "unary_ops",
+  "mut": "double_minus"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/expr_string_0.za",
+  "kind": "valid",
+  "rule": "expr_string",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/expr_string_1.za",
+  "kind": "valid",
+  "rule": "expr_string",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/expr_string_2.za",
+  "kind": "valid",
+  "rule": "expr_string",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/expr_string_3.za",
+  "kind": "valid",
+  "rule": "expr_string",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/expr_string__expr_string_no_hash.za",
+  "kind": "invalid",
+  "rule": "expr_string",
+  "mut": "expr_string_no_hash"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/ufcs_0.za",
+  "kind": "valid",
+  "rule": "ufcs",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/ufcs_1.za",
+  "kind": "valid",
+  "rule": "ufcs",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/ufcs__ufcs_no_field.za",
+  "kind": "invalid",
+  "rule": "ufcs",
+  "mut": "ufcs_no_field"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/ufcs__ufcs_double_dot.za",
+  "kind": "invalid",
+  "rule": "ufcs",
+  "mut": "ufcs_double_dot"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/print_family_0.za",
+  "kind": "valid",
+  "rule": "print_family",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/valid/print_family_1.za",
+  "kind": "valid",
+  "rule": "print_family",
+  "mut": ""
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/print_family__print_no_arg.za",
+  "kind": "invalid",
+  "rule": "print_family",
+  "mut": "print_no_arg"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/invalid/print_family__print_trailing_comma.za",
+  "kind": "invalid",
+  "rule": "print_family",
+  "mut": "print_trailing_comma"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0000.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0001.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0002.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0003.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0004.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0005.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0006.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0007.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0008.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0009.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0010.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0011.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0012.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0013.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0014.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0015.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0016.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0017.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0018.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0019.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0020.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0021.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0022.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0023.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0024.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0025.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0026.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0027.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0028.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0029.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0030.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0031.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0032.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0033.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0034.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0035.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0036.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0037.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0038.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0039.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0040.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0041.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0042.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0043.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0044.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0045.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0046.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0047.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0048.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0049.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0050.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0051.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0052.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0053.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0054.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0055.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0056.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0057.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0058.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0059.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0060.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0061.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0062.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0063.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0064.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0065.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0066.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0067.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0068.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0069.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0070.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0071.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0072.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0073.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0074.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0075.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0076.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0077.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0078.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0079.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0080.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0081.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0082.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0083.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0084.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0085.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0086.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0087.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0088.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "mut"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/fuzz/fuzz_0089.za",
+  "kind": "fuzz",
+  "rule": "",
+  "mut": "soup"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_module.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_module"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_module_as.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_module_as"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_use.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_use"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_use_clear.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_use_clear"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_lib.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_lib"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_namespace.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_namespace"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_require.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_require"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_shell_pipe.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_shell_pipe"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_shell_assign.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_shell_assign"
+ },
+ {
+  "path": "/home/daniel/go/src/za/tools/zzaudit/corpus/static/static_permit.za",
+  "kind": "static",
+  "rule": "",
+  "mut": "static_permit"
+ }
+]

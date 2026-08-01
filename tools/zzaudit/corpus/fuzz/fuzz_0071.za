@@ -1,0 +1,5 @@
+try throws "boom"
+  x = 1
+then
+  xx = 2
+endtry

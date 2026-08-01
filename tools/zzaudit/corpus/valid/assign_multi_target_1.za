@@ -1,0 +1,4 @@
+def trio()
+  return [3, 4, 5]
+end
+a, b, c = trio()

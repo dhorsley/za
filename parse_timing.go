@@ -58,6 +58,7 @@ func validateBlockNesting(phrases []Phrase) []string {
 		C_Try:     "try",
 		C_Case:    "case",
 		C_Test:    "test",
+		C_With:    "with",
 	}
 	// Map of block closers to their expected opener names
 	closers := map[int64]string{
@@ -69,6 +70,7 @@ func validateBlockNesting(phrases []Phrase) []string {
 		C_Endtry:    "try",
 		C_Endcase:   "case",
 		C_Endtest:   "test",
+		C_Endwith:   "with",
 	}
 
 	var stack []string
@@ -82,6 +84,25 @@ func validateBlockNesting(phrases []Phrase) []string {
 		line := int(phrase.SourceLine) + 1
 
 		if name, ok := openers[tokType]; ok {
+			// Inline closers: the runtime discards everything after a
+			// def header (and after try) on the same line, so an inline
+			// end/endtry on the opener's own line closes the block.
+			if (tokType == C_Define || tokType == C_Try) && len(phrase.Tokens) > 1 {
+				closer := C_Enddef
+				if tokType == C_Try {
+					closer = C_Endtry
+				}
+				closed := false
+				for _, t := range phrase.Tokens[1:] {
+					if t.tokType == closer {
+						closed = true
+						break
+					}
+				}
+				if closed {
+					continue
+				}
+			}
 			stack = append(stack, name)
 			stackLines = append(stackLines, line)
 		} else if expected, ok := closers[tokType]; ok {
@@ -115,6 +136,363 @@ func validateBlockNesting(phrases []Phrase) []string {
 	if len(stack) > 0 {
 		errs = append(errs, fmt.Sprintf("unclosed block(s): %s at line %d", stack[len(stack)-1], stackLines[len(stackLines)-1]))
 	}
+	return errs
+}
+
+// checkExprTokens applies expression-completeness checks (trailing operator,
+// missing RHS, bare '::', chained range) to a token slice.
+func checkExprTokens(tks []Token) string {
+	if len(tks) == 0 {
+		return "empty expression"
+	}
+	last := tks[len(tks)-1].tokType
+	if assignmentOps[last] {
+		return "missing expression after assignment"
+	}
+	if trailingBinaryOps[last] {
+		return fmt.Sprintf("incomplete expression: trailing %s", tks[len(tks)-1].tokText)
+	}
+	for i, t := range tks {
+		if t.tokType == SYM_DoubleColon {
+			if i == 0 || i == len(tks)-1 || tks[i-1].tokType != Identifier {
+				return "'::' must be preceded by a name"
+			}
+		}
+	}
+	rangeCount := 0
+	for _, t := range tks {
+		if t.tokType == SYM_RANGE {
+			rangeCount++
+		}
+	}
+	if rangeCount > 1 && tks[len(tks)-1].tokType != RightSBrace {
+		return "multiple range operators"
+	}
+	return ""
+}
+
+// statement-ending operators that can never legitimately close a statement
+var trailingBinaryOps = map[int64]bool{
+	O_Plus: true, O_Minus: true, O_Multiply: true, O_Divide: true, O_Percent: true,
+	SYM_POW: true, SYM_LAND: true, SYM_LOR: true, SYM_BAND: true, SYM_BOR: true,
+	SYM_EQ: true, SYM_NE: true, SYM_LT: true, SYM_LE: true, SYM_GT: true, SYM_GE: true,
+	SYM_LSHIFT: true, SYM_RSHIFT: true, SYM_RANGE: true, O_Query: true,
+}
+
+// assignment operators that require an expression on their right-hand side
+var assignmentOps = map[int64]bool{
+	O_Assign: true, O_AssCommand: true, O_AssOutCommand: true,
+	SYM_PLE: true, SYM_MIE: true, SYM_MUE: true, SYM_DIE: true, SYM_MOE: true,
+}
+
+var varTypeKeywords = map[int64]bool{
+	T_Number: true, T_Nil: true, T_Bool: true, T_Int: true, T_Uint: true,
+	T_Float: true, T_Bigi: true, T_Bigf: true, T_String: true, T_Map: true,
+	T_Array: true, T_Any: true, T_Pointer: true,
+}
+
+// validateStatementShapes checks per-statement structural validity that the
+// phraser tolerates: missing assignment RHS, incomplete expressions, bare '::',
+// chained ranges, malformed var declarations and unterminated parens/brackets.
+func validateStatementShapes(phrases []Phrase) []string {
+	var errs []string
+
+	for _, phrase := range phrases {
+		tks := phrase.Tokens
+		if len(tks) == 0 {
+			continue
+		}
+		line := int(phrase.SourceLine) + 1
+		first := tks[0].tokType
+		last := tks[len(tks)-1].tokType
+
+		// Statement keywords (e.g. 'use -', 'lib', 'module') are not
+		// expressions, so shape checks on trailing operators do not apply.
+		isStmt := first >= START_STATEMENTS && first < END_STATEMENTS
+
+		// missing expression after an assignment operator
+		if !isStmt && assignmentOps[last] {
+			errs = append(errs, fmt.Sprintf("missing expression after assignment at line %d", line))
+			continue
+		}
+
+		// statement ends in an operator that needs a right-hand operand
+		if !isStmt && trailingBinaryOps[last] {
+			errs = append(errs, fmt.Sprintf("incomplete expression at line %d: trailing %s", line, tks[len(tks)-1].tokText))
+			continue
+		}
+
+		// '::' must be preceded by a name and not end the statement
+		for i, t := range tks {
+			if t.tokType != SYM_DoubleColon {
+				continue
+			}
+			if i == 0 || i == len(tks)-1 || tks[i-1].tokType != Identifier {
+				errs = append(errs, fmt.Sprintf("'::' must be preceded by a name at line %d", line))
+				break
+			}
+		}
+
+		// chained ranges (1..2..3) are only valid as multi-dimensional slices
+		rangeCount := 0
+		for _, t := range tks {
+			if t.tokType == SYM_RANGE {
+				rangeCount++
+			}
+		}
+		if rangeCount > 1 && last != RightSBrace {
+			errs = append(errs, fmt.Sprintf("multiple range operators at line %d", line))
+			continue
+		}
+
+		// var declarations: a comma must be followed by another name, not a type
+		if first == C_Var && len(tks) > 1 {
+			decl := tks[1:]
+			for i, t := range decl {
+				if t.tokType != O_Comma {
+					continue
+				}
+				if i+1 >= len(decl) || varTypeKeywords[decl[i+1].tokType] {
+					errs = append(errs, fmt.Sprintf("expected variable name after ',' in var declaration at line %d", line))
+					break
+				}
+			}
+			lastDecl := decl[len(decl)-1].tokType
+			if assignmentOps[lastDecl] {
+				errs = append(errs, fmt.Sprintf("missing expression after '=' in var declaration at line %d", line))
+				continue
+			}
+		}
+
+		// Keyword-specific arity and expression checks
+		switch first {
+		case C_If:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing condition in if at line %d", line))
+				continue
+			}
+			if msg := checkExprTokens(tks[1:]); msg != "" {
+				errs = append(errs, fmt.Sprintf("%s in if condition at line %d", msg, line))
+				continue
+			}
+		case C_While:
+			if len(tks) > 1 {
+				if msg := checkExprTokens(tks[1:]); msg != "" {
+					errs = append(errs, fmt.Sprintf("%s in while condition at line %d", msg, line))
+					continue
+				}
+			}
+		case C_For:
+			hasComma := false
+			hasTo := false
+			for _, t := range tks {
+				if t.tokType == O_Comma {
+					hasComma = true
+				}
+				if t.tokType == C_To {
+					hasTo = true
+				}
+			}
+			if !hasComma && !hasTo {
+				errs = append(errs, fmt.Sprintf("missing 'to' or commas in for at line %d", line))
+				continue
+			}
+		case C_Foreach:
+			hasIn := false
+			inIdx := -1
+			for i, t := range tks {
+				if t.tokType == C_In {
+					hasIn = true
+					inIdx = i
+					break
+				}
+			}
+		if !hasIn {
+			errs = append(errs, fmt.Sprintf("missing 'in' in foreach at line %d", line))
+			continue
+		}
+		if inIdx+1 >= len(tks) {
+			errs = append(errs, fmt.Sprintf("missing iterable in foreach at line %d", line))
+			continue
+		}
+		if msg := checkExprTokens(tks[inIdx+1:]); msg != "" {
+			errs = append(errs, fmt.Sprintf("%s in foreach iterable at line %d", msg, line))
+			continue
+		}
+		case C_Break, C_Continue:
+			hasIf := false
+			ifIdx := -1
+			for i, t := range tks {
+				if t.tokType == C_If {
+					hasIf = true
+					ifIdx = i
+					break
+				}
+			}
+			if hasIf {
+				if ifIdx+1 >= len(tks) {
+					errs = append(errs, fmt.Sprintf("missing condition after 'if' in %s at line %d", tks[0].tokText, line))
+					continue
+				}
+				if msg := checkExprTokens(tks[ifIdx+1:]); msg != "" {
+					errs = append(errs, fmt.Sprintf("%s in %s condition at line %d", msg, tks[0].tokText, line))
+					continue
+				}
+			}
+		case C_Return:
+			hasIf := false
+			ifIdx := -1
+			for i, t := range tks {
+				if t.tokType == C_If {
+					hasIf = true
+					ifIdx = i
+					break
+				}
+			}
+			if hasIf && ifIdx+1 < len(tks) {
+				if msg := checkExprTokens(tks[ifIdx+1:]); msg != "" {
+					errs = append(errs, fmt.Sprintf("%s in return condition at line %d", msg, line))
+					continue
+				}
+			}
+		case C_On:
+			doIdx := -1
+			for i, t := range tks {
+				if t.tokType == C_Do {
+					doIdx = i
+					break
+				}
+			}
+			if doIdx == -1 {
+				errs = append(errs, fmt.Sprintf("missing 'do' in on at line %d", line))
+				continue
+			}
+			if doIdx <= 1 {
+				errs = append(errs, fmt.Sprintf("missing condition in on at line %d", line))
+				continue
+			}
+		case C_With:
+			if len(tks) < 3 {
+				errs = append(errs, fmt.Sprintf("invalid with statement at line %d", line))
+				continue
+			}
+			if len(tks) == 3 && tks[1].tokType != C_Enum && tks[1].tokType != C_Struct {
+				errs = append(errs, fmt.Sprintf("unknown with type at line %d", line))
+				continue
+			}
+		case C_Async:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing async target at line %d", line))
+				continue
+			}
+			if tks[1].tokType != Identifier {
+				errs = append(errs, fmt.Sprintf("async target must be an identifier at line %d", line))
+				continue
+			}
+			hasParen := false
+			for i := 2; i < len(tks); i++ {
+				if tks[i].tokType == LParen {
+					hasParen = true
+					break
+				}
+			}
+			if !hasParen {
+				errs = append(errs, fmt.Sprintf("async target must be a function call at line %d", line))
+				continue
+			}
+		case C_Throw:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing throw expression at line %d", line))
+				continue
+			}
+			if msg := checkExprTokens(tks[1:]); msg != "" {
+				errs = append(errs, fmt.Sprintf("%s in throw expression at line %d", msg, line))
+				continue
+			}
+		case C_Struct:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing struct name at line %d", line))
+				continue
+			}
+		case C_Require:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing require target at line %d", line))
+				continue
+			}
+		case C_Module:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing module path at line %d", line))
+				continue
+			}
+		case C_Namespace:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing namespace name at line %d", line))
+				continue
+			}
+		case C_Assert:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing assert expression at line %d", line))
+				continue
+			}
+			commaIdx := -1
+			for i, t := range tks {
+				if t.tokType == O_Comma {
+					commaIdx = i
+					break
+				}
+			}
+			exprEnd := len(tks)
+			if commaIdx != -1 {
+				exprEnd = commaIdx
+			}
+			if exprEnd > 1 {
+				if msg := checkExprTokens(tks[1:exprEnd]); msg != "" {
+					errs = append(errs, fmt.Sprintf("%s in assert expression at line %d", msg, line))
+					continue
+				}
+			}
+		case C_Exit, C_Pause:
+			if len(tks) > 1 {
+				if msg := checkExprTokens(tks[1:]); msg != "" {
+					errs = append(errs, fmt.Sprintf("%s in %s expression at line %d", msg, tks[0].tokText, line))
+					continue
+				}
+			}
+		}
+
+		// unterminated parentheses or brackets
+		parenDepth := 0
+		sbraceDepth := 0
+		for _, t := range tks {
+			switch t.tokType {
+			case LParen:
+				parenDepth++
+			case RParen:
+				parenDepth--
+			case LeftSBrace:
+				sbraceDepth++
+			case RightSBrace:
+				sbraceDepth--
+			}
+		}
+		if parenDepth > 0 {
+			errs = append(errs, fmt.Sprintf("unclosed parenthesis at line %d", line))
+			continue
+		}
+		if sbraceDepth > 0 {
+			errs = append(errs, fmt.Sprintf("unclosed bracket at line %d", line))
+			continue
+		}
+		if parenDepth < 0 {
+			errs = append(errs, fmt.Sprintf("unexpected ')' at line %d", line))
+			continue
+		}
+		if sbraceDepth < 0 {
+			errs = append(errs, fmt.Sprintf("unexpected ']' at line %d", line))
+			continue
+		}
+	}
+
 	return errs
 }
 
@@ -174,16 +552,23 @@ func runParseTiming(entryPath string, level int) bool {
 
 		// Parse with suppressed output
 		restore := suppressOutput()
+		lexSoftErrors = true
 		parseStart := time.Now()
 		badword, _ := phraseParse(context.Background(), item.name, string(content), 0, 0)
 		parseElapsed := time.Since(parseStart)
+		lexSoftErrors = false
 		restore()
 
 		fileResult.ParseMs = parseElapsed.Milliseconds()
 
 		if badword {
 			fileResult.Status = "error"
-			fileResult.Error = "parse error"
+			if lastSoftErrorMsg != "" {
+				fileResult.Error = lastSoftErrorMsg
+				lastSoftErrorMsg = ""
+			} else {
+				fileResult.Error = "parse error"
+			}
 			result.Success = false
 			result.Files = append(result.Files, fileResult)
 			continue
@@ -200,6 +585,18 @@ func runParseTiming(entryPath string, level int) bool {
 				fileResult.Error = nestingErrs[0]
 				if len(nestingErrs) > 1 {
 					for _, e := range nestingErrs[1:] {
+						fileResult.Warnings = append(fileResult.Warnings, e)
+					}
+				}
+				result.Success = false
+				result.Files = append(result.Files, fileResult)
+				continue
+			}
+			if shapeErrs := validateStatementShapes(phrases); len(shapeErrs) > 0 {
+				fileResult.Status = "error"
+				fileResult.Error = shapeErrs[0]
+				if len(shapeErrs) > 1 {
+					for _, e := range shapeErrs[1:] {
 						fileResult.Warnings = append(fileResult.Warnings, e)
 					}
 				}

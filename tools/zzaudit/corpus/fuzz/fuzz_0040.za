@@ -1,0 +1,5 @@
+try
+  x 2 1
+catch err
+  x = =
+endtry

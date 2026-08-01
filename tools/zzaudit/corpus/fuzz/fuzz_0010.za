@@ -1,0 +1,7 @@
+x = "hi"
+case ..x
+contains "h"
+  y = 1
+or
+  y = 2
+endcase

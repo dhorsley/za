@@ -129,7 +129,7 @@ var subtypeNames = [...]string{"None", "Constant", "StdLib", "UserFunc"}
 
 // fatal error exit codes
 const (
-    ERR_SYNTAX int = iota
+    ERR_SYNTAX int = iota + 1
     ERR_FATAL
     ERR_NARGS
     ERR_EXISTS

@@ -1,0 +1,3 @@
+struct person
+  name string = = 5
+endstruct

@@ -1,0 +1,5 @@
+x = 1
+case x
+is
+  y = 10
+endcase

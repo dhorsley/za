@@ -8,6 +8,12 @@ import (
 
 var tokNames = lexer.TokNames
 
+// lexSoftErrors switches the lexer into non-fatal mode: errors are recorded
+// in lastSoftErrorMsg and surfaced via phraseParse's badword flag instead of
+// exiting the process. Used by the -zz static checker.
+var lexSoftErrors bool
+var lastSoftErrorMsg string
+
 type lcstruct struct {
 	carton Token
 	tokPos int
@@ -19,6 +25,10 @@ type lcstruct struct {
 func nextToken(input string, fs uint32, curLine *int16, start int) *lcstruct {
 	res, err := lexer.NextToken(input, fs, curLine, start, bind_int)
 	if err != nil {
+		if lexSoftErrors {
+			lastSoftErrorMsg = err.Error()
+			return &lcstruct{eof: true}
+		}
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(ERR_LEX)
 	}

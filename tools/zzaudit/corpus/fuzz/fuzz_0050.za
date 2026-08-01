@@ -1,0 +1,5 @@
+struct person
+  name string
+  age int
+endstruct
++p = person("Bob", 21)

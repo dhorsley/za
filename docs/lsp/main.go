@@ -685,13 +685,13 @@ func (s *LSPServer) getFullDiagnostics(uri string, content string) []Diagnostic 
 	}
 	tmpFile.Close()
 
-	// Run za -S -zz (level 2 enables module warnings + dynamic path warnings)
-	cmd := exec.Command(s.zaPath, "-S", "-zz", "-f", tmpFile.Name())
+	// Run za -S -z (plain syntax check, no module warnings)
+	cmd := exec.Command(s.zaPath, "-S", "-z", "-f", tmpFile.Name())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		// za -z exits 1 on parse errors, but still outputs JSON
 		if len(output) == 0 {
-			log.Printf("[LSP] za -S -zz failed with no output: %v", err)
+			log.Printf("[LSP] za -S -z failed with no output: %v", err)
 			return diagnostics
 		}
 	}

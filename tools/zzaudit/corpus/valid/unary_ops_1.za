@@ -1,0 +1,2 @@
+f = "/tmp/x.txt"
+b = $pb f
