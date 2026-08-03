@@ -1515,7 +1515,7 @@ func buildConversionLib() {
     slhelp["kind"] = LibHelp{in: "var", out: "string", action: "Return a string indicating the type of the variable [#i1]var[#i0]."}
     stdlib["kind"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         // pf("k-argtype:[#2]%T[#-]\n",args[0])
-        if ok, err := expect_args("kind", args, 1, "1", "any"); !ok {
+        if ok, err := expect_args("kind", args, 2, "1", "any", "1", "nil"); !ok {
             return nil, err
         }
         if len(args) != 1 {
