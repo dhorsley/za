@@ -1827,6 +1827,17 @@ Enable profiling using either:
   za -P script.za
   ```
 
+For a machine-readable evented profile, use `-PP`:
+
+```bash
+za -PP script.za
+```
+
+This writes an ANSI-free Speedscope JSON file named `za-profile.json` in the
+current directory. It does not mix profile JSON into the program's standard
+output. Event collection is enabled only for `-PP`; the normal execution path
+and the lightweight `-P` summary remain unchanged.
+
 ### 29.2 Profiler Behaviour
 
 When enabled:
@@ -1838,6 +1849,10 @@ When enabled:
   - Per-caller breakdowns for detailed path analysis
 
 Profiling incurs minimal overhead but is best used for performance debugging and analysis.
+
+`-PP` records intervals at existing function, FFI, and async call boundaries
+using the active call chain. It is intended for explicit profiling runs, not
+continuous production use.
 
 ### 29.3 Viewing and Interpreting Results
 
@@ -8494,4 +8509,3 @@ FFI requires:
 ---
 
 *This appendix documents Za's experimental FFI feature. The API may change in future versions. Test thoroughly and refer to test files in `za_tests/test_ffi*.za` for additional examples.*
-

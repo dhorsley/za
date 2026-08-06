@@ -307,18 +307,18 @@ func validateStatementShapes(phrases []Phrase) []string {
 					break
 				}
 			}
-		if !hasIn {
-			errs = append(errs, fmt.Sprintf("missing 'in' in foreach at line %d", line))
-			continue
-		}
-		if inIdx+1 >= len(tks) {
-			errs = append(errs, fmt.Sprintf("missing iterable in foreach at line %d", line))
-			continue
-		}
-		if msg := checkExprTokens(tks[inIdx+1:]); msg != "" {
-			errs = append(errs, fmt.Sprintf("%s in foreach iterable at line %d", msg, line))
-			continue
-		}
+			if !hasIn {
+				errs = append(errs, fmt.Sprintf("missing 'in' in foreach at line %d", line))
+				continue
+			}
+			if inIdx+1 >= len(tks) {
+				errs = append(errs, fmt.Sprintf("missing iterable in foreach at line %d", line))
+				continue
+			}
+			if msg := checkExprTokens(tks[inIdx+1:]); msg != "" {
+				errs = append(errs, fmt.Sprintf("%s in foreach iterable at line %d", msg, line))
+				continue
+			}
 		case C_Break, C_Continue:
 			hasIf := false
 			ifIdx := -1
@@ -496,7 +496,7 @@ func validateStatementShapes(phrases []Phrase) []string {
 	return errs
 }
 
-func runParseTiming(entryPath string, level int) bool {
+func runParseTiming(entryPath string, level int, clean bool) bool {
 	totalStart := time.Now()
 	result := parseTimingResult{
 		Files:   []parseTimingFile{},
@@ -676,6 +676,33 @@ func runParseTiming(entryPath string, level int) bool {
 	}
 
 	result.TotalMs = time.Since(totalStart).Milliseconds()
+	if clean {
+		root := filepath.Dir(entryPath)
+		filtered := result.Files[:0]
+		for _, file := range result.Files {
+			path, err := filepath.Abs(file.Path)
+			if err != nil {
+				continue
+			}
+			if path != entryPath && filepath.Ext(path) != ".za" {
+				continue
+			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil || rel == ".." || len(rel) >= 3 && rel[:3] == ".."+string(filepath.Separator) {
+				continue
+			}
+			file.Path = path
+			filtered = append(filtered, file)
+		}
+		result.Files = filtered
+		result.Success = true
+		for _, file := range result.Files {
+			if file.Status != "ok" {
+				result.Success = false
+				break
+			}
+		}
+	}
 
 	// Output JSON
 	jsonBytes, err := json.Marshal(result)

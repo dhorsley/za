@@ -39,6 +39,15 @@ language changes
 tooling changes
 ---------------
 
+  * Added `-PP` evented profiling output.
+    - Writes ANSI-free Speedscope JSON to `za-profile.json` after execution.
+    - Uses existing call-chain/function and FFI timing boundaries; normal execution
+        and the existing `-P` summary remain unchanged.
+
+  * Cleaned `-z` parse timing output.
+    - `-z` now reports project source files only, omitting native module/library paths.
+    - `-zz` retains the full diagnostic output and module reporting behavior.
+
   * TAP 13 test output (`--tap` flag)
     - `--tap` emits test results in TAP 13 format instead of colored text
     - `--tap` without `-o` writes to stderr; with `-o file` writes to file
@@ -4802,4 +4811,3 @@ other
 ---------------------------------------------------------------------------------------------
 
 see docs/ for earlier change logs.
-

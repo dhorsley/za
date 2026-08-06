@@ -827,8 +827,9 @@ func help(ns string, hargs string) {
     [#4]-D[#-] : Enable line debug output
     [#4]-d[#-] : Enable full debugger
     [#4]-P[#-] : Enable function profiling output
+    [#4]-PP[#-] : Write evented Speedscope profiling JSON to za-profile.json
     [#4]-Q[#-] : Show shell command options
-    [#4]-z[#-] : Report parse timing only (JSON output, no execution)
+    [#4]-z[#-] : Report project-source parse timing only (JSON output, no execution)
     [#4]-zz[#-] : Report parse timing with diagnostics (syntax errors, missing modules, dynamic paths)
 
 
