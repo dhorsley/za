@@ -711,6 +711,8 @@ get_nt_eval_point:
         switch str.ToLower(word) {
         case "var":
             tokType = C_Var
+        case "global":
+            tokType = C_Global
         case "sqr":
             tokType = O_Sqr
         case "sqrt":

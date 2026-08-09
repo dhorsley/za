@@ -757,7 +757,7 @@ func extractTypeHints(phrase Phrase, fs uint32) {
         return
     }
     switch phrase.Tokens[0].tokType {
-    case C_Var:
+    case C_Var, C_Global:
         extractVarTypeHints(phrase, fs)
     case C_For:
         extractForTypeHints(phrase, fs)

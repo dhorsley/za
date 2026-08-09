@@ -597,6 +597,31 @@ var cube [][][]string
 
 Dynamic arrays will be resized on demand on out-of-bounds assignment.
 
+### 7.4 Global declarations with `global`
+
+`global` works like `var` but creates a variable that is accessible from
+any scope, including other modules and functions. Use it for shared state
+that needs to be visible across your project.
+
+```za
+global config_version int = 1
+global tile_data [256]float
+```
+
+Once declared, a global can be written from anywhere using the `@` prefix:
+
+```za
+@config_version = 2
+```
+
+Like `var`, `global` supports comma-separated names, typed arrays, structs,
+and default values:
+
+```za
+global a, b int
+global names [10]string
+```
+
 ---
 
 # Part III — Data Types and Structures

@@ -984,6 +984,7 @@ Available commands:
 [#3]ASSERT [#i1]condition[#i0][#-]                                - Confirm condition is true, or exit.
 [#3]DOC [ [#i1]function_name[#i0] ] [#i1]comment[#i0][#-]                   - Create an exportable comment, for test mode.
 [#7]VAR[#-] [#i1]var type[#i0]                                    - declare an optional type or dimension an array.
+[#7]GLOBAL[#-] [#i1]var type[#i0]                                 - declare a global variable, persisting across scopes.
 [#7]ENUM[#-] [#i1]name[#i0] ( member[=val][,...,memberN[=val]] )  - declare an enumeration.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.

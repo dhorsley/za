@@ -245,8 +245,8 @@ func validateStatementShapes(phrases []Phrase) []string {
 			continue
 		}
 
-		// var declarations: a comma must be followed by another name, not a type
-		if first == C_Var && len(tks) > 1 {
+		// var/global declarations: a comma must be followed by another name, not a type
+		if (first == C_Var || first == C_Global) && len(tks) > 1 {
 			decl := tks[1:]
 			for i, t := range decl {
 				if t.tokType != O_Comma {

@@ -35,6 +35,12 @@ language changes
   * added support for 'else if <cond>' and 'return if <cond>[,expr[,...]]'
     - test coverage: za_tests/test_return_if.za and za_tests/test_else_if.za
 
+  * Added `global` keyword for persistent variable declarations.
+    - Declares variables into the main function space (mident), so they survive
+      module loading and can be written via @ from any scope.
+    - Syntax mirrors `var`: `global name[, name...] [size] type [= expr]`
+    - test coverage: za_tests/test_global.za
+
 
 tooling changes
 ---------------

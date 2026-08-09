@@ -2175,11 +2175,23 @@ tco_reentry:
 
 		switch statement {
 
-		case C_Var: // permit declaration with a default value
+		case C_Var, C_Global: // permit declaration with a default value
 
 			//   'VAR' name [ ',' ... nameX ] [ '[' [size] ']' ] type [ '=' expr ]
 			// | 'VAR' name struct_name
 			// | 'VAR' aryname []struct_name
+
+			// C_Global behaves like C_Var but declares into the persistent main
+			// (mident) function space instead of the current one, so modules can
+			// declare globals that survive module loading.
+
+			isGlobal := inbound.Tokens[0].tokType == C_Global
+			targetFS := ifs
+			targetIdent := ident
+			if isGlobal {
+				targetFS = parser.mident
+				targetIdent = &mident
+			}
 
 			var name_list []string
 			var name_pos []uint64
@@ -2353,21 +2365,23 @@ tco_reentry:
 			for nlp, vname := range name_list {
 
 				var sid uint64
-				if strcmp(vname, inbound.Tokens[name_pos[nlp]].tokText) { // no interpol done:
+				if isGlobal {
+					sid = bind_int(targetFS, vname)
+				} else if strcmp(vname, inbound.Tokens[name_pos[nlp]].tokText) { // no interpol done:
 					sid = inbound.Tokens[name_pos[nlp]].bindpos
 				} else {
 					sid = bind_int(ifs, vname)
 				}
 
 				// resize ident if required:
-				if sid >= uint64(len(*ident)) {
+				if sid >= uint64(len(*targetIdent)) {
 					newIdent := make([]Variable, sid+identGrowthSize)
-					copy(newIdent, *ident)
-					*ident = newIdent
+					copy(newIdent, *targetIdent)
+					*targetIdent = newIdent
 				}
 
 				// Check for variable redeclaration
-				if sid < uint64(len(*ident)) && (*ident)[sid].declared {
+				if sid < uint64(len(*targetIdent)) && (*targetIdent)[sid].declared {
 					parser.report(inbound.SourceLine, sf("variable '%s' is already declared", vname))
 					finish(false, ERR_SYNTAX)
 					break
@@ -2390,7 +2404,7 @@ tco_reentry:
 					t.IValue = nil
 					t.ITyped = false
 					t.declared = true
-					(*ident)[sid] = t
+					(*targetIdent)[sid] = t
 					continue // Skip to next variable in the name list
 				}
 
@@ -2613,7 +2627,7 @@ tco_reentry:
 					}
 
 					// write temp to ident
-					(*ident)[sid] = t
+					(*targetIdent)[sid] = t
 					// pf("wrote var: %#v\n... with sid of #%d\n",t,sid)
 
 				} else {
@@ -2691,7 +2705,7 @@ tco_reentry:
 					}
 
 					if isStruct {
-						t := (*ident)[sid]
+						t := (*targetIdent)[sid]
 						err = fillStruct(&t, structvalues, Typemap, hasAry, []string{})
 						if err != nil {
 							parser.report(inbound.SourceLine, err.Error())
@@ -2702,7 +2716,7 @@ tco_reentry:
 						t.ITyped = false
 						t.declared = true
 						t.Kind_override = sname
-						(*ident)[sid] = t
+						(*targetIdent)[sid] = t
 
 					} else {
 						parser.report(inbound.SourceLine, sf("unknown data type requested '%v'", sname))

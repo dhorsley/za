@@ -1,0 +1,13 @@
+# Module that declares globals for cross-scope testing
+# Loaded by test_global.za to verify module-scope global persistence
+
+global mg_int int = 42
+global mg_str string = "from module"
+global mg_arr [5]float
+mg_arr[0] = 1.5
+mg_arr[4] = 3.0
+
+define mod_update()
+    @mg_int = 100
+    @mg_str = "updated"
+enddef

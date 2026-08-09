@@ -1221,7 +1221,7 @@ func (s *LSPServer) extractSymbols(uri string, content string) {
 						}
 					}
 				}
-			case lexer.C_Var, lexer.C_SetGlob, lexer.C_Init:
+			case lexer.C_Var, lexer.C_Global, lexer.C_SetGlob, lexer.C_Init:
 				if t+1 < len(toks) && toks[t+1].Kind == TokIdentifier {
 					name := toks[t+1].Text
 					doc.Symbols[name] = &Symbol{

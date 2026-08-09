@@ -26,7 +26,7 @@ import (
     "github.com/VictoriaMetrics/metrics"
 )
 
-var completions = []string{"VAR", "SETGLOB", "PAUSE",
+var completions = []string{"VAR", "GLOBAL", "SETGLOB", "PAUSE",
     "HELP", "NOP", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
     "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",

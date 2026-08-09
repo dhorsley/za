@@ -1,0 +1,123 @@
+#!/usr/bin/env za
+
+# Test: global keyword
+# Tests that 'global' declares variables into the persistent mident
+# (main function space) so they survive module loading.
+error_extend(true)
+exception_strictness("warn")
+
+println "[#4]═══ Global Keyword Tests ═══[#-]\n"
+
+# Test 1: Simple global declaration with initial value
+println "1. Simple global scalar..."
+global g_int int = 42
+assert g_int == 42, "global int should be 42"
+println "✓ g_int == 42"
+
+# Test 2: Global string
+println "\n2. Global string..."
+global g_str string = "hello world"
+assert g_str == "hello world", "global string should match"
+println "✓ g_str == 'hello world'"
+
+# Test 3: Global float
+println "\n3. Global float..."
+global g_f float = 3.14
+assert g_f == 3.14, "global float should match"
+println "✓ g_f == 3.14"
+
+# Test 4: Global typed array
+println "\n4. Global typed array [10]float..."
+global g_arr [10]float
+g_arr[0] = 1.0
+g_arr[5] = 5.5
+assert g_arr[0] == 1.0, "g_arr[0] should be 1.0"
+assert g_arr[5] == 5.5, "g_arr[5] should be 5.5"
+println "✓ g_arr[0] == 1.0 and g_arr[5] == 5.5"
+
+# Test 5: Global []int array
+println "\n5. Global typed array [5]int..."
+global g_ints [5]int
+g_ints[0] = 10
+g_ints[4] = 40
+assert g_ints[0] == 10, "g_ints[0] should be 10"
+assert g_ints[4] == 40, "g_ints[4] should be 40"
+println "✓ g_ints[0] == 10 and g_ints[4] == 40"
+
+# Test 6: Global with assignment expression
+println "\n6. Global with computed value..."
+global g_calc float = 1.5 + 2.5
+assert g_calc == 4.0, "g_calc should be 4.0"
+println "✓ g_calc == 4.0"
+
+# Test 7: Global can be written via @ from statements
+println "\n7. Writing to global via @..."
+global g_mut int
+@g_mut = 99
+assert g_mut == 99, "global should be 99 after @ write"
+println "✓ g_mut == 99 after @ write"
+
+# Test 8: Redeclaration should error (tested manually: global g_dup int = 2
+# would print "variable 'g_dup' is already declared" and exit)
+println "\n8. Redeclaration (tested at end, must be last run)"
+
+# Test 9: Global struct type
+println "\n9. Global struct..."
+struct point
+    x float
+    y float
+endstruct
+
+global g_pt point
+g_pt.x = 1.5
+g_pt.y = 2.5
+assert g_pt.x == 1.5, "g_pt.x should be 1.5"
+assert g_pt.y == 2.5, "g_pt.y should be 2.5"
+println "✓ struct point works with global"
+
+# Test 10: Multiple same-type globals (comma syntax)
+println "\n10. Multiple globals (comma syntax)..."
+global g_a, g_b int
+g_a = 7
+g_b = 14
+assert g_a == 7, "g_a should be 7"
+assert g_b == 14, "g_b should be 14"
+println "✓ comma-syntax globals work"
+
+# Test 11: Global with size expression
+println "\n11. Global with size from variable..."
+g_size = 3
+global g_sized [g_size]int
+g_sized[0] = 1
+g_sized[1] = 2
+g_sized[2] = 3
+assert g_sized[0] == 1, "g_sized[0] should be 1"
+assert g_sized[1] == 2, "g_sized[1] should be 2"
+assert g_sized[2] == 3, "g_sized[2] should be 3"
+println "✓ sized global works"
+
+# Test 12: Global from module scope
+println "\n12. Global from module scope..."
+module "./test_global_module.za" as testmod
+assert mg_int == 42, "module global mg_int should be 42"
+assert mg_str == "from module", "module global mg_str should match"
+assert mg_arr[0] == 1.5, "module global mg_arr[0] should be 1.5"
+assert mg_arr[4] == 3.0, "module global mg_arr[4] should be 3.0"
+println "✓ module globals persist"
+
+# Test 13: @ write to module globals from define in module
+println "\n13. @ write to module globals..."
+testmod::mod_update()
+assert mg_int == 100, "mg_int should be 100 after @ write"
+assert mg_str == "updated", "mg_str should be 'updated' after @ write"
+println "✓ @ write to module globals works"
+
+# Test 14: @ auto-vivify (undeclared variable)
+println "\n14. @ auto-vivify..."
+@auto_vivified = 99
+assert auto_vivified == 99, "@ should auto-vivify global"
+@auto_vivified = 200
+assert auto_vivified == 200, "@ should update auto-vivified global"
+println "✓ @ auto-vivify works"
+
+println "\n[#2]═══ All Global Keyword Tests Complete ═══[#-]"

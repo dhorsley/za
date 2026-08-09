@@ -260,6 +260,7 @@ const (
     O_Pp = lexer.O_Pp
     START_STATEMENTS = lexer.START_STATEMENTS
     C_Var = lexer.C_Var
+    C_Global = lexer.C_Global
     C_SetGlob = lexer.C_SetGlob
     C_Init = lexer.C_Init
     C_In = lexer.C_In

@@ -78,6 +78,7 @@ const (
 	O_Pp
 	START_STATEMENTS
 	C_Var
+	C_Global
 	C_SetGlob
 	C_Init
 	C_In
