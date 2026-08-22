@@ -23,12 +23,12 @@ struct process
     starttime   int
     uid         string
     gid         string
-es
+endstruct
 
 struct pid_lookup
     pid         int
     index       string
-es
+endstruct
 
 
 # (even more) hacky sort, as there's no builtin sort by struct field
@@ -52,7 +52,7 @@ struct statm_line
     lib     int # 0
     data    int # data+stack
     dt      int # dirty page count (0)
-es
+endstruct
 
 define ps(filter)
 

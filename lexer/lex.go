@@ -825,15 +825,11 @@ get_nt_eval_point:
             tokType = C_While
         case "endwhile":
             tokType = C_Endwhile
-        case "ew":
-            tokType = C_Endwhile
         case "for":
             tokType = C_For
         case "foreach":
             tokType = C_Foreach
         case "endfor":
-            tokType = C_Endfor
-        case "ef":
             tokType = C_Endfor
         case "continue":
             tokType = C_Continue
@@ -844,8 +840,6 @@ get_nt_eval_point:
         case "else":
             tokType = C_Else
         case "endif":
-            tokType = C_Endif
-        case "ei":
             tokType = C_Endif
         case "case":
             tokType = C_Case
@@ -865,8 +859,6 @@ get_nt_eval_point:
             tokType = SYM_Not
         case "endcase":
             tokType = C_Endcase
-        case "ec":
-            tokType = C_Endcase
         case "with":
             tokType = C_With
         case "endwith":
@@ -874,8 +866,6 @@ get_nt_eval_point:
         case "struct":
             tokType = C_Struct
         case "endstruct":
-            tokType = C_Endstruct
-        case "es":
             tokType = C_Endstruct
         case "showstruct":
             tokType = C_Showstruct
@@ -886,8 +876,6 @@ get_nt_eval_point:
         case "test":
             tokType = C_Test
         case "endtest":
-            tokType = C_Endtest
-        case "et":
             tokType = C_Endtest
         case "assert":
             tokType = C_Assert

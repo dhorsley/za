@@ -9,7 +9,7 @@ def begin()
     print "Started.\n"
     while not quit
         pause 500
-    ew
+    endwhile
 end
 
 op="status"
@@ -29,11 +29,11 @@ is "stop"
         remove_pidfile()
     else
         exit 3,"Error: already stopped."
-    ei
+    endif
 is "status"
     println "appname : ",app_name()
     println "pidfile : ",pid_name()
     println "has pid : ",has_pidfile()
-ec
+endcase
 
 

@@ -23,7 +23,7 @@ if iterable
             foreach j in i
                 println "    - ({=kind(j)}) : ",j
             endfor
-        ec
+        endcase
     endfor
 else
     println "Simple result:\n",result

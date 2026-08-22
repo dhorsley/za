@@ -151,6 +151,14 @@ func expect_args(name string, args []any, variants int, types ...string) (bool, 
                     continue
                 }
             }
+            // Check for any string-keyed map arrangement
+            if types[p] == "map" {
+                if reflect.TypeOf(args[n]).Kind() == reflect.Map &&
+                    reflect.TypeOf(args[n]).Key().Kind() == reflect.String {
+                    n += 1
+                    continue
+                }
+            }
             if reflect.TypeOf(args[n]).String() != types[p] && types[p] != "any" {
                 type_errs += sf("\nargument %d - %s expected (got %s)", n+1, types[p], reflect.TypeOf(args[n]))
                 tryNext = true

@@ -121,7 +121,7 @@ logging testfile "mon.test.out"
 test "fn_ip" group "mon" assert fail
     iip=interface_ip("lo:")
     assert has_start(iip,"127.0.0.")
-et
+endtest
 
 define shorten(s,l)
     on len(s)>=l do s=s[:l-2]+(utf8supported() ? "…" : "~")

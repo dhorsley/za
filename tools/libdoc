@@ -82,7 +82,7 @@ fd=func_descriptions()
 foreach c in func_categories()
 
     header=wh1()+"\n"
-    header+=wh2("{key_c} functions") 
+    header+=wh2("{key_c} functions")
 
     on is_file("{headerpages}/{key_c}") do header+=wp($in "{headerpages}/{key_c}")
 
@@ -92,7 +92,7 @@ foreach c in func_categories()
     sfuncs=[]
     foreach i in c
         sfuncs=sfuncs.append(i)
-    ef
+    endfor
     sfuncs=sfuncs.sort
 
     func_count=0
@@ -114,7 +114,7 @@ foreach c in func_categories()
         endif
 
         body+=wdiv(
-            wdiv( wa("",`id="{i}"`)+wh3(fnline) , `class="ttableft"` ) + 
+            wdiv( wa("",`id="{i}"`)+wh3(fnline) , `class="ttableft"` ) +
             wdiv( wa("top",`href="#" onclick="document.body.scrollTop=0;document.documentElement.scrollTop=0;event.preventDefault()"`),`class="ttabright"`),
           `class="ttab hdbg"`
         )

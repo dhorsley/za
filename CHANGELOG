@@ -2314,17 +2314,6 @@ other
 
     * (breaking) Renamed WHEN..ENDWHEN statements to CASE..ENDCASE
 
-    * (experimental) added some more statement aliases:
-
-        EI  : ENDIF
-        EW  : ENDWHILE
-        EF  : ENDFOR
-        ET  : ENDTEST
-        ES  : ENDSTRUCT
-        EC  : ENDCASE
-
-        - you probably shouldn't use these.. just testing how they look currently.
-
     * no longer considered experimental:
         - added name qualification for functions
         - added optional name qualification for enums

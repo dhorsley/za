@@ -16,7 +16,7 @@ struct currdef
     code    string
     symbol  string
     name    string
-es
+endstruct
 
 CURRENCIES = [
     currdef("USD", "$", "US Dollar"),
@@ -566,7 +566,7 @@ struct costrow
     sort_val    float
     bar         string
 
-es
+endstruct
 
 # --- Sorting ---
 

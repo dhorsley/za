@@ -20,19 +20,19 @@ struct fsrow
     size      string
     avail     string
     bar       string
-es
+endstruct
 
 struct drow
     name      string
     size      string
     mode      string
-es
+endstruct
 
 struct durow
     size      string
     path      string
     full_path string
-es
+endstruct
 
 # --- screens ---
 

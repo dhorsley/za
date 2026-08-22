@@ -12,7 +12,7 @@ struct animal
     def animate()
         self.name=self.name.replace("boy$","")
     end
-es
+endstruct
 
 var cow,pig,sheep animal
 

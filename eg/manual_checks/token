@@ -5,7 +5,7 @@ define s3_command(params)
     case $lc params[0]
     is "list"
         | aws s3 --region=eu-west-1 ls {=params[1:].join}
-    ec
+    endcase
 end
 
 
@@ -32,8 +32,8 @@ while not quit
         case $lc t.tokens[0]
         is "s3"
             on t.tokens.len>1 do s3_command(t.tokens[1:])
-        ec
-    ec
+        endcase
+    endcase
 
 endwhile
 

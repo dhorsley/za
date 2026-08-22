@@ -15,12 +15,12 @@ struct process
     starttime   int
     uid         string
     gid         string
-es
+endstruct
 
 struct pid_lookup
     pid         int
     index       string
-es
+endstruct
 
 
 # (even more) hacky sort, as there is no builtin sort by struct field

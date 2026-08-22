@@ -10,7 +10,7 @@ while #b4
             case # b1
             has e > 0
                 break bc
-            ec
+            endcase
             assert bc==1
             println "e=",e
         endfor

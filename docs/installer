@@ -13,7 +13,7 @@ if has_start(os(),"freebsd")
     pathRoot="/usr/local/share/vim"
 else
     pathRoot="/usr/share/vim"
-ei
+endif
 
 
 # install for nvim
@@ -32,8 +32,8 @@ foreach p in dir(pathRoot)
     if has_start(p.name,"vim9")
         allPaths=append(allPaths,p.name)
         vim9=true
-    ei
-ef
+    endif
+endfor
 
 if allPaths.len>0
 
@@ -58,6 +58,6 @@ if allPaths.len>0
     | sudo cp -f za.vim {newPath}/syntax/
     | sudo chmod 755 {newPath}/{syntax,ftplugin}/za.vim
 
-ei
+endif
 
 

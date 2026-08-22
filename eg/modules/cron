@@ -9,7 +9,7 @@ define parse(time_val,crontab)
         t=epoch_nano_time(time_val)
     has time_val is int
         t=time_val
-    ec
+    endcase
 
     time=[]
     time=time.append(t.time_minutes.as_string)

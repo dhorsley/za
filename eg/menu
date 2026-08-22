@@ -81,15 +81,15 @@ while choice!=-1
                 opt_write()
             is 3
                 opt_delete()
-            ec
-        ew
+            endcase
+        endwhile
     is 2
         while sub_choice!=-1
             sub_choice=menu("Second Menu",[])
-        ew
-    ec
+        endwhile
+    endcase
 
-ew
+endwhile
 
 println "\n\n\n"
 

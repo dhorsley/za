@@ -39,7 +39,7 @@ struct ts
     b bool
     f float
     s string
-es
+endstruct
 
 ar = []
 for e = 0 to 99

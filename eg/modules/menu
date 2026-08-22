@@ -21,7 +21,7 @@ define menu(p,opts)
         break
     has ol>=30
         key_range = nil
-    ec
+    endcase
 
     # display menu
     foreach p in opts
@@ -61,7 +61,7 @@ define menu(p,opts)
         is 13
             n=sel+1
             finished=true
-        ec
+        endcase
 
     endwhile
 

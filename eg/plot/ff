@@ -85,7 +85,7 @@ while !quit
             on b!="#" do break
         endwhile
         async nil fill(13,13,ob,b)
-    ec
+    endcase
     show()
 
 endwhile

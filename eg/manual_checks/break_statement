@@ -6,13 +6,13 @@ for e = 0 to 9
         on f==3 do break foreach
         println ": should not see this after f=3"
         assert f!=3
-    ef
+    endfor
     println ": post inner foreach"
     if e==2
         break for
     endif
     println ": should not see this after e=2"
     assert e!=2
-ef
+endfor
 println ": post outer for"
 

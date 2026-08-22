@@ -48,11 +48,6 @@ local za_keywords = {
     "throw",
 
     -- Single character/short keywords
-    "ef",
-    "ec",
-    "ei",
-    "ew",
-    "es",
     "has",
     "nop",
     "log",
@@ -102,7 +97,6 @@ local za_test_keywords = {
     "test",
     "endtest",
     "assert",
-    "et",
 }
 
 local za_types = {

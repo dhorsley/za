@@ -21,7 +21,7 @@ while digs>0
         if ++spacecur == 10
             print " "
             spacecur=0
-        ei
+        endif
         nr=10*(r-n*t)
         n=10*(3*q+r)/t-10*n
         q=q*10
@@ -34,8 +34,8 @@ while digs>0
         l=l+2
         k=k+1
         r=nr
-    ei
-ew
+    endif
+endwhile
 println "\n[#6]Iterations : {iter}[#-]"
 println format("[#4]System Pi:\n%.40f[#-]",pi())
 

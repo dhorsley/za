@@ -1691,24 +1691,29 @@ func buildInternalLib() {
         return false, nil
     }
 
-    slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]?"}
+    slhelp["key"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Does key [#i1]key_name[#i0] exist in associative array [#i1]ary_name[#i0]? May also be called with a map value as the first argument."}
     stdlib["key"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("key", args, 1, "2", "string", "string"); !ok {
+        if ok, err := expect_args("key", args, 2, "2", "string", "string", "2", "map", "string"); !ok {
             return nil, err
         }
 
         var v any
         var found bool
 
-        if v, found = vget(nil, evalfs, ident, args[0].(string)); !found {
-            var mloc uint32
-            if interactive {
-                mloc = 1
-            } else {
-                mloc = 2
-            }
-            if v, found = vget(nil, mloc, &mident, args[0].(string)); !found {
-                return false, nil
+        arg0t := reflect.TypeOf(args[0])
+        if arg0t != nil && arg0t.Kind() == reflect.Map && arg0t.Key().Kind() == reflect.String {
+            v = args[0]
+        } else {
+            if v, found = vget(nil, evalfs, ident, args[0].(string)); !found {
+                var mloc uint32
+                if interactive {
+                    mloc = 1
+                } else {
+                    mloc = 2
+                }
+                if v, found = vget(nil, mloc, &mident, args[0].(string)); !found {
+                    return false, nil
+                }
             }
         }
 
@@ -1764,6 +1769,13 @@ func buildInternalLib() {
                 return true, nil
             }
         default:
+            rv := reflect.ValueOf(v)
+            if rv.Kind() == reflect.Map && rv.Type().Key().Kind() == reflect.String {
+                if rv.MapIndex(reflect.ValueOf(key)).IsValid() {
+                    return true, nil
+                }
+                return false, nil
+            }
             return false, errors.New("key() requires a map")
         }
         return false, nil

@@ -2,7 +2,7 @@
 struct q
     a int
     b string
-es
+endstruct
 
 var a []any
 
