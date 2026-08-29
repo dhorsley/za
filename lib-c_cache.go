@@ -24,6 +24,11 @@ type FFICacheKey struct {
     Arch        string // runtime.GOARCH
     PointerSize int    // 32-bit vs 64-bit
 
+    // Preprocessor platform-macro policy. Bump this whenever the seeded
+    // predefined macro set changes so caches built under an older policy are
+    // discarded instead of replayed with stale platform branches.
+    PreprocFingerprint string
+
     // Library identification
     LibraryPath string // Absolute path to .so
     LibraryHash string // SHA256 of .so file
@@ -35,6 +40,11 @@ type FFICacheKey struct {
     // Za version (for format compatibility)
     ZaVersion string // BuildVersion
 }
+
+// preprocPolicyFingerprint identifies the current predefined-macro policy
+// (see newPreprocessorState in lib-c_headers.go). Increment it whenever the
+// platform macro seeding changes so stale AUTO caches cannot replay.
+const preprocPolicyFingerprint = "2"
 
 // EnumData is a cacheable representation of enum_s (which has unexported fields)
 type EnumData struct {
@@ -126,11 +136,12 @@ func hashObject(obj interface{}) (string, error) {
 // computeCacheKey builds the complete cache key
 func computeCacheKey(libraryPath, alias string, explicitPaths []string) (FFICacheKey, error) {
     key := FFICacheKey{
-        OS:          runtime.GOOS,
-        Arch:        runtime.GOARCH,
-        PointerSize: int(unsafe.Sizeof(uintptr(0))) * 8,
-        LibraryPath: libraryPath,
-        ZaVersion:   BuildVersion,
+        OS:                runtime.GOOS,
+        Arch:              runtime.GOARCH,
+        PointerSize:       int(unsafe.Sizeof(uintptr(0))) * 8,
+        PreprocFingerprint: preprocPolicyFingerprint,
+        LibraryPath:       libraryPath,
+        ZaVersion:         BuildVersion,
     }
 
     // Hash the library file
@@ -297,6 +308,9 @@ func tryLoadFFICache(cacheKey FFICacheKey) (*FFICacheData, bool) {
 // cacheKeysEqual compares two cache keys
 func cacheKeysEqual(a, b FFICacheKey) bool {
     if a.OS != b.OS || a.Arch != b.Arch || a.PointerSize != b.PointerSize {
+        return false
+    }
+    if a.PreprocFingerprint != b.PreprocFingerprint {
         return false
     }
     if a.LibraryPath != b.LibraryPath || a.LibraryHash != b.LibraryHash {

@@ -1,0 +1,22 @@
+#!/usr/bin/env za
+
+# Windows preprocessor: the MinGW-w64 predefined environment should be present
+# (Za uses MinGW-w64 GCC for the Windows build, not MSVC, so no _MSC_VER).
+
+module "./za_ffi_test.dll" as z auto "./mingw_check.h"
+use +z
+
+println "preproc: MinGW-w64 macros"
+println "========================="
+
+m32 = ZA_TEST_MINGW32
+m64 = ZA_TEST_MINGW64
+println "  ZA_TEST_MINGW32 = " + as_string(m32) + "  (expected 1)"
+println "  ZA_TEST_MINGW64 = " + as_string(m64) + "  (expected 1)"
+
+assert m32 == 1, "__MINGW32__ should be defined"
+assert m64 == 1, "__MINGW64__ should be defined for amd64"
+
+println
+println "✓ MinGW macros PASSED"
+println "[WIN-OK] test_win_preproc_mingw"

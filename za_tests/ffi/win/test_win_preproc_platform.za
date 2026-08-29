@@ -1,0 +1,32 @@
+#!/usr/bin/env za
+
+# Windows preprocessor: platform-selection macros must reflect the Windows
+# target (_WIN32/_WIN64 defined; __unix__/__LP64__/__GLIBC__ NOT defined).
+
+module "./za_ffi_test.dll" as z auto "./plat_check.h"
+use +z
+
+println "preproc: platform selection"
+println "==========================="
+
+w   = ZA_PLATFORM_WINDOWS
+w64 = ZA_PLATFORM_WIN64
+u   = ZA_PLATFORM_UNIX
+lp  = ZA_PLATFORM_LP64
+g   = ZA_PLATFORM_GLIBC
+
+println "  ZA_PLATFORM_WINDOWS = " + as_string(w) + "  (expected 1)"
+println "  ZA_PLATFORM_WIN64   = " + as_string(w64) + "  (expected 1)"
+println "  ZA_PLATFORM_UNIX    = " + as_string(u) + "  (expected 0)"
+println "  ZA_PLATFORM_LP64    = " + as_string(lp) + "  (expected 0)"
+println "  ZA_PLATFORM_GLIBC   = " + as_string(g) + "  (expected 0)"
+
+assert w == 1, "_WIN32 should be defined"
+assert w64 == 1, "_WIN64 should be defined on amd64"
+assert u == 0, "__unix__ must not be defined on Windows"
+assert lp == 0, "__LP64__ must not be defined on Win64 (LLP64)"
+assert g == 0, "__GLIBC__ must not be defined on Windows"
+
+println
+println "✓ preproc platform PASSED"
+println "[WIN-OK] test_win_preproc_platform"

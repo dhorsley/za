@@ -263,26 +263,93 @@ func newPreprocessorState(alias string) *PreprocessorState {
         alias:          alias,
     }
 
-    // Define platform macros based on runtime
-    if runtime.GOOS == "linux" || runtime.GOOS == "freebsd" ||
-        runtime.GOOS == "openbsd" || runtime.GOOS == "netbsd" {
-        state.definedMacros["__linux__"] = "1" // Generic unix-like
-        state.definedMacros["__unix__"] = "1"
-    }
-
-    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
-        state.definedMacros["__LP64__"] = "1" // 64-bit platform
-    }
-
-    // Always define __GNUC__ for compatibility
+    // Compiler-family macros (kept across all OSes - MinGW is GCC-based too)
     state.definedMacros["__GNUC__"] = "4"       // Claim GCC 4.x
     state.definedMacros["__GNUC_MINOR__"] = "9" // GCC 4.9
 
-    // glibc version macros
-    state.definedMacros["__GLIBC__"] = "2"        // glibc major version
-    state.definedMacros["__GLIBC_MINOR__"] = "31" // glibc minor version (conservative)
+    // STDC macros
+    state.definedMacros["__STDC__"] = "1"
+    state.definedMacros["__STDC_VERSION__"] = "201710" // C17 (no L suffix)
+    state.definedMacros["__STDC_HOSTED__"] = "1"
 
-    // Word size and time size macros
+    // Platform/OS/architecture macros must reflect the actual target so valid
+    // Windows headers select the correct branches: Win64 is LLP64 (no
+    // __LP64__), never pretends to be Unix/Glibc, and seeds _WIN32/_WIN64.
+    addArchitecturePreprocessorMacros(state)
+
+    switch runtime.GOOS {
+    case "windows":
+        addWindowsPreprocessorMacros(state)
+    case "linux":
+        addLinuxPreprocessorMacros(state)
+    case "freebsd":
+        addFreeBSDPreprocessorMacros(state)
+    case "openbsd":
+        addOpenBSDPreprocessorMacros(state)
+    case "netbsd":
+        addNetBSDPreprocessorMacros(state)
+    }
+
+    // NOTE: __cplusplus is intentionally NOT defined (C mode, not C++)
+    // NOTE: __GLIBC_USE and __GLIBC_PREREQ are function-like macros that
+    // will be handled by being replaced with 0 when undefined
+
+    return state
+}
+
+// addArchitecturePreprocessorMacros seeds data-model-agnostic architecture
+// macros for the architectures Za supports.
+func addArchitecturePreprocessorMacros(state *PreprocessorState) {
+    switch runtime.GOARCH {
+    case "amd64":
+        state.definedMacros["__x86_64__"] = "1"
+        state.definedMacros["__amd64__"] = "1"
+    case "386":
+        state.definedMacros["__i386__"] = "1"
+    case "arm64":
+        state.definedMacros["__aarch64__"] = "1"
+    }
+}
+
+// addWindowsPreprocessorMacros seeds the Windows/MinGW-w64 macro set. Win64 is
+// LLP64: __LP64__ must NOT be defined, and no Unix/Glibc macros leak in.
+func addWindowsPreprocessorMacros(state *PreprocessorState) {
+    state.definedMacros["_WIN32"] = "1"
+    state.definedMacros["__WIN32__"] = "1"
+    state.definedMacros["__WIN32"] = "1"
+
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["_WIN64"] = "1"
+        state.definedMacros["__WIN64__"] = "1"
+        state.definedMacros["__WIN64"] = "1"
+    }
+
+    // Matches the actual MinGW-w64 toolchain predefined environment.
+    state.definedMacros["__MINGW32__"] = "1"
+    if runtime.GOARCH == "amd64" {
+        state.definedMacros["__MINGW64__"] = "1"
+    }
+}
+
+// addLinuxPreprocessorMacros seeds Linux + Glibc feature macros. This is an
+// approximation of a Glibc features.h environment; the __USE_* feature
+// selection macros are intentionally Linux-only.
+func addLinuxPreprocessorMacros(state *PreprocessorState) {
+    state.definedMacros["__linux__"] = "1"
+    state.definedMacros["__linux"] = "1"
+    state.definedMacros["linux"] = "1"
+    state.definedMacros["__unix__"] = "1"
+    state.definedMacros["__unix"] = "1"
+
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["__LP64__"] = "1"
+        state.definedMacros["_LP64"] = "1"
+    }
+
+    // Glibc version macros (conservative; genuinely from features.h)
+    state.definedMacros["__GLIBC__"] = "2"
+    state.definedMacros["__GLIBC_MINOR__"] = "31"
+
     if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
         state.definedMacros["__WORDSIZE"] = "64"
         state.definedMacros["__TIMESIZE"] = "64"
@@ -292,20 +359,41 @@ func newPreprocessorState(alias string) *PreprocessorState {
     }
     state.definedMacros["__WORDSIZE_TIME64_COMPAT32"] = "1"
 
-    // Common feature test macros
     state.definedMacros["__USE_MISC"] = "1"  // Misc extensions
     state.definedMacros["__USE_XOPEN"] = "1" // X/Open compliance
+}
 
-    // STDC macros
-    state.definedMacros["__STDC__"] = "1"
-    state.definedMacros["__STDC_VERSION__"] = "201710" // C17 (no L suffix)
-    state.definedMacros["__STDC_HOSTED__"] = "1"
+// addFreeBSDPreprocessorMacros seeds the FreeBSD macro set.
+func addFreeBSDPreprocessorMacros(state *PreprocessorState) {
+    state.definedMacros["__FreeBSD__"] = "1"
+    state.definedMacros["__unix__"] = "1"
+    state.definedMacros["__unix"] = "1"
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["__LP64__"] = "1"
+        state.definedMacros["_LP64"] = "1"
+    }
+}
 
-    // NOTE: __cplusplus is intentionally NOT defined (C mode, not C++)
-    // NOTE: __GLIBC_USE and __GLIBC_PREREQ are function-like macros that
-    // will be handled by being replaced with 0 when undefined
+// addOpenBSDPreprocessorMacros seeds the OpenBSD macro set.
+func addOpenBSDPreprocessorMacros(state *PreprocessorState) {
+    state.definedMacros["__OpenBSD__"] = "1"
+    state.definedMacros["__unix__"] = "1"
+    state.definedMacros["__unix"] = "1"
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["__LP64__"] = "1"
+        state.definedMacros["_LP64"] = "1"
+    }
+}
 
-    return state
+// addNetBSDPreprocessorMacros seeds the NetBSD macro set.
+func addNetBSDPreprocessorMacros(state *PreprocessorState) {
+    state.definedMacros["__NetBSD__"] = "1"
+    state.definedMacros["__unix__"] = "1"
+    state.definedMacros["__unix"] = "1"
+    if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+        state.definedMacros["__LP64__"] = "1"
+        state.definedMacros["_LP64"] = "1"
+    }
 }
 
 // GetModuleConstants returns a copy of the constants for a given module alias

@@ -1,0 +1,17 @@
+#!/usr/bin/env za
+
+# Windows preprocessor: glibc-only branches must NOT be selected (no __GLIBC__).
+
+module "./za_ffi_test.dll" as z auto "./glibc_check.h"
+use +z
+
+println "preproc: glibc branch avoidance"
+println "==============================="
+
+b = ZA_TEST_GLIBC_BRANCH
+println "  ZA_TEST_GLIBC_BRANCH = " + as_string(b) + "  (expected 0)"
+assert b == 0, "__GLIBC__ must not be defined on Windows"
+
+println
+println "✓ glibc-branch PASSED"
+println "[WIN-OK] test_win_preproc_glibc"

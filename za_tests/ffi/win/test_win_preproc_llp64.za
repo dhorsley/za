@@ -1,0 +1,18 @@
+#!/usr/bin/env za
+
+# Windows preprocessor: Win64 is LLP64. __LP64__ must NOT be defined, so the
+# header's ZA_LONG_SIZE must select the non-LP64 branch (long = 4).
+
+module "./za_ffi_test.dll" as z auto "./llp64_check.h"
+use +z
+
+println "preproc: LLP64 (long size)"
+println "=========================="
+
+s = ZA_LONG_SIZE
+println "  ZA_LONG_SIZE = " + as_string(s) + "  (expected 4)"
+assert s == 4, "Win64 is LLP64: long is 32-bit, __LP64__ must be unset"
+
+println
+println "✓ LLP64 PASSED"
+println "[WIN-OK] test_win_preproc_llp64"

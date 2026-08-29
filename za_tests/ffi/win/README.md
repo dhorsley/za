@@ -48,6 +48,7 @@ failures are actually caught.
 | 17 | `test_win_kernel32.za` | `kernel32.dll` → `GetCurrentProcessId` |
 | 18 | `test_win_auto.za` | `MODULE ... AUTO`, macros, typedef fn-ptr, **struct-literal** calls |
 | –  | `test_win_wchar.za` | 16-bit `wchar_t` runtime detection (2 bytes) |
+| –  | `test_win_preproc_*.za` | platform/LLP64/glibc/MinGW predefined macros (`_WIN32`/`_WIN64` set; `__LP64__`/`__unix__`/glibc unset) |
 | 19 | `run_tests.sh` (cache) | first parse → cache → cache load → `ZA_FFI_NOCACHE=1` |
 | 20 | `run_tests.sh` + `run_bundle_tests.sh` | `-x`/`-xx` bundles: control fails cleanly without libffi, `-xx` runs with embedded libffi (Windows + Linux) |
 | –  | `test_win_neg.za` | negative control: assert failure must be caught |

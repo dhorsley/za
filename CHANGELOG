@@ -200,6 +200,21 @@ library changes
     - test coverage: `za_tests/ffi/win/` suite (phases 1-7, 17-19, wchar,
         discovery, AUTO cache) runnable under Proton/standalone Wine.
 
+  * Platform-aware header preprocessor macros (AUTO)
+    - Seeded predefined macros now reflect the actual target OS/arch instead of
+        assuming all 64-bit targets are LP64.
+    - Windows seeds `_WIN32`/`_WIN64` (+ `__WIN*` spellings) and `__MINGW32__`/
+        `__MINGW64__`; it never defines `__LP64__` (Win64 is LLP64),
+        `__unix__`/`__unix`, glibc macros, `__WORDSIZE`/`__TIMESIZE` or
+        `__USE_*`.
+    - Linux keeps the full Glibc/Unix set; BSD macros are now registered
+        per-OS (`__FreeBSD__`/`__OpenBSD__`/`__NetBSD__`) instead of reusing
+        `__linux__`.
+    - AUTO caches now carry a preprocessor-policy fingerprint in the cache key
+        so a macro-policy change invalidates stale caches instead of replaying
+        them with the wrong platform branches.
+    - test coverage: `za_tests/ffi/win/test_win_preproc_*.za`
+
   * FFI/AUTO cache control env vars
     - `ZA_FFI_CACHE_CLEAR=1` deletes the module's FFI/AUTO cache file(s), then
         forces a fresh parse (the save path rebuilds the cache). Unlike
