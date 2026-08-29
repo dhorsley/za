@@ -1,0 +1,24 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 5: variadic calls (ffi_prep_cif_var path)
+
+module "./za_ffi_test.dll" as z
+use +z
+
+# Declare the variadic function; count is the fixed arg before varargs.
+lib z::za_test_sum_n(count:int, ...args) -> int
+
+println "Phase 5: variadic calls"
+println "======================="
+
+r = z::za_test_sum_n(3, 1, 2, 3)
+println "  sum_n(3, 1,2,3) = " + as_string(r) + " (expected 6)"
+assert r == 6, "sum_n(3,1,2,3) should be 6"
+
+r = z::za_test_sum_n(5, 10, 20, 30, 40, 50)
+println "  sum_n(5, 10..50) = " + as_string(r) + " (expected 150)"
+assert r == 150, "sum_n(5, 10..50) should be 150"
+
+println
+println "✓ Phase 5 PASSED"
+println "[WIN-OK] test_win_variadic.za"

@@ -1,5 +1,5 @@
-//go:build !windows && !noffi && cgo
-// +build !windows,!noffi,cgo
+//go:build !noffi && cgo
+// +build !noffi,cgo
 
 package main
 

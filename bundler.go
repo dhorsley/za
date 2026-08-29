@@ -12,6 +12,7 @@ import (
     "os/exec"
     "os/signal"
     "path/filepath"
+    "runtime"
     "strings"
     "syscall"
     "time"
@@ -45,6 +46,129 @@ type ExtraFileInfo struct {
     SourcePath string // Original path relative to working directory
     BundlePath string // Path within bundle
     IsDir      bool   // Whether this is a directory
+}
+
+// resolveLibFFIForBundle locates the platform-native libffi runtime to embed
+// in an -x bundle (the -xx option). The bundle name is normalised to a canonical
+// name so the runtime libffi discovery finds it next to the extracted script.
+// Returns (nil, error) when no libffi could be found - the caller warns and
+// proceeds without embedding rather than failing the bundle.
+func resolveLibFFIForBundle() (*ExtraFileInfo, error) {
+    switch runtime.GOOS {
+    case "windows":
+        p, ok := findLibFFISharedWin()
+        if !ok {
+            return nil, fmt.Errorf("could not locate shared/win/libffi-8.dll " +
+                "(searched next to za and above the working directory); -xx skipped")
+        }
+        return &ExtraFileInfo{SourcePath: p, BundlePath: "libffi-8.dll"}, nil
+
+    case "linux", "freebsd", "openbsd", "netbsd", "dragonfly":
+        names := []string{"libffi.so.8", "libffi.so.7", "libffi.so"}
+        var cands []string
+
+        // LD_LIBRARY_PATH
+        for _, dir := range filepath.SplitList(os.Getenv("LD_LIBRARY_PATH")) {
+            if dir == "" {
+                continue
+            }
+            for _, n := range names {
+                cands = append(cands, filepath.Join(dir, n))
+            }
+        }
+
+        // ldconfig -p (most accurate; respects system config)
+        if out, err := exec.Command("ldconfig", "-p").Output(); err == nil {
+            for _, line := range strings.Split(string(out), "\n") {
+                if idx := strings.Index(line, " => "); idx >= 0 {
+                    p := strings.TrimSpace(line[idx+4:])
+                    if p != "" {
+                        for _, n := range names {
+                            if strings.HasPrefix(filepath.Base(p), n) {
+                                cands = append(cands, p)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fixed known paths
+        cands = append(cands,
+            "/usr/lib/x86_64-linux-gnu/libffi.so.8",
+            "/usr/lib/aarch64-linux-gnu/libffi.so.8",
+            "/usr/lib64/libffi.so.8",
+            "/usr/lib/libffi.so.8",
+            "/usr/lib/libffi.so",
+            "/usr/local/lib/libffi.so.8",
+            "/usr/local/lib/libffi.so",
+            "/usr/pkg/lib/libffi.so.8",
+            "/lib/libffi.so.8",
+            "/lib64/libffi.so.8",
+        )
+
+        for _, c := range cands {
+            fi, err := os.Stat(c)
+            if err == nil && !fi.IsDir() {
+                bundleName := filepath.Base(c)
+                for _, n := range names {
+                    if strings.HasPrefix(bundleName, n) {
+                        bundleName = n
+                        break
+                    }
+                }
+                return &ExtraFileInfo{SourcePath: c, BundlePath: bundleName}, nil
+            }
+        }
+        return nil, fmt.Errorf("could not locate a native libffi shared library; -xx skipped (install libffi or use -I)")
+
+    default:
+        return nil, fmt.Errorf("libffi bundling (-xx) is not supported on %s; skipped", runtime.GOOS)
+    }
+}
+
+// findLibFFISharedWin searches for the bundled Windows libffi artifact
+// (shared/win/libffi-8.dll) next to the za executable and upwards from the
+// working directory through the tree (e.g. when running za from a source tree).
+func findLibFFISharedWin() (string, bool) {
+    rel := filepath.Join("shared", "win", "libffi-8.dll")
+    var roots []string
+    if exe, err := os.Executable(); err == nil {
+        roots = append(roots, filepath.Dir(exe))
+    }
+    if cwd, err := os.Getwd(); err == nil {
+        roots = append(roots, cwd)
+    }
+
+    seen := make(map[string]bool)
+    for _, root := range roots {
+        d := root
+        for {
+            if seen[d] {
+                break
+            }
+            seen[d] = true
+            p := filepath.Join(d, rel)
+            if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+                return p, true
+            }
+            parent := filepath.Dir(d)
+            if parent == d {
+                break
+            }
+            d = parent
+        }
+    }
+    return "", false
+}
+
+// bundleBinaryName is the name the za binary is stored under inside a bundle.
+// Windows requires a .exe extension for CreateProcess.
+func bundleBinaryName() string {
+    if runtime.GOOS == "windows" {
+        return "za.exe"
+    }
+    return "za"
 }
 
 // Bundle metadata for internal use
@@ -474,7 +598,7 @@ func ExecuteFromBundle(args []string) error {
     setupCleanupHandlers(tempDir)
 
     // 3. Execute bundled Za with proper argument handling
-    zaBinary := filepath.Join(tempDir, "za")
+    zaBinary := filepath.Join(tempDir, bundleBinaryName())
     mainScript := filepath.Join(tempDir, bundleMeta.MainScript)
 
     // fmt.Printf("DEBUG: Execution setup - tempDir=%s, zaBinary=%s, mainScript=%s\n",
@@ -741,7 +865,7 @@ func createBundleTar(scriptPath string, rewrittenMain []byte, modules []ModuleIn
     // Add Za binary if requested
     if includeZaBinary {
         zaHeader := &tar.Header{
-            Name:     "za",
+            Name:     bundleBinaryName(),
             Mode:     0755,
             Size:     int64(len(zaData)),
             ModTime:  time.Now(),
@@ -828,12 +952,14 @@ func createBundleTar(scriptPath string, rewrittenMain []byte, modules []ModuleIn
             }
         } else {
             // Read file content
-            cwd, err := os.Getwd()
-            if err != nil {
-                return nil, fmt.Errorf("failed to get working directory: %v", err)
+            fullPath := extraFile.SourcePath
+            if !filepath.IsAbs(fullPath) {
+                cwd, err := os.Getwd()
+                if err != nil {
+                    return nil, fmt.Errorf("failed to get working directory: %v", err)
+                }
+                fullPath = filepath.Join(cwd, extraFile.SourcePath)
             }
-
-            fullPath := filepath.Join(cwd, extraFile.SourcePath)
             content, err := os.ReadFile(fullPath)
             if err != nil {
                 return nil, fmt.Errorf("failed to read extra file %s: %v", extraFile.SourcePath, err)
@@ -921,7 +1047,7 @@ func extractBundleFromSelf() (string, []byte, BundleMetadata, error) {
     // fmt.Printf("DEBUG: Created temp directory: %s\n", tempDir)
 
     // Copy za binary from bundle start to temp directory FIRST
-    zaBinaryPath := filepath.Join(tempDir, "za")
+    zaBinaryPath := filepath.Join(tempDir, bundleBinaryName())
     zaBinaryData := data[0:tarStart] // Data before tar is the za binary
 
     err = os.WriteFile(zaBinaryPath, zaBinaryData, 0755)
@@ -998,7 +1124,7 @@ func extractBundleFromSelf() (string, []byte, BundleMetadata, error) {
             }
 
             // Track modules (exclude za binary and main script)
-            if header.Name != "za" && header.Name != mainScriptName {
+            if header.Name != bundleBinaryName() && header.Name != mainScriptName {
                 metadata.Modules = append(metadata.Modules, header.Name)
             }
         }

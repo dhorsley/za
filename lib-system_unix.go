@@ -1836,6 +1836,11 @@ func getMaxFDs() int {
     return int(rlim.Max)
 }
 
+// zaSyncAll flushes all filesystem buffers to disk (Unix: fsync-all).
+func zaSyncAll() {
+    syscall.Sync()
+}
+
 // getSystemBootTime returns the system boot time as Unix timestamp
 func getSystemBootTime() int64 {
     data, err := os.ReadFile("/proc/stat")

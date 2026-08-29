@@ -1,14 +1,20 @@
-//go:build !windows && !noffi && cgo
-// +build !windows,!noffi,cgo
+//go:build !noffi && cgo
+// +build !noffi,cgo
 
 package main
 
 /*
-#include <dlfcn.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
+
+// Dynamic loader abstraction - implemented per-platform instead of using
+// dlopen/dlsym/dlclose directly so the common FFI also builds on Windows.
+// (see lib-c_libffi_loader_unix.go / lib-c_libffi_loader_windows.go)
+void *za_dlopen(const char *path);
+void *za_dlsym(void *handle, const char *symbol);
+void  za_dlclose(void *handle);
 
 // No #include <ffi.h> - we load symbols dynamically!
 
@@ -20,14 +26,23 @@ typedef enum {
 } ffi_status;
 
 typedef enum {
+    // Values match libffi's ffi_abi (src/x86/ffitarget.h). FFI_WIN64 is 3,
+    // not 4 - 4 is FFI_GNUW64.
     FFI_SYSV = 1,
     FFI_UNIX64 = 2,
-    FFI_WIN64 = 4,
+    FFI_WIN64 = 3,
     FFI_DEFAULT_ABI = 2  // Will be overridden by get_platform_abi()
 } ffi_abi;
 
 // Platform and architecture-specific ABI detection
-// Returns the appropriate ABI value for the current platform
+// Returns the appropriate ABI value for the current platform.
+// Prefers the loaded libffi build's own default ABI when available
+// (handles builds that differ in their Win64/GNU ABI choice).
+
+// Forward declarations (defined later in this preamble)
+typedef ffi_abi (*ffi_get_default_abi_func)(void);
+static ffi_get_default_abi_func libffi_get_default_abi;
+
 static ffi_abi detected_abi = 0;
 
 static ffi_abi get_platform_abi(const char* arch, const char* os) {
@@ -36,9 +51,21 @@ static ffi_abi get_platform_abi(const char* arch, const char* os) {
         return detected_abi;
     }
 
+    // Use the loaded libffi's reported default ABI when available. This is
+    // the authoritative value for the DLL actually in use (e.g. FFI_UNIX64
+    // for GNU/mingw builds, FFI_WIN64 for MSVC-aligned builds).
+    if (libffi_get_default_abi != NULL) {
+        detected_abi = libffi_get_default_abi();
+        return detected_abi;
+    }
+
     // x86-64 / amd64
     if (strcmp(arch, "amd64") == 0) {
-        detected_abi = FFI_UNIX64;  // Unix64 for all 64-bit Unix-like systems
+        if (strcmp(os, "windows") == 0) {
+            detected_abi = FFI_WIN64;  // Windows amd64 uses the Microsoft Win64 ABI
+        } else {
+            detected_abi = FFI_UNIX64;  // Unix64 for all 64-bit Unix-like systems
+        }
         return detected_abi;
     }
 
@@ -156,6 +183,10 @@ typedef ffi_status (*ffi_prep_cif_var_func)(ffi_cif *cif,
                                              ffi_type *rtype,
                                              ffi_type **atypes);
 
+// ffi_get_default_abi returns the ABI the loaded libffi build actually
+// supports/expects (e.g. FFI_UNIX64 on GNU mingw builds, FFI_WIN64 on
+// MSVC-aligned builds). Prefer it over hard-coded platform assumptions.
+
 // Global function pointers (loaded from libffi.so)
 static ffi_prep_cif_func libffi_prep_cif = NULL;
 static ffi_call_func libffi_call = NULL;
@@ -171,51 +202,19 @@ static ffi_status (*libffi_prep_closure_loc)(void* closure, void* cif, void (*fu
 static void* libffi_handle = NULL;
 
 // Load libffi dynamically
-static int load_libffi(void) {
+// The candidate path list is supplied by the platform layer (Go) so that
+// Windows can prefer the directory the executed source file was loaded from.
+static int load_libffi(char** paths, int num_paths) {
     if (libffi_handle != NULL) {
         return 1; // Already loaded
     }
 
-    // Try common paths for libffi
-    // Priority order: generic names first (let system find it), then specific paths
-    const char* paths[] = {
-        // Generic names (system ld.so will search standard paths)
-        "libffi.so.8",                           // Generic, version 8
-        "libffi.so.7",                           // Generic, version 7
-        "libffi.so.6",                           // Generic, version 6
-        "libffi.so",                             // Generic, unversioned (BSD)
-
-        // Linux-specific paths
-        "/usr/lib/x86_64-linux-gnu/libffi.so.8", // Debian/Ubuntu x86_64
-        "/usr/lib/aarch64-linux-gnu/libffi.so.8",// Debian/Ubuntu ARM64
-        "/usr/lib64/libffi.so.8",                // RHEL/Fedora/CentOS
-        "/usr/lib/libffi.so.8",                  // Arch/Alpine/Gentoo
-        "/usr/lib/libffi.so",                    // Arch/Alpine unversioned
-
-        // FreeBSD paths
-        "/usr/local/lib/libffi.so.8",            // FreeBSD ports (versioned)
-        "/usr/local/lib/libffi.so.7",            // FreeBSD ports (older)
-        "/usr/local/lib/libffi.so",              // FreeBSD ports (unversioned)
-        "/usr/lib/libffi.so",                    // FreeBSD base (if exists)
-
-        // OpenBSD paths
-        "/usr/local/lib/libffi.so",              // OpenBSD ports (unversioned)
-
-        // NetBSD paths
-        "/usr/pkg/lib/libffi.so.8",              // NetBSD pkgsrc (versioned)
-        "/usr/pkg/lib/libffi.so",                // NetBSD pkgsrc (unversioned)
-
-        // Additional fallback paths
-        "/lib/libffi.so.8",                      // Some minimal systems
-        "/lib64/libffi.so.8",                    // Some minimal systems
-
-        NULL
-    };
-
-    for (int i = 0; paths[i] != NULL; i++) {
-        libffi_handle = dlopen(paths[i], RTLD_LAZY | RTLD_LOCAL);
-        if (libffi_handle != NULL) {
-            break;
+    if (paths != NULL) {
+        for (int i = 0; i < num_paths; i++) {
+            libffi_handle = za_dlopen(paths[i]);
+            if (libffi_handle != NULL) {
+                break;
+            }
         }
     }
 
@@ -224,30 +223,31 @@ static int load_libffi(void) {
     }
 
     // Load function symbols
-    libffi_prep_cif = (ffi_prep_cif_func)dlsym(libffi_handle, "ffi_prep_cif");
-    libffi_call = (ffi_call_func)dlsym(libffi_handle, "ffi_call");
-    libffi_prep_cif_var = (ffi_prep_cif_var_func)dlsym(libffi_handle, "ffi_prep_cif_var");
+    libffi_prep_cif = (ffi_prep_cif_func)za_dlsym(libffi_handle, "ffi_prep_cif");
+    libffi_call = (ffi_call_func)za_dlsym(libffi_handle, "ffi_call");
+    libffi_prep_cif_var = (ffi_prep_cif_var_func)za_dlsym(libffi_handle, "ffi_prep_cif_var");
+    libffi_get_default_abi = (ffi_get_default_abi_func)za_dlsym(libffi_handle, "ffi_get_default_abi");
 
     // Load type descriptors
-    libffi_type_void = (ffi_type*)dlsym(libffi_handle, "ffi_type_void");
-    libffi_type_uint8 = (ffi_type*)dlsym(libffi_handle, "ffi_type_uint8");
-    libffi_type_sint8 = (ffi_type*)dlsym(libffi_handle, "ffi_type_sint8");
-    libffi_type_uint16 = (ffi_type*)dlsym(libffi_handle, "ffi_type_uint16");
-    libffi_type_sint16 = (ffi_type*)dlsym(libffi_handle, "ffi_type_sint16");
-    libffi_type_uint32 = (ffi_type*)dlsym(libffi_handle, "ffi_type_uint32");
-    libffi_type_sint32 = (ffi_type*)dlsym(libffi_handle, "ffi_type_sint32");
-    libffi_type_uint64 = (ffi_type*)dlsym(libffi_handle, "ffi_type_uint64");
-    libffi_type_sint64 = (ffi_type*)dlsym(libffi_handle, "ffi_type_sint64");
-    libffi_type_float = (ffi_type*)dlsym(libffi_handle, "ffi_type_float");
-    libffi_type_double = (ffi_type*)dlsym(libffi_handle, "ffi_type_double");
-    libffi_type_pointer = (ffi_type*)dlsym(libffi_handle, "ffi_type_pointer");
-    libffi_type_longdouble = (ffi_type*)dlsym(libffi_handle, "ffi_type_longdouble");
+    libffi_type_void = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_void");
+    libffi_type_uint8 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_uint8");
+    libffi_type_sint8 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_sint8");
+    libffi_type_uint16 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_uint16");
+    libffi_type_sint16 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_sint16");
+    libffi_type_uint32 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_uint32");
+    libffi_type_sint32 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_sint32");
+    libffi_type_uint64 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_uint64");
+    libffi_type_sint64 = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_sint64");
+    libffi_type_float = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_float");
+    libffi_type_double = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_double");
+    libffi_type_pointer = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_pointer");
+    libffi_type_longdouble = (ffi_type*)za_dlsym(libffi_handle, "ffi_type_longdouble");
 
     // Load closure API symbols (optional - for dynamic callback support)
     // If these are unavailable, we'll still work with hardcoded trampolines
-    libffi_closure_alloc = dlsym(libffi_handle, "ffi_closure_alloc");
-    libffi_closure_free = dlsym(libffi_handle, "ffi_closure_free");
-    libffi_prep_closure_loc = dlsym(libffi_handle, "ffi_prep_closure_loc");
+    libffi_closure_alloc = za_dlsym(libffi_handle, "ffi_closure_alloc");
+    libffi_closure_free = za_dlsym(libffi_handle, "ffi_closure_free");
+    libffi_prep_closure_loc = za_dlsym(libffi_handle, "ffi_prep_closure_loc");
 
     // Note: We don't fail if closure API is unavailable - it's optional
     // Dynamic callbacks will fall back to "not supported" error if needed
@@ -255,7 +255,7 @@ static int load_libffi(void) {
     // Verify all symbols loaded
     if (libffi_prep_cif == NULL || libffi_call == NULL ||
         libffi_type_void == NULL || libffi_type_pointer == NULL) {
-        dlclose(libffi_handle);
+        za_dlclose(libffi_handle);
         libffi_handle = NULL;
         return 0;
     }
@@ -675,7 +675,22 @@ func InitLibFFI() bool {
 	}
 	libffiChecked = true
 
-	result := C.load_libffi()
+	// Build the platform-specific candidate path list (Windows checks the
+	// directory the executed source file was loaded from first).
+	paths := libffiLoadPaths(scriptSourceDir)
+
+	var pathPtrs **C.char
+	numPaths := len(paths)
+	if numPaths > 0 {
+		cstrs := make([]*C.char, numPaths)
+		for i, p := range paths {
+			cstrs[i] = C.CString(p)
+			defer C.free(unsafe.Pointer(cstrs[i]))
+		}
+		pathPtrs = (**C.char)(unsafe.Pointer(&cstrs[0]))
+	}
+
+	result := C.load_libffi(pathPtrs, C.int(numPaths))
 	libffiAvailable = (result == 1)
 
 	// Initialize platform-specific ABI detection if libffi loaded successfully

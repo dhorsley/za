@@ -1617,6 +1617,21 @@ On execution, the bundled version will unpack to a uniquely named directory in /
 
 If the -n argument is not provided, the default bundled file is named exec.za.
 
+FFI-dependent bundles can embed the native libffi runtime with `-xx` (which
+implies `-x`):
+
+> za -xx [ -n test_bundle_name ] script_name
+
+`-xx` adds the platform-native libffi library to the bundle (Windows:
+`libffi-8.dll` from `shared/win/`; Linux/BSD: the system `libffi.so.8`,
+falling back to `.so.7`/`.so`). On execution the library is unpacked beside the
+extracted script, and FFI loads it from the script's directory before any
+system path - so a `-xx` bundle runs with no system/wine libffi installed.
+If no native libffi can be located at build time, `za -x -xx` warns and
+continues without embedding. Bundles are OS-specific; `-xx` embeds the libffi
+for the platform za is running on. libffi is MIT-licensed and redistributable
+(`shared/win/LICENSE`).
+
 Example:
 
     # build the bundle
@@ -5105,7 +5120,7 @@ Za's Foreign Function Interface (FFI) is an experimental feature that enables di
 - Shell commands are simpler and sufficient for the task
 - The overhead of C interop outweighs benefits
 
-**Platform support:** FFI is fully supported on Unix/Linux systems via libffi. Windows support is limited. The feature requires CGO and is disabled in no-FFI builds.
+**Platform support:** FFI is fully supported on Unix/Linux/BSD systems via libffi (`dlopen`/`dlsym`) and on Windows (`load library`/`GetProcAddress`). The feature requires CGO and is disabled in no-FFI builds.
 
 ## F.2 Loading Libraries with MODULE
 
@@ -5161,6 +5176,12 @@ use +gd
 The `AUTO` clause enables automatic discovery and parsing of C header files to extract constants, enums, and function signatures, eliminating the need to manually declare `#define` values and LIB function signatures.
 
 > **Performance Note:** AUTO imports can be slow on large header file sets (10-30+ seconds for complex libraries like OpenGL or X11). A progress bar displays import progress. Use explicit header paths and specify only needed headers to minimize parsing time. For scripts where startup speed is critical, **manual LIB declarations are much faster** than AUTO, though you lose automatic constant extraction, function discovery, and typedef resolution—requiring you to manually declare each function signature and constant needed. Set `ZA_NO_PROGRESS=1` to disable progress display.
+
+> **Cache control:** Parsed AUTO results are cached per module (under
+> `~/.cache/za/ffi`, or the Wine/Windows virtual home). `ZA_FFI_NOCACHE=1`
+> bypasses the cache (skip read and write; existing files left in place).
+> `ZA_FFI_CACHE_CLEAR=1` deletes the module's cache file(s) and forces a fresh
+> parse (the cache is then rebuilt).
 
 ### F.3.1 Basic Usage
 
@@ -5399,7 +5420,7 @@ The AUTO clause parses C headers and extracts:
     - readline (Unicode input)
     - ICU (if using wchar_t API)
     - POSIX wcs* functions (wcslen, wcscpy, etc.)
-    - Windows wide character APIs (if Za supported Windows)
+    - Windows wide character APIs (16-bit `wchar_t` on Windows, detected at runtime)
 
 13. **Function pointer typedefs** (v1.2.2+):
 
@@ -8505,7 +8526,19 @@ See section 24 ("Modules and namespaces") for namespace resolution rules.
 
 **Windows:**
 
-- Not implemented
+- Same FFI implementation as Unix (no separate/forked Windows FFI)
+- DLL loading via `LoadLibraryA`, symbol resolution via `GetProcAddress`
+- Exported-symbol discovery via PE export-table parsing (`MODULE ... AUTO`)
+- Windows `amd64` ABI selected at runtime from the loaded libffi build's own
+  `ffi_get_default_abi()` (GNU/mingw libffi builds report `FFI_UNIX64`; an
+  arch/OS fallback maps `windows/amd64` to `FFI_WIN64`)
+- libffi is runtime-loaded, so `za.exe` starts even when libffi is absent;
+  FFI then reports a clear libffi-specific error when used
+- The libffi DLL (`libffi-8.dll`) is looked for in the executed script's
+  directory first, then via the OS DLL search path; a copy ships at
+  `shared/win/libffi-8.dll`
+- Full callback/closure support via libffi closures; POSIX signal-handler
+  callbacks are Unix-only
 
 **No-FFI Builds:**
 
@@ -8515,14 +8548,16 @@ See section 24 ("Modules and namespaces") for namespace resolution rules.
 
 **Build flags:**
 ```go
-//go:build !windows && !noffi && cgo
+//go:build !noffi && cgo
 ```
 
 FFI requires:
 
 - CGO enabled (`CGO_ENABLED=1`)
 - C compiler available
-- libffi installed (typically libffi-dev or libffi-devel package)
+- libffi available at runtime:
+  - Unix: `libffi.so.8`/`libffi.so` (package `libffi`/`libffi8`)
+  - Windows: `libffi-8.dll` beside the script or on the DLL search path
 
 **Checking for FFI support:** If FFI is not available, `MODULE` statements will produce an error message indicating the feature is not supported in this build.
 

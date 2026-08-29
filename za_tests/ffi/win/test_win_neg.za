@@ -1,0 +1,10 @@
+#!/usr/bin/env za
+
+# Negative control: this test MUST fail. It proves the runner actually
+# catches failure (a broken -a/assert set-up would let this pass silently).
+
+println "negative control: this assertion is deliberately wrong"
+
+assert 1 == 2, "deliberate failure for runner self-check"
+
+println "[WIN-OK] test_win_neg.za"

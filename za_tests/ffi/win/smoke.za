@@ -1,0 +1,11 @@
+#!/usr/bin/env za
+
+# Smoke test: verify za.exe runs and prints under Wine with assertions enabled.
+
+println "smoke: za.exe running"
+
+x = 2 + 2
+assert x == 4, "basic arithmetic should work"
+println "smoke: assertions enabled, arithmetic OK"
+
+println "smoke: OK"

@@ -821,6 +821,7 @@ func help(ns string, hargs string) {
     [#4]-V[#-] : find all references to a variable
     [#4]-I[#-] : Include additional files/directories in bundle (comma-separated)
     [#4]-x[#-] : Create a self-extracting, executable bundle file
+    [#4]-xx[#-] : Create a bundle with the native libffi runtime embedded (implies -x); FFI works without a system/wine libffi
     [#4]-n[#-] : Name of bundled executable (default "exec.za")
     [#4]-m[#-] : Mark co-process command progress
     [#4]-U[#-] : Specify system command separator byte (default 30)

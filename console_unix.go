@@ -13,6 +13,17 @@ import (
     // "fmt"
 )
 
+// tt is the keystroke input receiver. It is declared here (rather than main.go)
+// so the github.com/pkg/term dependency is not imported into Windows builds,
+// where upstream's term_windows.go does not compile.
+var tt *term.Term // keystroke input receiver
+
+// openConsoleInput opens the console/terminal for keystroke input.
+func openConsoleInput() *term.Term {
+    t, _ := term.Open("/dev/tty")
+    return t
+}
+
 func startRaw(timeo int) {
     if tt == nil {
         return

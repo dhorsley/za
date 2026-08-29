@@ -1,0 +1,45 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 3: ABI-sensitive calls (int64/float/double/mixed/string)
+# These are the tests that detect an incorrect Win64 ABI selection.
+
+module "./za_ffi_test.dll" as z
+use +z
+
+LIB z::za_test_int64_echo(v:int64) -> int64
+LIB z::za_test_float_echo(f:float) -> float
+LIB z::za_test_double_echo(d:double) -> double
+LIB z::za_test_mixed(a:double, b:int, c:double) -> double
+LIB z::za_test_string_len(s:string) -> int
+
+println "Phase 3: ABI-sensitive calls"
+println "============================"
+
+# 64-bit integer argument and return
+r = z::za_test_int64_echo(12345678901234)
+println "  int64 echo = " + as_string(r) + " (expected 12345678901234)"
+assert r == 12345678901234, "int64 echo mismatch"
+
+# float (32-bit) argument and return
+r = z::za_test_float_echo(3.5)
+println "  float echo = " + as_string(r) + " (expected 3.5)"
+assert r == 3.5, "float echo mismatch"
+
+# double (64-bit) argument and return
+r = z::za_test_double_echo(2.718281828459045)
+println "  double echo = " + as_string(r) + " (expected 2.718281828459045)"
+assert r == 2.718281828459045, "double echo mismatch"
+
+# mixed integer/double arguments (XMM vs GPR ordering on Win64)
+r = z::za_test_mixed(1.5, 2, 3.5)
+println "  mixed(1.5,2,3.5) = " + as_string(r) + " (expected 7.0)"
+assert r == 7.0, "mixed arg/result mismatch"
+
+# string argument
+r = z::za_test_string_len("hello")
+println "  strlen(hello) = " + as_string(r) + " (expected 5)"
+assert r == 5, "string length mismatch"
+
+println
+println "✓ Phase 3 PASSED"
+println "[WIN-OK] test_win_abi.za"

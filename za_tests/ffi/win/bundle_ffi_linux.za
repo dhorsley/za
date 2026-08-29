@@ -1,0 +1,15 @@
+#!/usr/bin/env za
+
+# Bundle script (Linux): uses the local test .so (bundled as a module).
+# When run from a bundle built with -xx, libffi.so.8 is embedded beside the
+# extracted script (the unix loader checks the script's directory first).
+
+module "./za_ffi_test.so" as z
+use +z
+
+LIB z::za_test_add(a:int, b:int) -> int
+
+r = z::za_test_add(40, 2)
+assert r == 42, "add(40,2) should be 42"
+println "bundle linux: add(40,2) = " + as_string(r)
+println "[WIN-OK] bundle_ffi_linux"

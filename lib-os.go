@@ -647,7 +647,7 @@ func buildOsLib() {
         if ok, err := expect_args("sync", args, 0); !ok {
             return nil, err
         }
-        syscall.Sync()
+        zaSyncAll()
         return true, nil
     }
 

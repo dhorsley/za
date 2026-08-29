@@ -1,0 +1,44 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 4: structs (value return, by-value arg, pointer arg,
+# mutable pointer out). Uses MODULE ... AUTO so signatures come from the header.
+
+module "./za_ffi_test.dll" as z auto "./za_ffi_test.h"
+use +z
+
+println "Phase 4: structs"
+println "================"
+
+# Struct returned by value
+p = z::za_test_make_point(3, 4)
+println "  make_point(3,4) -> x=" + as_string(p.x) + ", y=" + as_string(p.y)
+assert p.x == 3, "make_point x should be 3"
+assert p.y == 4, "make_point y should be 4"
+
+# Struct passed by value (AUTO structs are typed Za structs)
+r = z::za_test_point_sum(ZaPoint(.x 5, .y 6))
+println "  point_sum(ZaPoint(.x 5, .y 6)) = " + as_string(r) + " (expected 11)"
+assert r == 11, "by-value struct arg failed"
+
+# Struct passed by pointer (struct literal)
+r = z::za_test_point_sum_ptr(ZaPoint(.x 7, .y 8))
+println "  point_sum_ptr(ZaPoint(.x 7, .y 8)) = " + as_string(r) + " (expected 15)"
+assert r == 15, "by-pointer struct arg failed"
+
+# Mutable struct pointer (out parameter): {int x; int y} = 8 bytes
+buf = c_alloc(8)
+assert !c_ptr_is_null(buf), "c_alloc returned null"
+ret = z::za_test_point_fill(buf, 20, 30)
+println "  point_fill ret = " + as_string(ret) + " (expected 50)"
+assert ret == 50, "point_fill return mismatch"
+# Read back the written fields directly from C memory
+fx = c_get_int32(buf, 0)
+fy = c_get_int32(buf, 4)
+println "  filled x=" + as_string(fx) + ", y=" + as_string(fy)
+assert fx == 20, "filled x should be 20"
+assert fy == 30, "filled y should be 30"
+c_free(buf)
+
+println
+println "✓ Phase 4 PASSED"
+println "[WIN-OK] test_win_struct.za"

@@ -1,0 +1,21 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 17: Windows system DLL smoke test.
+# Independent validation that DLL loading, exported-symbol resolution,
+# Win64 ABI and native calls work against a real Windows system DLL.
+
+module "kernel32.dll" as k
+use +k
+
+LIB k::GetCurrentProcessId() -> uint
+
+println "Phase 17: kernel32.dll smoke test"
+println "================================="
+
+pid = k::GetCurrentProcessId()
+println "  GetCurrentProcessId() = " + as_string(pid)
+assert pid > 0, "GetCurrentProcessId should return a positive PID"
+
+println
+println "✓ Phase 17 PASSED"
+println "[WIN-OK] test_win_kernel32.za"

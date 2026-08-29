@@ -1,5 +1,5 @@
-//go:build noffi || (linux && !cgo)
-// +build noffi linux,!cgo
+//go:build noffi || (linux && !cgo) || (windows && !cgo)
+// +build noffi linux,!cgo windows,!cgo
 
 package main
 

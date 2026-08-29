@@ -1466,6 +1466,23 @@ directory, not the original call location. Avoid using
 scripts; use the working directory or bundle-relative paths instead.</p>
 <p>If the -n argument is not provided, the default bundled file is named
 exec.za.</p>
+<p>FFI-dependent bundles can embed the native libffi runtime with
+<code>-xx</code> (which implies <code>-x</code>):</p>
+<blockquote>
+<p>za -xx [ -n test_bundle_name ] script_name</p>
+</blockquote>
+<p><code>-xx</code> adds the platform-native libffi library to the
+bundle (Windows: <code>libffi-8.dll</code> from
+<code>shared/win/</code>; Linux/BSD: the system
+<code>libffi.so.8</code>, falling back to
+<code>.so.7</code>/<code>.so</code>). On execution the library is
+unpacked beside the extracted script, and FFI loads it from the script’s
+directory before any system path - so a <code>-xx</code> bundle runs
+with no system/wine libffi installed. If no native libffi can be located
+at build time, <code>za -x -xx</code> warns and continues without
+embedding. Bundles are OS-specific; <code>-xx</code> embeds the libffi
+for the platform za is running on. libffi is MIT-licensed and
+redistributable (<code>shared/win/LICENSE</code>).</p>
 <p>Example:</p>
 <pre><code># build the bundle
 &gt; za -x -n factest eg/fac
@@ -4659,7 +4676,9 @@ JSON-C)</li>
 <li>The overhead of C interop outweighs benefits</li>
 </ul>
 <p><strong>Platform support:</strong> FFI is fully supported on
-Unix/Linux systems via libffi. Windows support is limited. The feature
+Unix/Linux/BSD systems via libffi
+(<code>dlopen</code>/<code>dlsym</code>) and on Windows
+(<code>load library</code>/<code>GetProcAddress</code>). The feature
 requires CGO and is disabled in no-FFI builds.</p>
 <h2 id="f.2-loading-libraries-with-module">F.2 Loading Libraries with
 MODULE</h2>
@@ -4725,6 +4744,14 @@ much faster</strong> than AUTO, though you lose automatic constant
 extraction, function discovery, and typedef resolution—requiring you to
 manually declare each function signature and constant needed. Set
 <code>ZA_NO_PROGRESS=1</code> to disable progress display.</p>
+</blockquote>
+<blockquote>
+<p><strong>Cache control:</strong> Parsed AUTO results are cached per
+module (under <code>~/.cache/za/ffi</code>, or the Wine/Windows virtual
+home). <code>ZA_FFI_NOCACHE=1</code> bypasses the cache (skip read and
+write; existing files left in place). <code>ZA_FFI_CACHE_CLEAR=1</code>
+deletes the module’s cache file(s) and forces a fresh parse (the cache
+is then rebuilt).</p>
 </blockquote>
 <h3 id="f.3.1-basic-usage">F.3.1 Basic Usage</h3>
 <p><strong>Auto-discovery</strong> (searches standard include
@@ -4981,7 +5008,8 @@ class="sourceCode c"><code class="sourceCode c"><span id="cb226-1"><a href="#cb2
 <li>readline (Unicode input)</li>
 <li>ICU (if using wchar_t API)</li>
 <li>POSIX wcs* functions (wcslen, wcscpy, etc.)</li>
-<li>Windows wide character APIs (if Za supported Windows)</li>
+<li>Windows wide character APIs (16-bit <code>wchar_t</code> on Windows,
+detected at runtime)</li>
 </ul></li>
 <li><p><strong>Function pointer typedefs</strong> (v1.2.2+):</p></li>
 </ol>
@@ -8463,7 +8491,24 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 </ul>
 <p><strong>Windows:</strong></p>
 <ul>
-<li>Not implemented</li>
+<li>Same FFI implementation as Unix (no separate/forked Windows
+FFI)</li>
+<li>DLL loading via <code>LoadLibraryA</code>, symbol resolution via
+<code>GetProcAddress</code></li>
+<li>Exported-symbol discovery via PE export-table parsing
+(<code>MODULE ... AUTO</code>)</li>
+<li>Windows <code>amd64</code> ABI selected at runtime from the loaded
+libffi build’s own <code>ffi_get_default_abi()</code> (GNU/mingw libffi
+builds report <code>FFI_UNIX64</code>; an arch/OS fallback maps
+<code>windows/amd64</code> to <code>FFI_WIN64</code>)</li>
+<li>libffi is runtime-loaded, so <code>za.exe</code> starts even when
+libffi is absent; FFI then reports a clear libffi-specific error when
+used</li>
+<li>The libffi DLL (<code>libffi-8.dll</code>) is looked for in the
+executed script’s directory first, then via the OS DLL search path; a
+copy ships at <code>shared/win/libffi-8.dll</code></li>
+<li>Full callback/closure support via libffi closures; POSIX
+signal-handler callbacks are Unix-only</li>
 </ul>
 <p><strong>No-FFI Builds:</strong></p>
 <ul>
@@ -8473,12 +8518,18 @@ data-cites="GLIBC">@GLIBC</span>)</li>
 </ul>
 <p><strong>Build flags:</strong></p>
 <div class="sourceCode" id="cb371"><pre
-class="sourceCode go"><code class="sourceCode go"><span id="cb371-1"><a href="#cb371-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !windows &amp;&amp; !noffi &amp;&amp; cgo</span></span></code></pre></div>
+class="sourceCode go"><code class="sourceCode go"><span id="cb371-1"><a href="#cb371-1" aria-hidden="true" tabindex="-1"></a><span class="co">//go:build !noffi &amp;&amp; cgo</span></span></code></pre></div>
 <p>FFI requires:</p>
 <ul>
 <li>CGO enabled (<code>CGO_ENABLED=1</code>)</li>
 <li>C compiler available</li>
-<li>libffi installed (typically libffi-dev or libffi-devel package)</li>
+<li>libffi available at runtime:
+<ul>
+<li>Unix: <code>libffi.so.8</code>/<code>libffi.so</code> (package
+<code>libffi</code>/<code>libffi8</code>)</li>
+<li>Windows: <code>libffi-8.dll</code> beside the script or on the DLL
+search path</li>
+</ul></li>
 </ul>
 <p><strong>Checking for FFI support:</strong> If FFI is not available,
 <code>MODULE</code> statements will produce an error message indicating

@@ -105,6 +105,10 @@ func (lib *CLibrary) Close() error {
 // Global registry of loaded C libraries
 var loadedCLibraries = make(map[string]*CLibrary)
 
+// scriptSourceDir holds the directory the executed .za source file was loaded
+// from (set in main). The Windows libffi loader checks it first for its DLL.
+var scriptSourceDir string
+
 // CFunctionSignature represents an explicitly declared C function signature
 type CFunctionSignature struct {
     ParamTypes       []CType  // Types of fixed parameters

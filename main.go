@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	term "github.com/pkg/term"
 	// _ "modernc.org/sqlite"
 	_ "github.com/mattn/go-sqlite3"
 
@@ -224,7 +223,6 @@ var pe io.ReadCloser  // process error stream
 var row, col int       // for pane + terminal use
 var MW, MH int         // for pane + terminal use
 var currentpane string // for pane use
-var tt *term.Term      // keystroke input receiver
 var ansiMode bool      // to disable ansi colour output
 var lineWrap bool      // optional pane line wrap.
 var promptColour string
@@ -763,6 +761,7 @@ func main() {
 	var a_test_file = flag.String("o", "za_test.out", "set the test output filename")
 	var a_filename = flag.String("f", "", "input filename, when present. default is stdin")
 	var a_bundle_script = flag.Bool("x", false, "create a self-extracting, executable bundle file")
+	var a_bundle_libffi = flag.Bool("xx", false, "create a bundle (-x implied) embedding the native libffi runtime library")
 	var a_bundle_name = flag.String("n", "exec.za", "name of bundled executable")
 	var a_include_files = flag.String("I", "", "comma-separated list of additional files/directories to include in bundle")
 	var a_program = flag.String("e", "", "program string")
@@ -904,6 +903,7 @@ func main() {
 		}
 	}
 	gvset("@execpath", fdir)
+	scriptSourceDir = fdir
 
 	// help flag
 	if *a_help {
@@ -918,7 +918,7 @@ func main() {
 	}
 
 	// bundle creation mode
-	if *a_bundle_script {
+	if *a_bundle_script || *a_bundle_libffi {
 		scriptPath := ""
 
 		// Determine script source (matching Za's existing logic)
@@ -936,6 +936,16 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to process include files: %v\n", err)
 			os.Exit(1)
+		}
+
+		// -xx: embed the platform-native libffi runtime so the bundle's FFI
+		// works without a system/wine libffi. Missing libffi only warns.
+		if *a_bundle_libffi {
+			if fi, rerr := resolveLibFFIForBundle(); rerr != nil {
+				fmt.Fprintf(os.Stderr, "-xx: %v\n", rerr)
+			} else if fi != nil {
+				extraFiles = append(extraFiles, *fi)
+			}
 		}
 
 		err = CreateBundledExecutable(scriptPath, outputPath, extraFiles)
@@ -995,6 +1005,8 @@ func main() {
     ZA_WARN_AUTO                        string      [#6]Enable stderr output for FFI warnings if var not empty[#-]
     ZA_DEBUG_AUTO                       string      [#6]Enable stderr output for FFI debug info if var not empty[#-]
     ZA_NO_PROGRESS                      string      [#6]Disable FFI auto import progress bar if var not empty[#-]
+    ZA_FFI_NOCACHE                      string      [#6]Bypass the FFI/AUTO cache (skip read and write; existing files left in place)[#-]
+    ZA_FFI_CACHE_CLEAR                  string      [#6]Delete the FFI/AUTO cache file for the module, then force a fresh parse[#-]
     [#1]Logging[#-]
     ZA_LOG_LEVEL                        string|int  [#6]Set override level for logging (level name or number)[#-]
     ZA_LOG_QUEUE_SIZE                   int         [#6]Set log request queue size (request count)[#-]
@@ -1223,7 +1235,7 @@ func main() {
 		}
 
 		// prepare for getInput() keyboard input (from main process)
-		tt, _ = term.Open("/dev/tty")
+		tt = openConsoleInput()
 		// enable_mouse()
 	}
 

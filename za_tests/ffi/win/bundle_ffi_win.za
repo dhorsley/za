@@ -1,0 +1,15 @@
+#!/usr/bin/env za
+
+# Bundle script (Windows): uses the local test DLL (bundled as a module).
+# When run from a bundle built with -xx, libffi-8.dll is embedded beside the
+# extracted script, so FFI works with no libffi on the DLL search path.
+
+module "./za_ffi_test.dll" as z
+use +z
+
+LIB z::za_test_add(a:int, b:int) -> int
+
+r = z::za_test_add(40, 2)
+assert r == 42, "add(40,2) should be 42"
+println "bundle ffid: add(40,2) = " + as_string(r)
+println "[WIN-OK] bundle_ffi_win"

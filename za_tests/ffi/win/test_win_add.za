@@ -1,0 +1,38 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 2: simple native calls into za_ffi_test.dll
+
+module "./za_ffi_test.dll" as z
+use +z
+
+LIB z::za_test_add(a:int, b:int) -> int
+LIB z::za_test_multiply(a:double, b:double) -> double
+LIB z::za_test_hello() -> string
+LIB z::za_test_identity(p:ptr) -> ptr
+
+println "Phase 2: simple native calls"
+println "==========================="
+
+r = z::za_test_add(2, 3)
+println "  add(2,3) = " + as_string(r) + " (expected 5)"
+assert r == 5, "add(2,3) should be 5"
+
+r = z::za_test_multiply(2.5, 4.0)
+println "  multiply(2.5,4.0) = " + as_string(r) + " (expected 10.0)"
+assert r == 10.0, "multiply(2.5,4.0) should be 10.0"
+
+s = z::za_test_hello()
+println "  hello() = \"" + s + "\""
+assert s == "hello from za_ffi_test.dll", "hello string mismatch"
+
+p = c_alloc(8)
+assert !c_ptr_is_null(p), "c_alloc failed"
+q = z::za_test_identity(p)
+assert !c_ptr_is_null(q), "identity returned null"
+assert c_ptr_to_int(p) == c_ptr_to_int(q), "identity should round-trip pointer"
+c_free(p)
+println "  identity(ptr) round-trip OK"
+
+println
+println "✓ Phase 2 PASSED"
+println "[WIN-OK] test_win_add.za"

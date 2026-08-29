@@ -241,6 +241,12 @@ func tryLoadFFICache(cacheKey FFICacheKey) (*FFICacheData, bool) {
     noCacheEnv := strings.ToLower(os.Getenv("ZA_FFI_NOCACHE"))
     noCache := noCacheEnv == "1" || noCacheEnv == "true"
 
+    // ZA_FFI_CACHE_CLEAR actually deletes this module's cache file(s) and
+    // then forces a fresh parse (the subsequent save rebuilds them). Unlike
+    // ZA_FFI_NOCACHE it does not leave stale cached artifacts behind.
+    clearCacheEnv := strings.ToLower(os.Getenv("ZA_FFI_CACHE_CLEAR"))
+    clearCache := clearCacheEnv == "1" || clearCacheEnv == "true"
+
     if noCache {
         return nil, false
     }
@@ -257,6 +263,12 @@ func tryLoadFFICache(cacheKey FFICacheKey) (*FFICacheData, bool) {
     }
 
     fullPath := filepath.Join(cachePath, fileName)
+
+    if clearCache {
+        os.Remove(fullPath)
+        os.Remove(fullPath + ".tmp")
+        return nil, false
+    }
 
     // Check if cache file exists
     f, err := os.Open(fullPath)
@@ -357,6 +369,13 @@ func populateGlobalMapsFromCache(data *FFICacheData, alias string, fs uint32) er
     // Copy FFI structs
     if data.FFIStructs != nil {
         for name, structDef := range data.FFIStructs {
+            // Re-register restored structs as typed Za structs. registerStructInZa
+            // only runs during a fresh parse, so without this a cache-loaded
+            // module would lose struct-literal construction (uc_match_struct
+            // misses structmaps entries added on the original parse).
+            if idx := strings.Index(name, "::"); idx > 0 {
+                registerStructInZa(name[:idx], name[idx+2:], structDef)
+            }
             ffiStructDefinitions[name] = structDef
         }
     }

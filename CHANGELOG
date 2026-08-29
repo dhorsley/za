@@ -67,6 +67,28 @@ tooling changes
   * VS Code extension: client-side regex diagnostics for escape/backslash patterns
     (removed), exponent regex fix, keyword exclusion fix
 
+  * Added `-xx` bundling of the native libffi runtime.
+    - With `za -x -xx`, the platform-native libffi library is embedded in the
+        bundle: Windows `libffi-8.dll` (from `shared/win/`), Linux/BSD the
+        system `libffi.so.8` (fallbacks `.so.7`/`.so` via LD_LIBRARY_PATH,
+        ldconfig and known paths).
+    - On execution the library unpacks beside the extracted script; libffi is
+        loaded from the script's directory before any system path.
+    - A `-xx` bundle therefore runs with no system/wine libffi installed.
+    - Missing native libffi at build time prints a warning and continues
+        (bundle still builds); libffi is MIT-licensed (`shared/win/LICENSE`).
+    - test coverage: `za_tests/ffi/win/run_bundle_tests.sh` (Windows via the
+        Windows suite runner, Linux standalone), packaging bundle_ffi_win.za /
+        bundle_ffi_linux.za.
+
+  * Fixed bundle execution on Windows: the embedded `za` is now extracted as
+    `za.exe` (Windows requires the extension for CreateProcess), so `-x`
+    bundles actually run on Windows.
+
+  * Unix libffi discovery now prefers the executed script's directory first
+    (`<script dir>/libffi.so.{8,7,.so}`), matching the Windows script-dir-first
+    search and enabling `-xx` bundles on Linux/BSD.
+
   * syntax checker (`za -z` / `za -zz`)
     - unterminated string literals now error at the lexer (previously swallowed to EOF)
     - stray `endif` at top level now errors consistently with other end* statements
@@ -146,6 +168,44 @@ library changes
     - Complements existing `randf()` (float64)
 
   * `concat()` and `append()` now support `[]float32`
+
+  * Windows FFI enablement
+    - Common libffi FFI is now built on Windows (`//go:build !noffi && cgo`),
+        previously excluded by `!windows`.
+    - Platform loader split: `za_dlopen`/`za_dlsym`/`za_dlclose` (dlopen/dlsym/
+        dlclose on Unix; LoadLibraryA/GetProcAddress/FreeLibrary on Windows) so
+        the shared implementation has no `dlfcn.h` assumptions.
+    - Real Windows DLL support: `LoadCLibrary`, exported-symbol discovery via
+        PE export-table parsing, `GetProcAddress` resolution, and full-path
+        module resolution for name-only DLL loads.
+    - Win64 calls use the loaded libffi's own `ffi_get_default_abi()` (with an
+        arch/OS fallback to `FFI_WIN64` = 3). Required for GNU/mingw libffi
+        builds, which reject `FFI_WIN64`/`FFI_GNUW64` and report `FFI_UNIX64`.
+    - libffi DLL discovery on Windows checks the executed script's directory
+        first (`<script dir>\libffi-8.dll`), then the OS search path; a missing
+        DLL yields a clear libffi-specific error and `za.exe` still starts.
+    - `shared/win/libffi-8.dll` (libffi 3.8.0, MinGW-w64) shipped as a
+        distribution artifact.
+    - `wchar_t` remains runtime-detected (`sizeof`), 2 bytes on Windows.
+    - `github.com/pkg/term` removed from the Windows dependency graph
+        (per-OS `tt`/`openConsoleInput`); upstream `term_windows.go` does not
+        compile, and `/dev/tty` input is Unix-only.
+    - POSIX sigaction/signal callbacks moved to a `!windows` file; libffi
+        closure callbacks still work on Windows.
+    - Windows system-metrics stubs + `zaSyncAll()` split (Windows has no
+        global fs sync).
+    - AUTO cache loads now re-register restored structs as typed Za structs,
+        so struct literals (`ZaPoint(.x 1, .y 2)`) keep working after a cache
+        hit (was a regression).
+    - test coverage: `za_tests/ffi/win/` suite (phases 1-7, 17-19, wchar,
+        discovery, AUTO cache) runnable under Proton/standalone Wine.
+
+  * FFI/AUTO cache control env vars
+    - `ZA_FFI_CACHE_CLEAR=1` deletes the module's FFI/AUTO cache file(s), then
+        forces a fresh parse (the save path rebuilds the cache). Unlike
+        `ZA_FFI_NOCACHE`, stale artifacts are actually removed.
+    - `ZA_FFI_NOCACHE` and `ZA_FFI_CACHE_CLEAR` are now documented in the `-E`
+        environmental help (FFI section).
 
 
 1.2.3

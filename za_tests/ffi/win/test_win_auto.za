@@ -1,0 +1,46 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 18: full MODULE ... AUTO stack against a real header.
+# Verifies module loading, explicit header loading, AUTO declaration/signature
+# discovery, macro preprocessing, struct types, and ordinary calls all flow
+# through the same high-level machinery as Linux.
+
+module "./za_ffi_test.dll" as z auto "./za_ffi_test.h"
+use +z
+
+println "Phase 18: MODULE ... AUTO full stack"
+println "===================================="
+
+# AUTO-discovered function signatures - no explicit LIB needed.
+r = z::za_test_add(20, 22)
+println "  add(20,22) = " + as_string(r) + " (expected 42, ZA_TEST_VALUE)"
+assert r == 42, "add(20,22) should be 42"
+
+r = z::za_test_multiply(1.5, 2.0)
+println "  multiply(1.5,2.0) = " + as_string(r) + " (expected 3.0)"
+assert r == 3.0, "multiply(1.5,2.0) should be 3.0"
+
+r = z::za_test_int64_echo(987654321987)
+println "  int64_echo = " + as_string(r) + " (expected 987654321987)"
+assert r == 987654321987, "int64 echo mismatch"
+
+# AUTO-discovered struct (typedef struct { int x,y; } ZaPoint)
+p = z::za_test_make_point(11, 31)
+println "  make_point -> x=" + as_string(p.x) + ", y=" + as_string(p.y)
+assert p.x == 11 and p.y == 31, "make_point fields wrong"
+
+r = z::za_test_point_sum(ZaPoint(.x 4, .y 5))
+println "  point_sum(ZaPoint(.x 4, .y 5)) = " + as_string(r) + " (expected 9)"
+assert r == 9, "point_sum by value should be 9"
+
+# AUTO-discovered function-pointer typedef + function-pointer return
+fp_ptr = z::za_test_get_plus1_ptr()
+assert !c_ptr_is_null(fp_ptr), "get_plus1_ptr returned null"
+fp = c_as_function_ptr(fp_ptr, "int->int")
+r = c_call_function_ptr(fp, 7)
+println "  plus1(7) = " + as_string(r) + " (expected 8)"
+assert r == 8, "funcptr call should return 8"
+
+println
+println "✓ Phase 18 PASSED"
+println "[WIN-OK] test_win_auto.za"

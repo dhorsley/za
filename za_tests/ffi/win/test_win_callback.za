@@ -1,0 +1,38 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 7: callbacks.
+# The DLL calls a libffi closure provided by Za:
+#   C DLL -> libffi closure -> Za function -> return to C
+
+module "./za_ffi_test.dll" as z auto "./za_ffi_test.h"
+use +z
+
+LIB z::za_test_invoke_callback(fn:ptr, value:int) -> int
+
+println "Phase 7: callbacks (libffi closures)"
+println "===================================="
+
+def bump(x)
+    return x + 7
+end
+
+cb = c_register_callback("main::bump", "int->int")
+if cb == nil
+    println "callback registration failed"
+    assert false, "c_register_callback returned nil"
+endif
+
+r = z::za_test_invoke_callback(cb.trampoline, 10)
+println "  invoke_callback(bump, 10) = " + as_string(r) + " (expected 17)"
+assert r == 17, "callback should return 17"
+
+r = z::za_test_invoke_callback(cb.trampoline, -3)
+println "  invoke_callback(bump, -3) = " + as_string(r) + " (expected 4)"
+assert r == 4, "negative callback value should return 4"
+
+c_unregister_callback(cb)
+println "  callback unregistered"
+
+println
+println "✓ Phase 7 PASSED"
+println "[WIN-OK] test_win_callback.za"

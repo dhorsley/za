@@ -1,0 +1,34 @@
+#!/usr/bin/env za
+
+# Windows FFI - Phase 6: function pointers.
+# Retrieve a C function pointer, wrap it with Za's function-pointer
+# facilities, and call it back through libffi.
+
+module "./za_ffi_test.dll" as z auto "./za_ffi_test.h"
+use +z
+
+println "Phase 6: function pointers"
+println "=========================="
+
+# 1. Function pointer retrieved as an opaque pointer
+ptr = z::za_test_get_plus1_ptr()
+assert !c_ptr_is_null(ptr), "get_plus1_ptr returned null"
+println "  got plus1 function pointer"
+
+# 2. Wrap it with a signature
+fp = c_as_function_ptr(ptr, "int->int")
+println "  wrapped as int->int"
+
+# 3. Call it through libffi
+r = c_call_function_ptr(fp, 41)
+println "  plus1(41) = " + as_string(r) + " (expected 42)"
+assert r == 42, "funcptr call should return 42"
+
+# 4. Pass a raw C function pointer as an argument to another C function
+r = z::za_test_apply(ptr, 1)
+println "  apply(plus1, 1) = " + as_string(r) + " (expected 2)"
+assert r == 2, "apply(plus1,1) should return 2"
+
+println
+println "✓ Phase 6 PASSED"
+println "[WIN-OK] test_win_funcptr.za"

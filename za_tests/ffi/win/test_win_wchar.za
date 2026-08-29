@@ -1,0 +1,34 @@
+#!/usr/bin/env za
+
+# Windows FFI - wide-character (wchar_t) regression test.
+# On Windows wchar_t is 16-bit (2 bytes) and must be detected at runtime,
+# never hard-coded as 4 bytes.
+
+module "./test_wchar_lib.dll" as tw auto "./test_wchar_lib.h"
+use +tw
+
+println "Test: wchar_t Support (Windows 16-bit)"
+println "======================================"
+
+detected_size = get_wchar_size()
+println "  wchar_t size: " + as_string(detected_size) + " bytes"
+assert detected_size == 2, "Windows wchar_t should be 2 bytes (got " + as_string(detected_size) + ")"
+
+result = wchar_echo(65)
+println "  wchar_echo(65) = " + as_string(result) + " (expected 65)"
+assert result == 65, "wchar_echo failed"
+
+arr_ptr = c_alloc(detected_size * 5)
+wchar_fill_array(arr_ptr, 5)
+
+for i = 0 to 4
+    expected = 65 + i
+    val = c_get_uint16(arr_ptr, i * 2)
+    println "  [" + as_string(i) + "] = " + as_string(val) + " (expected " + as_string(expected) + ")"
+    assert val == expected, "array value mismatch at index " + as_string(i)
+endfor
+
+c_free(arr_ptr)
+println
+println "✓ wchar_t support PASSED"
+println "[WIN-OK] test_win_wchar.za"

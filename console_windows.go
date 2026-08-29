@@ -12,6 +12,18 @@ import (
     "unsafe"
 )
 
+// tt mirrors the Unix keystroke input receiver so the shared code in main.go
+// compiles. On Windows the console input path does not use a terminal device,
+// so this always stays nil (see openConsoleInput).
+type consoleTerm struct{}
+
+var tt *consoleTerm // keystroke input receiver (unused on Windows)
+
+// openConsoleInput is a no-op on Windows; console input is handled natively.
+func openConsoleInput() *consoleTerm {
+    return nil
+}
+
 func startRaw(timeo int) {
 }
 
