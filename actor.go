@@ -717,7 +717,9 @@ func GetAsInt64(expr any) (int64, bool) {
 
 func GetAsInt(expr any) (int, bool) {
 	switch i := expr.(type) {
-	case float64:
+    case float32:
+		return int(i), false
+    case float64:
 		return int(i), false
 	case bool:
 		if !i {
@@ -725,6 +727,10 @@ func GetAsInt(expr any) (int, bool) {
 		}
 		return int(1), false
 	case uint:
+		return int(i), false
+	case int16:
+		return int(i), false
+	case int32:
 		return int(i), false
 	case int64:
 		return int(i), false
