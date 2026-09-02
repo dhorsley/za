@@ -191,6 +191,68 @@ var varTypeKeywords = map[int64]bool{
 	T_Array: true, T_Any: true, T_Pointer: true,
 }
 
+// clause keywords that legitimately end an assignment LHS run (a fresh
+// assignment-target list may begin after one of them).
+func lhsBoundaryKeyword(tokType int64) bool {
+	switch tokType {
+	case C_On, C_If, C_While, C_For, C_Foreach, C_Return, C_Break, C_Continue,
+		C_Do, C_Then, C_To, C_In, C_Global, C_Var, C_With, C_Async:
+		return true
+	}
+	return false
+}
+
+// assignmentLhsError returns "" when every depth-0 token of an assignment LHS
+// run is a legal assignment-target part (a variable Identifier, member '.',
+// brackets/parens, target-list comma, or the global-write prefix '@' which
+// lexes as C_SetGlob). Any other token -- a reserved keyword, literal or bare
+// operator -- is a keyword-as-identifier / invalid-name misuse. Inside brackets
+// and parens (depth >= 1) any expression is legal and is not checked.
+func assignmentLhsError(lhs []Token, line int) (int, string) {
+	depth := 0
+	for idx, t := range lhs {
+		if depth == 0 {
+			switch t.tokType {
+			case Identifier, O_Comma, LParen, RParen, LeftSBrace, RightSBrace,
+				SYM_DOT, C_SetGlob:
+				// legal depth-0 LHS token
+			default:
+				return idx, fmt.Sprintf("expected an identifier on the LHS of an assignment (got '%s') at line %d", t.tokText, line)
+			}
+		}
+		switch t.tokType {
+		case LParen, LeftSBrace:
+			depth++
+		case RParen, RightSBrace:
+			if depth > 0 {
+				depth--
+			}
+		}
+	}
+	return -1, ""
+}
+
+// declNameSlotError mirrors the runtime var/global name-list parse: the leading
+// run of tokens alternates Identifier/comma, and everything after the first
+// non-name token is the size/type/initializer. A reserved keyword or literal
+// in a name slot is a misuse.
+func declNameSlotError(decl []Token, kind string, line int) (int, string) {
+	expectName := true
+	for i, t := range decl {
+		if expectName {
+			if t.tokType != Identifier {
+				return i, fmt.Sprintf("expected an identifier for '%s' in %s declaration at line %d", t.tokText, kind, line)
+			}
+			expectName = false
+		} else if t.tokType != O_Comma {
+			break
+		} else {
+			expectName = true
+		}
+	}
+	return -1, ""
+}
+
 // validateStatementShapes checks per-statement structural validity that the
 // phraser tolerates: missing assignment RHS, incomplete expressions, bare '::',
 // chained ranges, malformed var declarations and unterminated parens/brackets.
@@ -245,9 +307,14 @@ func validateStatementShapes(phrases []Phrase) []string {
 			continue
 		}
 
-		// var/global declarations: a comma must be followed by another name, not a type
+		// var/global declarations: name slots must be real identifiers; a
+		// comma must be followed by another name, not a type.
 		if (first == C_Var || first == C_Global) && len(tks) > 1 {
 			decl := tks[1:]
+			if _, msg := declNameSlotError(decl, tks[0].tokText, line); msg != "" {
+				errs = append(errs, msg)
+				continue
+			}
 			for i, t := range decl {
 				if t.tokType != O_Comma {
 					continue
@@ -283,6 +350,14 @@ func validateStatementShapes(phrases []Phrase) []string {
 				}
 			}
 		case C_For:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing loop index in for at line %d", line))
+				continue
+			}
+			if tks[1].tokType != Identifier {
+				errs = append(errs, fmt.Sprintf("expected an identifier for the for-iterator (got '%s') at line %d", tks[1].tokText, line))
+				continue
+			}
 			hasComma := false
 			hasTo := false
 			for _, t := range tks {
@@ -298,6 +373,14 @@ func validateStatementShapes(phrases []Phrase) []string {
 				continue
 			}
 		case C_Foreach:
+			if len(tks) < 2 {
+				errs = append(errs, fmt.Sprintf("missing loop variable in foreach at line %d", line))
+				continue
+			}
+			if tks[1].tokType != Identifier {
+				errs = append(errs, fmt.Sprintf("expected an identifier for the foreach iterator (got '%s') at line %d", tks[1].tokText, line))
+				continue
+			}
 			hasIn := false
 			inIdx := -1
 			for i, t := range tks {
@@ -490,6 +573,36 @@ func validateStatementShapes(phrases []Phrase) []string {
 		if sbraceDepth < 0 {
 			errs = append(errs, fmt.Sprintf("unexpected ']' at line %d", line))
 			continue
+		}
+
+		// Reserved keywords / non-identifier tokens on the LHS of assignments.
+		// For each top-level assignment operator, bound the LHS run by the
+		// nearest preceding clause keyword and require every depth-0 token to
+		// be a legal assignment-target part.
+		depth := 0
+		for i := 0; i < len(tks); i++ {
+			switch tks[i].tokType {
+			case LParen, LeftSBrace:
+				depth++
+			case RParen, RightSBrace:
+				if depth > 0 {
+					depth--
+				}
+			}
+			if depth != 0 || !assignmentOps[tks[i].tokType] {
+				continue
+			}
+			start := 0
+			for k := i - 1; k >= 0; k-- {
+				if lhsBoundaryKeyword(tks[k].tokType) {
+					start = k + 1
+					break
+				}
+			}
+			if _, msg := assignmentLhsError(tks[start:i], line); msg != "" {
+				errs = append(errs, msg)
+				break
+			}
 		}
 	}
 
