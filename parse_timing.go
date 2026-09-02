@@ -578,9 +578,14 @@ func validateStatementShapes(phrases []Phrase) []string {
 		// Reserved keywords / non-identifier tokens on the LHS of assignments.
 		// For each top-level assignment operator, bound the LHS run by the
 		// nearest preceding clause keyword and require every depth-0 token to
-		// be a legal assignment-target part.
+		// be a legal assignment-target part. var/global declarations are
+		// excluded: their name slots are validated separately and their
+		// declared type (e.g. `var x int = 5`) legitimately sits before '='.
 		depth := 0
 		for i := 0; i < len(tks); i++ {
+			if first == C_Var || first == C_Global {
+				break
+			}
 			switch tks[i].tokType {
 			case LParen, LeftSBrace:
 				depth++
