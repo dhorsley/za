@@ -175,6 +175,11 @@ func (p *leparser) dparse(prec int8, skip bool) (left any, err error) {
                 var message string
 
                 message = errVal.Error()
+                if message == "" {
+                    // Never surface an empty exception message: fall back to the
+                    // recovered panic's type/value so the report is informative.
+                    message = sf("%T: %v", r, r)
+                }
 
                 // Extract category from ?? operator error message if possible
                 if str.Contains(message, "?? operator failure:") {

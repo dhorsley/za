@@ -1252,7 +1252,9 @@ func showUnhandled(header string, category map[string]any) {
 			}
 		case string:
 			if v == "" {
-				continue
+				// Surface empty fields instead of silently dropping them so a
+				// missing message can never be mistaken for "no error info".
+				v = "<empty>"
 			}
 		default:
 			if v == nil {
@@ -1308,6 +1310,16 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
 		// Show location info if available
 		if excInfo != nil {
 			pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line, excInfo.function)
+			if excInfo != nil && excInfo.fs < uint32(len(calltable)) {
+				srcBase := calltable[excInfo.fs].base
+				if srcBase < uint32(len(basecode)) && excInfo.line >= 1 && int(excInfo.line)-1 < len(basecode[srcBase]) {
+					orig := basecode[srcBase][int(excInfo.line)-1].Original
+					if orig != "" {
+						pf("[#fred]  in: %s[#-]\n", sparkle(orig))
+					}
+				}
+			}
+
 
 			// Show stack trace if available
 			if len(excInfo.stackTrace) > 0 {
@@ -1330,6 +1342,16 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
 		showUnhandled(header, category)
 		if excInfo != nil {
 			pf("[#fyellow]  at line %d in function %s (continuing execution)[#-]\n", excInfo.line, excInfo.function)
+			if excInfo != nil && excInfo.fs < uint32(len(calltable)) {
+				srcBase := calltable[excInfo.fs].base
+				if srcBase < uint32(len(basecode)) && excInfo.line >= 1 && int(excInfo.line)-1 < len(basecode[srcBase]) {
+					orig := basecode[srcBase][int(excInfo.line)-1].Original
+					if orig != "" {
+						pf("[#fred]  in: %s[#-]\n", sparkle(orig))
+					}
+				}
+			}
+
 
 			// Show stack trace if available
 			if len(excInfo.stackTrace) > 0 {
@@ -1359,6 +1381,16 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
 		// Show location info if available
 		if excInfo != nil {
 			pf("[#fred]  at line %d in function %s[#-]\n", excInfo.line, excInfo.function)
+			if excInfo != nil && excInfo.fs < uint32(len(calltable)) {
+				srcBase := calltable[excInfo.fs].base
+				if srcBase < uint32(len(basecode)) && excInfo.line >= 1 && int(excInfo.line)-1 < len(basecode[srcBase]) {
+					orig := basecode[srcBase][int(excInfo.line)-1].Original
+					if orig != "" {
+						pf("[#fred]  in: %s[#-]\n", sparkle(orig))
+					}
+				}
+			}
+
 
 			// Show stack trace if available
 			if len(excInfo.stackTrace) > 0 {
@@ -8849,7 +8881,7 @@ tco_reentry:
 						finish(false, ERR_EVAL)
 						break
 					} else {
-						panic("")
+						panic(errors.New(sf("%v", we.errVal)))
 					}
 				}
 			}

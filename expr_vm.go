@@ -54,13 +54,46 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 	defer func() {
 		if r := recover(); r != nil {
 			vmPool.Put(vm)
-			// Convert panic to exception (like dparse() does)
+			// Coerce the panic to an error, synthesizing a non-empty message
+			// when the panic value carries no text (so it can't surface blank).
 			var errVal error
 			switch v := r.(type) {
 			case error:
 				errVal = v
 			default:
 				errVal = fmt.Errorf("%v", r)
+			}
+			message := errVal.Error()
+			if message == "" {
+				message = fmt.Sprintf("%T: %v", r, r)
+			}
+			// Only convert to an exception when the caller expects exceptions:
+			// error_style "exception"/"mixed", an active try block, or a ??
+			// operator failure. In PANIC mode surface a normal eval error.
+			shouldConvertToException := false
+			if strings.Contains(message, "?? operator failure") {
+				shouldConvertToException = true
+			} else {
+				errorStyleLock.RLock()
+				currentStyle := errorStyleMode
+				errorStyleLock.RUnlock()
+				if currentStyle == ERROR_STYLE_EXCEPTION || currentStyle == ERROR_STYLE_MIXED {
+					shouldConvertToException = true
+				} else if fs < uint32(len(calltable)) {
+					calllock.RLock()
+					isTry := calltable[fs].isTryBlock
+					calllock.RUnlock()
+					if isTry {
+						shouldConvertToException = true
+					}
+				}
+			}
+			if !shouldConvertToException {
+				// PANIC mode: return the error so the caller produces a normal
+				// error report (with line + statement) instead of an uncaught
+				// exception with no useful detail.
+				retErr = errVal
+				return
 			}
 			var stackTraceCopy []stackFrame
 			if fs < uint32(len(calltable)) {
@@ -78,7 +111,7 @@ func runExprVM(code []Instr, pool []any, fs uint32, ident *[]Variable, midentFS 
 			}
 			excInfo := &exceptionInfo{
 				category:   category,
-				message:    errVal.Error(),
+				message:    message,
 				line:       sourceLine,
 				function:   calltable[fs].fs,
 				fs:         fs,
