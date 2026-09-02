@@ -2384,7 +2384,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
     // pf("(identifier) token binding position set to %d\n",bin)
 
-    if (*p.ident)[bin].declared {
+    if (*p.ident)[bin].declared && (*p.ident)[bin].IValue != nil {
         // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
         return (*p.ident)[bin].IValue, nil
     }
