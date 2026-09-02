@@ -7829,7 +7829,7 @@ tco_reentry:
 				break
 			}
 
-			if isBool(expr.(bool)) && expr.(bool) {
+			if truthy(expr) {
 				// Condition true — mark this nesting level as matched.
 				parser.ifMatchedStack[ifDepth-1] = true
 				break
@@ -7876,7 +7876,7 @@ tco_reentry:
 					break
 				}
 
-				if isBool(expr.(bool)) && expr.(bool) {
+				if truthy(expr) {
 					// Condition true: mark this nesting level as matched and fall through to execute the body
 					if int(ifDepth) > len(parser.ifMatchedStack) {
 						parser.ifMatchedStack = append(parser.ifMatchedStack, make([]bool, int(ifDepth)-len(parser.ifMatchedStack))...)

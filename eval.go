@@ -2384,7 +2384,7 @@ func (p *leparser) identifier(token *Token) (any, error) {
 
     // pf("(identifier) token binding position set to %d\n",bin)
 
-    if (*p.ident)[bin].declared && (*p.ident)[bin].IValue != nil {
+    if (*p.ident)[bin].declared {
         // fmt.Printf("(il) fetched %s from local ident, bin %d :: %#v\n",token.tokText,bin,(*p.ident)[bin])
         return (*p.ident)[bin].IValue, nil
     }
@@ -3277,6 +3277,20 @@ func isBool(expr any) bool {
     switch reflect.TypeOf(expr).Kind() {
     case reflect.Bool:
         return true
+    }
+    return false
+}
+
+// truthy coerces an evaluated statement condition to a bool without panicking
+// on a nil result: only a real `true` passes; nil and every other type are
+// false. This matches the previous `isBool(expr.(bool)) && expr.(bool)` gate
+// (only literal bools counted) except a bare-nil condition no longer crashes.
+func truthy(expr any) bool {
+    switch v := expr.(type) {
+    case bool:
+        return v
+    case nil:
+        return false
     }
     return false
 }
