@@ -3098,24 +3098,24 @@ func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
         switch exceptionStrictness {
         case "strict":
             // Fatal termination with helpful message (default)
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             finish(false, ERR_EVAL)
             return true
         case "permissive":
             // Convert to normal panic
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             panic(err)
             return true
         case "warn":
             // Print warning but continue
-            pf("[#6]WARNING: %s (continuing execution)[#-]\n", err)
+            p.report(p.line, "#[6]WARNING: "+err.Error()+" (continuing execution)[#-]")
             return false // Continue execution
         case "disabled":
             // Completely ignore
             return false // Continue execution
         default:
             // Unknown strictness - default to strict
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             finish(false, ERR_EVAL)
             return true
         }
@@ -3177,24 +3177,24 @@ func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
         switch exceptionStrictness {
         case "strict":
             // Fatal termination with helpful message (default)
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             finish(false, ERR_EVAL)
             return true
         case "permissive":
             // Convert to normal panic
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             panic(err)
             return true
         case "warn":
             // Print warning but continue
-            pf("[#6]WARNING: %s (continuing execution)[#-]\n", err)
+            p.report(p.line, "#[6]WARNING: "+err.Error()+" (continuing execution)[#-]")
             return false // Continue execution
         case "disabled":
             // Completely ignore
             return false // Continue execution
         default:
             // Unknown strictness - default to strict
-            pf("%s\n", err)
+            p.report(p.line, err.Error())
             finish(false, ERR_EVAL)
             return true
         }
