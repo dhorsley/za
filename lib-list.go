@@ -24,6 +24,8 @@ import (
     "strings"
     "sync"
     "unsafe"
+
+    "github.com/VictoriaMetrics/metrics"
 )
 
 // Helper function to process axis and keepdims parameters
@@ -892,6 +894,12 @@ func buildListLib() {
     stdlib["append"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("append", args, 2, "1", "any", "2", "any", "any"); !ok {
             return nil, err
+        }
+
+        // list-write volume (see concat): per-case type errors below may
+        // overcount slightly; acceptable for a volume signal.
+        if enableMetrics {
+            metrics.GetOrCreateCounter(`za_list_write_total`).Inc()
         }
 
         // should really do some kind of implicit conversion here (and elsewhere)
@@ -2995,6 +3003,12 @@ func buildListLib() {
     stdlib["concat"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("concat", args, 1, "2", "any", "any"); !ok {
             return nil, err
+        }
+
+        // concat() always returns fresh backing (copy-on-write safety for
+        // shared slices); count the volume for perf visibility.
+        if enableMetrics {
+            metrics.GetOrCreateCounter(`za_list_write_total`).Inc()
         }
 
         if reflect.TypeOf(args[0]) != reflect.TypeOf(args[1]) {

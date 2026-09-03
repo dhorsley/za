@@ -767,6 +767,11 @@ syntax match metrics_functions "\(^|.\|\s*\)metric_register\s*("he=e-1
 syntax match metrics_functions "\(^|.\|\s*\)metric_set\s*("he=e-1
 
 syntax match internal_functions "\(^|.\|\s*\)async_wait_startup\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)resume\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)drain\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)lock\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)unlock\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)trylock\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)conclear\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)conread\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)conset\s*("he=e-1
@@ -803,7 +808,7 @@ syntax match statements "\( do \| to \| as \| in \| is \)"
 syntax match statements "\(^\|\s\+\)\(on\|or\|if\|at\|ef\|et\|ec\|ei\|ew\|es\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(end\|def\|fix\|has\|and\|not\|nop\|var\|log\|cls\|web\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(else\|step\|pane\|enum\|init\|help\|with\|case\|hist\|exit\)\($\|\s\+\)"
-syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
+syntax match statements "\(^\|\s\+\)\(struct\|pause\|debug\|async\|yield\|emit\|print\|break\|endif\|while\|quiet\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(resume\|module\|prompt\|return\|define\|enddef\|enable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(version\|require\|println\|showdef\|endwith\|endcase\|logging\|subject\|disable\)\($\|\s\+\)"
 syntax match statements "\(^\|\s\+\)\(contains\|endwhile\|continue\)\($\|\s\+\)"

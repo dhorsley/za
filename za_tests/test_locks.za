@@ -1,0 +1,132 @@
+#!/usr/bin/env za
+
+# Lock primitive tests: lock / unlock / trylock
+#   lock(name [, timeout_ms]) -> bool   (bounded blocking; false = not acquired)
+#   trylock(name)             -> bool   (timeout-zero poll)
+#   unlock(name)              -> bool   (false on unknown / double unlock)
+# Locks are non-reentrant; timeouts convert would-be deadlocks into false.
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Lock Primitive Tests (lock, unlock, trylock) ==="
+
+fails = 0
+
+define expect_bool(got, want, name)
+    ok = false
+    if type(got) == "bool"
+        if got == want
+            ok = true
+        endif
+    endif
+    if ok
+        println format("PASS %v", name)
+    else
+        println format("FAIL %v: got %v (%v), want %v", name, got, type(got), want)
+        @fails = fails + 1
+    endif
+end
+
+# 1. basic acquire / release
+try
+    expect_bool(lock("lt_basic", 1000), true, "lock acquire returns true")
+    expect_bool(unlock("lt_basic"), true, "unlock returns true")
+catch err
+    println "FAIL basic acquire/release raised:", err
+    @fails = fails + 1
+endtry
+
+# 2. non-reentrant: second acquire on held lock times out (no deadlock)
+try
+    lock("lt_reenter", 1000)
+    t0 = epoch_nano_time()
+    got = lock("lt_reenter", 200)
+    t1 = epoch_nano_time()
+    expect_bool(got, false, "held lock times out instead of deadlocking")
+    elapsed_ms = (t1 - t0) / 1000000
+    if elapsed_ms >= 150
+        println "PASS timeout waited (ms>=150)"
+    else
+        println "FAIL timeout returned too fast"
+        @fails = fails + 1
+    endif
+    unlock("lt_reenter")
+catch err
+    println "FAIL reentrancy test raised:", err
+    @fails = fails + 1
+endtry
+
+# 3. double unlock + unknown unlock report false
+try
+    expect_bool(unlock("lt_never_locked"), false, "unknown unlock returns false")
+    lock("lt_twice", 1000)
+    unlock("lt_twice")
+    expect_bool(unlock("lt_twice"), false, "double unlock returns false")
+catch err
+    println "FAIL unlock-misuse test raised:", err
+    @fails = fails + 1
+endtry
+
+# shared counter + worker for cross-task tests
+counter = 0
+
+define bump(n)
+    for i = 0 to n - 1
+        lock("lt_counter", 5000)
+        @counter = counter + 1
+        unlock("lt_counter")
+    endfor
+    return counter
+end
+
+# 4. mutual exclusion: two tasks x 200 guarded increments == 400 exactly.
+# Async launches live inside try here on purpose: this also covers
+# try-scoped worker resolution.
+counter = 0
+try
+    var handles map
+    async handles bump(200) "w1"
+    async handles bump(200) "w2"
+    async_wait_startup(ref handles)
+    results4 = await(ref handles, true)
+    if counter == 400
+        println "PASS guarded counter exact (400)"
+    else
+        println format("FAIL guarded counter = %v, want 400", counter)
+        @fails = fails + 1
+    endif
+catch err
+    println "FAIL mutual exclusion test raised:", err
+    @fails = fails + 1
+endtry
+
+define probe_lock(name)
+    # try while main holds it, then timed, then long (succeeds after release)
+    r1 = trylock(name)
+    r2 = lock(name, 100)
+    r3 = lock(name, 5000)
+    unlock(name)
+    return [r1, r2, r3]
+end
+
+# 5. cross-task timeout: main holds, worker observes false/false/true
+try
+    var handles2 map
+    lock("lt_timed", 1000)
+    async handles2 probe_lock("lt_timed") "p1"
+    async_wait_startup(ref handles2)
+    pause 500
+    unlock("lt_timed")
+    results5 = await(ref handles2, true)
+    got = results5["p1"]
+    expect_bool(got[0], false, "trylock while held is false")
+    expect_bool(got[1], false, "timed lock while held is false")
+    expect_bool(got[2], true, "lock after release is true")
+catch err
+    println "FAIL cross-task timeout test raised:", err
+    @fails = fails + 1
+endtry
+
+println format("=== Lock tests done: fails=%v ===", fails)

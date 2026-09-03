@@ -106,6 +106,8 @@ const (
 	C_Enddef
 	C_Return
 	C_Async
+	C_Yield
+	C_Emit
 	C_Lib
 	C_Module
 	C_Namespace

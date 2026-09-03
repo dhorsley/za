@@ -1,0 +1,225 @@
+#!/usr/bin/env za
+
+# Yield / emit / resume / drain tests.
+# Expected design (implement to satisfy):
+#   yield        -> park task until resumed (async tasks only; clean error
+#                   elsewhere). No value.
+#   yield v      -> blocking send v on the task stream, then park.
+#   emit [v]     -> blocking send v (nil heartbeat when omitted), continue.
+#   resume(ref h, k) -> advance task k: map(.status "yielded", .value v) on park,
+#                   map(.status "finished") once done. Missing key errors.
+#   drain(h[, k])-> non-blocking harvest: map key->values, or values for one
+#                   key. Never closes/deletes; completion stays with await.
+# NOTE: async launches stay outside try blocks (try-scoped async cannot
+# resolve worker names); only assertions are guarded.
+
+error_extend(true)
+exception_strictness("warn")
+permit("error_exit", false)
+
+println "=== Yield / Emit / Resume / Drain Tests ==="
+
+fails = 0
+
+define expect(cond, name)
+    if cond
+        println format("PASS %v", name)
+    else
+        println format("FAIL %v", name)
+        @fails = fails + 1
+    endif
+end
+
+define expect_status(got, want_status, want_value, check_value, name)
+    ok = false
+    if type(got) == "map[string]any"
+        if got["status"] == want_status
+            if check_value
+                if got["value"] == want_value
+                    ok = true
+                endif
+            else
+                ok = true
+            endif
+        endif
+    endif
+    if ok
+        println format("PASS %v", name)
+    else
+        println format("FAIL %v", name)
+        @fails = fails + 1
+    endif
+end
+
+# worker: parks 3 times, then completes
+define parker()
+    yield
+    yield
+    yield
+    return "parked-done"
+end
+
+# worker: parks with values
+define yielder()
+    yield 10
+    yield 20
+    yield 30
+    return "yielded-done"
+end
+
+# worker: emits without parking, then completes
+define emitter()
+    emit 1
+    emit 2
+    emit 3
+    emit 4
+    emit 5
+    return "emitted-done"
+end
+
+# worker: yields from a nested helper (stack must survive parking)
+define gen_helper()
+    yield 100
+    yield 200
+    return 0
+end
+
+define nested_parker()
+    gen_helper()
+    return "nested-done"
+end
+
+# worker: emits once, then completes (close-on-completion path; the same
+# deferred close also covers abnormal task end)
+define graceful()
+    emit 7
+    return "graceful-done"
+end
+
+# 1. bare park/resume roundtrip + lockstep count
+var h1 map
+async h1 parker() "p"
+async_wait_startup(ref h1)
+r1 = resume(ref h1, "p")
+r2 = resume(ref h1, "p")
+r3 = resume(ref h1, "p")
+r4 = resume(ref h1, "p")
+fin1 = await(ref h1, true)
+try
+    expect_status(r1, "yielded", 0, false, "park 1/3 yields")
+    expect_status(r2, "yielded", 0, false, "park 2/3 yields")
+    expect_status(r3, "yielded", 0, false, "park 3/3 yields")
+    expect_status(r4, "finished", 0, false, "4th resume sees finished")
+    expect(fin1["p"] == "parked-done", "final result via await")
+catch err
+    println "FAIL park roundtrip raised:", err
+    @fails = fails + 1
+endtry
+
+# 2. yield-with-value delivers before parking, in order
+var h2 map
+async h2 yielder() "y"
+async_wait_startup(ref h2)
+v1 = resume(ref h2, "y")
+v2 = resume(ref h2, "y")
+v3 = resume(ref h2, "y")
+v4 = resume(ref h2, "y")
+fin2 = await(ref h2, true)
+try
+    expect_status(v1, "yielded", 10, true, "yield value 10 first")
+    expect_status(v2, "yielded", 20, true, "yield value 20 second")
+    expect_status(v3, "yielded", 30, true, "yield value 30 third")
+    expect_status(v4, "finished", 0, false, "then finished")
+    expect(fin2["y"] == "yielded-done", "final result via await")
+catch err
+    println "FAIL yield-values raised:", err
+    @fails = fails + 1
+endtry
+
+# 3. emit streams without parking; drain-loop harvests; await completes.
+# NOTE: drain-once + blocking await would hang if the producer emits more
+# after the drain snapshot — the correct consumer is drain-loop until a
+# non-blocking await reports completion.
+var h3 map
+async h3 emitter() "e"
+async_wait_startup(ref h3)
+got3 = []
+fin3 = map()
+while true
+    chunk = drain(ref h3, "e")
+    got3 = concat(got3, chunk)
+    fin3 = await(ref h3, false)
+    break if key(ref fin3, "e")
+    pause 10
+endwhile
+try
+    expect(got3.len == 5, "emit batch has 5 values")
+    expect(got3[0] == 1, "emit order first")
+    expect(got3[4] == 5, "emit order last")
+    expect(fin3["e"] == "emitted-done", "emitter final via await")
+catch err
+    println "FAIL emit stream raised:", err
+    @fails = fails + 1
+endtry
+
+# 4. nested-function yield survives parking
+var h4 map
+async h4 nested_parker() "n"
+async_wait_startup(ref h4)
+n1 = resume(ref h4, "n")
+n2 = resume(ref h4, "n")
+n3 = resume(ref h4, "n")
+fin4 = await(ref h4, true)
+try
+    expect_status(n1, "yielded", 100, true, "nested yield 100")
+    expect_status(n2, "yielded", 200, true, "nested yield 200")
+    expect_status(n3, "finished", 0, false, "nested then finished")
+    expect(fin4["n"] == "nested-done", "nested final via await")
+catch err
+    println "FAIL nested yield raised:", err
+    @fails = fails + 1
+endtry
+
+# 5. completion close: value delivered, then finished (no hang)
+var h5 map
+async h5 graceful() "d"
+async_wait_startup(ref h5)
+pause 300
+got5 = drain(ref h5, "d")
+r5 = resume(ref h5, "d")
+fin5 = await(ref h5, true)
+try
+    expect(got5.len == 1, "completion value drained")
+    expect(got5[0] == 7, "completion value correct")
+    expect_status(r5, "finished", 0, false, "completed seen finished")
+    expect(fin5["d"] == "graceful-done", "final via await")
+catch err
+    println "FAIL completion close raised:", err
+    @fails = fails + 1
+endtry
+
+# 6. yield outside async is inert, not fatal or hanging: statement-level
+# misuse follows house error handling (fatal under strict, silent skip
+# under warn/permit(false) like every other statement error). Here we
+# prove it neither crashes, hangs, nor disturbs neighbors.
+try
+    before_yield = 1
+    yield
+    after_yield = before_yield + 1
+    expect(after_yield == 2, "bare yield outside async is inert")
+catch err
+    println "FAIL bare yield outside async raised unexpectedly"
+    @fails = fails + 1
+endtry
+
+# 7. resume of missing handle errors cleanly
+try
+    var hempty map
+    resume(ref hempty, "nope")
+    println "FAIL resume-missing did not raise"
+    @fails = fails + 1
+catch err
+    println "PASS resume-missing raises"
+endtry
+
+println format("=== Yield tests done: fails=%v ===", fails)

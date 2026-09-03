@@ -17,6 +17,7 @@ import (
     "sort"
     "strings"
     str "strings"
+    "sync"
     "sync/atomic"
     "time"
 
@@ -422,6 +423,65 @@ func sttyFlag(flags string,state bool) (okay bool) {
 }
 */
 
+// zaMutex pairs a mutex with explicit held-state so double unlock and
+// unlock-of-unknown report false instead of panicking (sync.Mutex alone
+// cannot be queried and panics on unlock of an unlocked mutex).
+type zaMutex struct {
+    mu    sync.Mutex
+    guard sync.Mutex
+    held  bool
+    // acquiredAtUnixNano records the last successful acquisition for the
+    // za_lock_hold_ms summary. Written while holding mu (acquire paths)
+    // or guard (release path reads it); read out before emitting.
+    acquiredAt int64
+}
+
+var zalockRegistry = make(map[string]*zaMutex)
+var zalockRegLock sync.Mutex
+
+func zalockGet(name string) *zaMutex {
+    zalockRegLock.Lock()
+    defer zalockRegLock.Unlock()
+    if m, ok := zalockRegistry[name]; ok {
+        return m
+    }
+    m := &zaMutex{}
+    zalockRegistry[name] = m
+    return m
+}
+
+// tryAcquire attempts the mutex once. Reports whether this call now holds it.
+func (m *zaMutex) tryAcquire() bool {
+    if !m.mu.TryLock() {
+        return false
+    }
+    m.guard.Lock()
+    m.held = true
+    m.acquiredAt = time.Now().UnixNano()
+    m.guard.Unlock()
+    return true
+}
+
+// release drops the mutex. Reports false (no panic) when unknown or unheld.
+// Callers must only invoke this for state this call observed as held.
+func (m *zaMutex) release() bool {
+    var heldNs int64
+    m.guard.Lock()
+    if !m.held {
+        m.guard.Unlock()
+        return false
+    }
+    m.held = false
+    heldNs = m.acquiredAt
+    m.guard.Unlock()
+    m.mu.Unlock()
+    if enableMetrics && heldNs > 0 {
+        ms := float64(time.Now().UnixNano()-heldNs) / 1000000.0
+        metrics.GetOrCreateSummary(`za_lock_hold_ms`).Update(ms)
+    }
+    return true
+}
+
 func buildInternalLib() {
 
     features["internal"] = Feature{version: 1, category: "debug"}
@@ -432,7 +492,7 @@ func buildInternalLib() {
         "local", "clktck", "funcref", "thisfunc", "thisref", "cursoron", "cursoroff", "cursorx",
         "eval", "exec", "term_w", "term_h", "pane_h", "pane_w", "pane_r", "pane_c", "utf8supported", "execpath", "trap", "coproc",
         "capture_shell", "ansi", "interpol", "shell_pid", "has_shell", "has_term", "term", "has_colour",
-        "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "async_wait_startup", "get_mem", "zainfo", "get_cores", "permit",
+        "len", "rlen", "echo", "get_row", "get_col", "unmap", "await", "async_wait_startup", "lock", "unlock", "trylock", "resume", "drain", "get_mem", "zainfo", "get_cores", "permit",
         "enum_names", "enum_all", "dump", "mdump", "sysvar", "expect",
         "ast", "varbind", "sizeof", "dup", "defined", "log_queue_status",
         "set_depth",
@@ -1622,6 +1682,134 @@ func buildInternalLib() {
         return results, nil
     }
 
+    slhelp["resume"] = LibHelp{in: "handles_map,key", out: "map", action: "Advances task key to its next yield point (blocking): returns map(.status yielded|finished, .value). Resume pairs only with parks; emit-only flows need drain instead. Missing key errors."}
+    stdlib["resume"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("resume", args, 1, "2", "string", "string"); !ok {
+            return nil, err
+        }
+        bin := bind_int(evalfs, args[0].(string))
+        if !(*ident)[bin].declared {
+            return nil, errors.New("resume requires the name of a local handle map")
+        }
+        m, ok := (*ident)[bin].IValue.(map[string]any)
+        if !ok {
+            return nil, errors.New("resume requires a handle map")
+        }
+        vlock.RLock()
+        hv, found := m[args[1].(string)]
+        vlock.RUnlock()
+        if !found {
+            return nil, errors.New(sf("resume: no such handle '%s'", args[1].(string)))
+        }
+        h, ok := hv.(asyncHandle)
+        if !ok {
+            return nil, errors.New(sf("resume: handle '%s' is not a task", args[1].(string)))
+        }
+        // Lockstep: the task always sends exactly one stream item per park
+        // (bare yield sends a nil heartbeat), so a receive here pairs with a
+        // pending item, a future item, or close-on-completion — never wedges
+        // except when the task itself never yields nor finishes (user error,
+        // same as blocking await on a hung task).
+        it, ok := <-h.Stream
+        if !ok {
+            return map[string]any{"status": "finished", "value": nil}, nil
+        }
+        item, ok := it.(streamItem)
+        if !ok {
+            return nil, errors.New("resume: corrupt stream item (internal)")
+        }
+        if item.parked {
+            // Task is parked (or micro-adjacent to it): unpark. Guaranteed
+            // to pair — nothing runs between its send and its park receive.
+            h.Resume <- struct{}{}
+            if enableMetrics {
+                metrics.GetOrCreateCounter(`za_task_resume_total`).Inc()
+            }
+            return map[string]any{"status": "yielded", "value": item.v}, nil
+        }
+        if enableMetrics {
+            metrics.GetOrCreateCounter(`za_task_resume_total`).Inc()
+        }
+        return map[string]any{"status": "emitted", "value": item.v}, nil
+    }
+
+    slhelp["drain"] = LibHelp{in: "handles_map[,key]", out: "map|list", action: "Non-blocking harvest of streamed values: map key->values, or values for one key. Auto-resumes parks it consumes. Never closes/deletes; completion stays with await."}
+    stdlib["drain"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("drain", args, 2,
+            "2", "string", "string",
+            "1", "string"); !ok {
+            return nil, err
+        }
+        bin := bind_int(evalfs, args[0].(string))
+        if !(*ident)[bin].declared {
+            return nil, errors.New("drain requires the name of a local handle map")
+        }
+        m, ok := (*ident)[bin].IValue.(map[string]any)
+        if !ok {
+            return nil, errors.New("drain requires a handle map")
+        }
+        drainOne := func(hv any) ([]any, error) {
+            h, ok := hv.(asyncHandle)
+            if !ok {
+                return nil, errors.New("drain: handle is not a task")
+            }
+            out := []any{}
+            for {
+                select {
+                case it, ok := <-h.Stream:
+                    if !ok {
+                        return out, nil
+                    }
+                    item, ok := it.(streamItem)
+                    if !ok {
+                        return nil, errors.New("drain: corrupt stream item (internal)")
+                    }
+                    out = append(out, item.v)
+                    if item.parked {
+                        h.Resume <- struct{}{}
+                    }
+                default:
+                    if enableMetrics {
+                        metrics.GetOrCreateCounter(`za_task_drain_total`).Inc()
+                        if len(out) > 0 {
+                            metrics.GetOrCreateCounter(`za_task_drain_values_total`).Add(len(out))
+                        }
+                    }
+                    return out, nil
+                }
+            }
+        }
+        if len(args) == 2 {
+            vlock.RLock()
+            hv, found := m[args[1].(string)]
+            vlock.RUnlock()
+            if !found {
+                return nil, errors.New(sf("drain: no such handle '%s'", args[1].(string)))
+            }
+            return drainOne(hv)
+        }
+        out := make(map[string]any)
+        vlock.RLock()
+        keys := make([]string, 0, len(m))
+        vals := make([]any, 0, len(m))
+        for k, v := range m {
+            keys = append(keys, k)
+            vals = append(vals, v)
+        }
+        vlock.RUnlock()
+        for i, k := range keys {
+            if _, ok := vals[i].(asyncHandle); !ok {
+                continue
+            }
+            got, err := drainOne(vals[i])
+            if err != nil {
+                return nil, err
+            }
+            out[k] = got
+        }
+        return out, nil
+    }
+
     slhelp["async_wait_startup"] = LibHelp{in: "handle_map", out: "integer microseconds", action: "Blocks until every async task in the handle map has begun executing. Returns the total time blocked in microseconds, or nil if the map is empty. Errors if the handle map is undeclared."}
     stdlib["async_wait_startup"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("async_wait_startup", args, 1, "1", "string"); !ok {
@@ -1662,6 +1850,104 @@ func buildInternalLib() {
         elapsed := time.Since(start)
 
         return int64(elapsed / time.Microsecond), nil
+    }
+
+    // ---- Named mutexes for coordinating async tasks ----
+    // Cross-thread shared state has no other correct primitive in za: plain
+    // globals are racy by construction. Locks are explicitly NON-reentrant;
+    // use timeouts (never a bare blocking lock across an await) so
+    // would-be deadlocks surface as false returns instead of hangs.
+    // zaMutex pairs a mutex with explicit held-state so double unlock and
+    // unlock-of-unknown report false instead of panicking (sync.Mutex alone
+    // cannot be queried and panics on unlock of an unlocked mutex).
+    // All state transitions run under guard; the held flag is only ever
+    // written while holding mu (acquire path) or guard (release path).
+    slhelp["lock"] = LibHelp{in: "name[,timeout_ms]", out: "bool", action: "Acquires the named mutex (creating it), blocking up to timeout_ms (default: forever). Returns true if acquired, false on timeout. Non-reentrant: prefer explicit timeouts."}
+    stdlib["lock"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("lock", args, 2,
+            "2", "string", "number",
+            "1", "string"); !ok {
+            return nil, err
+        }
+        if len(args) == 1 {
+            m := zalockGet(args[0].(string))
+            m.mu.Lock()
+            m.guard.Lock()
+            m.held = true
+            m.acquiredAt = time.Now().UnixNano()
+            m.guard.Unlock()
+            if enableMetrics {
+                metrics.GetOrCreateCounter(`za_lock_acquire_total`).Inc()
+            }
+            return true, nil
+        }
+        var ms int64
+        switch t := args[1].(type) {
+        case int:
+            ms = int64(t)
+        case int64:
+            ms = t
+        case uint:
+            ms = int64(t)
+        case float64:
+            ms = int64(t)
+        default:
+            return nil, errors.New("lock timeout must be a number")
+        }
+        if ms < 0 {
+            return nil, errors.New("lock timeout must be non-negative")
+        }
+        m := zalockGet(args[0].(string))
+        deadline := time.Now().Add(time.Duration(ms) * time.Millisecond)
+        for {
+            if m.tryAcquire() {
+                if enableMetrics {
+                    metrics.GetOrCreateCounter(`za_lock_acquire_total`).Inc()
+                }
+                return true, nil
+            }
+            if time.Until(deadline) <= 0 {
+                if enableMetrics {
+                    metrics.GetOrCreateCounter(`za_lock_timeout_total`).Inc()
+                }
+                return false, nil
+            }
+            time.Sleep(time.Millisecond)
+        }
+    }
+
+    slhelp["trylock"] = LibHelp{in: "name", out: "bool", action: "Attempts the named mutex once without blocking. Returns true if acquired."}
+    stdlib["trylock"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("trylock", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        m := zalockGet(args[0].(string))
+        got := m.tryAcquire()
+        if got && enableMetrics {
+            metrics.GetOrCreateCounter(`za_lock_acquire_total`).Inc()
+        }
+        return got, nil
+    }
+
+    slhelp["unlock"] = LibHelp{in: "name", out: "bool", action: "Releases the named mutex. Returns false if unknown or not held."}
+    stdlib["unlock"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("unlock", args, 1, "1", "string"); !ok {
+            return nil, err
+        }
+        zalockRegLock.Lock()
+        m, ok := zalockRegistry[args[0].(string)]
+        zalockRegLock.Unlock()
+        if !ok {
+            if enableMetrics {
+                metrics.GetOrCreateCounter(`za_lock_errors_total`).Inc()
+            }
+            return false, nil
+        }
+        ok = m.release()
+        if !ok && enableMetrics {
+            metrics.GetOrCreateCounter(`za_lock_errors_total`).Inc()
+        }
+        return ok, nil
     }
 
     slhelp["unmap"] = LibHelp{in: "ary_name,key_name", out: "bool", action: "Remove a map key. Returns true on successful removal."}

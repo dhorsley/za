@@ -2214,7 +2214,7 @@ func (p *leparser) blockCommand(cmd string, async bool) (state bool, resstr stri
             }
 
             // call
-            h, _, id := task(p.fs, lmv, false, csumName+"@", nil)
+            h, _, _, _, id := task(p.fs, lmv, false, csumName+"@", nil)
             // destroy fn def before leaving
             fnlookup.lmdelete(p.namespace + "::" + csumName)
             numlookup.lmdelete(lmv)

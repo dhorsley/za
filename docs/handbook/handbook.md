@@ -1554,8 +1554,13 @@ matches ahead of the default behaviour, if no explicit name is supplied:
 	2. user-defined function in the current namespace (exact match)
 	3. use_chain match (user-defined functions, declared C functions, or discovered C library symbols)
 	4. stdlib (built-in functions)
-	5. current namespace (no :: ref) as fallback
-	6. main:: (global namespace) as fallback
+
+There is deliberately no fallback to main:: in 1.3.0: a bare call from a
+non-main namespace that matches nothing above is an error, even when a
+same-named function exists in main::. This preserves shadowing intent
+(e.g. an FFI math lib sin() must keep beating za sin() regardless of what
+main:: holds). Call across namespaces explicitly (ns::fn()) or declare
+intent with USE +ns.
 
 Example:
 
@@ -1571,12 +1576,12 @@ Example:
 
 	string_date()           # check if string_date() exists in tm namespace and call it if found.
 
-							# if not found (even though this one would be) then falls through to stdlib,
-							# current namespace (main::), and finally global namespace.
+							# if not found (even though this one would be) then falls through to stdlib.
+							# there is no fallback to main:: — an unmatched bare call is an error.
 
 							# whenever there are conflicting names then the first match takes precedence.
 							#  i.e.
-							# std:: > explicit name > user-defined > use_chain > stdlib > current namespace > main
+							# std:: > explicit name > user-defined > use_chain > stdlib
 
 ```
 
@@ -2220,6 +2225,64 @@ endif
 ```
 
 These async patterns enable efficient parallel processing while maintaining robust error handling and partial result collection.
+
+### 31.1 Coordinating tasks with locks (`lock`, `unlock`, `trylock`)
+
+Globals shared between async tasks are racy by construction. Named mutexes
+are the correct primitive for guarding them:
+
+```za
+lock("counter", 5000)
+@counter = counter + 1
+unlock("counter")
+```
+
+- `lock(name [, timeout_ms])` — acquires the named mutex (creating it),
+  blocking up to `timeout_ms` (default: forever). Returns true if acquired,
+  false on timeout.
+- `trylock(name)` — single non-blocking attempt. Returns true if acquired.
+- `unlock(name)` — releases. Returns false if the name is unknown or not held.
+
+Locks are explicitly **non-reentrant**: locking a mutex the same thread
+already holds waits (or times out) rather than succeeding — always use
+explicit timeouts, and never a bare blocking `lock` across a blocking
+`await` of a task that needs the same lock (both sides sleep forever).
+Only the holder may unlock; unlocking another thread's lock is undefined,
+same as pthreads. Unlocking an unknown or unheld lock simply returns
+false instead of raising.
+
+### 31.2 Cooperative tasks (`yield`, `emit`, `resume`, `drain`)
+
+An async task runs to completion by default. Three primitives let it
+interact mid-flight (all unbuffered rendezvous — undrained producers
+wedge by design, so drain or don't stream):
+
+- `yield` parks the task until resumed. `yield v` publishes `v` on the
+  task stream, then parks. Only legal inside async tasks (clean error
+  elsewhere, including from nested user calls).
+- `emit [v]` publishes `v` (nil heartbeat when omitted) without parking.
+- `resume(map, key)` advances one parked task: map(`.status` yielded
+  with `.value`, or finished). Resume pairs only with parks.
+- `drain(map[, key])` harvests streamed values without blocking, closing,
+  or deleting; completion stays with `await`. It auto-resumes parks it
+  consumes, so a drain loop plus non-blocking `await` is the correct
+  consumer for emit flows — a single drain followed by blocking `await`
+  hangs if the producer emits more afterwards:
+
+```za
+got = []
+while true
+    chunk = drain(ref h, "e")
+    got = concat(got, chunk)
+    fin = await(ref h, false)
+    break if key(ref fin, "e")
+    pause 10
+endwhile
+```
+
+Values cross goroutines by channel: treat yielded values as immutable
+after sending, or `dup()` them first. Test coverage:
+`za_tests/test_yield.za`.
 
 ---
 

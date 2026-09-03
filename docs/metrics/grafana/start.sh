@@ -7,7 +7,11 @@ echo "Za Grafana + Prometheus Docker Setup"
 echo "===================================="
 echo
 
-export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+# Prefer a rootless daemon socket when present, otherwise fall back to the
+# default socket (never force a path that may not exist).
+if [ -S "/run/user/$(id -u)/docker.sock" ]; then
+    export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+fi
 
 # Check if docker and docker-compose are available
 if ! command -v docker &>/dev/null; then
@@ -29,7 +33,7 @@ fi
 
 echo "Replacing __TARGETIP__ in prometheus.yml"
 # Use the default gateway IP instead of the host's own IP.
-TARGETIP="$(ip route | grep "^default" | awk '{print $3}')"
+TARGETIP="$(ip route | grep "^default" | awk '{print $9}')"
 cp ${promconf}.template ${promconf}
 sed -i "s/__TARGETIP__/${TARGETIP}/g" ${promconf}
 
@@ -38,7 +42,7 @@ echo ""
 
 # Check if Za is running
 echo "Checking if Za metrics are accessible..."
-if timeout 1 nc -z localhost 9091 2>/dev/null; then
+if curl -sf --max-time 2 localhost:9091/metrics >/dev/null 2>&1; then
   echo "o  Za metrics server is reachable on port 9091"
 else
   echo "x  Za metrics server not found on port 9091"

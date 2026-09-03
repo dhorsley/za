@@ -41,6 +41,22 @@ language changes
     - Syntax mirrors `var`: `global name[, name...] [size] type [= expr]`
     - test coverage: za_tests/test_global.za
 
+  * `yield` / `emit` statements for async tasks (cooperative suspension + streaming).
+    - `yield` parks the task until resumed; `yield v` publishes v on the task
+      stream, then parks. `emit [v]` publishes without parking (nil heartbeat
+      when omitted). Unbuffered rendezvous throughout: undrained producers
+      wedge by design (drain or don't stream); see `resume`/`drain`.
+    - Only legal inside async tasks (clean error elsewhere, including from
+      nested user calls, which resolve task state through ctx).
+    - test coverage: za_tests/test_yield.za
+  * `unset` of an undeclared name is a silent noop (was: index panic).
+    - The pre-existing `declared` check is now bounds-guarded first; the WITH
+      statement keeps its loud `Variable 'x' does not exist` error, now
+      reached instead of panicking on the same shape.
+  * Async calls from plain scripts (no namespace decl) resolve worker
+    functions: empty runtime namespace normalizes to main::, matching how
+    definitions register. Previously `invalid function '::name'`.
+
 
 tooling changes
 ---------------
@@ -221,6 +237,42 @@ library changes
         `ZA_FFI_NOCACHE`, stale artifacts are actually removed.
     - `ZA_FFI_NOCACHE` and `ZA_FFI_CACHE_CLEAR` are now documented in the `-E`
         environmental help (FFI section).
+
+  * `lock` / `unlock` / `trylock` stdlib for coordinating async tasks.
+    - Named mutexes: `lock(name [, timeout_ms])` (bounded blocking, false on
+      timeout), `trylock(name)` (single non-blocking attempt), `unlock(name)`
+      (false on unknown/double unlock). Explicitly non-reentrant; timeouts
+      convert would-be deadlocks into false returns.
+    - test coverage: za_tests/test_locks.za
+  * `resume` / `drain` stdlib for task streams (companion to yield/emit).
+    - `resume(map, key)` advances a task to its next yield point (blocking):
+      map(.status yielded|finished, .value). `drain(map[, key])` harvests
+      streamed values without blocking, closing, or deleting; completion
+      stays with `await`. Consumer discipline: resume pairs with parks,
+      drain-loop with non-blocking await for emit flows.
+    - test coverage: za_tests/test_yield.za
+  * `concat` / 2-arg `append` return fresh backing (aliasing fix).
+    - Previously a bare Go append: in-place writes when capacity allowed
+      silently clobbered live slices sharing the backing (notably
+      `concat(concat(A,B),C)` duplications). `insert`/`remove`/`sort` were
+      already fresh-buffer safe and are unchanged; `append_to` documents its
+      intentional in-place semantics. Builder loops pay quadratic copies;
+      use `append_to` for hot accumulation.
+    - test coverage: tests/concat_alias_test.go, za_tests/concat_alias.
+  * `insert` / `remove` accept `[]float32` lists (were float64-and-friends
+    only, erroring out).
+  * Internal Prometheus metrics for the new concurrency primitives (all
+    gated on the existing enableMetrics flag; zero cost when disabled).
+    - locks: `za_lock_acquire_total`, `za_lock_timeout_total` (contention
+      signal), `za_lock_errors_total`, `za_lock_hold_ms` summary.
+    - tasks: `za_task_yield_total`, `za_task_emit_total`,
+      `za_task_resume_total`, `za_task_drain_total`,
+      `za_task_drain_values_total`.
+    - lists: `za_list_write_total` (concat/append call volume).
+    - misc: `za_unset_missing_total` (silent-skip counter, doubles as
+      typo detection at scale).
+    - Grafana: new `docs/metrics/grafana/dashboards/7-concurrency-metrics.json`
+      (lock contention, task flow, list writes, unset-misses), auto-provisioned.
 
 
 1.2.3
@@ -3210,8 +3262,12 @@ other
         - added a "never pasted" result in getch() in windows source.
 
 
-    language changes
-    ----------------
+language changes
+----------------
+
+  * Added `global` keyword for persistent variable declarations.
+    - Declares variables into the main function space (mident), so they survive
+      module loading and can be written via @ from any scope.
 
     * (experimental) Added -V <name> option for finding identifier references.
 

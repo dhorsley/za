@@ -1347,7 +1347,8 @@ func (s *LSPServer) handleCompletion(msg *JSONRPCMessage) *JSONRPCMessage {
 	// Add keywords (filtered)
 	keywords := []string{"if", "else", "endif", "for", "foreach", "endfor", "while", "endwhile",
 		"def", "end", "struct", "endstruct", "enum", "case", "is", "contains", "try", "catch", "endtry",
-		"local", "global", "const", "return", "break", "continue", "then", "throws", "throw"}
+		"local", "global", "const", "return", "break", "continue", "then", "throws", "throw",
+		"yield", "emit"}
 	for _, kw := range keywords {
 		if prefix == "" || strings.HasPrefix(kw, prefixLower) {
 			items = append(items, CompletionItem{

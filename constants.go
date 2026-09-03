@@ -288,6 +288,8 @@ const (
     C_Enddef = lexer.C_Enddef
     C_Return = lexer.C_Return
     C_Async = lexer.C_Async
+    C_Yield = lexer.C_Yield
+    C_Emit = lexer.C_Emit
     C_Lib = lexer.C_Lib
     C_Module = lexer.C_Module
     C_Namespace = lexer.C_Namespace

@@ -988,6 +988,8 @@ Available commands:
 [#7]GLOBAL[#-] [#i1]var type[#i0]                                 - declare a global variable, persisting across scopes.
 [#7]ENUM[#-] [#i1]name[#i0] ( member[=val][,...,memberN[=val]] )  - declare an enumeration.
 [#7]PAUSE[#-] [#i1]timer_ms[#i0]                                  - delay [#i1]timer_ms[#i0] milliseconds.
+[#7]YIELD[#-] [[#i1]value[#i0]]                                    - park async task until resumed (publishes [#i1]value[#i0] first). Async tasks only.
+[#7]EMIT[#-] [[#i1]value[#i0]]                                     - publish [#i1]value[#i0] on the task stream without parking (nil heartbeat when omitted).
 [#7]STRUCT[#-] [#i1]name[#i0]                                     - begin structure definition.
 [#7]ENDSTRUCT[#-]                                       - end structure definition.
 [#7]SHOWSTRUCT[#-]                                      - display structure definitions.

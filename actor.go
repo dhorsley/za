@@ -361,18 +361,58 @@ func fillStruct(t *Variable, structvalues []any, Typemap map[string]reflect.Type
 type asyncHandle struct {
 	Result  chan any
 	Started chan struct{} // closed the moment the goroutine begins executing
+	Stream  chan any      // intermediate values from yield/emit (unbuffered rendezvous)
+	Resume  chan struct{} // resume signals into parked tasks (unbuffered rendezvous)
 }
 
-func task(caller uint32, base uint32, endClose bool, callname string, iargs ...any) (chan any, chan struct{}, string) {
+// streamItem wraps one Stream delivery: values from yield park the task
+// afterwards, values from emit do not. Consumers must resume exactly the
+// parked ones (resume does this; drain auto-resumes what it consumes).
+type streamItem struct {
+	v      any
+	parked bool
+}
 
-	r := make(chan any)
+// taskChansKey carries a task's channels through ctx so running code (e.g.
+// the yield statement) can find them without new Call parameters.
+type taskChansKey string
+
+const taskChansID taskChansKey = "za-task-chans"
+
+type taskChans struct {
+	stream chan any
+	resume chan struct{}
+}
+
+// taskChansFromCtx recovers the calling task's channels. Presence means
+// running inside an async task (threaded once per task via ctx, inherited
+// by every nested Call); absence means main-thread or foreign context.
+func taskChansFromCtx(ctx context.Context) (taskChans, bool) {
+	if ctx == nil {
+		return taskChans{}, false
+	}
+	tc, ok := ctx.Value(taskChansID).(taskChans)
+	if !ok || tc.stream == nil || tc.resume == nil {
+		return taskChans{}, false
+	}
+	return tc, true
+}
+
+func task(caller uint32, base uint32, endClose bool, callname string, iargs ...any) (chan any, chan struct{}, chan any, chan struct{}, string) {
+
+	r := make(chan any, 1)
 	started := make(chan struct{})
+	st := make(chan any)
+	rs := make(chan struct{})
 
 	loc, id := GetNextFnSpace(true, callname+"@", call_s{prepared: true, base: base, caller: caller, gc: false, gcShyness: 100})
 	// fmt.Printf("***** [task]  loc#%d caller#%d, recv cstab: %+v\n",loc,caller,calltable[loc])
 
 	go func() {
 		close(started) // signal: this goroutine has started executing
+		// Stream close is the task-end signal for drain/resume consumers
+		// (fires on return and on panic paths alike).
+		defer close(st)
 		if endClose {
 			defer close(r)
 		}
@@ -384,6 +424,9 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
 		var errVal error
 
 		ctx := withProfilerContext(context.Background())
+		// Publish this task's stream/resume channels so running code
+		// (yield/emit statements) can find them without new Call params.
+		ctx = context.WithValue(ctx, taskChansID, taskChans{stream: st, resume: rs})
 		// Set the callLine field in the calltable entry before calling the function
 		// For async calls, we don't have parser context, so use 0
 		atomic.StoreInt32(&calltable[loc].callLine, 0) // Async calls don't have parser context
@@ -448,7 +491,7 @@ func task(caller uint32, base uint32, endClose bool, callname string, iargs ...a
 		atomic.AddInt32(&concurrent_funcs, -1)
 
 	}()
-	return r, started, id
+	return r, started, st, rs, id
 }
 
 // finish : flag the machine state as okay or in error and
@@ -4478,9 +4521,17 @@ tco_reentry:
 				for e := 0; e < len(resu); e++ {
 					if len(resu[e]) == 1 {
 						removee := resu[e][0].tokText
-						if (*ident)[resu[e][0].bindpos].declared {
+						bp := resu[e][0].bindpos
+						// Silent noop when the name is not declared in this
+						// scope (e.g. first-time init before any var): the
+						// bindpos may predate the runtime ident, so check
+						// bounds before reading declared.
+						if bp < uint64(len(*ident)) && (*ident)[bp].declared {
 							vunset(ifs, ident, removee)
 						} else {
+							if enableMetrics {
+								metrics.GetOrCreateCounter(`za_unset_missing_total`).Inc()
+							}
 							/*
 							   parser.report(inbound.SourceLine, sf("Variable %s does not exist.", removee))
 							   finish(false, ERR_EVAL)
@@ -4674,6 +4725,43 @@ tco_reentry:
 				coprocCall(s)
 			} else {
 				coprocCall(bc)
+			}
+
+		case C_Yield, C_Emit:
+			// yield [v] publishes v on the task stream (nil heartbeat when
+			// omitted) and then parks until resumed; emit [v] publishes
+			// without parking. Unbuffered rendezvous in both cases: sends
+			// pair with a drainer/resumer, so undrained producers wedge by
+			// design (drain or don't stream). Task membership travels in
+			// ctx (set once per async task), so nested user calls resolve
+			// the same channels — unlike the per-frame registrant, which
+			// resets on every nested Call.
+			tc, ok := taskChansFromCtx(parser.ctx)
+			if !ok {
+				parser.report(inbound.SourceLine, "yield/emit outside async task.")
+				finish(false, ERR_EVAL)
+				break
+			}
+			parked := inbound.Tokens[0].tokType == C_Yield
+			if inbound.TokenCount >= 2 {
+				we := parser.wrappedEval(ifs, ident, ifs, ident, inbound.Tokens[1:])
+				if we.evalError {
+					parser.report(inbound.SourceLine, sf("could not evaluate yield/emit expression\n%+v", we.errVal))
+					finish(false, ERR_EVAL)
+					break
+				}
+				tc.stream <- streamItem{v: we.result, parked: parked}
+			} else {
+				tc.stream <- streamItem{v: nil, parked: parked}
+			}
+			if enableMetrics {
+				metrics.GetOrCreateCounter(`za_task_emit_total`).Inc()
+				if parked {
+					metrics.GetOrCreateCounter(`za_task_yield_total`).Inc()
+				}
+			}
+			if parked {
+				<-tc.resume
 			}
 
 		case C_Pause:
@@ -5160,6 +5248,12 @@ tco_reentry:
 			// namespace check
 			skip := int16(0)
 			found_namespace := parser.namespace
+			if found_namespace == "" {
+				// Plain scripts run with an empty runtime namespace while
+				// their defines register under main:: — normalize so async
+				// resolves the same name the definition registered.
+				found_namespace = "main"
+			}
 			if inbound.Tokens[3].tokType == SYM_DoubleColon {
 				found_namespace = inbound.Tokens[2].tokText
 				skip = 2
@@ -5225,11 +5319,11 @@ tco_reentry:
 				// construct a go call that includes a normal Call
 				globlock.Lock()
 				if handles == "nil" {
-					_, _, _ = task(ifs, lmv, true, call, resu...)
+					_, _, _, _, _ = task(ifs, lmv, true, call, resu...)
 				} else {
-					h, started, id := task(ifs, lmv, false, call, resu...)
+					h, started, st, rs, id := task(ifs, lmv, false, call, resu...)
 					// assign asyncHandle to handles map
-					handle := asyncHandle{Result: h, Started: started}
+					handle := asyncHandle{Result: h, Started: started, Stream: st, Resume: rs}
 					if nival == nil {
 						// fmt.Printf("about to vsetElement() in ASYNC (no key name) : nival:%#v h:%#v\n",nival,h)
 						vsetElement(nil, ifs, ident, handles, sf("async_%v", id), handle)
@@ -7002,7 +7096,7 @@ tco_reentry:
 				break
 			}
 
-			if !(*ident)[bin].declared {
+			if bin >= uint64(len(*ident)) || !(*ident)[bin].declared {
 				parser.report(inbound.SourceLine, sf("Variable '%s' does not exist.", vname))
 				finish(false, ERR_EVAL)
 				break

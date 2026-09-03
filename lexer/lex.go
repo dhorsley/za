@@ -811,6 +811,10 @@ get_nt_eval_point:
             tokType = C_Return
         case "async":
             tokType = C_Async
+        case "yield":
+            tokType = C_Yield
+        case "emit":
+            tokType = C_Emit
         case "lib":
             tokType = C_Lib
         case "module":
