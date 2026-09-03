@@ -18,6 +18,7 @@ import (
     "math/big"
     "reflect"
     "runtime"
+    "slices"
     "sort"
     "strconv"
     "strings"
@@ -812,7 +813,7 @@ func buildListLib() {
         return cols, nil
     }
 
-    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]local_list_name[#i0]. Returns [#i1]bool_success[#i0] depending on success."}
+    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]local_list_name[#i0] (in place: other slices sharing the backing see the change). Returns [#i1]bool_success[#i0] depending on success."}
     stdlib["append_to"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("append_to", args, 1, "2", "string", "any"); !ok {
             return nil, err
@@ -998,6 +999,10 @@ func buildListLib() {
                 l := make([]string, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, sf("%v", args[1]))
             return l, nil
@@ -1010,6 +1015,10 @@ func buildListLib() {
                 l := make([]float64, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(float64))
             return l, nil
@@ -1022,6 +1031,10 @@ func buildListLib() {
                 l := make([]float32, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(float32))
             return l, nil
@@ -1034,6 +1047,10 @@ func buildListLib() {
                 l := make([]bool, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(bool))
             return l, nil
@@ -1046,6 +1063,10 @@ func buildListLib() {
                 l := make([]int, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(int))
             return l, nil
@@ -1058,6 +1079,10 @@ func buildListLib() {
                 l := make([]*big.Int, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(*big.Int))
             return l, nil
@@ -1070,6 +1095,10 @@ func buildListLib() {
                 l := make([]*big.Float, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(*big.Float))
             return l, nil
@@ -1079,6 +1108,10 @@ func buildListLib() {
                 l := make([]any, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(any))
             return l, nil
@@ -1091,6 +1124,10 @@ func buildListLib() {
                 l := make([]NetworkIOStats, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(NetworkIOStats))
             return l, nil
@@ -1103,6 +1140,10 @@ func buildListLib() {
                 l := make([]DiskIOStats, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(DiskIOStats))
             return l, nil
@@ -1115,6 +1156,10 @@ func buildListLib() {
                 l := make([]ProcessInfo, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(ProcessInfo))
             return l, nil
@@ -1127,6 +1172,10 @@ func buildListLib() {
                 l := make([]SystemResources, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(SystemResources))
             return l, nil
@@ -1139,6 +1188,10 @@ func buildListLib() {
                 l := make([]MemoryInfo, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(MemoryInfo))
             return l, nil
@@ -1151,6 +1204,10 @@ func buildListLib() {
                 l := make([]CPUInfo, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(CPUInfo))
             return l, nil
@@ -1163,6 +1220,10 @@ func buildListLib() {
                 l := make([]ProcessTree, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(ProcessTree))
             return l, nil
@@ -1175,6 +1236,10 @@ func buildListLib() {
                 l := make([]ProcessMap, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(ProcessMap))
             return l, nil
@@ -1187,6 +1252,10 @@ func buildListLib() {
                 l := make([]ResourceUsage, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(ResourceUsage))
             return l, nil
@@ -1199,6 +1268,10 @@ func buildListLib() {
                 l := make([]ResourceSnapshot, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(ResourceSnapshot))
             return l, nil
@@ -1211,6 +1284,10 @@ func buildListLib() {
                 l := make([]SlabInfo, ll, int(float64(cap(s))*appGrowthFactor))
                 copy(l, s)
                 s = l
+            } else {
+                // detach: s may share backing with live slices (same hazard
+                // class as concat); a bare append below would clobber them.
+                s = slices.Clone(s)
             }
             l := append(s, args[1].(SlabInfo))
             return l, nil
@@ -1478,6 +1555,21 @@ func buildListLib() {
             l = append(l, item.(float64))
             l = append(l, args[0].([]float64)[pos-1:]...)
             return l, nil
+        case []float32:
+            l := make([]float32, 0, 31)
+            if pos > 0 {
+                l = append(l, args[0].([]float32)[:pos-1]...)
+            }
+            switch item.(type) {
+            case float32:
+                l = append(l, item.(float32))
+            case float64:
+                l = append(l, float32(item.(float64)))
+            default:
+                return nil, errors.New(sf("(l:float32,a:%T) data types must match in insert()", args[2]))
+            }
+            l = append(l, args[0].([]float32)[pos-1:]...)
+            return l, nil
         case []string:
             l := make([]string, 0, 31)
             if pos > 0 {
@@ -1566,6 +1658,14 @@ func buildListLib() {
             l := make([]float64, 0, 31)
             l = append(l, args[0].([]float64)[:pos-1]...)
             l = append(l, args[0].([]float64)[pos:]...)
+            return l, nil
+        case []float32:
+            if pos > len(args[0].([]float32)) {
+                return nil, errors.New(sf("position (%v) out of range (float32/high) in remove()", pos))
+            }
+            l := make([]float32, 0, 31)
+            l = append(l, args[0].([]float32)[:pos-1]...)
+            l = append(l, args[0].([]float32)[pos:]...)
             return l, nil
         case []bool:
             if pos > len(args[0].([]bool)) {
@@ -2903,19 +3003,25 @@ func buildListLib() {
 
         switch args[0].(type) {
         case []bool:
-            return append(args[0].([]bool), args[1].([]bool)...), nil
+            // NOTE: slices.Concat (fresh backing) instead of bare append:
+            // append writes in place when capacity allows, which silently
+            // clobbers live slices sharing the backing (e.g. nested
+            // concat(concat(A,B),C) where C aliases A's backing, or reads
+            // of a[2:] after y = concat(a[0:2], big)). concat() is
+            // documented as pure, so it must never mutate its inputs.
+            return slices.Concat(args[0].([]bool), args[1].([]bool)), nil
         case []int:
-            return append(args[0].([]int), args[1].([]int)...), nil
+            return slices.Concat(args[0].([]int), args[1].([]int)), nil
         case []uint:
-            return append(args[0].([]uint), args[1].([]uint)...), nil
+            return slices.Concat(args[0].([]uint), args[1].([]uint)), nil
         case []string:
-            return append(args[0].([]string), args[1].([]string)...), nil
+            return slices.Concat(args[0].([]string), args[1].([]string)), nil
         case []float64:
-            return append(args[0].([]float64), args[1].([]float64)...), nil
+            return slices.Concat(args[0].([]float64), args[1].([]float64)), nil
         case []float32:
-            return append(args[0].([]float32), args[1].([]float32)...), nil
+            return slices.Concat(args[0].([]float32), args[1].([]float32)), nil
         case []any:
-            return append(args[0].([]any), args[1].([]any)...), nil
+            return slices.Concat(args[0].([]any), args[1].([]any)), nil
         }
         return nil, errors.New(sf("Unknown list type concatenation (%T+%T)", args[0], args[1]))
     }
