@@ -29,7 +29,7 @@ import (
 var completions = []string{"VAR", "GLOBAL", "SETGLOB", "PAUSE",
     "HELP", "NOP", "REQUIRE", "EXIT", "VERSION",
     "QUIET", "LOUD", "UNSET", "INPUT", "PROMPT", "LOG", "PRINT", "PRINTLN",
-    "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC",
+    "LOGGING", "CLS", "AT", "DEFINE", "SHOWDEF", "ENDDEF", "RETURN", "ASYNC", "YIELD", "EMIT",
     "MODULE", "USE", "USES", "WHILE", "ENDWHILE", "FOR", "FOREACH",
     "ENDFOR", "CONTINUE", "BREAK", "ON", "DO", "IF", "ELSE", "ENDIF", "CASE",
     "IS", "CONTAINS", "HAS", "IN", "OR", "ENDCASE", "WITH", "ENDWITH",

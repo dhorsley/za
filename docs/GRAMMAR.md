@@ -98,7 +98,7 @@ postfix_op       ::= "." identifier            -- field / UFCS
                    | "[" index_expr "]"        -- index / slice / clamp (§2.3)
                    | "(" args ")"              -- call
                    | "++" | "--"
-                   | "." ... 
+                   | "." ...
 primary          ::= literal | identifier | builtin_const | array_literal | map_literal
                    | "(" expression ")" | string_literal | shell_subst | expr_string
 ```
@@ -229,7 +229,7 @@ Keywords begin a statement when they appear at statement position:
 ```
 var, setglob, init, in, pause, help, nop, hist, debug, require, exit, version,
 quiet, loud, unset, input, prompt, log, print, println, logging, cls, at, define,
-showdef, enddef, return, async, lib, module, namespace, use, uses, while, endwhile,
+showdef, enddef, return, async, yield, emit, lib, module, namespace, use, uses, while, endwhile,
 for, foreach, endfor, continue, break, if, else, endif, case, is, contains, has,
 or, endcase, with, endwith, struct, endstruct, showstruct, pane, doc, test, endtest,
 assert, on, to, step, as, do, macro, enum, try, catch, then, throws, throw, endtry,
@@ -408,6 +408,8 @@ require          ::= "require" identifier                -- require an executabl
 exit_stmt        ::= "exit" [ expression ]
 unset            ::= "unset" identifier
 pause            ::= "pause" [ expression ]
+yield            ::= "yield" [ expression ]
+emit             ::= "emit" [ expression ]
 permit           ::= "permit" "on" | "permit" "off" [ permit_items ]
 log_stmt         ::= "log" ...                            -- logging family
 at_stmt          ::= "at" ...
