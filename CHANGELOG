@@ -57,6 +57,14 @@ language changes
     functions: empty runtime namespace normalizes to main::, matching how
     definitions register. Previously `invalid function '::name'`.
 
+  * ternary precedence changed to be C-like: `?:` (prec 13) now binds looser
+    than `&&`/`||`/comparisons
+    - `a && b ? x : y` now parses as `(a && b) ? x : y` (was `a && (b ? x : y)`,
+      and the false-lhs short-circuit form could hard-error)
+    - applies to both the interpretive dparse() path and the bytecode compiler
+      (both read default_prectable); a single change in main.go
+    - test coverage: za_tests/test_vm.za section 20 (8 new asserts)
+
 
 tooling changes
 ---------------
@@ -273,6 +281,19 @@ library changes
       typo detection at scale).
     - Grafana: new `docs/metrics/grafana/dashboards/7-concurrency-metrics.json`
       (lock contention, task flow, list writes, unset-misses), auto-provisioned.
+
+  * `atan2(y, x)` stdlib function added to the math library
+    - full-quadrant arc-tangent (Go math.Atan2), accepts int/float64/float32
+      argument pairs (9 typed variants)
+    - float32 in → float32 out; single-float cases promote to float64
+    - registered in the math help/category listings and nvim syntax autocompletion
+    - test coverage: za_tests/test_math.za section 1
+
+  * trig math functions now accept float32 and preserve the type on return
+    - sin/cos/tan/asin/acos/atan/atanh/sinh/cosh/tanh/asinh/acosh/atanh
+      previously rejected float32 arguments ("int/float64 expected") despite
+      handling float32 internally; float32 in now returns float32
+    - test coverage: za_tests/test_math.za section 2 (24 checks total)
 
 
 1.2.3

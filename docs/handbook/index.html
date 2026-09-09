@@ -868,6 +868,10 @@ points:</p>
 <ul>
 <li>arithmetic binds tighter than comparisons</li>
 <li>comparisons bind tighter than boolean <code>and/or</code></li>
+<li>the ternary operator (<code>?:</code>) binds looser than
+<code>&amp;&amp;</code>/<code>||</code>/comparisons (C-like), so
+<code>a &amp;&amp; b ? x : y</code> evaluates as
+<code>(a &amp;&amp; b) ? x : y</code></li>
 <li>mapping/filtering (<code>-&gt;</code>, <code>?&gt;</code>) bind
 relatively loosely (near assignment), which is intentional for
 readability of pipelines</li>

@@ -22,7 +22,7 @@ func initDefaultPrecedence() {
     default_prectable[SYM_Caret] = 20  // L07
     default_prectable[SYM_LSHIFT] = 21 // L07
     default_prectable[SYM_RSHIFT] = 21 // L07
-    default_prectable[O_Query] = 23    // tern // L14
+    default_prectable[O_Query] = 13    // tern // L15
     default_prectable[SYM_Tilde] = 25
     default_prectable[SYM_ITilde] = 25
     default_prectable[SYM_FTilde] = 25

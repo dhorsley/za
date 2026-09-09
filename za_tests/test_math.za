@@ -1,0 +1,106 @@
+#!/usr/bin/env za
+
+# Trig / math library tests: atan2 wrapper, trig float32 argument & return-type support.
+
+@passed = 0
+@failed = 0
+
+def check(name, actual, expected)
+    if actual == expected
+        println "  PASS: " + name
+        @passed = passed + 1
+    else
+        println "  FAIL: " + name + " (got " + as_string(actual) + ", expected " + as_string(expected) + ")"
+        @failed = failed + 1
+    endif
+end
+
+def check_kind(name, val, expected_kind)
+    if kind(val) == expected_kind
+        println "  PASS: " + name + " kind=" + kind(val)
+        @passed = passed + 1
+    else
+        println "  FAIL: " + name + " kind=" + kind(val) + ", expected " + expected_kind
+        @failed = failed + 1
+    endif
+end
+
+println "=== Section 1: atan2 ==="
+
+# atan2(y, x) four quadrants
+check("atan2 0 deg",     atan2(0.0, 1.0),     0.0)
+check("atan2 90 deg",    atan2(1.0, 0.0),     pi() / 2)
+check("atan2 180 deg",   atan2(0.0, -1.0),    pi())
+check("atan2 -90 deg",   atan2(-1.0, 0.0),    -pi() / 2)
+check("atan2 45 deg",    atan2(1.0, 1.0),     pi() / 4)
+check("atan2 -135 deg",  atan2(-1.0, -1.0),   -3.0 * pi() / 4.0)
+
+# int arguments
+check("atan2 int", atan2(1, 1), pi() / 4)
+
+# float32 arguments preserve float32 type
+r = atan2(1.0h, 1.0h)
+check_kind("atan2 f32 kind", r, "float32")
+if abs(r - 0.7853982) < 0.00001
+    println "  PASS: atan2 f32 value"
+    @passed = passed + 1
+else
+    println "  FAIL: atan2 f32 value (got " + as_string(r) + ")"
+    @failed = failed + 1
+endif
+
+# mixed float32/float64 returns float64
+check_kind("atan2 mixed kind", atan2(1.0h, 1.0), "float")
+
+println "\n=== Section 2: float32 trig argument & return support ==="
+
+# sin/cos/tan with float32 preserve float32
+r1 = sin(1.0h)
+check_kind("sin f32 kind", r1, "float32")
+r2 = cos(1.0h)
+check_kind("cos f32 kind", r2, "float32")
+r3 = tan(1.0h)
+check_kind("tan f32 kind", r3, "float32")
+r4 = asin(0.5h)
+check_kind("asin f32 kind", r4, "float32")
+r5 = acos(0.5h)
+check_kind("acos f32 kind", r5, "float32")
+r6 = atan(1.0h)
+check_kind("atan f32 kind", r6, "float32")
+
+# hyperbolic with float32
+r7 = sinh(1.0h)
+check_kind("sinh f32 kind", r7, "float32")
+r8 = cosh(1.0h)
+check_kind("cosh f32 kind", r8, "float32")
+r9 = tanh(1.0h)
+check_kind("tanh f32 kind", r9, "float32")
+r10 = asinh(1.0h)
+check_kind("asinh f32 kind", r10, "float32")
+r11 = acosh(2.0h)
+check_kind("acosh f32 kind", r11, "float32")
+r12 = atanh(0.5h)
+check_kind("atanh f32 kind", r12, "float32")
+
+# value sanity: sin(pi()/2) == 1
+sv = sin(pi() / 2.0)
+if abs(sv - 1.0) < 0.0000000001
+    println "  PASS: sin(pi()/2) value"
+    @passed = passed + 1
+else
+    println "  FAIL: sin(pi()/2) value (got " + as_string(sv) + ")"
+    @failed = failed + 1
+endif
+
+# float64 stays float64
+check_kind("sin f64 kind", sin(1.0), "float")
+
+println "\n=== Results ==="
+println "Passed: " + as_string(passed)
+println "Failed: " + as_string(failed)
+if failed > 0
+    println "SOME TESTS FAILED"
+    exit 1
+else
+    println "ALL TESTS PASSED"
+endif

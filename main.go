@@ -567,7 +567,7 @@ func main() {
 	default_prectable[SYM_RSHIFT] = 21 // L07
 
 	// misc 1
-	default_prectable[O_Query] = 23 // tern // L14
+	default_prectable[O_Query] = 13 // tern // L15 — binds looser than &&/|| (C-like)
 	default_prectable[SYM_Not] = 24
 
 	// equality type tests

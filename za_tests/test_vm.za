@@ -316,6 +316,16 @@ assert (false ? nil : "x") == "x", "ternary false not nil"
 assert (true ? 1 : 0) + (false ? 0 : 1) == 2, "ternary in arithmetic"
 assert ((true ? 3 : 0) > 2), "ternary in comparison"
 
+# ternary binds looser than &&/|| (C-like precedence) — LHS of ? is the full bool expr
+assert (true && true ? 11 : 22) == 11, "ternary LHS && true branch"
+assert (true && false ? 11 : 22) == 22, "ternary LHS && false branch"
+assert (false && true ? 11 : 22) == 22, "ternary LHS && false short-circuit"
+assert (false || true ? 11 : 22) == 11, "ternary LHS || true branch"
+assert (false || false ? 11 : 22) == 22, "ternary LHS || false branch"
+assert (1 == 1 && 2 == 2 ? "both" : "no") == "both", "ternary LHS combined == &&"
+assert (1 == 1 || 1 == 2 ? "either" : "none") == "either", "ternary LHS combined == ||"
+assert (3 < 5 ? "lt" : "x") == "lt", "ternary LHS comparison still works"
+
 println "\n=== Section 21: Constant Folding && and || ==="
 
 # && with known false left (short-circuit: right never evaluated)

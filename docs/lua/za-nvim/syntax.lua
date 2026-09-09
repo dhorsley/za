@@ -143,6 +143,7 @@ local za_functions = {
     "asin",
     "acos",
     "atan",
+    "atan2",
     "sinh",
     "cosh",
     "tanh",

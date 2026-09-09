@@ -885,6 +885,8 @@ Za defines operator precedence in the interpreter. Notable points:
 
 - arithmetic binds tighter than comparisons
 - comparisons bind tighter than boolean `and/or`
+- the ternary operator (`?:`) binds looser than `&&`/`||`/comparisons (C-like),
+   so `a && b ? x : y` evaluates as `(a && b) ? x : y`
 - mapping/filtering (`->`, `?>`) bind relatively loosely (near assignment),
    which is intentional for readability of pipelines
 - you may occasionally need to avoid UFCS syntax due to this

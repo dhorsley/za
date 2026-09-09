@@ -18,7 +18,7 @@ func buildMathLib() {
     features["math"] = Feature{version: 1, category: "math"}
     categories["math"] = []string{
         "seed", "rand", "randf", "pow", "abs",
-        "sin", "cos", "tan", "asin", "acos", "atan",
+        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
         "floor", "ln", "logn", "log2", "log10", "round", "rad2deg", "deg2rad",
         "e", "pi", "phi", "ln2", "ln10", "ibase",
@@ -195,208 +195,221 @@ func buildMathLib() {
         return degrees, nil
     }
 
-    slhelp["asin"] = LibHelp{in: "number", out: "float", action: "Calculate arc sine of [#i1]number[#i0]."}
+    slhelp["asin"] = LibHelp{in: "number", out: "float", action: "Calculate arc sine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["asin"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("asin", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("asin", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Asin(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Asin(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Asin(float64(v))), err
         }
-        return math.Asin(r), err
+        return nil, err
     }
 
-    slhelp["acos"] = LibHelp{in: "number", out: "float", action: "Calculate arc cosine of [#i1]number[#i0]."}
+    slhelp["acos"] = LibHelp{in: "number", out: "float", action: "Calculate arc cosine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["acos"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("acos", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("acos", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Acos(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Acos(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Acos(float64(v))), err
         }
-        return math.Acos(r), err
+        return nil, err
     }
 
-    slhelp["atan"] = LibHelp{in: "number", out: "float", action: "Calculate arc tangent of [#i1]number[#i0]."}
+    slhelp["atan"] = LibHelp{in: "number", out: "float", action: "Calculate arc tangent of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["atan"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("atan", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("atan", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Atan(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Atan(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Atan(float64(v))), err
         }
-        return math.Atan(r), err
+        return nil, err
     }
 
-    slhelp["sinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic sine of [#i1]number[#i0]."}
+    slhelp["atan2"] = LibHelp{in: "number,number", out: "float", action: "Calculate arc tangent of [#i1]y[#i0]/[#i1]x[#i0], using the signs of both to determine the quadrant of the return value, in radians. float32 inputs return float32."}
+    stdlib["atan2"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("atan2", args, 9,
+            "2", "int", "int",
+            "2", "int", "float64",
+            "2", "int", "float32",
+            "2", "float64", "float64",
+            "2", "float64", "float32",
+            "2", "float32", "float32",
+            "2", "float32", "float64",
+            "2", "float64", "int",
+            "2", "float32", "int"); !ok {
+            return nil, err
+        }
+
+        y, _ := GetAsFloat(args[0])
+        x, _ := GetAsFloat(args[1])
+        _, yIsFloat32 := args[0].(float32)
+        _, xIsFloat32 := args[1].(float32)
+        if yIsFloat32 && xIsFloat32 {
+            return float32(math.Atan2(y, x)), err
+        }
+        return math.Atan2(y, x), err
+    }
+
+    slhelp["sinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic sine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["sinh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("sinh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("sinh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Sinh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Sinh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Sinh(float64(v))), err
         }
-        return math.Sinh(r), err
+        return nil, err
     }
 
-    slhelp["asinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc sine of [#i1]number[#i0]."}
+    slhelp["asinh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc sine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["asinh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("asinh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("asinh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Asinh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Asinh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Asinh(float64(v))), err
         }
-        return math.Asinh(r), err
+        return nil, err
     }
 
-    slhelp["cosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic cosine of [#i1]number[#i0]."}
+    slhelp["cosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic cosine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["cosh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("cosh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("cosh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Cosh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Cosh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Cosh(float64(v))), err
         }
-        return math.Cosh(r), err
+        return nil, err
     }
 
-    slhelp["acosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc cosine of [#i1]number[#i0]."}
+    slhelp["acosh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc cosine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["acosh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("acosh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("acosh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Acosh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Acosh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Acosh(float64(v))), err
         }
-        return math.Acosh(r), err
+        return nil, err
     }
 
-    slhelp["tanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic tangent of [#i1]number[#i0]."}
+    slhelp["tanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic tangent of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["tanh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("tanh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("tanh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Tanh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Tanh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Tanh(float64(v))), err
         }
-        return math.Tanh(r), err
+        return nil, err
     }
 
-    slhelp["atanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc tangent of [#i1]number[#i0]."}
+    slhelp["atanh"] = LibHelp{in: "number", out: "float", action: "Calculate hyberbolic arc tangent of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["atanh"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("atanh", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("atanh", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Atanh(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Atanh(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Atanh(float64(v))), err
         }
-        return math.Atanh(r), err
+        return nil, err
     }
 
-    slhelp["sin"] = LibHelp{in: "number", out: "float", action: "Calculate sine of [#i1]number[#i0]."}
+    slhelp["sin"] = LibHelp{in: "number", out: "float", action: "Calculate sine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["sin"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("sin", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("sin", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Sin(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Sin(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Sin(float64(v))), err
         }
-        return math.Sin(r), err
+        return nil, err
     }
 
-    slhelp["cos"] = LibHelp{in: "number", out: "float", action: "Calculate cosine of [#i1]number[#i0]."}
+    slhelp["cos"] = LibHelp{in: "number", out: "float", action: "Calculate cosine of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["cos"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("cos", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("cos", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Cos(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Cos(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Cos(float64(v))), err
         }
-        return math.Cos(r), err
+        return nil, err
     }
 
-    slhelp["tan"] = LibHelp{in: "number", out: "float", action: "Calculate tangent of [#i1]number[#i0]."}
+    slhelp["tan"] = LibHelp{in: "number", out: "float", action: "Calculate tangent of [#i1]number[#i0]. float32 inputs return float32."}
     stdlib["tan"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("tan", args, 2, "1", "int", "1", "float64"); !ok {
+        if ok, err := expect_args("tan", args, 3, "1", "int", "1", "float64", "1", "float32"); !ok {
             return nil, err
         }
-        var r float64
-        switch args[0].(type) {
+        switch v := args[0].(type) {
         case int:
-            r = float64(args[0].(int))
+            return float64(math.Tan(float64(v))), err
         case float64:
-            r = args[0].(float64)
+            return math.Tan(v), err
         case float32:
-            r = float64(args[0].(float32))
+            return float32(math.Tan(float64(v))), err
         }
-        return math.Tan(r), err
+        return nil, err
     }
 
     slhelp["pow"] = LibHelp{in: "number,n", out: "float", action: "Calculate [#i1]number[#i0] raised to the power [#i1]n[#i0]."}
