@@ -815,7 +815,7 @@ func buildListLib() {
         return cols, nil
     }
 
-    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]local_list_name[#i0] (in place: other slices sharing the backing see the change). Returns [#i1]bool_success[#i0] depending on success."}
+    slhelp["append_to"] = LibHelp{in: "list_name,item", out: "bool_success", action: "Appends [#i1]item[#i0] to [#i1]list_name[#i0] (a local list or a @-global in mident; in place: other slices sharing the backing see the change). Returns [#i1]bool_success[#i0] depending on success."}
     stdlib["append_to"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("append_to", args, 1, "2", "string", "any"); !ok {
             return nil, err
@@ -826,63 +826,88 @@ func buildListLib() {
         }
 
         name := args[0].(string)
-        bin := bind_int(evalfs, name)
 
-        if !(*ident)[bin].declared {
+        // Resolve the target variable the same way reference() resolves a
+        // mutable identifier: a declared local first, then a @-global in
+        // mident. Each table is length-guarded before checking `declared`, so
+        // an out-of-range binding (fresh/uninitialised slot) never surfaces as
+        // a nil value in the type switch below.
+        var targetIdent *[]Variable
+        var targetIdx uint64
+
+        bin := bind_int(evalfs, name)
+        if bin < uint64(len(*ident)) && (*ident)[bin].declared {
+            targetIdent = ident
+            targetIdx = bin
+        } else {
+            var gfs uint32
+            if interactive {
+                gfs = 1
+            } else {
+                gfs = 2
+            }
+            mbin := bind_int(gfs, name)
+            if mbin < uint64(len(mident)) && mident[mbin].declared {
+                targetIdent = &mident
+                targetIdx = mbin
+            }
+        }
+
+        if targetIdent == nil {
             return nil, errors.New(sf("list %s does not exist", name))
         }
 
         // check type is compatible
         vlock.Lock()
         set := false
-        switch (*ident)[bin].IValue.(type) {
+        switch (*targetIdent)[targetIdx].IValue.(type) {
         case []string:
-            (*ident)[bin].IValue = append((*ident)[bin].IValue.([]string), sf("%v", args[1]))
+            (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]string), sf("%v", args[1]))
             set = true
         case []int:
             switch args[1].(type) {
             case int:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]int), args[1].(int))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]int), args[1].(int))
                 set = true
             }
         case []uint:
             switch args[1].(type) {
             case uint:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]uint), args[1].(uint))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]uint), args[1].(uint))
                 set = true
             }
         case []float64:
             switch args[1].(type) {
             case float64:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]float64), args[1].(float64))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]float64), args[1].(float64))
                 set = true
             }
         case []bool:
             switch args[1].(type) {
             case bool:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]bool), args[1].(bool))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]bool), args[1].(bool))
                 set = true
             }
         case []*big.Int:
             switch args[1].(type) {
             case *big.Int:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]*big.Int), args[1].(*big.Int))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]*big.Int), args[1].(*big.Int))
                 set = true
             }
         case []*big.Float:
             switch args[1].(type) {
             case *big.Float:
-                (*ident)[bin].IValue = append((*ident)[bin].IValue.([]*big.Float), args[1].(*big.Float))
+                (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]*big.Float), args[1].(*big.Float))
                 set = true
             }
         case []any:
-            (*ident)[bin].IValue = append((*ident)[bin].IValue.([]any), args[1])
+            (*targetIdent)[targetIdx].IValue = append((*targetIdent)[targetIdx].IValue.([]any), args[1])
             set = true
         }
         vlock.Unlock()
 
         if !set {
-            return false, errors.New(sf("unsupported list type (%s:%T) in append_to()", args[0], (*ident)[bin].IValue))
+            return false, errors.New(sf("unsupported list type (%s:%T) in append_to()", args[0], (*targetIdent)[targetIdx].IValue))
         }
 
         return true, nil
