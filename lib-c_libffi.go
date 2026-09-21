@@ -656,6 +656,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"os"
 	"reflect"
 	"runtime"
 	"runtime/cgo"
@@ -2440,6 +2441,66 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
 	var startCall time.Time
 	if enableProfiling {
 		startCall = time.Now()
+	}
+
+	// ZA_FFI_CRASH_DEBUG: log the call before dispatch. libffi exposes no
+	// crash-time API, so this names the exact C function + args on stderr —
+	// the last lines before a cgo SIGSEGV identify the faulting call. Uses the
+	// same type codes the marshal switch sets in argTypesSlice.
+	if ffiCrashDebug {
+		fmt.Fprintf(os.Stderr, "[ZA_FFI_CRASH_DEBUG] ffi:%s %d args\n", funcName, len(args))
+		for di := 0; di < len(argTypesSlice) && di < len(argValuesSlice); di++ {
+			tt := argTypesSlice[di]
+			ap := argValuesSlice[di]
+			var desc string
+			if ap != nil {
+				switch tt {
+				case 1: // CInt
+					desc = fmt.Sprintf("int=%d", *(*C.int)(ap))
+				case 9: // CUInt
+					desc = fmt.Sprintf("uint=%d", *(*C.uint)(ap))
+				case 10: // CInt16
+					desc = fmt.Sprintf("int16=%d", *(*C.short)(ap))
+				case 11: // CUInt16
+					desc = fmt.Sprintf("uint16=%d", *(*C.ushort)(ap))
+				case 12: // CInt64
+					desc = fmt.Sprintf("int64=%d", *(*C.longlong)(ap))
+				case 13: // CUInt64
+					desc = fmt.Sprintf("uint64=%d", *(*C.ulonglong)(ap))
+				case 15: // CInt8
+					desc = fmt.Sprintf("int8=%d", *(*C.char)(ap))
+				case 16: // CUInt8
+					desc = fmt.Sprintf("uint8=%d", *(*C.uchar)(ap))
+				case 2: // CFloat
+					desc = fmt.Sprintf("float=%g", *(*C.float)(ap))
+				case 3: // CDouble
+					desc = fmt.Sprintf("double=%g", *(*C.double)(ap))
+				case 5: // CString
+					ps := *(*unsafe.Pointer)(ap)
+					if ps != nil {
+						desc = fmt.Sprintf("string=%q", C.GoString((*C.char)(ps)))
+					} else {
+						desc = "string=<nil>"
+					}
+				case 6: // CBool (marshaled as uchar)
+					desc = fmt.Sprintf("bool=%d", *(*C.uchar)(ap))
+				case 7: // CPointer
+					pv := *(*unsafe.Pointer)(ap)
+					desc = fmt.Sprintf("ptr=%p", pv)
+				default: // 8 CStruct, others
+					pv := *(*unsafe.Pointer)(ap)
+					desc = fmt.Sprintf("rawptr=%p", pv)
+				}
+			} else {
+				desc = "<nil>"
+			}
+			fmt.Fprintf(os.Stderr, "  arg[%d] type=%d %s\n", di, tt, desc)
+		}
+		if len(args) > len(argTypesSlice) {
+			fmt.Fprintf(os.Stderr, "  (%d extra args beyond marshaled slice)\n", len(args)-len(argTypesSlice))
+		}
+		fmt.Fprintf(os.Stderr, "[ZA_FFI_CRASH_DEBUG] -> call %s\n", funcName)
+		os.Stderr.Sync()
 	}
 
 	// Call libffi

@@ -28,6 +28,7 @@ var (
 	enableProfileEvents bool // set via -PP; deliberately independent of -P
 	profilerKey         = profilerKeyType{}
 	profileCallChains   sync.Map
+	ffiCrashDebug       bool // ZA_FFI_CRASH_DEBUG=1: log each libffi call before dispatch
 )
 
 type profileEvent struct {

@@ -835,6 +835,15 @@ func main() {
 		}
 	}
 
+	// ZA_FFI_CRASH_DEBUG=1 logs every libffi call (function name + arguments) to
+	// stderr immediately before dispatch. libffi provides no crash-time API, so
+	// this names the exact C function/args that fault when a cgo SIGSEGV kills
+	// the process. Default off; the check is a single boolean test so normal
+	// FFI calls are unaffected.
+	if v := os.Getenv("ZA_FFI_CRASH_DEBUG"); v != "" && !strings.EqualFold(v, "0") && !strings.EqualFold(v, "false") && !strings.EqualFold(v, "off") {
+		ffiCrashDebug = true
+	}
+
 	// phase profiling flag
 	if *a_enable_profiling {
 		enableProfiling = true
@@ -1004,6 +1013,7 @@ func main() {
     [#1]FFI[#-]
     ZA_WARN_AUTO                        string      [#6]Enable stderr output for FFI warnings if var not empty[#-]
     ZA_DEBUG_AUTO                       string      [#6]Enable stderr output for FFI debug info if var not empty[#-]
+    ZA_FFI_CRASH_DEBUG                  1/0         [#6]Log every libffi call (name + args) to stderr just before dispatch, so a cgo SIGSEGV identifies the faulting C function; default off[#-]
     ZA_NO_PROGRESS                      string      [#6]Disable FFI auto import progress bar if var not empty[#-]
     ZA_FFI_NOCACHE                      string      [#6]Bypass the FFI/AUTO cache (skip read and write; existing files left in place)[#-]
     ZA_FFI_CACHE_CLEAR                  string      [#6]Delete the FFI/AUTO cache file for the module, then force a fresh parse[#-]

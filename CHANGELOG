@@ -289,15 +289,27 @@ library changes
     - registered in the math help/category listings and nvim syntax autocompletion
     - test coverage: za_tests/test_math.za section 1
 
-  * trig math functions now accept float32 and preserve the type on return
+* trig math functions now accept float32 and preserve the type on return
     - sin/cos/tan/asin/acos/atan/atanh/sinh/cosh/tanh/asinh/acosh/atanh
       previously rejected float32 arguments ("int/float64 expected") despite
       handling float32 internally; float32 in now returns float32
     - test coverage: za_tests/test_math.za section 2 (24 checks total)
 
+ffi changes
+-----------
+
+  * New `ZA_FFI_CRASH_DEBUG=1` env var: logs every libffi call (function name +
+    each marshaled argument's type/value/pointer) to stderr immediately before
+    dispatch. libffi exposes no crash-time API, so a cgo SIGSEGV kills the
+    process without naming the target; the last `[ZA_FFI_CRASH_DEBUG]` lines
+    now identify the exact C function and arguments that faulted. Default off;
+    the runtime cost in normal (unset) mode is a single boolean test at the
+    one FFI dispatch site.
+    - documented in the `-E` env-var help text under the FFI section
+
 
 1.2.3
-=====
+ =====
 
 library changes
 ---------------
