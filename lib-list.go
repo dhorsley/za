@@ -949,6 +949,27 @@ func buildListLib() {
             case int:
                 l := make([]int, 0, 31)
                 return append(l, args[0].(int)), nil
+            case int8:
+                l := make([]int8, 0, 31)
+                return append(l, args[0].(int8)), nil
+            case int16:
+                l := make([]int16, 0, 31)
+                return append(l, args[0].(int16)), nil
+            case int32:
+                l := make([]int32, 0, 31)
+                return append(l, args[0].(int32)), nil
+            case int64:
+                l := make([]int64, 0, 31)
+                return append(l, args[0].(int64)), nil
+            case uint16:
+                l := make([]uint16, 0, 31)
+                return append(l, args[0].(uint16)), nil
+            case uint32:
+                l := make([]uint32, 0, 31)
+                return append(l, args[0].(uint32)), nil
+            case uint64:
+                l := make([]uint64, 0, 31)
+                return append(l, args[0].(uint64)), nil
             case *big.Int:
                 l := make([]*big.Int, 0, 31)
                 return append(l, args[0].(*big.Int)), nil
@@ -1008,8 +1029,22 @@ func buildListLib() {
                 args[0] = make([]float32, 0, 31)
             case int:
                 args[0] = make([]int, 0, 31)
+            case int8:
+                args[0] = make([]int8, 0, 31)
+            case int16:
+                args[0] = make([]int16, 0, 31)
+            case int32:
+                args[0] = make([]int32, 0, 31)
+            case int64:
+                args[0] = make([]int64, 0, 31)
             case uint:
                 args[0] = make([]uint, 0, 31)
+            case uint16:
+                args[0] = make([]uint16, 0, 31)
+            case uint32:
+                args[0] = make([]uint32, 0, 31)
+            case uint64:
+                args[0] = make([]uint64, 0, 31)
             case bool:
                 args[0] = make([]bool, 0, 31)
             case string:
@@ -1102,6 +1137,118 @@ func buildListLib() {
                 s = slices.Clone(s)
             }
             l := append(s, args[1].(int))
+            return l, nil
+        case []int8:
+            if "int8" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:int8,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]int8, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(int8))
+            return l, nil
+        case []int16:
+            if "int16" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:int16,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]int16, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(int16))
+            return l, nil
+        case []int32:
+            if "int32" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:int32,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]int32, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(int32))
+            return l, nil
+        case []int64:
+            if "int64" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:int64,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]int64, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(int64))
+            return l, nil
+        case []uint8:
+            if "uint8" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:uint8,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]uint8, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(uint8))
+            return l, nil
+        case []uint16:
+            if "uint16" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:uint16,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]uint16, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(uint16))
+            return l, nil
+        case []uint32:
+            if "uint32" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:uint32,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]uint32, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(uint32))
+            return l, nil
+        case []uint64:
+            if "uint64" != sf("%T", args[1]) {
+                return nil, errors.New(sf("(l:uint64,a:%T) data types must match in append()", args[1]))
+            }
+            ll := len(s)
+            if ll+1 > cap(s) {
+                l := make([]uint64, ll, int(float64(cap(s))*appGrowthFactor))
+                copy(l, s)
+                s = l
+            } else {
+                s = slices.Clone(s)
+            }
+            l := append(s, args[1].(uint64))
             return l, nil
         case []*big.Int:
             if "*big.Int" != sf("%T", args[1]) {
@@ -2859,6 +3006,102 @@ func buildListLib() {
             }
         }
         return int64_list, nil
+    }
+
+    // ── Narrow int/uint typed list converters ────────────────────────────
+    // These mirror list_int / list_int64 and produce the matching typed Go
+    // slice ([]int8, []uint16, ...) so the typed bulk-FFI helpers and foreach
+    // can consume them directly.
+
+    listConverters := []struct {
+        name   string
+        out    string
+        mk     func() any            // zero-value slice of the target type
+        append func(sl *reflect.Value, v any) error
+    }{
+        {"int8", "[]int8", func() any { return []int8{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsInt(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(int8(n)))
+            return nil
+        }},
+        {"uint8", "[]uint8", func() any { return []uint8{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsUint64(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an unsigned integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(uint8(n)))
+            return nil
+        }},
+        {"int16", "[]int16", func() any { return []int16{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsInt(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(int16(n)))
+            return nil
+        }},
+        {"uint16", "[]uint16", func() any { return []uint16{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsUint64(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an unsigned integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(uint16(n)))
+            return nil
+        }},
+        {"int32", "[]int32", func() any { return []int32{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsInt(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(int32(n)))
+            return nil
+        }},
+        {"uint32", "[]uint32", func() any { return []uint32{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsUint64(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an unsigned integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(uint32(n)))
+            return nil
+        }},
+        {"uint64", "[]uint64", func() any { return []uint64{} }, func(sl *reflect.Value, v any) error {
+            n, invalid := GetAsUint64(v)
+            if invalid {
+                return errors.New(sf("could not treat %v as an unsigned integer.", v))
+            }
+            *sl = reflect.Append(*sl, reflect.ValueOf(n))
+            return nil
+        }},
+    }
+
+    for _, lc := range listConverters {
+        ln := "list_" + lc.name
+        slhelp[ln] = LibHelp{in: "list", out: lc.out + "_list", action: "Returns [#i1]list[#i0] as a list of " + lc.name + " integers."}
+        stdlib[ln] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(ln, args, 1, "1", "any"); !ok {
+                return nil, err
+            }
+            rv := reflect.ValueOf(args[0])
+            if !rv.IsValid() {
+                return nil, errors.New(sf("%s: expected a list, got nil", ln))
+            }
+            if sf("%T", args[0]) == lc.out {
+                return args[0], nil
+            }
+            if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
+                return nil, errors.New(sf("%s: expected a list, got %T", ln, args[0]))
+            }
+            su := reflect.ValueOf(lc.mk())
+            for i := 0; i < rv.Len(); i++ {
+                if err := lc.append(&su, rv.Index(i).Interface()); err != nil {
+                    return nil, err
+                }
+            }
+            return su.Interface(), nil
+        }
     }
 
     slhelp["list_string"] = LibHelp{in: "list", out: "[]string_list", action: "Converts [#i1]list[#i0] to a list of strings."}

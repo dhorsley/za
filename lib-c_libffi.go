@@ -1762,6 +1762,90 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
 				mutArg.ArrayElemType = "int8"
 			}
 
+		case []int32:
+			argTypesSlice[i] = 7 // CPointer
+			arrayLen := len(v)
+
+			// Handle empty arrays
+			if arrayLen == 0 {
+				ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+				allocatedMem = append(allocatedMem, ptrPtr)
+				*(*unsafe.Pointer)(ptrPtr) = nil
+				argValuesSlice[i] = ptrPtr
+				continue
+			}
+
+			// Allocate C array
+			elementSize := unsafe.Sizeof(C.int(0))
+			totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+			arrayPtr := C.malloc(totalSize)
+			if arrayPtr == nil {
+				return nil, fmt.Errorf("argument %d: failed to allocate int32 array", i)
+			}
+			allocatedMem = append(allocatedMem, arrayPtr)
+			C.memset(arrayPtr, 0, totalSize)
+
+			// Copy elements
+			for idx, elem := range v {
+				elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+				*(*C.int)(elemPtr) = C.int(elem)
+			}
+
+			// Create pointer slot for libffi
+			ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+			allocatedMem = append(allocatedMem, ptrPtr)
+			*(*unsafe.Pointer)(ptrPtr) = arrayPtr
+			argValuesSlice[i] = ptrPtr
+
+			// Track for mutable arrays
+			if mutArg, ok := mutableArgIndices[i]; ok {
+				mutArg.CPtr = arrayPtr
+				mutArg.ArrayLen = arrayLen
+				mutArg.ArrayElemType = "int32"
+			}
+
+		case []uint32:
+			argTypesSlice[i] = 7 // CPointer
+			arrayLen := len(v)
+
+			// Handle empty arrays
+			if arrayLen == 0 {
+				ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+				allocatedMem = append(allocatedMem, ptrPtr)
+				*(*unsafe.Pointer)(ptrPtr) = nil
+				argValuesSlice[i] = ptrPtr
+				continue
+			}
+
+			// Allocate C array
+			elementSize := unsafe.Sizeof(C.uint(0))
+			totalSize := C.size_t(arrayLen) * C.size_t(elementSize)
+			arrayPtr := C.malloc(totalSize)
+			if arrayPtr == nil {
+				return nil, fmt.Errorf("argument %d: failed to allocate uint32 array", i)
+			}
+			allocatedMem = append(allocatedMem, arrayPtr)
+			C.memset(arrayPtr, 0, totalSize)
+
+			// Copy elements
+			for idx, elem := range v {
+				elemPtr := unsafe.Pointer(uintptr(arrayPtr) + uintptr(idx)*uintptr(elementSize))
+				*(*C.uint)(elemPtr) = C.uint(elem)
+			}
+
+			// Create pointer slot for libffi
+			ptrPtr := C.malloc(C.size_t(unsafe.Sizeof(unsafe.Pointer(nil))))
+			allocatedMem = append(allocatedMem, ptrPtr)
+			*(*unsafe.Pointer)(ptrPtr) = arrayPtr
+			argValuesSlice[i] = ptrPtr
+
+			// Track for mutable arrays
+			if mutArg, ok := mutableArgIndices[i]; ok {
+				mutArg.CPtr = arrayPtr
+				mutArg.ArrayLen = arrayLen
+				mutArg.ArrayElemType = "uint32"
+			}
+
 		case []string:
 			argTypesSlice[i] = 7 // CPointer
 			arrayLen := len(v)
@@ -2673,6 +2757,16 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
 					newKind = ksuint
 				case []uint64:
 					newKind = ksuint64
+				case []int8:
+					newKind = ksint8
+				case []int16:
+					newKind = ksint16
+				case []int32:
+					newKind = ksint32
+				case []uint16:
+					newKind = ksuint16
+				case []uint32:
+					newKind = ksuint32
 				case []float64:
 					newKind = ksfloat
 				case []float32:
@@ -2684,7 +2778,7 @@ func CallCFunctionViaLibFFI(ctx context.Context, funcPtr unsafe.Pointer, funcNam
 				case []*big.Float:
 					newKind = ksbigf
 				case []uint8:
-					newKind = kbyte
+					newKind = ksbyte
 				case map[string]any:
 					newKind = kmap
 				default:
@@ -3283,6 +3377,22 @@ func unmarshalArrayFromC(cPtr unsafe.Pointer, length int, elemType string) (any,
 		for i := 0; i < length; i++ {
 			elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.uint(0)))
 			result[i] = uint(*(*C.uint)(elemPtr))
+		}
+		return result, nil
+
+	case "int32":
+		result := make([]int32, length)
+		for i := 0; i < length; i++ {
+			elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.int(0)))
+			result[i] = int32(*(*C.int)(elemPtr))
+		}
+		return result, nil
+
+	case "uint32":
+		result := make([]uint32, length)
+		for i := 0; i < length; i++ {
+			elemPtr := unsafe.Pointer(uintptr(cPtr) + uintptr(i)*unsafe.Sizeof(C.uint(0)))
+			result[i] = uint32(*(*C.uint)(elemPtr))
 		}
 		return result, nil
 

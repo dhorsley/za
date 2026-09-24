@@ -21,7 +21,7 @@ if v0 == 1.0 && v1 == 2.0
     if diff < 0.0001 && diff > -0.0001
         println "  ✓ float32 allocation and offset access works"
     else
-        println "  ✗ float32 offset 36 failed (expected 3.14, got " + string(v9) + ")"
+        println "  ✗ float32 offset 36 failed (expected 3.14, got " + str(v9) + ")"
     endif
 else
     println "  ✗ float32 basic access failed"
@@ -45,7 +45,7 @@ if v0d == 1.0 && v1d == 2.0
     if diff < 0.0000001 && diff > -0.0000001
         println "  ✓ float64 allocation and offset access works"
     else
-        println "  ✗ float64 offset 72 failed (expected 3.1415926535, got " + string(v9d) + ")"
+        println "  ✗ float64 offset 72 failed (expected 3.1415926535, got " + str(v9d) + ")"
     endif
 else
     println "  ✗ float64 basic access failed"
@@ -67,7 +67,7 @@ vi9 = c_get_int32(bufi, 36)
 if vi0 == -2147483648 && vi1 == 0 && vi9 == 2147483647
     println "  ✓ int allocation and offset access works"
 else
-    println "  ✗ int access failed (" + string(vi0) + ", " + string(vi1) + ", " + string(vi9) + ")"
+    println "  ✗ int access failed (" + str(vi0) + ", " + str(vi1) + ", " + str(vi9) + ")"
 endif
 
 # Test Group 4: pointer allocation
@@ -85,7 +85,7 @@ vp9 = c_get_uint64(bufptr, 72)
 if vp0 == 0x12345678 && vp9 == 0xDEADBEEF
     println "  ✓ pointer allocation and slot access works"
 else
-    println "  ✗ pointer access failed (" + string(vp0) + ", " + string(vp9) + ")"
+    println "  ✗ pointer access failed (" + str(vp0) + ", " + str(vp9) + ")"
 endif
 
 # Test Group 5: Helper functions
@@ -167,7 +167,7 @@ r = c_array_get_float32(c_null(), 0)
 if r == 0.0
     println "  ✓ Null pointer operations handled safely"
 else
-    println "  ✗ Null pointer operation unexpected result: " + string(r)
+    println "  ✗ Null pointer operation unexpected result: " + str(r)
 endif
 
 # Test Group 8: Bulk get operations
@@ -181,7 +181,7 @@ all32 = c_array_bulk_get_float32(bg32, 0, 8)
 if all32.len == 8 && all32[0] == 1.0 && all32[3] == 4.0 && all32[7] == 8.0
     println "  ✓ c_array_bulk_get_float32 reads full array correctly"
 else
-    println "  ✗ c_array_bulk_get_float32 full read failed: " + string(all32)
+    println "  ✗ c_array_bulk_get_float32 full read failed: " + str(all32)
 endif
 
 # Read subset starting at offset 3, count 4
@@ -189,7 +189,7 @@ sub32 = c_array_bulk_get_float32(bg32, 3, 4)
 if sub32.len == 4 && sub32[0] == 4.0 && sub32[1] == 5.0 && sub32[2] == 6.0 && sub32[3] == 7.0
     println "  ✓ c_array_bulk_get_float32 reads subset correctly"
 else
-    println "  ✗ c_array_bulk_get_float32 subset read failed: " + string(sub32)
+    println "  ✗ c_array_bulk_get_float32 subset read failed: " + str(sub32)
 endif
 
 # Read zero count
@@ -250,4 +250,127 @@ c_free(adbuf)
 c_free(bg32)
 c_free(bg64)
 
-println "\n✅ All c_alloc_array tests completed!"
+# ── Typed int/uint width arrays (bulk + copy + alloc) ─────────────────────
+println "\nGroup 9: typed int/uint width arrays (int8/16/32/64, uint8/16/32/64)"
+println "================================================================"
+
+ai32 = c_alloc_int32s(4)
+c_array_set_int32(ai32, 0, 1000)
+c_array_set_int32(ai32, 1, -2000)
+c_array_set_int32(ai32, 2, 300000)
+c_array_set_int32(ai32, 3, -7)
+i32 = c_array_bulk_get_int32(ai32, 0, 4)
+if i32.len == 4 && i32[0] == 1000 && i32[1] == -2000 && i32[2] == 300000 && i32[3] == -7
+    println "  ✓ c_array_bulk_get_int32 round-trips 4 elements"
+else
+    println "  ✗ c_array_bulk_get_int32 failed: " + str(i32)
+endif
+if type(i32) == "[]int32"
+    println "  ✓ c_array_bulk_get_int32 returns []int32 (typed slice)"
+else
+    println "  ✗ c_array_bulk_get_int32 returned " + type(i32)
+endif
+s32 = 0
+foreach v in i32
+    s32 = s32 + as_int(v)
+endfor
+if s32 == 298993
+    println "  ✓ foreach over []int32 sums correctly: ", s32
+else
+    println "  ✗ foreach []int32 sum wrong: ", s32
+endif
+c_free(ai32)
+
+ai64 = c_alloc_int64s(3)
+c_array_bulk_set_int64(ai64, 0, list_int64([9000000000, -7000000000, 25]))
+i64 = c_array_bulk_get_int64(ai64, 0, 3)
+if i64.len == 3 && i64[0] == 9000000000 && i64[1] == -7000000000 && i64[2] == 25
+    println "  ✓ c_array_bulk_get_int64 preserves int64 values"
+else
+    println "  ✗ c_array_bulk_get_int64 failed: " + str(i64)
+endif
+c_free(ai64)
+
+au64 = c_alloc_uint64s(2)
+c_array_set_uint64(au64, 0, 9223372036854775807)
+au64b = c_array_bulk_get_uint64(au64, 0, 2)
+if type(au64b) == "[]uint64" && au64b[0] == 9223372036854775807
+    println "  ✓ c_array_bulk_get_uint64 returns []uint64 with correct type/value"
+else
+    println "  ✗ c_array_bulk_get_uint64 failed: " + str(au64b)
+endif
+c_free(au64)
+
+ab = c_alloc_bytes(4)
+c_array_copy_to_c_uint8(list_uint8([10, 20, 30, 40]), ab)
+bab = c_array_copy_from_c_uint8(ab, 4)
+if bab.len == 4 && bab[0] == 10 && bab[3] == 40
+    println "  ✓ c_array_copy_to/from_c_uint8 (bytes) round-trips"
+else
+    println "  ✗ uint8 copy round-trip failed: " + str(bab)
+endif
+c_free(ab)
+
+ai8 = c_alloc_int8s(3)
+c_array_copy_to_c_int8(list_int8([-5, 0, 5]), ai8)
+i8b = c_array_copy_from_c_int8(ai8, 3)
+if i8b.len == 3 && i8b[0] == -5 && i8b[2] == 5
+    println "  ✓ c_array_copy_to/from_c_int8 round-trips signed bytes"
+else
+    println "  ✗ int8 copy round-trip failed: " + str(i8b)
+endif
+c_free(ai8)
+
+au16 = c_alloc_uint16s(2)
+c_array_bulk_set_uint16(au16, 0, list_uint16([65535, 1]))
+u16b = c_array_bulk_get_uint16(au16, 0, 2)
+if u16b.len == 2 && u16b[0] == 65535 && u16b[1] == 1
+    println "  ✓ c_array_bulk_get_uint16 round-trips (65535 preserved)"
+else
+    println "  ✗ uint16 round-trip failed: " + str(u16b)
+endif
+c_free(au16)
+
+au32 = c_alloc_uint32s(2)
+c_array_bulk_set_uint32(au32, 0, list_uint32([4000000000, 7]))
+u32b = c_array_bulk_get_uint32(au32, 0, 2)
+if u32b.len == 2 && u32b[0] == 4000000000 && u32b[1] == 7
+    println "  ✓ c_array_bulk_get_uint32 round-trips (4000000000 preserved)"
+else
+    println "  ✗ uint32 round-trip failed: " + str(u32b)
+endif
+c_free(au32)
+
+# len()/foreach untyped var support
+var typed_v []int16
+typed_v = list_int16([3, -3, 9])
+if typed_v.len == 3 && typed_v[0] == 3
+    println "  ✓ var []int16 declaration + len() works"
+else
+    println "  ✗ var []int16 failed: " + str(typed_v)
+endif
+sum16 = 0
+foreach t in typed_v
+    sum16 = sum16 + as_int(t)
+endfor
+if sum16 == 9
+    println "  ✓ foreach over []int16 var sums correctly"
+else
+    println "  ✗ foreach []int16 sum wrong: " + str(sum16)
+endif
+
+# as_* converters produce typed widths for typed params/vars
+c16 = as_int16(100)
+t16 = 0
+if type(c16) == "int16"
+    println "  ✓ as_int16() produces int16"
+    t16 = 1
+endif
+c64 = as_uint64(88)
+if type(c64) == "uint64" && c64 == 88
+    println "  ✓ as_uint64() produces uint64"
+else
+    println "  ✗ as_uint64() failed: " + type(c64)
+endif
+
+println "\n✅ All c_alloc_array + typed-width tests completed!"

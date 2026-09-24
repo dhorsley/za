@@ -662,6 +662,8 @@ func GetAsFloat(unk any) (float64, bool) {
 	switch i := unk.(type) {
 	case int:
 		return float64(i), false
+	case int8:
+		return float64(i), false
 	case int16:
 		return float64(i), false
 	case int32:
@@ -671,6 +673,8 @@ func GetAsFloat(unk any) (float64, bool) {
 	case uint:
 		return float64(i), false
 	case uint8:
+		return float64(i), false
+	case uint16:
 		return float64(i), false
 	case uint32:
 		return float64(i), false
@@ -697,6 +701,8 @@ func GetAsFloat32(unk any) (float32, bool) {
 	switch i := unk.(type) {
 	case int:
 		return float32(i), false
+	case int8:
+		return float32(i), false
 	case int16:
 		return float32(i), false
 	case int32:
@@ -706,6 +712,8 @@ func GetAsFloat32(unk any) (float32, bool) {
 	case uint:
 		return float32(i), false
 	case uint8:
+		return float32(i), false
+	case uint16:
 		return float32(i), false
 	case uint32:
 		return float32(i), false
@@ -737,12 +745,16 @@ func GetAsInt64(expr any) (int64, bool) {
 		return int64(i), false
 	case int:
 		return int64(i), false
+	case int8:
+		return int64(i), false
 	case int16:
 		return int64(i), false
 	case int32:
 		return int64(i), false
 	case int64:
 		return i, false
+	case uint16:
+		return int64(i), false
 	case uint32:
 		return int64(i), false
 	case uint64:
@@ -771,11 +783,15 @@ func GetAsInt(expr any) (int, bool) {
 		return int(1), false
 	case uint:
 		return int(i), false
+	case int8:
+		return int(i), false
 	case int16:
 		return int(i), false
 	case int32:
 		return int(i), false
 	case int64:
+		return int(i), false
+	case uint16:
 		return int(i), false
 	case uint32:
 		return int(i), false
@@ -802,7 +818,15 @@ func GetAsUint(expr any) (uint, bool) {
 		return uint(i), false
 	case int:
 		return uint(i), false
+	case int8:
+		return uint(i), false
+	case int16:
+		return uint(i), false
+	case int32:
+		return uint(i), false
 	case int64:
+		return uint(i), false
+	case uint16:
 		return uint(i), false
 	case uint32:
 		return uint(i), false
@@ -828,7 +852,15 @@ func GetAsUint64(expr any) (uint64, bool) {
 		return uint64(i), false
 	case int:
 		return uint64(i), false
+	case int8:
+		return uint64(i), false
+	case int16:
+		return uint64(i), false
+	case int32:
+		return uint64(i), false
 	case int64:
+		return uint64(i), false
+	case uint16:
 		return uint64(i), false
 	case uint32:
 		return uint64(i), false
@@ -2593,18 +2625,30 @@ tco_reentry:
 							t.IKind = kbool
 						case "int":
 							t.IKind = kint
+						case "int8":
+							t.IKind = kint8
+						case "int16":
+							t.IKind = kint16
+						case "int32":
+							t.IKind = kint32
+						case "int64":
+							t.IKind = kint64
 						case "uint":
 							t.IKind = kuint
+						case "uint8", "byte":
+							t.IKind = kbyte
+						case "uint16":
+							t.IKind = kuint16
+						case "uint32":
+							t.IKind = kuint32
+						case "uint64", "uxlong":
+							t.IKind = kuint64
 						case "float":
 							t.IKind = kfloat
 						case "float32":
 							t.IKind = kfloat32
 						case "string":
 							t.IKind = kstring
-						case "uint8", "byte":
-							t.IKind = kbyte
-						case "uint64", "uxlong":
-							t.IKind = kuint64
 						case "mixed":
 							t.IKind = kany
 						case "any":
@@ -2626,6 +2670,21 @@ tco_reentry:
 						case "[]uint64", "[]uxlong":
 							t.IKind = ksuint64
 							t.IValue = make([]uint64, size, size)
+						case "[]int8":
+							t.IKind = ksint8
+							t.IValue = make([]int8, size, size)
+						case "[]int16":
+							t.IKind = ksint16
+							t.IValue = make([]int16, size, size)
+						case "[]int32":
+							t.IKind = ksint32
+							t.IValue = make([]int32, size, size)
+						case "[]uint16":
+							t.IKind = ksuint16
+							t.IValue = make([]uint16, size, size)
+						case "[]uint32":
+							t.IKind = ksuint32
+							t.IValue = make([]uint32, size, size)
 						case "[]float":
 							t.IKind = ksfloat
 							t.IValue = make([]float64, size, size)
@@ -3083,12 +3142,28 @@ tco_reentry:
 					l = len(lv)
 				case []string:
 					l = len(lv)
-				case []uint:
-					l = len(lv)
-				case []int:
-					l = len(lv)
-				case []float64:
-					l = len(lv)
+case []uint:
+				l = len(lv)
+			case []uint8:
+				l = len(lv)
+			case []uint16:
+				l = len(lv)
+			case []uint32:
+				l = len(lv)
+			case []uint64:
+				l = len(lv)
+			case []int:
+				l = len(lv)
+			case []int8:
+				l = len(lv)
+			case []int16:
+				l = len(lv)
+			case []int32:
+				l = len(lv)
+			case []int64:
+				l = len(lv)
+			case []float64:
+				l = len(lv)
 				case []float32:
 					l = len(lv)
 				case []bool:
@@ -3374,6 +3449,62 @@ tco_reentry:
 						vset(nil, ifs, ident, "key_"+fid, 0)
 						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]float32)[0])
 						condEndPos = len(we.result.([]float32)) - 1
+					}
+
+				case []uint8:
+					if len(we.result.([]uint8)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]uint8)[0])
+						condEndPos = len(we.result.([]uint8)) - 1
+					}
+
+				case []uint16:
+					if len(we.result.([]uint16)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]uint16)[0])
+						condEndPos = len(we.result.([]uint16)) - 1
+					}
+
+				case []uint32:
+					if len(we.result.([]uint32)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]uint32)[0])
+						condEndPos = len(we.result.([]uint32)) - 1
+					}
+
+				case []uint64:
+					if len(we.result.([]uint64)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]uint64)[0])
+						condEndPos = len(we.result.([]uint64)) - 1
+					}
+
+				case []int8:
+					if len(we.result.([]int8)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]int8)[0])
+						condEndPos = len(we.result.([]int8)) - 1
+					}
+
+				case []int16:
+					if len(we.result.([]int16)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]int16)[0])
+						condEndPos = len(we.result.([]int16)) - 1
+					}
+
+				case []int32:
+					if len(we.result.([]int32)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]int32)[0])
+						condEndPos = len(we.result.([]int32)) - 1
+					}
+
+				case []int64:
+					if len(we.result.([]int64)) > 0 {
+						vset(nil, ifs, ident, "key_"+fid, 0)
+						vset(&inbound.Tokens[1], ifs, ident, fid, we.result.([]int64)[0])
+						condEndPos = len(we.result.([]int64)) - 1
 					}
 
 				case []uint:
@@ -3993,10 +4124,31 @@ tco_reentry:
 							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int)[(*thisLoop).counter])
 						case []uint:
 							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint)[(*thisLoop).counter])
+						case []uint8:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
 							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint8)[(*thisLoop).counter])
+						case []uint16:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint16)[(*thisLoop).counter])
+						case []uint32:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint32)[(*thisLoop).counter])
 						case []uint64:
 							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
 							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]uint64)[(*thisLoop).counter])
+						case []int8:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int8)[(*thisLoop).counter])
+						case []int16:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int16)[(*thisLoop).counter])
+						case []int32:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int32)[(*thisLoop).counter])
+						case []int64:
+							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
+							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]int64)[(*thisLoop).counter])
 						case []string:
 							vset(nil, ifs, ident, (*thisLoop).keyVar, (*thisLoop).counter)
 							vset(nil, ifs, ident, (*thisLoop).loopVar, (*thisLoop).iterOverArray.([]string)[(*thisLoop).counter])
@@ -9848,18 +10000,39 @@ func setupTypedParameter(fs uint32, ident *[]Variable, name string, typeStr stri
 		case "[]int":
 			t.IKind = ksint
 			t.IValue = []int{}
+		case "[]int8":
+			t.IKind = ksint8
+			t.IValue = []int8{}
+		case "[]int16":
+			t.IKind = ksint16
+			t.IValue = []int16{}
+		case "[]int32":
+			t.IKind = ksint32
+			t.IValue = []int32{}
 		case "[]int64":
 			t.IKind = ksint64
 			t.IValue = []int64{}
 		case "[]uint":
 			t.IKind = ksuint
 			t.IValue = []uint{}
+		case "[]uint8", "[]byte":
+			t.IKind = ksbyte
+			t.IValue = []uint8{}
+		case "[]uint16":
+			t.IKind = ksuint16
+			t.IValue = []uint16{}
+		case "[]uint32":
+			t.IKind = ksuint32
+			t.IValue = []uint32{}
 		case "[]uint64":
 			t.IKind = ksuint64
 			t.IValue = []uint64{}
 		case "[]float":
 			t.IKind = ksfloat
 			t.IValue = []float64{}
+		case "[]float32":
+			t.IKind = ksfloat32
+			t.IValue = []float32{}
 		case "[]string":
 			t.IKind = ksstring
 			t.IValue = []string{}
@@ -9894,12 +10067,27 @@ func setupTypedParameter(fs uint32, ident *[]Variable, name string, typeStr stri
 	case "int":
 		t.IKind = kint
 		t.IValue = 0
+	case "int8":
+		t.IKind = kint8
+		t.IValue = int8(0)
+	case "int16":
+		t.IKind = kint16
+		t.IValue = int16(0)
+	case "int32":
+		t.IKind = kint32
+		t.IValue = int32(0)
 	case "int64":
 		t.IKind = kint64
 		t.IValue = int64(0)
 	case "uint":
 		t.IKind = kuint
 		t.IValue = uint(0)
+	case "uint16":
+		t.IKind = kuint16
+		t.IValue = uint16(0)
+	case "uint32":
+		t.IKind = kuint32
+		t.IValue = uint32(0)
 	case "uint64", "uxlong":
 		t.IKind = kuint64
 		t.IValue = uint64(0)
@@ -9993,21 +10181,51 @@ func isCompatibleType(value any, expectedType string, namespace string) bool {
 		return false
 	}
 
-	// Check for slice types
-	if str.HasPrefix(expectedType, "[]") {
+	// Check for slice types. Element-type aware: []any (the universal list
+// literal type) is compatible with any typed list; a typed slice must match
+// its declared element type. No values are coerced.
+if str.HasPrefix(expectedType, "[]") {
 		if value == nil {
 			return true // nil is valid for slice types
 		}
-		vt := reflect.TypeOf(value)
-		if vt == nil {
-			return true
+		switch value.(type) {
+		case []any:
+			return true // general list literal is compatible with any []T
+		case []int:
+			return expectedType == "[]int"
+		case []int8:
+			return expectedType == "[]int8"
+		case []int16:
+			return expectedType == "[]int16"
+		case []int32:
+			return expectedType == "[]int32"
+		case []int64:
+			return expectedType == "[]int64"
+		case []uint:
+			return expectedType == "[]uint"
+		case []uint8:
+			return expectedType == "[]uint8" || expectedType == "[]byte"
+		case []uint16:
+			return expectedType == "[]uint16"
+		case []uint32:
+			return expectedType == "[]uint32"
+		case []uint64:
+			return expectedType == "[]uint64"
+		case []float64:
+			return expectedType == "[]float" || expectedType == "[]float64"
+		case []float32:
+			return expectedType == "[]float32"
+		case []string:
+			return expectedType == "[]string"
+		case []bool:
+			return expectedType == "[]bool"
+		default:
+			vt := reflect.TypeOf(value)
+			if vt == nil {
+				return true
+			}
+			return vt.Kind() == reflect.Slice || vt.Kind() == reflect.Array
 		}
-		if vt.Kind() != reflect.Slice && vt.Kind() != reflect.Array {
-			return false
-		}
-		// For now, accept any slice/array for slice types
-		// More specific type checking could be added later
-		return true
 	}
 
 	// Check for map type
@@ -10030,11 +10248,26 @@ func isCompatibleType(value any, expectedType string, namespace string) bool {
 	case "int":
 		_, ok := value.(int)
 		return ok
+	case "int8":
+		_, ok := value.(int8)
+		return ok
+	case "int16":
+		_, ok := value.(int16)
+		return ok
+	case "int32":
+		_, ok := value.(int32)
+		return ok
 	case "int64":
 		_, ok := value.(int64)
 		return ok
 	case "uint":
 		_, ok := value.(uint)
+		return ok
+	case "uint16":
+		_, ok := value.(uint16)
+		return ok
+	case "uint32":
+		_, ok := value.(uint32)
 		return ok
 	case "uint64":
 		_, ok := value.(uint64)

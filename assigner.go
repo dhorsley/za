@@ -76,9 +76,13 @@ func init() {
     var tb bool
     var tu uint
     var tu8 uint8
+    var tu16 uint16
     var tu32 uint32
     var tu64 uint64
     var ti int
+    var ti8 int8
+    var ti16 int16
+    var ti32 int32
     var ti64 int64
     var tf32 float32
     var tf64 float64
@@ -90,9 +94,13 @@ func init() {
     var stb []bool
     var stu []uint
     var stu8 []uint8
+    var stu16 []uint16
     var stu32 []uint32
     var stu64 []uint64
     var sti []int
+    var sti8 []int8
+    var sti16 []int16
+    var sti32 []int32
     var sti64 []int64
     var stmatrix [][]int
     var stf32 []float32
@@ -108,12 +116,16 @@ func init() {
     Typemap["bool"] = reflect.TypeOf(tb)
     Typemap["uint"] = reflect.TypeOf(tu)
     Typemap["uint8"] = reflect.TypeOf(tu8)
+    Typemap["uint16"] = reflect.TypeOf(tu16)
     Typemap["uint32"] = reflect.TypeOf(tu32)
     Typemap["uint64"] = reflect.TypeOf(tu64)
     Typemap["ulong"] = reflect.TypeOf(tu32)
     Typemap["uxlong"] = reflect.TypeOf(tu64)
     Typemap["byte"] = reflect.TypeOf(tu8)
     Typemap["int"] = reflect.TypeOf(ti)
+    Typemap["int8"] = reflect.TypeOf(ti8)
+    Typemap["int16"] = reflect.TypeOf(ti16)
+    Typemap["int32"] = reflect.TypeOf(ti32)
     Typemap["int64"] = reflect.TypeOf(ti64)
     Typemap["float32"] = reflect.TypeOf(tf32)
     Typemap["float64"] = reflect.TypeOf(tf64)
@@ -127,9 +139,13 @@ func init() {
     Typemap["[]uint"] = reflect.TypeOf(stu)
     Typemap["[]uint8"] = reflect.TypeOf(stu8)
     Typemap["[]byte"] = reflect.TypeOf(stu8)
-    Typemap["[]int"] = reflect.TypeOf(sti)
+    Typemap["[]uint16"] = reflect.TypeOf(stu16)
     Typemap["[]uint32"] = reflect.TypeOf(stu32)
     Typemap["[]uint64"] = reflect.TypeOf(stu64)
+    Typemap["[]int"] = reflect.TypeOf(sti)
+    Typemap["[]int8"] = reflect.TypeOf(sti8)
+    Typemap["[]int16"] = reflect.TypeOf(sti16)
+    Typemap["[]int32"] = reflect.TypeOf(sti32)
     Typemap["[]int64"] = reflect.TypeOf(sti64)
     Typemap["[][]int"] = reflect.TypeOf(stmatrix)
     Typemap["[]float32"] = reflect.TypeOf(stf32)

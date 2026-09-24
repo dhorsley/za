@@ -664,16 +664,26 @@ func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
 		switch target.IKind {
 		case kint:
 			_, ok = val.(int)
+		case kint8:
+			_, ok = val.(int8)
+		case kint16:
+			_, ok = val.(int16)
+		case kint32:
+			_, ok = val.(int32)
+		case kint64:
+			_, ok = val.(int64)
 		case kfloat:
 			_, ok = val.(float64)
 		case kbool:
 			_, ok = val.(bool)
 		case kuint:
 			_, ok = val.(uint)
+		case kuint16:
+			_, ok = val.(uint16)
+		case kuint32:
+			_, ok = val.(uint32)
 		case kuint64:
 			_, ok = val.(uint64)
-		case kint64:
-			_, ok = val.(int64)
 		case kbyte:
 			_, ok = val.(uint8)
 		case kstring:
@@ -699,12 +709,22 @@ func (vm *ExprVM) storeLocal(bin uint64, name string, val any) {
 			}
 		case ksint:
 			_, ok = val.([]int)
+		case ksint8:
+			_, ok = val.([]int8)
+		case ksint16:
+			_, ok = val.([]int16)
+		case ksint32:
+			_, ok = val.([]int32)
 		case ksint64:
 			_, ok = val.([]int64)
 		case ksuint:
 			_, ok = val.([]uint)
 		case ksuint64:
 			_, ok = val.([]uint64)
+		case ksuint16:
+			_, ok = val.([]uint16)
+		case ksuint32:
+			_, ok = val.([]uint32)
 		case ksfloat:
 			_, ok = val.([]float64)
 		case ksstring:

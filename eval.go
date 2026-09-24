@@ -2626,13 +2626,48 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kint8:
+            _, ok = value.(int8)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case kint16:
+            _, ok = value.(int16)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case kint32:
+            _, ok = value.(int32)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case kint64:
+            _, ok = value.(int64)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
         case kuint:
             _, ok = value.(uint)
             if ok {
                 (*ident)[bin].IValue = value
             }
+        case kuint16:
+            _, ok = value.(uint16)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case kuint32:
+            _, ok = value.(uint32)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
         case kuint64:
             _, ok = value.(uint64)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case kbyte:
+            _, ok = value.(uint8)
             if ok {
                 (*ident)[bin].IValue = value
             }
@@ -2665,11 +2700,6 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             if ok {
                 (*ident)[bin].IValue = value
             }
-        case kbyte:
-            _, ok = value.(uint8)
-            if ok {
-                (*ident)[bin].IValue = value
-            }
         case ksbool:
             _, ok = value.([]bool)
             if ok {
@@ -2677,6 +2707,41 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
             }
         case ksint:
             _, ok = value.([]int)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksint8:
+            _, ok = value.([]int8)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksint16:
+            _, ok = value.([]int16)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksint32:
+            _, ok = value.([]int32)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksint64:
+            _, ok = value.([]int64)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksuint16:
+            _, ok = value.([]uint16)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksuint32:
+            _, ok = value.([]uint32)
+            if ok {
+                (*ident)[bin].IValue = value
+            }
+        case ksuint64:
+            _, ok = value.([]uint64)
             if ok {
                 (*ident)[bin].IValue = value
             }
@@ -3302,7 +3367,7 @@ func truthy(expr any) bool {
 
 func isNumber(expr any) bool {
     switch reflect.TypeOf(expr).Kind() {
-    case reflect.Float64, reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint8:
+    case reflect.Float64, reflect.Float32, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
         return true
     }
     return false

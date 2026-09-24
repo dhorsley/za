@@ -17,8 +17,30 @@ import (
 )
 
 func ev_slice_get_type(arr interface{}) reflect.Type {
-    return reflect.TypeOf(arr).Elem()
-}
+     return reflect.TypeOf(arr).Elem()
+ }
+
+// normalizeNarrowInt promotes the narrow integer width types (int8/int16/
+// int32/uint8/uint16/uint32) to za-native int before arithmetic, matching the
+// c_get_int16 -> int convention. int64 and uint64 are left untouched so their
+// 64-bit values are preserved exactly.
+func normalizeNarrowInt(v any) any {
+     switch i := v.(type) {
+     case int8:
+         return int(i)
+     case int16:
+         return int(i)
+     case int32:
+         return int(i)
+     case uint8:
+         return int(i)
+     case uint16:
+         return int(i)
+     case uint32:
+         return int(i)
+     }
+     return v
+ }
 
 func typeOf(val any) string {
 
@@ -267,6 +289,9 @@ func ev_in(val1 any, val2 any) bool {
 }
 
 func ev_add(val1 any, val2 any) (r any) {
+
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
 
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
@@ -527,6 +552,9 @@ func ev_add(val1 any, val2 any) (r any) {
 
 func ev_sub(val1 any, val2 any) any {
 
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
+
     // Handle map difference
     if isMap(val1) && isMap(val2) {
         return differenceMaps(val1.(map[string]any), val2.(map[string]any))
@@ -731,6 +759,9 @@ func ev_sub(val1 any, val2 any) any {
 }
 
 func ev_mul(val1 any, val2 any) any {
+
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
 
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
@@ -940,6 +971,9 @@ func ev_mul(val1 any, val2 any) any {
 }
 
 func ev_div(val1 any, val2 any) any {
+
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
 
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
@@ -1557,6 +1591,9 @@ func unaryFileInput(i any) string {
 
 func deepEqual(val1 any, val2 any) bool {
 
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
+
     // special case for nil
     if val1 == nil && val2 == nil {
         return true
@@ -2031,6 +2068,9 @@ func compare(val1 any, val2 any, operation int64) any {
     if isSlice(val1) && isSlice(val2) {
         return compareArrays(val1, val2, operation)
     }
+
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
 
     int1, int1OK := val1.(int)
     int2, int2OK := val2.(int)

@@ -52,6 +52,12 @@ func ulen(args any) (int, error) {
         return len(args), nil
     case []int:
         return len(args), nil
+    case []int8:
+        return len(args), nil
+    case []int16:
+        return len(args), nil
+    case []int32:
+        return len(args), nil
     case []int64:
         return len(args), nil
     case []*big.Int:
@@ -59,6 +65,12 @@ func ulen(args any) (int, error) {
     case []*big.Float:
         return len(args), nil
     case []uint8:
+        return len(args), nil
+    case []uint16:
+        return len(args), nil
+    case []uint32:
+        return len(args), nil
+    case []uint64:
         return len(args), nil
     case []float64:
         return len(args), nil

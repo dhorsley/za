@@ -178,6 +178,16 @@ const (
     kdynamic // for dynamically constructed multi-dimensional types
     kpointer // for pointer types
     koutparam // for output parameters with unknown type (determined by FFI call)
+    ksint8
+    ksint16
+    ksint32
+    ksuint16
+    ksuint32
+    kint8
+    kint16
+    kint32
+    kuint16
+    kuint32
 )
 
 type TokenType = int64

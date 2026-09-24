@@ -2,6 +2,51 @@
 CHANGE LOG
 =============================================================================================
 
+(not yet released — next minor)
+
+language changes
+----------------
+
+  * First-class narrow integer widths: `int8`, `int16`, `int32`, `uint8`,
+    `uint16`, `uint32` (existing `int`/`int64`/`uint64`/`float32` untouched).
+    - `var`/`global` declarations with these scalar types and their typed
+        slices (`var x []int32`, `global g []uint16`, ...).
+    - `foreach`/`for` over `[]int8/16/32/64`, `[]uint8/16/32/64` typed slices.
+    - arithmetic (`+ - * /`), comparisons (`== != < > <= >=`), `len()`,
+        `append()`, `type()`/`kind()`, `is_number` all handle the widths.
+    - new list converters: `list_int8/16/32`, `list_uint8/16/32/64`
+    - new scalar converters: `as_int8/16/32`, `as_uint8/16/32/64`
+    - typed function params/returns accept these types (`def f(x:int16)`,
+        `def g(a:[]int32) -> []uint64`, defaults incl.); exact-type matching,
+        no silent coercion. NB: `uint64` values are never coerced to
+        `int`/`int64`/`bigi`.
+
+ffi changes
+-----------
+
+  * Typed int/uint array FFI helpers (all of int8/16/32/64, uint8/16/32/64),
+    mirroring the existing float32/float64 family. All bulk/copy getters return
+    the matching typed Go slice (never `[]any`).
+    - indexed accessors: `c_array_get_int8` / `c_array_set_int8`, ... for every
+        width
+    - bulk: `c_array_bulk_get_int8` / `c_array_bulk_set_int8`, ... for every
+        width
+    - whole-array copy: `c_array_copy_to_c_int8` / `c_array_copy_from_c_int8`,
+        ... for every width
+    - convenience allocators: `c_alloc_int8s/16s/32s/64s`,
+        `c_alloc_uint8s/16s/32s/64s`, `c_alloc_bytes` (alias for uint8)
+    - FFI C-marshalling added for `[]int32`/`[]uint32` args and out-param
+        readback
+    - test coverage: `za_tests/ffi/test_c_alloc_array.za` Group 9 (all widths:
+        round-trip, typed-slice returns, foreach, typed var, converters)
+
+tooling changes
+---------------
+
+  * Vim syntax highlighter synced with the runtime function list (all new
+    converter/list/FFI functions added to the appropriate `*_functions`
+    groups).
+
 1.3.0
 =====
 

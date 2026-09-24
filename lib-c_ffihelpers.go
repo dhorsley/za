@@ -95,6 +95,23 @@ func CSetByte(p *CPointerValue, offset int, value byte) {
 	}
 }
 
+// CSetInt8 writes an int8 at an offset in a buffer
+func CSetInt8(p *CPointerValue, offset int, value int8) {
+	if p != nil && p.Ptr != nil {
+		int8Ptr := (*int8)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+		*int8Ptr = value
+	}
+}
+
+// CGetInt8 reads an int8 at an offset in a buffer
+func CGetInt8(p *CPointerValue, offset int) int8 {
+	if p != nil && p.Ptr != nil {
+		int8Ptr := (*int8)(unsafe.Pointer(uintptr(p.Ptr) + uintptr(offset)))
+		return *int8Ptr
+	}
+	return 0
+}
+
 // CSetUint16 writes a uint16 at an offset in a buffer
 func CSetUint16(p *CPointerValue, offset int, value uint16) {
 	if p != nil && p.Ptr != nil {

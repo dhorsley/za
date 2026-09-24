@@ -1268,7 +1268,9 @@ func buildConversionLib() {
 
     features["conversion"] = Feature{version: 1, category: "os"}
     categories["conversion"] = []string{
-        "byte", "as_int", "as_int64", "as_bigi", "as_bigf", "as_float", "as_float32", "as_bool", "as_string", "maxuint", "char", "asc", "as_uint",
+        "byte", "as_int", "as_int8", "as_int16", "as_int32", "as_int64",
+        "as_uint", "as_uint8", "as_uint16", "as_uint32", "as_uint64",
+        "as_bigi", "as_bigf", "as_float", "as_float32", "as_bool", "as_string", "maxuint", "char", "asc",
         "is_number", "base64e", "base64d", "hex_encode", "hex_decode", "url_encode", "url_decode",
         "json_decode", "json_encode", "json_format", "json_query", "pp",
         "write_struct", "read_struct",
@@ -1866,6 +1868,35 @@ func buildConversionLib() {
         return int64(0), errors.New(sf("could not convert [%T] (%v) to integer in as_int64()", args[0], args[0]))
     }
 
+    // Typed-width integer converters: produce the exact Go width type so typed
+// params, typed vars, and the bulk-FFI helpers can be supplied correctly.
+typedIntConverters := []struct {
+        name string
+        out  string
+        conv func(v any) (any, bool)
+    }{
+        {"as_int8", "int8", func(v any) (any, bool) { n, invalid := GetAsInt(v); return int8(n), !invalid }},
+        {"as_int16", "int16", func(v any) (any, bool) { n, invalid := GetAsInt(v); return int16(n), !invalid }},
+        {"as_int32", "int32", func(v any) (any, bool) { n, invalid := GetAsInt(v); return int32(n), !invalid }},
+        {"as_uint8", "uint8", func(v any) (any, bool) { n, invalid := GetAsUint64(v); return uint8(n), !invalid }},
+        {"as_uint16", "uint16", func(v any) (any, bool) { n, invalid := GetAsUint64(v); return uint16(n), !invalid }},
+        {"as_uint32", "uint32", func(v any) (any, bool) { n, invalid := GetAsUint64(v); return uint32(n), !invalid }},
+        {"as_uint64", "uint64", func(v any) (any, bool) { n, invalid := GetAsUint64(v); return n, !invalid }},
+    }
+
+    for _, tc := range typedIntConverters {
+        slhelp[tc.name] = LibHelp{in: "var", out: tc.out, action: "Convert [#i1]var[#i0] to " + tc.out + " type, or errors."}
+        stdlib[tc.name] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if len(args) != 1 {
+                return -1, errors.New("invalid arguments provided to " + tc.name + "()")
+            }
+            if v, ok := tc.conv(args[0]); ok {
+                return v, nil
+            }
+            return nil, errors.New(sf("could not convert [%T] (%v) to " + tc.out + " in %s()", args[0], args[0], tc.name))
+        }
+    }
+
     slhelp["as_string"] = LibHelp{in: "value[,precision]", out: "string", action: "Converts [#i1]value[#i0] to a string."}
     stdlib["as_string"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("as_string", args, 2,
@@ -1930,7 +1961,7 @@ func buildConversionLib() {
             return -1, errors.New("invalid arguments provided to is_number()")
         }
         switch args[0].(type) {
-        case uint, uint8, uint64, int, int64, float64:
+        case uint, uint8, uint16, uint32, uint64, int, int8, int16, int32, int64, float64, float32:
             return isNumber(args[0]), nil
         case string:
             if len(args[0].(string)) == 0 {

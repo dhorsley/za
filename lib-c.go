@@ -246,11 +246,11 @@ func NewCFunctionPointer(ptr unsafe.Pointer, sig CFunctionSignature, typeTag, li
 // ConvertZaToCType maps Za types to C types
 func ConvertZaToCType(zaType uint8) (CType, []string) {
     switch zaType {
-    case kint:
-        return CInt, nil
-    case kuint:
-        return CInt, nil
-    case kfloat:
+    case kint, kint8, kint16, kint32, kint64:
+        return CInt64, nil
+    case kuint, kbyte, kuint16, kuint32, kuint64:
+        return CUInt64, nil
+    case kfloat, kfloat32:
         return CFloat, nil
     case kstring:
         return CString, nil
@@ -1117,7 +1117,7 @@ func CTypeToString(cType CType) string {
 // buildFfiLib registers FFI helper functions in Za's stdlib
 func buildFfiLib() {
     features["ffi"] = Feature{version: 1, category: "ffi"}
-    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_float32", "c_set_float32", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_float32_at_addr", "c_set_float32_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_array_bulk_set_float32", "c_array_bulk_set_float64", "c_array_bulk_get_float32", "c_array_bulk_get_float64", "c_array_copy_to_c_float32", "c_array_copy_to_c_float64", "c_array_copy_from_c_float32", "c_array_copy_from_c_float64", "c_alloc_uninit", "c_alloc_array_uninit"}
+    categories["ffi"] = []string{"c_null", "c_fopen", "c_fclose", "c_ptr_is_null", "c_ptr_to_int", "c_alloc", "c_free", "c_set_byte", "c_set_uint16", "c_set_int16", "c_set_uint32", "c_set_int32", "c_set_uint64", "c_set_int64", "c_get_byte", "c_get_uint16", "c_get_uint32", "c_get_int16", "c_get_int32", "c_get_uint64", "c_get_int64", "c_get_byte_at_addr", "c_set_byte_at_addr", "c_get_uint16_at_addr", "c_set_uint16_at_addr", "c_get_int16_at_addr", "c_set_int16_at_addr", "c_get_uint32_at_addr", "c_set_uint32_at_addr", "c_get_int32_at_addr", "c_set_int32_at_addr", "c_get_uint64_at_addr", "c_set_uint64_at_addr", "c_get_int64_at_addr", "c_set_int64_at_addr", "c_get_float", "c_set_float", "c_get_float32", "c_set_float32", "c_get_double", "c_set_double", "c_get_float_at_addr", "c_set_float_at_addr", "c_get_float32_at_addr", "c_set_float32_at_addr", "c_get_double_at_addr", "c_set_double_at_addr", "c_get_symbol", "c_alloc_struct", "c_free_struct", "c_unmarshal_struct", "c_set_string", "c_new_string", "c_ptr_to_string", "c_alloc_array", "c_alloc_floats32", "c_alloc_floats64", "c_array_get_float32", "c_array_set_float32", "c_array_get_float64", "c_array_set_float64", "c_array_bulk_set_float32", "c_array_bulk_set_float64", "c_array_bulk_get_float32", "c_array_bulk_get_float64", "c_array_copy_to_c_float32", "c_array_copy_to_c_float64", "c_array_copy_from_c_float32", "c_array_copy_from_c_float64", "c_alloc_uninit", "c_alloc_array_uninit", "c_alloc_int8s", "c_alloc_int16s", "c_alloc_int32s", "c_alloc_int64s", "c_alloc_uint8s", "c_alloc_bytes", "c_alloc_uint16s", "c_alloc_uint32s", "c_alloc_uint64s", "c_array_get_int8", "c_array_set_int8", "c_array_get_uint8", "c_array_set_uint8", "c_array_get_int16", "c_array_set_int16", "c_array_get_uint16", "c_array_set_uint16", "c_array_get_int32", "c_array_set_int32", "c_array_get_uint32", "c_array_set_uint32", "c_array_get_int64", "c_array_set_int64", "c_array_get_uint64", "c_array_set_uint64", "c_array_bulk_set_int8", "c_array_bulk_set_uint8", "c_array_bulk_set_int16", "c_array_bulk_set_uint16", "c_array_bulk_set_int32", "c_array_bulk_set_uint32", "c_array_bulk_set_int64", "c_array_bulk_set_uint64", "c_array_bulk_get_int8", "c_array_bulk_get_uint8", "c_array_bulk_get_int16", "c_array_bulk_get_uint16", "c_array_bulk_get_int32", "c_array_bulk_get_uint32", "c_array_bulk_get_int64", "c_array_bulk_get_uint64", "c_array_copy_to_c_int8", "c_array_copy_to_c_uint8", "c_array_copy_to_c_int16", "c_array_copy_to_c_uint16", "c_array_copy_to_c_int32", "c_array_copy_to_c_uint32", "c_array_copy_to_c_int64", "c_array_copy_to_c_uint64", "c_array_copy_from_c_int8", "c_array_copy_from_c_uint8", "c_array_copy_from_c_int16", "c_array_copy_from_c_uint16", "c_array_copy_from_c_int32", "c_array_copy_from_c_uint32", "c_array_copy_from_c_int64", "c_array_copy_from_c_uint64"}
 
     slhelp["c_null"] = LibHelp{in: "", out: "cpointer", action: "Returns a null C pointer for use in FFI calls."}
     stdlib["c_null"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
@@ -1983,6 +1983,280 @@ func buildFfiLib() {
             result[i] = CGetDouble(src, i*8)
         }
         return result, nil
+    }
+
+    // ── Typed int/uint array accessors, bulk get/set, and copies ─────────
+    // These mirror the float32/float64 helpers above but return/accept the
+    // matching typed Go slice ([]int8..[]uint64). Values always preserve the
+    // native C width type; uint64 is never coerced to int/int64/bigi.
+
+    // per-width metadata: {zaShort, goElemType, goSliceType, elemSize, allocTypeStr}
+    typedArrayDefs := []struct {
+        short   string
+        elem    any
+        size    int
+        alloc   string
+        setFn   func(p *CPointerValue, off int, v any) error
+        getFn   func(p *CPointerValue, off int) any
+    }{
+        {"int8", int8(0), 1, "int8", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case int8:
+                CSetInt8(p, off, fv)
+            case int:
+                CSetInt8(p, off, int8(fv))
+            case int64:
+                CSetInt8(p, off, int8(fv))
+            case float64:
+                CSetInt8(p, off, int8(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/1, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetInt8(p, off) }},
+        {"uint8", uint8(0), 1, "uint8", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case uint8:
+                CSetByte(p, off, fv)
+            case int:
+                CSetByte(p, off, uint8(fv))
+            case int64:
+                CSetByte(p, off, uint8(fv))
+            case float64:
+                CSetByte(p, off, uint8(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/1, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetByte(p, off) }},
+        {"int16", int16(0), 2, "int16", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case int16:
+                CSetInt16(p, off, fv)
+            case int:
+                CSetInt16(p, off, int16(fv))
+            case int64:
+                CSetInt16(p, off, int16(fv))
+            case float64:
+                CSetInt16(p, off, int16(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/2, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetInt16(p, off) }},
+        {"uint16", uint16(0), 2, "uint16", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case uint16:
+                CSetUint16(p, off, fv)
+            case int:
+                CSetUint16(p, off, uint16(fv))
+            case int64:
+                CSetUint16(p, off, uint16(fv))
+            case float64:
+                CSetUint16(p, off, uint16(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/2, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetUint16(p, off) }},
+        {"int32", int32(0), 4, "int32", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case int32:
+                CSetInt32(p, off, fv)
+            case int:
+                CSetInt32(p, off, int32(fv))
+            case int64:
+                CSetInt32(p, off, int32(fv))
+            case float64:
+                CSetInt32(p, off, int32(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/4, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetInt32(p, off) }},
+        {"uint32", uint32(0), 4, "uint32", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case uint32:
+                CSetUint32(p, off, fv)
+            case int:
+                CSetUint32(p, off, uint32(fv))
+            case int64:
+                CSetUint32(p, off, uint32(fv))
+            case float64:
+                CSetUint32(p, off, uint32(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/4, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetUint32(p, off) }},
+        {"int64", int64(0), 8, "int64", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case int64:
+                CSetInt64(p, off, fv)
+            case int:
+                CSetInt64(p, off, int64(fv))
+            case float64:
+                CSetInt64(p, off, int64(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/8, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetInt64(p, off) }},
+        {"uint64", uint64(0), 8, "uint64", func(p *CPointerValue, off int, v any) error {
+            switch fv := v.(type) {
+            case uint64:
+                CSetUint64(p, off, fv)
+            case int:
+                CSetUint64(p, off, uint64(fv))
+            case int64:
+                if fv < 0 {
+                    return fmt.Errorf("negative value %d cannot be stored as uint64", fv)
+                }
+                CSetUint64(p, off, uint64(fv))
+            case float64:
+                CSetUint64(p, off, uint64(fv))
+            default:
+                return fmt.Errorf("value at offset %d is not numeric (%T)", off/8, v)
+            }
+            return nil
+        }, func(p *CPointerValue, off int) any { return CGetUint64(p, off) }},
+    }
+
+    for _, td := range typedArrayDefs {
+        short := td.short
+        size := td.size
+
+        // Convenience allocator: c_alloc_int8s / c_alloc_uint8s / etc
+        allocName := "c_alloc_" + short + "s"
+        slhelp[allocName] = LibHelp{in: "count", out: "cpointer", action: "Allocates a zero-initialized buffer for 'count' " + short + " elements."}
+        stdlib[allocName] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(allocName, args, 1, "1", "int"); !ok {
+                return nil, err
+            }
+            return cAllocArray(td.alloc, args[0].(int), true)
+        }
+        // uint8 (byte) allocator alias: c_alloc_bytes == c_alloc_uint8s
+        if short == "uint8" {
+            slhelp["c_alloc_bytes"] = LibHelp{in: "count", out: "cpointer", action: "Allocates a zero-initialized buffer for 'count' byte (uint8) elements."}
+            stdlib["c_alloc_bytes"] = stdlib[allocName]
+        }
+
+        // Indexed accessors: c_array_get_<t> / c_array_set_<t>
+        getA := "c_array_get_" + short
+        slhelp[getA] = LibHelp{in: "ptr,index", out: short, action: "Reads a " + short + " at the given element index in a buffer."}
+        stdlib[getA] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(getA, args, 1, "2", "any", "int"); !ok {
+                return nil, err
+            }
+            if p, ok := args[0].(*CPointerValue); ok {
+                return td.getFn(p, args[1].(int)*size), nil
+            }
+            return nil, nil
+        }
+
+        setA := "c_array_set_" + short
+        slhelp[setA] = LibHelp{in: "ptr,index,value", out: "", action: "Writes a " + short + " at the given element index in a buffer."}
+        stdlib[setA] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(setA, args, 1, "3", "any", "int", "any"); !ok {
+                return nil, err
+            }
+            if p, ok := args[0].(*CPointerValue); ok {
+                if err := td.setFn(p, args[1].(int)*size, args[2]); err != nil {
+                    return nil, err
+                }
+            }
+            return nil, nil
+        }
+
+        // Bulk: c_array_bulk_set_<t> / c_array_bulk_get_<t>
+        bulkSet := "c_array_bulk_set_" + short
+        slhelp[bulkSet] = LibHelp{in: "ptr,start_index,values", out: "", action: "Writes multiple " + short + " values ([][" + short + "] typed array) starting at the given element index."}
+        stdlib[bulkSet] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(bulkSet, args, 1, "3", "any", "int", "any"); !ok {
+                return nil, err
+            }
+            p, ok := args[0].(*CPointerValue)
+            if !ok {
+                return nil, nil
+            }
+            start := args[1].(int)
+            rv := reflect.ValueOf(args[2])
+            if !rv.IsValid() || (rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array) {
+                return nil, fmt.Errorf("%s: values must be an array, got %T", bulkSet, args[2])
+            }
+            for i := 0; i < rv.Len(); i++ {
+                if err := td.setFn(p, (start+i)*size, rv.Index(i).Interface()); err != nil {
+                    return nil, err
+                }
+            }
+            return nil, nil
+        }
+
+        bulkGet := "c_array_bulk_get_" + short
+        slhelp[bulkGet] = LibHelp{in: "ptr,start_index,count", out: "[]" + short, action: "Reads multiple " + short + " values starting at the given element index and returns them as a [][" + short + "] typed Za array."}
+        stdlib[bulkGet] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(bulkGet, args, 1, "3", "any", "int", "int"); !ok {
+                return nil, err
+            }
+            p, ok := args[0].(*CPointerValue)
+            if !ok {
+                return nil, nil
+            }
+            start := args[1].(int)
+            count := args[2].(int)
+            if count < 0 {
+                return nil, fmt.Errorf("%s: count must be non-negative", bulkGet)
+            }
+            sl := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(td.elem)), count, count)
+            for i := 0; i < count; i++ {
+                sl.Index(i).Set(reflect.ValueOf(td.getFn(p, (start+i)*size)))
+            }
+            return sl.Interface(), nil
+        }
+
+        // Whole-array copies: c_array_copy_to_c_<t> / c_array_copy_from_c_<t>
+        copyTo := "c_array_copy_to_c_" + short
+        slhelp[copyTo] = LibHelp{in: "src_za_array,dst_c_ptr", out: "", action: "Copies an entire [][" + short + "] Za array into a C " + short + " buffer."}
+        stdlib[copyTo] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(copyTo, args, 1, "2", "any", "any"); !ok {
+                return nil, err
+            }
+            dst, ok := args[1].(*CPointerValue)
+            if !ok {
+                return nil, fmt.Errorf("%s: destination must be a C pointer", copyTo)
+            }
+            rv := reflect.ValueOf(args[0])
+            if !rv.IsValid() || (rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array) {
+                return nil, fmt.Errorf("%s: source must be an array, got %T", copyTo, args[0])
+            }
+            for i := 0; i < rv.Len(); i++ {
+                if err := td.setFn(dst, i*size, rv.Index(i).Interface()); err != nil {
+                    return nil, err
+                }
+            }
+            return nil, nil
+        }
+
+        copyFrom := "c_array_copy_from_c_" + short
+        slhelp[copyFrom] = LibHelp{in: "src_c_ptr,count", out: "[]" + short, action: "Reads count " + short + " values from a C buffer into a [][" + short + "] Za array."}
+        stdlib[copyFrom] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+            if ok, err := expect_args(copyFrom, args, 1, "2", "any", "int"); !ok {
+                return nil, err
+            }
+            src, ok := args[0].(*CPointerValue)
+            if !ok {
+                return nil, fmt.Errorf("%s: source must be a C pointer", copyFrom)
+            }
+            count := args[1].(int)
+            if count < 0 {
+                return nil, fmt.Errorf("%s: count must be non-negative", copyFrom)
+            }
+            sl := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(td.elem)), count, count)
+            for i := 0; i < count; i++ {
+                sl.Index(i).Set(reflect.ValueOf(td.getFn(src, i*size)))
+            }
+            return sl.Interface(), nil
+        }
     }
 }
 
