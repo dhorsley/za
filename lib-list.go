@@ -2865,12 +2865,20 @@ func buildListLib() {
 
     slhelp["list_int"] = LibHelp{in: "float_or_string_list", out: "[]int_list", action: "Returns [#i1]float_or_string_list[#i0] as a list of integers. Invalid items will generate an error."}
     stdlib["list_int"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("list_int", args, 7,
+        if ok, err := expect_args("list_int", args, 15,
             "1", "[]int",
-            "1", "[]uint",
+            "1", "[]int8",
+            "1", "[]int16",
+            "1", "[]int32",
             "1", "[]int64",
+            "1", "[]uint",
+            "1", "[]uint8",
+            "1", "[]uint16",
+            "1", "[]uint32",
+            "1", "[]uint64",
             "1", "[]bool",
             "1", "[]float64",
+            "1", "[]float32",
             "1", "[]string",
             "1", "[]interface {}"); !ok {
             return nil, err
@@ -2880,10 +2888,49 @@ func buildListLib() {
         switch args[0].(type) {
         case []int:
             return args[0].([]int), nil
+        case []int8:
+            for _, q := range args[0].([]int8) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
+        case []int16:
+            for _, q := range args[0].([]int16) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
+        case []int32:
+            for _, q := range args[0].([]int32) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
         case []int64:
             return args[0].([]int64), nil
         case []uint:
             for _, q := range args[0].([]uint) {
+                v, invalid := GetAsInt(q)
+                if !invalid {
+                    int_list = append(int_list, v)
+                } else {
+                    return nil, errors.New(sf("could not treat %v as an integer.", q))
+                }
+            }
+        case []uint8:
+            for _, q := range args[0].([]uint8) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
+        case []uint16:
+            for _, q := range args[0].([]uint16) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
+        case []uint32:
+            for _, q := range args[0].([]uint32) {
+                int_list = append(int_list, int(q))
+            }
+            return int_list, nil
+        case []uint64:
+            for _, q := range args[0].([]uint64) {
                 v, invalid := GetAsInt(q)
                 if !invalid {
                     int_list = append(int_list, v)
@@ -2909,6 +2956,10 @@ func buildListLib() {
                 } else {
                     return nil, errors.New(sf("could not treat %v as an integer.", q))
                 }
+            }
+        case []float32:
+            for _, q := range args[0].([]float32) {
+                int_list = append(int_list, int(q))
             }
         case []string:
             for _, q := range args[0].([]string) {

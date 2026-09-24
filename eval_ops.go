@@ -1211,6 +1211,9 @@ func ev_div(val1 any, val2 any) any {
 
 func ev_mod(val1 any, val2 any) any {
 
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
+
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
         return ApplyElementwiseBinaryOp(val1, val2, func(x, y any) any {
@@ -1353,6 +1356,8 @@ func ev_mod(val1 any, val2 any) any {
 }
 
 func ev_pow(val1 any, val2 any) any {
+    val1 = normalizeNarrowInt(val1)
+    val2 = normalizeNarrowInt(val2)
 
     // Handle element-wise operations on slices
     if isSlice(val1) && isSlice(val2) {
@@ -1436,6 +1441,8 @@ func ev_pow(val1 any, val2 any) any {
 }
 
 func ev_shift_left(left, right any) any {
+    left = normalizeNarrowInt(left)
+    right = normalizeNarrowInt(right)
     // both must be integers
     intInOne := true
     uintInTwo := true
@@ -1474,6 +1481,8 @@ func ev_shift_left(left, right any) any {
 }
 
 func ev_shift_right(left, right any) any {
+    left = normalizeNarrowInt(left)
+    right = normalizeNarrowInt(right)
     // both must be integers
     intInOne := true
     uintInTwo := true
