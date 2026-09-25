@@ -1350,7 +1350,7 @@ func tui_input(t tui, s tui_style) tui {
         mask = t.Cursor
     }
     promptColour := addbg + addfg
-    input, _, _ := getInput(t.Prompt, t.Content, "global", t.Row, t.Col, t.Width, t.Options, promptColour, false, false, mask)
+    input, _, _, _ := getInput(t.Prompt, t.Content, "global", t.Row, t.Col, t.Width, t.Options, promptColour, false, false, mask, false)
     input = sanitise(input)
 
     // remove border box

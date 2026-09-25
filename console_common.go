@@ -293,7 +293,7 @@ func buildHelpPath(wordUnderCursor []rune, helpColoured *[]string, helpList *[]s
 
 
 // getInput() : get an input string from stdin, in raw mode
-func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string) (out_s string, eof bool, broken bool) {
+func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string, replEditor bool) (out_s string, eof bool, broken bool, cancelled bool) {
 
     if runtime.GOOS != "windows" {
         startRaw(0)
@@ -365,7 +365,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
     var srow, scol int // the start of input, including prompt position
     var irow, icol int // current start of input position
     var rowLen int
-    var completion_count int
+    baseRow := girow // the prompt's anchor row; may be pushed by popup/cancel handling
 
     irow = srow
     lastsrow := girow
@@ -375,12 +375,20 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         clearWidth = width - gicol
     }
 
+    // used to avoid repainting an unchanged prompt+input on pure cursor moves
+        var prevInput string
+        var prevPrompt string
+        var prevHelp bool
+        var prevIrow int
+        var prevRowLen int
+        var prevStar int
+
     fmt.Print(sparkle(pcol))
     clearChars(girow, gicol, clearWidth)
     for {
 
         // calc new values for row,col
-        srow = girow
+        srow = baseRow
         scol = gicol
         promptL := displayedLen(sprompt)
         inputL := displayedLen(string(s))
@@ -388,15 +396,39 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
         hideCursor()
 
-        // move start row back if multiline at bottom of window
+        // Position the whole prompt+input block so it never extends past the
+        // bottom of the window. All geometry is decided up front, before any
+        // drawing, so the cursor is placed using the same rows the text was
+        // drawn on. Note this never lifts a single-line prompt off the last
+        // row: after a full-window command output the last row is a blank
+        // scroll line, so the prompt must be drawn there (not one row up,
+        // which would overwrite the last output line).
         // @note: MH and MW are globals which may change during a SIGWINCH event.
-        rowLen = int(dispL-1) / MW
         if srow > MH {
             srow = MH
         }
-        if srow == MH {
-            srow = srow - rowLen
+        height := int(scol+dispL-2) / MW // screen rows spanned by the block (>= 0)
+        if srow+height > MH {
+            srow = MH - height
         }
+        if srow < 1 {
+            srow = 1
+        }
+
+        // when the completion popup is open it occupies the rows below the
+        // input block (HELP_SIZE rows starting at irow+1); lift the block by
+        // exactly the overflow so the popup fits on-screen. Recomputed every
+        // iteration off the stable baseRow, so it never drifts.
+        irow0 := srow + (int(scol+promptL-1) / MW)
+        if startedContextHelp {
+            if over := irow0 + HELP_SIZE - MH; over > 0 {
+                srow -= over
+                if srow < 1 {
+                    srow = 1
+                }
+            }
+        }
+
         if lastsrow != srow {
             m1 := min(lastsrow, srow)
             m2 := max(lastsrow, srow)
@@ -404,70 +436,75 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 at(r, gicol)
                 clearToEOL()
             }
+            lastsrow = srow
         }
-        lastsrow = srow
 
-        // shift positions if inside low-end context help
-        if startedContextHelp && srow > MH-HELP_SIZE {
-            srow -= HELP_SIZE
-        }
+        irow = srow + (int(scol+promptL-1) / MW)
+        icol = ((scol + promptL - 1) % MW) + 1
+        rowLen = int(icol+inputL-1) / MW
 
         if startedContextHelp {
             // this will need more conditions added (e.g. input crossing a slash, etc)
             // to cause it to recalc less often
             max_depth, _ := gvget("context_dir_depth")
-            fileList=buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
+            fileList = buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
         }
 
-        // print prompt
-        at(srow, scol)
-        fmt.Print(sparkle(sprompt))
+        // repaint only when content or layout actually changed; pure cursor
+        // moves (arrows, home/end) just reposition the cursor.
+        sinput := string(s)
+        sdispprompt := string(sprompt)
+        needPaint := sinput != prevInput || sdispprompt != prevPrompt || startedContextHelp != prevHelp ||
+            irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar
+        prevInput = sinput
+        prevPrompt = sdispprompt
+        prevHelp = startedContextHelp
+        prevIrow = irow
+        prevRowLen = rowLen
+        prevStar = selectedStar
 
-        irow = srow + (int(scol+promptL-1) / MW)
-        icol = ((scol + promptL - 1) % MW) + 1
+        if needPaint {
+            // print prompt
+            at(srow, scol)
+            fmt.Print(sprompt)
 
-        // change input colour
-        fmt.Print(sparkle(pcol))
+            // change input colour
+            fmt.Print(sparkle(pcol))
 
-        cursAtCol := ((icol + inputL - 1) % MW) + 1
-        rowLen = int(icol+inputL-1) / MW
-
-        // show input
-        at(irow, icol)
-        if echo.(bool) {
-            if len(s) > len(defaultString) {
-                fmt.Print(string(s))
-            } else {
-                if str.HasPrefix(in_defaultString, string(s)) && !defaultAccepted {
-                    // #dim + italic + string + normal
-                    fmt.Print("\033[2m\033[3m" + in_defaultString + "\033[23m\033[22m")
-                } else {
-                    clearChars(irow, icol, len(in_defaultString))
-                    at(irow, icol)
+            // show input
+            at(irow, icol)
+            if echo.(bool) {
+                if len(s) > len(defaultString) {
                     fmt.Print(string(s))
+                } else {
+                    if str.HasPrefix(in_defaultString, string(s)) && !defaultAccepted {
+                        // #dim + italic + string + normal
+                        fmt.Print("\033[2m\033[3m" + in_defaultString + "\033[23m\033[22m")
+                    } else {
+                        clearChars(irow, icol, len(in_defaultString))
+                        at(irow, icol)
+                        fmt.Print(string(s))
+                    }
                 }
+            } else {
+                fmt.Print(str.Repeat(mask, inputL))
             }
-        } else {
-            fmt.Print(str.Repeat(mask, inputL))
-        }
-        if startedContextHelp {
-            for i := irow + 1 + rowLen; i <= irow+HELP_SIZE; i += 1 {
-                at(i, 1)
-                clearToEOL()
+            if startedContextHelp {
+                for i := irow + 1 + rowLen; i <= irow+HELP_SIZE; i += 1 {
+                    at(i, 1)
+                    clearToEOL()
+                }
+                at(irow+1, 1)
+                fmt.Print(sparkle(helpstring))
             }
-            at(irow+1, 1)
-            fmt.Print(sparkle(helpstring))
         }
 
-        // move cursor to correct position (cpos)
-        if irow == MH && cursAtCol == 1 {
-            srow--
-            rowLen++
-            fmt.Printf("\n\033M")
-        }
+        // move cursor to the position of cpos within the input region. the
+        // base row is irow (where the input starts), not srow, so wrapped
+        // prompts (irow > srow) still land the cursor on the right line.
         cposCursAtCol := ((icol + cpos - 1) % MW) + 1
         cposRowLen := int(icol+cpos-1) / MW
-        at(srow+cposRowLen, cposCursAtCol)
+        at(irow+cposRowLen, cposCursAtCol)
 
         showCursor()
 
@@ -480,27 +517,48 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
         if pasted {
 
-            // we disallow multi-line pasted input. this is only a line editor.
-            // no need to get fancy.
-
-            // get paste buffer up to first eol
-            eol := str.IndexByte(pbuf, '\r')     // from hazy memories... vte paste marks line breaks with a single CR
-            alt_eol := str.IndexByte(pbuf, '\n') // just in case i didn't remember right...
-
-            if eol != -1 {
-                pbuf = pbuf[:eol]
-            }
-
-            if alt_eol != -1 {
-                pbuf = pbuf[:alt_eol]
-            }
-
-            // strip ansi codes from pbuf then shove it in the input string
+            // strip ansi codes from the paste buffer
             pbuf = Strip(pbuf)
-            s = insertWord(s, cpos, pbuf)
-            cpos += rlen(pbuf)
-            wordUnderCursor, _ = getWord(s, cpos)
-            selectedStar = -1
+
+            if replEditor {
+                // vte paste marks line breaks with a single CR.
+                // A paste that carries more than one line is routed to the
+                // multi-line editor instead of silently discarding everything
+                // after the first line. A single trailing terminator (common
+                // when pasting one line) is dropped and stays in this editor.
+                trimmed := str.TrimRight(pbuf, "\r\n")
+                if str.Contains(trimmed, "\r") || str.Contains(trimmed, "\n") {
+                    pbuf, _ = cleanPasteInput(trimmed)
+                    pbuf = str.ReplaceAll(str.ReplaceAll(pbuf, "\r\n", "\n"), "\r", "\n")
+                    combined := string(append(append([]rune(s[:cpos]), []rune(pbuf)...), s[cpos:]...))
+                    result, reof, rbroken := multilineEditor(combined, -1, MH-5, "", "", "Editor")
+                    if !rbroken {
+                        s = []rune(result)
+                        cpos = len(s)
+                    } else if reof {
+                        return "", true, false, false
+                    }
+                } else {
+                    s = insertWord(s, cpos, trimmed)
+                    cpos += rlen(trimmed)
+                }
+                wordUnderCursor, _ = getWord(s, cpos)
+                selectedStar = -1
+            } else {
+                // single-line editor: no multi-line pasted input
+                eol := str.IndexByte(pbuf, '\r')
+                alt_eol := str.IndexByte(pbuf, '\n')
+                if eol != -1 {
+                    pbuf = pbuf[:eol]
+                }
+                if alt_eol != -1 {
+                    pbuf = pbuf[:alt_eol]
+                }
+                s = insertWord(s, cpos, pbuf)
+                cpos += rlen(pbuf)
+                wordUnderCursor, _ = getWord(s, cpos)
+                selectedStar = -1
+            }
 
         } else {
 
@@ -509,12 +567,32 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 switch {
 
                 case bytes.Equal(c, []byte{3}): // ctrl-c
-                    broken = true
                     removeProcessedKeycode(&c, 1)
+                    if replEditor {
+                        // REPL line editor: echo the caret at the cursor and
+                        // report the cancel to the caller, which abandons the
+                        // line/collection and re-prompts on a fresh line.
+                        at(irow+cposRowLen, cposCursAtCol)
+                        fmt.Print("^C")
+                        cancelled = true
+                        // clear any completion popup belonging to this line
+                        for i := irow + 1; i <= irow+HELP_SIZE; i += 1 {
+                            at(i, 1)
+                            clearToEOL()
+                        }
+                        startedContextHelp = false
+                        helpstring = ""
+                        break
+                    }
+                    broken = true
                     break
                 case bytes.Equal(c, []byte{4}): // ctrl-d
-                    eof = true
                     removeProcessedKeycode(&c, 1)
+                    if replEditor && len(s) > 0 {
+                        // REPL: EOF only on an empty line (readline style)
+                        break
+                    }
+                    eof = true
                     break
                 case bytes.Equal(c, []byte{26}): // ctrl-z
                     // Send SIGTSTP to the current process group to suspend Za
@@ -729,7 +807,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         cpos = len(s)
                     } else if eof {
                         // If user pressed ctrl-d in multiline, treat as EOF in getInput
-                        return "", true, false
+                        return "", true, false, false
                     } else {
                         // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
                     }
@@ -1045,23 +1123,25 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     // completion hinting setup
                     if hintEnable {
                         if !startedContextHelp {
-                            completion_count += 1
                             funcnames = nil
 
-                            if irow > MH-1 && completion_count == 1 {
-                                for i := srow; i < irow+HELP_SIZE; i++ {
+                            // the popup occupies the HELP_SIZE rows below the
+                            // input; when it would run off the bottom, scroll
+                            // the window up enough to make room on every entry
+                            // (not just the first), and move the block anchor so
+                            // the loop-top geometry stays aligned.
+                            if over := irow + HELP_SIZE - MH; over > 0 {
+                                for i := 0; i < over; i++ {
                                     at(MH+1, 1)
                                     fmt.Println()
                                 }
-                                srow = srow - HELP_SIZE
-                                irow = irow - HELP_SIZE
+                                baseRow -= over
+                                if baseRow < 1 {
+                                    baseRow = 1
+                                }
                             }
 
                             startedContextHelp = true
-                            for i := irow + 1; i <= irow+HELP_SIZE; i++ {
-                                at(i, 1)
-                                clearToEOL()
-                            }
                             helpstring = ""
                             selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
 
@@ -1112,10 +1192,21 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 default:
 
                     // Normal input processing (only reached when not in reverse search mode)
-                    // multi-byte, like utf8?
-
-                    for r, sz := utf8.DecodeRune(c); len(c) > 0; {
+                    // multi-byte, like utf8? decode a fresh rune per iteration
+                    // so burst input chunks (fast typing) insert every
+                    // character, and a line terminator inside the chunk
+                    // submits the line just like the Enter key.
+                    for len(c) > 0 {
+                        r, sz := utf8.DecodeRune(c)
                         if r != utf8.RuneError {
+                            if r == '\r' || r == '\n' {
+                                removeProcessedKeycode(&c, sz)
+                                if len(s) != 0 {
+                                    addToHistory(string(s))
+                                }
+                                endLine = true
+                                break
+                            }
                             if sz != 0 {
                                 if r > 31 {
                                     s = insertAt(s, cpos, r)
@@ -1123,6 +1214,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                                 }
                             }
                             removeProcessedKeycode(&c, sz)
+                        } else {
+                            // avoid stalling on a malformed byte
+                            removeProcessedKeycode(&c, 1)
                         }
                     }
                     wordUnderCursor, _ = getWord(s, cpos)
@@ -1291,7 +1385,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             startedContextHelp = false
         }
 
-        if eof || broken || endLine {
+        if eof || broken || endLine || cancelled {
             break
         }
 
@@ -1301,7 +1395,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         s = defaultString
     }
 
-    if echo.(bool) {
+    // a cancelled (^C) line is left on screen with its caret marker; skip the
+    // normal end-of-line echo so the abandoned text is not redrawn
+    if echo.(bool) && !cancelled {
         fmt.Print(sparkle(pcol))
         clearWidth := 0
         if width-scol >= 0 {
@@ -1319,9 +1415,9 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
     promptL := displayedLen(sprompt)
     dispL := promptL + inputL
     rowLen = int(dispL) / MW
-    row += rowLen + 1
+    row = baseRow + rowLen + 1
     at(row, 1)
-    return string(s), eof, broken
+    return string(s), eof, broken, cancelled
 }
 
 func secScreenActive() bool {

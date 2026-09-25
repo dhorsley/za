@@ -234,7 +234,7 @@ var hist []string
 var histEmpty bool
 
 // History file management
-const MAX_HISTORY_ENTRIES = 255
+const MAX_HISTORY_ENTRIES = 512
 
 var historyFile string
 
@@ -287,7 +287,7 @@ func saveHistory() {
 	os.WriteFile(historyFile, []byte(content.String()), 0600)
 }
 
-// addToHistory adds a new entry to history, maintaining the 255 entry limit
+// addToHistory adds a new entry to history, maintaining the 512 entry limit
 func addToHistory(entry string) {
 	if entry == "" {
 		return
@@ -1610,7 +1610,7 @@ func main() {
 
 			nestAccept := 0
 			totalInput := ""
-			var eof, broken bool
+			var eof, broken, cancelled bool
 			var input string
 			fileMap.Store(uint32(0), exec_file_name)
 			fileMap.Store(uint32(1), exec_file_name)
@@ -1678,10 +1678,19 @@ func main() {
 				}
 
 				gvset("@last", 0)
-				input, eof, broken = getInput(tempPrompt, "", "global", row, col, panes["global"].w-2, []string{}, pcol, true, true, echoMask)
+				input, eof, broken, cancelled = getInput(tempPrompt, "", "global", row, col, panes["global"].w-2, []string{}, pcol, true, true, echoMask, true)
 
 				if eof || broken {
 					break
+				}
+
+				if cancelled {
+					// ^C on the REPL line editor: abandon the current line and
+					// any partially-collected multi-line input, then re-prompt
+					// on the next line.
+					totalInput = ""
+					nestAccept = 0
+					continue
 				}
 
 				for ; row >= MH; row-- {
@@ -1779,6 +1788,13 @@ func main() {
 				// For REPL calls, we use line 1 as the main entry point
 				atomic.StoreInt32(&calltable[mainloc].callLine, 1)
 				_, endFunc, _, _, _ = Call(ctx, MODE_STATIC, &mident, mainloc, ciRepl, false, nil, "", []string{}, nil)
+
+				// if the command's output ended mid-line (no trailing newline),
+				// close the line so the next prompt anchors on a fresh row
+				// instead of overwriting the tail of that output line
+				if col > 1 {
+					pf("\n")
+				}
 
 				if row > MH {
 					row = MH

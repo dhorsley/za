@@ -285,18 +285,19 @@ ctrl-a  # Beginning of line
 ctrl-e  # End of line
 ctrl-u  # Delete to beginning
 ctrl-k  # Delete to end
-ctrl-c  # interrupt (interrupt session)
-ctrl-d  # end-of-input (end session)
+ctrl-c  # cancel the current line
+ctrl-d  # end-of-input (end session, on an empty line)
 ctrl-z  # suspend REPL to background
 ```
 
 #### TAB Completion
 
-Press TAB at any time to complete function names, variable names, file paths, and keywords. The completion list shows all 600+ standard library functions plus any variables and functions defined in the current session. Use SHIFT-TAB to cycle backwards through matches.
+Press TAB to complete standard-library function names, language keywords, and file/directory paths. The first TAB displays the list of matches above the input line; RIGHT/LEFT move the selector, ENTER accepts the selected match, and pressing SPACE accepts when only one match remains.
 
 ```za
 >> prin<TAB>
 # Shows: print, println, printn, printf
+# (only standard library function names appear here)
 
 >> /etc/pass<TAB>
 # Completes to /etc/passwd
@@ -304,7 +305,7 @@ Press TAB at any time to complete function names, variable names, file paths, an
 
 #### Multi-line Editor
 
-For editing multi-line statements or pasting complex code blocks, press Ctrl+O to open the built-in multi-line editor. The regular REPL input is a single-line editor, so multi-line content (including pasted code with newlines) must go through the multi-line editor. Compose code in the temporary buffer, then submit with Ctrl+D or cancel with Escape.
+For editing multi-line statements or pasting complex code blocks, press Ctrl+O to open the built-in multi-line editor. Pasting multi-line content into the single-line REPL input automatically switches to the multi-line editor. Compose code in the temporary buffer, then submit with Ctrl+D or cancel with Escape.
 
 ```za
 >> ctrl-o

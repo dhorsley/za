@@ -503,6 +503,12 @@ func finish(hard bool, i int) {
 			stopLogWorker()
 		}
 
+		// flush REPL history before any hard exit (the deferred saveHistory
+		// only runs on the normal return path and is skipped by os.Exit)
+		if interactive {
+			saveHistory()
+		}
+
 		if hard {
 			os.Exit(i)
 		}
@@ -7455,6 +7461,17 @@ case []uint:
 
 		case C_Hist:
 
+			if inbound.TokenCount > 1 && str.ToLower(inbound.Tokens[1].tokText) == "clear" {
+				hist = []string{}
+				curHist = 0
+				lastHist = 0
+				histEmpty = true
+				if historyFile != "" {
+					os.Remove(historyFile)
+				}
+				break
+			}
+
 			for h, v := range hist {
 				pf("%5d : %s\n", h, v)
 			}
@@ -7613,7 +7630,7 @@ case []uint:
 									intext := ""
 									validated := false
 									for !validated || broken {
-										intext, _, broken = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string))
+										intext, _, broken, _ = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string), false)
 										intext = sanitise(intext)
 										validated, _ = regexp.MatchString(validator, intext)
 									}
@@ -7622,7 +7639,7 @@ case []uint:
 									}
 								} else {
 									var inp string
-									inp, _, broken = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string))
+									inp, _, broken, _ = getInput(processedPrompt, defString, currentpane, row, col, inWidth, []string{}, promptColour, false, false, echoMask.(string), false)
 									inp = sanitise(inp)
 									vset(&inbound.Tokens[1], ifs, ident, inbound.Tokens[1].tokText, inp)
 								}
