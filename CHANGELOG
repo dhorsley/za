@@ -2,51 +2,6 @@
 CHANGE LOG
 =============================================================================================
 
-(not yet released — next minor)
-
-language changes
-----------------
-
-  * First-class narrow integer widths: `int8`, `int16`, `int32`, `uint8`,
-    `uint16`, `uint32` (existing `int`/`int64`/`uint64`/`float32` untouched).
-    - `var`/`global` declarations with these scalar types and their typed
-        slices (`var x []int32`, `global g []uint16`, ...).
-    - `foreach`/`for` over `[]int8/16/32/64`, `[]uint8/16/32/64` typed slices.
-    - arithmetic (`+ - * /`), comparisons (`== != < > <= >=`), `len()`,
-        `append()`, `type()`/`kind()`, `is_number` all handle the widths.
-    - new list converters: `list_int8/16/32`, `list_uint8/16/32/64`
-    - new scalar converters: `as_int8/16/32`, `as_uint8/16/32/64`
-    - typed function params/returns accept these types (`def f(x:int16)`,
-        `def g(a:[]int32) -> []uint64`, defaults incl.); exact-type matching,
-        no silent coercion. NB: `uint64` values are never coerced to
-        `int`/`int64`/`bigi`.
-
-ffi changes
------------
-
-  * Typed int/uint array FFI helpers (all of int8/16/32/64, uint8/16/32/64),
-    mirroring the existing float32/float64 family. All bulk/copy getters return
-    the matching typed Go slice (never `[]any`).
-    - indexed accessors: `c_array_get_int8` / `c_array_set_int8`, ... for every
-        width
-    - bulk: `c_array_bulk_get_int8` / `c_array_bulk_set_int8`, ... for every
-        width
-    - whole-array copy: `c_array_copy_to_c_int8` / `c_array_copy_from_c_int8`,
-        ... for every width
-    - convenience allocators: `c_alloc_int8s/16s/32s/64s`,
-        `c_alloc_uint8s/16s/32s/64s`, `c_alloc_bytes` (alias for uint8)
-    - FFI C-marshalling added for `[]int32`/`[]uint32` args and out-param
-        readback
-    - test coverage: `za_tests/ffi/test_c_alloc_array.za` Group 9 (all widths:
-        round-trip, typed-slice returns, foreach, typed var, converters)
-
-tooling changes
----------------
-
-  * Vim syntax highlighter synced with the runtime function list (all new
-    converter/list/FFI functions added to the appropriate `*_functions`
-    groups).
-
 1.3.0
 =====
 
@@ -94,10 +49,12 @@ language changes
     - Only legal inside async tasks (clean error elsewhere, including from
       nested user calls, which resolve task state through ctx).
     - test coverage: za_tests/test_yield.za
+
   * `unset` of an undeclared name is a silent noop (was: index panic).
     - The pre-existing `declared` check is now bounds-guarded first; the WITH
       statement keeps its loud `Variable 'x' does not exist` error, now
       reached instead of panicking on the same shape.
+
   * Async calls from plain scripts (no namespace decl) resolve worker
     functions: empty runtime namespace normalizes to main::, matching how
     definitions register. Previously `invalid function '::name'`.
@@ -109,6 +66,20 @@ language changes
     - applies to both the interpretive dparse() path and the bytecode compiler
       (both read default_prectable); a single change in main.go
     - test coverage: za_tests/test_vm.za section 20 (8 new asserts)
+
+  * First-class narrow integer widths: `int8`, `int16`, `int32`, `uint8`,
+    `uint16`, `uint32` (existing `int`/`int64`/`uint64`/`float32` untouched).
+    - `var`/`global` declarations with these scalar types and their typed
+        slices (`var x []int32`, `global g []uint16`, ...).
+    - `foreach`/`for` over `[]int8/16/32/64`, `[]uint8/16/32/64` typed slices.
+    - arithmetic (`+ - * /`), comparisons (`== != < > <= >=`), `len()`,
+        `append()`, `type()`/`kind()`, `is_number` all handle the widths.
+    - new list converters: `list_int8/16/32`, `list_uint8/16/32/64`
+    - new scalar converters: `as_int8/16/32`, `as_uint8/16/32/64`
+    - typed function params/returns accept these types (`def f(x:int16)`,
+        `def g(a:[]int32) -> []uint64`, defaults incl.); exact-type matching,
+        no silent coercion. NB: `uint64` values are never coerced to
+        `int`/`int64`/`bigi`.
 
 
 tooling changes
@@ -168,6 +139,96 @@ tooling changes
     - `with`/`endwith` block nesting validation (was missing)
     - LSP switched from `-zz` to `-z` to avoid false-positive module warnings for `.so` libs
     - `ERR_SYNTAX` shifted from `iota` (0) to `iota + 1` so syntax errors exit non-zero
+
+  * Vim syntax highlighter synced with the runtime function list (all new
+    converter/list/FFI functions added to the appropriate `*_functions`
+    groups).
+
+
+repl changes
+------------
+
+  * Fish-style autosuggestion in the REPL line editor (history + completion
+    prediction, shown as a dimmed tail after the caret; accept with RIGHT or
+    Ctrl-F). Controlled by two new stdlib calls:
+
+    - `autocomplete(bool|null)` - enable/disable; returns the previous state
+        (no argument returns the current state). Default: disabled.
+
+    - `autocomplete_colours(string|[]string|null)` - set the suggestion-tail
+        colour code(s) (each a `[#colour]`, e.g. `[#7]` for grey); returns the
+        previous colours (no argument returns the current).
+
+    - Candidate order: most recent history entry that starts with the typed
+        text (empty input suggests the previous command), else the first
+        matching stdlib function name, else the first matching keyword.
+
+    - The ghost is drawn by the same hint machinery that renders default
+        strings for `PROMPT`; it only appears when the caret is at the end of
+        the input and does not modify the buffer until accepted.
+
+  * Ctrl-C in the REPL now cancels the current line (echoes `^C` and presents
+    the next prompt on a fresh line) instead of ending the session.
+    Detection is reported to the caller via a new `cancelled` result from the
+    line editor; the REPL loop discards any pending multi-line input and
+    re-prompts. `PROMPT`/TUI callers keep their previous Ctrl-C
+    behaviour.
+
+  * Ctrl-D in the REPL ends the session only on an empty line (readline
+    style); with text present it is ignored.
+
+  * TAB help/completion popup:
+
+    - the window is scrolled on every popup entry (not just the first) so the
+        popup no longer overwrites prior output near the bottom of the screen
+
+    - the input block is lifted by exactly the overflow needed (no fixed 11
+        rows), and the selection marker repaints on LEFT/RIGHT navigation.
+
+  * Line-editor cursor/render fixes:
+
+    - a single-line prompt after full-window command output is drawn on the
+        blank bottom row again (it no longer overwrites the last output line)
+
+    - the cursor is placed from the input row, so wrapped prompts no longer
+        misposition the caret
+
+    - prompt+input are only repainted when content or layout changed (no full
+        re-render on every cursor move); geometry changes (resize, block
+        moves) still repaint
+
+    - a newline is emitted after command output that ends mid-line, so the
+        next prompt anchors on a fresh row instead of the output tail
+
+  * Multi-line paste:
+
+    - pasting multiple lines into the single-line REPL input routes to the
+        built-in multi-line editor instead of silently truncating to the first
+        line (a single trailing line terminator stays in the line editor)
+
+    - line endings are normalised (`\r\n`/`\r` to `\n`) before cleaning, so
+        VTE-style single-CR pastes keep every line, tab and run of spaces
+
+    - abandoning the editor with ESC restores the previous screen and prompt
+        (the editor no longer issues a terminal reset that destroyed the
+        saved screen)
+
+  * Paste robustness:
+
+    - bracketed pastes arriving in a single read are handled correctly
+        (previously mis-sliced/hung)
+
+    - large volume-detected pastes (no bracketing) are fully gathered instead
+        of truncated to the first read
+
+  * History:
+
+    - `hist clear` clears the session history and truncates `~/.za_history`
+
+    - history is flushed before any hard exit (e.g. `exit`), not only on the
+        normal session end
+
+    - maximum history size raised from 255 to 512 entries
 
 
 library changes
@@ -351,6 +412,22 @@ ffi changes
     the runtime cost in normal (unset) mode is a single boolean test at the
     one FFI dispatch site.
     - documented in the `-E` env-var help text under the FFI section
+
+  * Typed int/uint array FFI helpers (all of int8/16/32/64, uint8/16/32/64),
+    mirroring the existing float32/float64 family. All bulk/copy getters return
+    the matching typed Go slice (never `[]any`).
+    - indexed accessors: `c_array_get_int8` / `c_array_set_int8`, ... for every
+        width
+    - bulk: `c_array_bulk_get_int8` / `c_array_bulk_set_int8`, ... for every
+        width
+    - whole-array copy: `c_array_copy_to_c_int8` / `c_array_copy_from_c_int8`,
+        ... for every width
+    - convenience allocators: `c_alloc_int8s/16s/32s/64s`,
+        `c_alloc_uint8s/16s/32s/64s`, `c_alloc_bytes` (alias for uint8)
+    - FFI C-marshalling added for `[]int32`/`[]uint32` args and out-param
+        readback
+    - test coverage: `za_tests/ffi/test_c_alloc_array.za` Group 9 (all widths:
+        round-trip, typed-slice returns, foreach, typed var, converters)
 
 
 1.2.3

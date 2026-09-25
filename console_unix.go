@@ -10,7 +10,6 @@ import (
     str "strings"
     "syscall"
     "time"
-    // "fmt"
 )
 
 // tt is the keystroke input receiver. It is declared here (rather than main.go)
@@ -18,9 +17,18 @@ import (
 // where upstream's term_windows.go does not compile.
 var tt *term.Term // keystroke input receiver
 
+// ttPollFd is a second, read-only fd to the same controlling terminal, used
+// by getch to detect a "quiet gap" at the end of a volumed paste burst (a
+// termios VTIME cannot express this: its timer only starts after the first
+// byte, so a long gap would block forever).
+var ttPollFd int = -1
+
 // openConsoleInput opens the console/terminal for keystroke input.
 func openConsoleInput() *term.Term {
     t, _ := term.Open("/dev/tty")
+    if f, err := unix.Open("/dev/tty", unix.O_RDONLY|unix.O_NOCTTY|unix.O_CLOEXEC, 0); err == nil {
+        ttPollFd = f
+    }
     return t
 }
 
@@ -210,6 +218,14 @@ func setupDynamicCalls() {
 // race condition, yes... but who arranges concurrent keyboard access?
 var bigbytelist = make([]byte, 6*4096)
 
+// upper bound for a single volume-detected paste burst
+const maxBurstPaste = 1 << 20
+
+var (
+    bracketedPasteStart = []byte{0x1B, 0x5B, 0x32, 0x30, 0x30, 0x7E}
+    bracketedPasteEnd   = []byte{0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E}
+)
+
 // get a key press
 func getch(timeo int) ([]byte, bool, bool, string) {
 
@@ -235,24 +251,53 @@ func getch(timeo int) ([]byte, bool, bool, string) {
     data := bigbytelist[0:numRead]
 
     // Check for VTE bracketed paste mode first
-    if bytes.HasPrefix(data, []byte{0x1B, 0x5B, 0x32, 0x30, 0x30, 0x7E}) {
-        // Start of bracketed paste - collect until end marker
-        return collectBracketedPaste()
+    if bytes.HasPrefix(data, bracketedPasteStart) {
+        // Start of bracketed paste - collect until end marker. The
+        // triggering read may already contain the whole bracketed paste
+        // (start+content+end in one shot); seed the collector with the bytes
+        // after the start marker instead of discarding them.
+        return collectBracketedPaste(data[6:])
     }
 
     // Fall back to volume-based detection
     if numRead > 6 {
-        return []byte{0}, false, true, string(data)
+        // A single large paste often arrives split across multiple reads.
+        // Gather the whole burst (until the stream goes quiet) so no part of
+        // it is truncated and treated as typed input afterwards. A termios
+        // VTIME gap can't detect "no more data" reliably, so poll the tty.
+        acc := make([]byte, 0, numRead+1024)
+        acc = append(acc, data...)
+        pollFd := []unix.PollFd{{Fd: int32(ttPollFd), Events: unix.POLLIN}}
+        for ttPollFd >= 0 && len(acc) < maxBurstPaste {
+            n, perr := unix.Poll(pollFd, 50) // 50ms of silence => burst over
+            if perr != nil || n == 0 {
+                break
+            }
+            num, e := tt.Read(bigbytelist)
+            if e != nil || num == 0 {
+                break
+            }
+            acc = append(acc, bigbytelist[:num]...)
+        }
+        return []byte{0}, false, true, string(acc)
     }
 
     // numRead can be up to 6 chars for special input stroke.
     return data, false, false, ""
 }
 
-func collectBracketedPaste() ([]byte, bool, bool, string) {
-    var pasteBuffer []byte
+func collectBracketedPaste(initial []byte) ([]byte, bool, bool, string) {
+    pasteBuffer := append([]byte{}, initial...)
 
     for {
+        // Check for end of bracketed paste (the seed may already contain it)
+        if bytes.HasSuffix(pasteBuffer, bracketedPasteEnd) {
+            // Remove only the end marker; the start marker was already
+            // consumed by getch
+            pasteBuffer = pasteBuffer[:len(pasteBuffer)-len(bracketedPasteEnd)]
+            return []byte{0}, false, true, string(pasteBuffer)
+        }
+
         term.RawMode(tt)
         tt.SetOption(term.ReadTimeout(100 * time.Millisecond))
         numRead, err := tt.Read(bigbytelist)
@@ -262,15 +307,7 @@ func collectBracketedPaste() ([]byte, bool, bool, string) {
             break
         }
 
-        data := bigbytelist[0:numRead]
-        pasteBuffer = append(pasteBuffer, data...)
-
-        // Check for end of bracketed paste
-        if bytes.HasSuffix(pasteBuffer, []byte{0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E}) {
-            // Remove the bracketing markers
-            pasteBuffer = pasteBuffer[6 : len(pasteBuffer)-6]
-            return []byte{0}, false, true, string(pasteBuffer)
-        }
+        pasteBuffer = append(pasteBuffer, bigbytelist[0:numRead]...)
     }
 
     // If we get here, something went wrong with bracketed paste

@@ -303,6 +303,26 @@ Press TAB to complete standard-library function names, language keywords, and fi
 # Completes to /etc/passwd
 ```
 
+#### Autosuggestion
+
+The REPL can offer fish-style history autosuggestion: as you type, the most likely continuation (the most recent history entry that starts with the typed text, otherwise a matching standard-library function or keyword) is shown dimmed in the input line. Press RIGHT or Ctrl-F to accept it, or keep typing to ignore it.
+
+```za
+# Enable in ~/.zarc (or type it in the REPL)
+_=autocomplete(true)
+
+# Optional: set the suggestion colour, e.g. dark-grey
+_=autocomplete_colours("[#7]")
+
+# Type a prefix that matches a previous command, then press RIGHT (or Ctrl-F)
+>> disk_use_
+#        ↑ suggested tail shown dimmed; RIGHT fills it in
+```
+
+- `autocomplete(bool)` enables/disables the feature and returns the previous state; calling it with no argument returns the current state.
+- `autocomplete_colours(string|[]string)` sets the colour code(s) used for the suggestion tail (each a `[#colour]` code, e.g. `[#7]` for grey) and returns the previous colours; no argument returns the current colours.
+- The suggestion shows only while the caret is at the end of the input. It does not modify the input until accepted.
+
 #### Multi-line Editor
 
 For editing multi-line statements or pasting complex code blocks, press Ctrl+O to open the built-in multi-line editor. Pasting multi-line content into the single-line REPL input automatically switches to the multi-line editor. Compose code in the temporary buffer, then submit with Ctrl+D or cancel with Escape.

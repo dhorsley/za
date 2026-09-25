@@ -2700,6 +2700,59 @@ func buildInternalLib() {
         return previous, nil
     }
 
+    slhelp["autocomplete"] = LibHelp{in: "bool|null", out: "bool|null", action: "Enable/disable history+completion auto-suggestion in the REPL. Returns the previous state; Default: disabled."}
+    stdlib["autocomplete"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        prev := autocompleteEnabled
+        if len(args) == 0 {
+            return prev, nil
+        }
+        if ok, err := expect_args("autocomplete", args, 1, "1", "bool"); !ok {
+            return nil, err
+        }
+        autocompleteEnabled = args[0].(bool)
+        return prev, nil
+    }
+
+    slhelp["autocomplete_colours"] = LibHelp{in: "string|[]string|null", out: "string|[]string", action: "Set the Za colour code(s) used for the autosuggestion tail, e.g. "[#dim][#7]" for grey. Returns the previous colours."}
+    stdlib["autocomplete_colours"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        previous := append([]string{}, autocompleteColours...)
+        switch len(args) {
+        case 0:
+            return previous, nil
+        case 1:
+            var colours []string
+            switch v := args[0].(type) {
+            case string:
+                colours = []string{v}
+            case []string:
+                colours = v
+            case []any:
+                colours = make([]string, len(v))
+                for i, item := range v {
+                    if str, ok := item.(string); ok {
+                        colours[i] = str
+                    } else {
+                        return nil, errors.New("autocomplete_colours: all elements must be strings")
+                    }
+                }
+            default:
+                return nil, errors.New("autocomplete_colours: expected string, []string or []any")
+            }
+            if len(colours) == 0 {
+                return nil, errors.New("autocomplete_colours: at least one colour required")
+            }
+            for _, colour := range colours {
+                if !str.HasPrefix(colour, "[#") || !str.HasSuffix(colour, "]") {
+                    return nil, errors.New("autocomplete_colours: invalid colour format, expected [#colour_name]")
+                }
+            }
+            autocompleteColours = colours
+            return previous, nil
+        default:
+            return nil, errors.New("autocomplete_colours: expected at most 1 argument")
+        }
+    }
+
     slhelp["import_errors"] = LibHelp{in: "module_alias_string", out: "[]string", action: "Returns a list of import errors for an AUTO module. Each error message describes a struct/union that was skipped due to unresolvable fields. Returns empty list if no errors."}
     stdlib["import_errors"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("import_errors", args, 1, "1", "string"); !ok {

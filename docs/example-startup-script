@@ -280,7 +280,8 @@ macro +p(prof,cluster) `
 
 macro +ask(query,ask_rv) `
     url="https://api.cerebras.ai/v1/chat/completions"
-    model="llama-3.3-70b"
+    # model="llama-3.3-70b"
+    model="llama3.1-8b"
     maxtokens=1000
     data=\`{
             "model":"{model}",
@@ -309,4 +310,7 @@ macro +ask(query,ask_rv) `
     endif
     unset data,headers
 `
+
+_=autocomplete(true)
+_=autocomplete_colours("[#dim][#5]")
 

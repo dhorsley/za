@@ -182,6 +182,11 @@ var depthColours []string = []string{
 	"[#1]", // Depth 5+: Blue
 }
 
+// fish-style autosuggestion in the REPL line editor.
+// toggled by autocomplete()/autocomplete_colours() stdlib calls.
+var autocompleteEnabled bool
+var autocompleteColours []string
+
 // for refactoring: find a var
 var var_refs bool
 var var_refs_name string

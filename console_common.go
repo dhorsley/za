@@ -292,6 +292,105 @@ func buildHelpPath(wordUnderCursor []rune, helpColoured *[]string, helpList *[]s
 }
 
 
+// ---------------------------------------------------------------------------
+// Fish-style autosuggestion for the REPL line editor.
+// The candidate pipeline is shared with the legacy default-string hint (see
+// getInput): a "suggestion" string whose prefix is the typed input gets its
+// unmatched tail rendered dim/italic after the caret, accepted with →/Ctrl-F.
+// ---------------------------------------------------------------------------
+
+// lazily built, alphabetically sorted list of stdlib function names, used as
+// a catalog fallback when no history entry matches the typed prefix
+var hintFuncnames []string
+
+func buildHintFuncnames() {
+	if hintFuncnames == nil {
+		for k := range slhelp {
+			hintFuncnames = append(hintFuncnames, k)
+		}
+		sort.Strings(hintFuncnames)
+	}
+}
+
+// replHint returns the best suggestion for the given typed input:
+//  1. the most recent history entry that starts with input (fish-style),
+//  2. otherwise the first (alphabetical) stdlib function name that starts
+//     with a non-empty input,
+//  3. otherwise the first keyword that starts with a non-empty input.
+// Empty input only suggests from history (the previous command).
+func replHint(input string) string {
+	buildHintFuncnames()
+
+	for i := len(hist) - 1; i >= 0; i-- {
+		h := hist[i]
+		if h == input || h == "" {
+			continue
+		}
+		if str.HasPrefix(h, input) {
+			return h
+		}
+	}
+
+	if input == "" {
+		return ""
+	}
+
+	for _, f := range hintFuncnames {
+		if f == input {
+			continue
+		}
+		if str.HasPrefix(f, input) {
+			return f
+		}
+	}
+
+	for _, kw := range completions {
+		if kw == input {
+			continue
+		}
+		if str.HasPrefix(kw, input) {
+			return kw
+		}
+	}
+
+	return ""
+}
+
+// suggestionMarkup wraps a suggestion tail in dim+italic (optionally with the
+// user-configured foreground colour) ready for console output.
+func suggestionMarkup(tail string) string {
+	markup := "\033[2m\033[3m" // dim + italic
+	if len(autocompleteColours) > 0 && autocompleteColours[0] != "" {
+		markup += sparkle(autocompleteColours[0])
+	}
+	markup += tail
+	markup += "\033[23m\033[22m"
+	if len(autocompleteColours) > 0 {
+		markup += "\033[39m"
+	}
+	return markup
+}
+
+// capGhostTail truncates a suggestion tail so it fits the remaining columns
+// on the input's last row (runes are the unit; wide glyphs count as one
+// column, matching displayedLen's convention). Returns "" when the input
+// already fills the row.
+func capGhostTail(tail string, icol, inputL int) string {
+	startCol := icol
+	if inputL > 0 {
+		startCol = ((icol + inputL - 1) % MW) + 2 // column right after the last input char
+	}
+	if startCol > MW {
+		return ""
+	}
+	remaining := MW - startCol + 1
+	r := []rune(tail)
+	if len(r) > remaining {
+		r = r[:remaining]
+	}
+	return string(r)
+}
+
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string, replEditor bool) (out_s string, eof bool, broken bool, cancelled bool) {
 
@@ -382,6 +481,21 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         var prevIrow int
         var prevRowLen int
         var prevStar int
+        // forces a repaint on the iteration after the multi-line editor
+        // returns (ESC-abandon or accept), so the prompt block is redrawn
+        // after the editor restores (or clears) the screen
+        editForceRepaint := false
+
+        // fish-style autosuggestion state (REPL only). The candidate pipeline
+        // is shared with the legacy default-string hint: suggestion is the
+        // candidate string, suggestionRunes its runes, and defaultAccepted is
+        // the shared "hint already accepted" flag (legacy TAB / RIGHT accept).
+        useSuggestion := replEditor && autocompleteEnabled
+        suggestion := in_defaultString
+        suggestionRunes := defaultString
+        buildHintFuncnames()
+        // the previously drawn ghost tail, cleared before the next repaint
+        var prevGhostRow, prevGhostCol, prevGhostLen int
 
     fmt.Print(sparkle(pcol))
     clearChars(girow, gicol, clearWidth)
@@ -450,12 +564,26 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             fileList = buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
         }
 
+        // recompute the fish-style suggestion whenever the input changed;
+        // the ghost is only shown with the caret at the end of the input
+        if useSuggestion {
+            if cand := replHint(string(s)); cand != "" && cpos == len(s) {
+                suggestion = cand
+                suggestionRunes = []rune(cand)
+                defaultAccepted = false
+            } else {
+                suggestion = ""
+                suggestionRunes = nil
+            }
+        }
+
         // repaint only when content or layout actually changed; pure cursor
         // moves (arrows, home/end) just reposition the cursor.
         sinput := string(s)
         sdispprompt := string(sprompt)
         needPaint := sinput != prevInput || sdispprompt != prevPrompt || startedContextHelp != prevHelp ||
-            irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar
+            irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar || editForceRepaint
+        editForceRepaint = false
         prevInput = sinput
         prevPrompt = sdispprompt
         prevHelp = startedContextHelp
@@ -464,6 +592,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         prevStar = selectedStar
 
         if needPaint {
+            // clear the previously drawn ghost tail before redrawing
+            if prevGhostLen > 0 {
+                at(prevGhostRow, prevGhostCol)
+                clearToEOL()
+                prevGhostLen = 0
+            }
+
             // print prompt
             at(srow, scol)
             fmt.Print(sprompt)
@@ -474,17 +609,36 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             // show input
             at(irow, icol)
             if echo.(bool) {
-                if len(s) > len(defaultString) {
+                if len(s) > len(suggestionRunes) {
                     fmt.Print(string(s))
-                } else {
-                    if str.HasPrefix(in_defaultString, string(s)) && !defaultAccepted {
-                        // #dim + italic + string + normal
-                        fmt.Print("\033[2m\033[3m" + in_defaultString + "\033[23m\033[22m")
-                    } else {
-                        clearChars(irow, icol, len(in_defaultString))
-                        at(irow, icol)
+                } else if str.HasPrefix(suggestion, string(s)) && !defaultAccepted {
+                    if useSuggestion && cpos == len(s) {
+                        // render the typed prefix normally and the suggestion
+                        // tail dimmed/coloured (fish-style ghost)
+                        tail := capGhostTail(suggestion[len(string(s)):], icol, inputL)
                         fmt.Print(string(s))
+                        if tail != "" {
+                            fmt.Print(suggestionMarkup(tail))
+                            prevGhostRow = irow + rowLen
+                            if inputL == 0 {
+                                prevGhostCol = icol
+                            } else {
+                                prevGhostCol = ((icol + inputL - 1) % MW) + 2
+                                if prevGhostCol > MW {
+                                    prevGhostCol = MW
+                                }
+                            }
+                            prevGhostLen = rlen(tail)
+                        }
+                    } else {
+                        // legacy default hint (or REPL caret not at end):
+                        // dimmed+italic whole candidate, unchanged behaviour
+                        fmt.Print("\033[2m\033[3m" + suggestion + "\033[23m\033[22m")
                     }
+                } else {
+                    clearChars(irow, icol, len(suggestionRunes))
+                    at(irow, icol)
+                    fmt.Print(string(s))
                 }
             } else {
                 fmt.Print(str.Repeat(mask, inputL))
@@ -528,15 +682,22 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 // when pasting one line) is dropped and stays in this editor.
                 trimmed := str.TrimRight(pbuf, "\r\n")
                 if str.Contains(trimmed, "\r") || str.Contains(trimmed, "\n") {
-                    pbuf, _ = cleanPasteInput(trimmed)
-                    pbuf = str.ReplaceAll(str.ReplaceAll(pbuf, "\r\n", "\n"), "\r", "\n")
-                    combined := string(append(append([]rune(s[:cpos]), []rune(pbuf)...), s[cpos:]...))
+                    // normalise line endings first (VTE sends a single CR
+                    // between lines); cleanPasteInput would otherwise strip
+                    // the CRs and merge every line into one.
+                    trimmed = normalizePasteLines(trimmed)
+                    trimmed, _ = cleanPasteInput(trimmed)
+                    combined := string(append(append([]rune(s[:cpos]), []rune(trimmed)...), s[cpos:]...))
                     result, reof, rbroken := multilineEditor(combined, -1, MH-5, "", "", "Editor")
                     if !rbroken {
                         s = []rune(result)
                         cpos = len(s)
+                        editForceRepaint = true
                     } else if reof {
                         return "", true, false, false
+                    } else {
+                        // ESC: abandon the editor; repaint the prompt block
+                        editForceRepaint = true
                     }
                 } else {
                     s = insertWord(s, cpos, trimmed)
@@ -805,11 +966,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         // Replace the input buffer in getInput() with the result from the multiline editor
                         s = []rune(result)
                         cpos = len(s)
+                        editForceRepaint = true
                     } else if eof {
                         // If user pressed ctrl-d in multiline, treat as EOF in getInput
                         return "", true, false, false
                     } else {
                         // User pressed ESC in multiline editor: return to input mode with original buffer unchanged
+                        editForceRepaint = true
                     }
 
                 case bytes.Equal(c, []byte{13}): // enter
@@ -978,11 +1141,34 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         break
                     }
 
+                    // fish-style: at the end of the input with a suggestion
+                    // shown, RIGHT accepts it
+                    if useSuggestion && cpos == len(s) {
+                        if cand := replHint(string(s)); cand != "" && str.HasPrefix(cand, string(s)) && cand != string(s) {
+                            s = []rune(cand)
+                            cpos = len(s)
+                            defaultAccepted = true
+                            break
+                        }
+                    }
+
                     // normal RIGHT:
                     if cpos < len(s) {
                         cpos++
                     }
                     wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x06}): // Ctrl-F: accept the suggestion (fish-style)
+                    removeProcessedKeycode(&c, 1)
+                    if useSuggestion && !startedContextHelp && cpos == len(s) {
+                        if cand := replHint(string(s)); cand != "" && str.HasPrefix(cand, string(s)) && cand != string(s) {
+                            s = []rune(cand)
+                            cpos = len(s)
+                            defaultAccepted = true
+                            break
+                        }
+                    }
+                    break
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
                     removeProcessedKeycode(&c, 3)
@@ -1486,6 +1672,15 @@ func escapeControlCharsInLiterals(s string) string {
 
 var altScreen bool
 
+// normalizePasteLines converts the common paste line separators to "\n" so
+// later processing (cleanPasteInput, editor line splitting) sees real
+// newlines regardless of how the terminal delivered them.
+func normalizePasteLines(s string) string {
+    s = str.ReplaceAll(s, "\r\n", "\n")
+    s = str.ReplaceAll(s, "\r", "\n")
+    return s
+}
+
 func cleanPasteInput(s string) (string, int) {
     out := make([]rune, 0, len(s))
     removed := 0
@@ -1493,6 +1688,10 @@ func cleanPasteInput(s string) (string, int) {
         switch {
         case r == '\n' || r == '\t':
             out = append(out, r)
+        case r == '\r':
+            // a lone CR is a paste line break; keep it as a newline rather
+            // than discarding it
+            out = append(out, '\n')
         case r >= 32 && r != 127:
             out = append(out, r)
         default:
@@ -1529,6 +1728,14 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
         secScreen()
     } else {
         priScreen()
+    }
+
+    // local "clear screen" for the editor: a plain ED2+home. Do not use the
+    // package cls() here, which emits \033c (a full terminal RESET) that
+    // destroys the primary-buffer snapshot ?1049l would otherwise restore on
+    // exit — that is what left the screen and prompt missing after ESC.
+    cls := func() {
+        pf("\033[2J\033[H")
     }
 
     cls()
@@ -1703,6 +1910,9 @@ func multilineEditor(defaultString string, width, height int, boxColour, inputCo
         if pasted {
             // Strip ANSI codes
             pbuf = Strip(pbuf)
+            // normalise the line endings first (VTE sends a single CR between
+            // lines) so cleanPasteInput/splitting see real newlines
+            pbuf = normalizePasteLines(pbuf)
             // then clean the rest of the jank
             pbuf, removed = cleanPasteInput(pbuf)
 
