@@ -125,13 +125,12 @@ func startLogWorker() {
     queueFullWarned = false
 
     go func() {
-        for {
-            request, ok := <-logQueue
-            if ok {
-                processLogRequest(request)
-            }
+        for request := range logQueue {
+            processLogRequest(request)
         }
+        workerMutex.Lock()
         logWorkerRunning = false
+        workerMutex.Unlock()
     }()
 }
 

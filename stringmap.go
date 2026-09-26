@@ -13,7 +13,7 @@ func lmcreate(sz int) *Lmap {
 }
 
 func (u *Lmap) lmshow() string {
-    return sf("%#v",u.m)
+    return sf("%#v",&u.m)
 }
 
 func (u *Lmap) lmexists(k string) bool {

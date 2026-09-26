@@ -1432,13 +1432,33 @@ func main() {
 			gvset("@lang", cop.Out)
 		}
 
-		cop = Copper("echo -n $USER", true)
-		gvset("@user", cop.Out)
+		if no_shell {
+			// Parent-process execution (GetCommand) performs no shell
+			// expansion, so "echo -n $USER" would capture the literal
+			// "$USER" text. Read the environment directly instead.
+			gvset("@user", os.Getenv("USER"))
+		} else {
+			cop = Copper("echo -n $USER", true)
+			gvset("@user", cop.Out)
+		}
 
 		gvset("@os", runtime.GOOS)
 
-		cop = Copper("echo -n $HOME", true)
-		gvset("@home", cop.Out)
+		if no_shell {
+			// Parent-process execution (GetCommand) performs no shell
+			// expansion, so "echo -n $HOME" would capture the literal
+			// "$HOME" text. That breaks the ~/.zarc startup script
+			// lookup below, so resolve HOME without the coprocess.
+			if hd, err := os.UserHomeDir(); err == nil {
+				gvset("@home", hd)
+			} else {
+				cop = Copper("echo -n $HOME", true)
+				gvset("@home", cop.Out)
+			}
+		} else {
+			cop = Copper("echo -n $HOME", true)
+			gvset("@home", cop.Out)
+		}
 
 		gvset("@release_name", "unknown")
 		gvset("@release_version", "unknown")

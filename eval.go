@@ -1235,7 +1235,6 @@ func (p *leparser) accessArray(left any, right Token) any {
                 dp, err := p.dparse(0, false)
                 if err != nil {
                     panic(fmt.Errorf("map key could not be evaluated"))
-                    return nil
                 }
                 switch dp.(type) {
                 case string:
@@ -1437,7 +1436,6 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
             dp, err := p.dparse(0, false)
             if err != nil {
                 panic(fmt.Errorf("error here -> %+v\n", err))
-                return nil, err
             }
             iargs = append(iargs, dp)
             if p.peek().tokType != O_Comma {
@@ -1583,7 +1581,6 @@ func (p *leparser) buildStructOrFunction(left any, right Token) (any, error) {
     res, _, _, err := p.callFunctionExt(p.fs, p.ident, name, false, nil, "", arg_names, iargs)
     if err != nil {
         panic(fmt.Errorf("%+v\n", err))
-        return nil, err
     }
 
     // fmt.Printf("cleanly exiting from buildStructOrFunction() with result : %#v\n",res)

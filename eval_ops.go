@@ -2295,7 +2295,7 @@ func compareString(val1 string, val2 string, operation int64) bool {
     case SYM_GE:
         return val1 >= val2
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func compareInt(val1 int, val2 int, operation int64) bool {
@@ -2309,7 +2309,7 @@ func compareInt(val1 int, val2 int, operation int64) bool {
     case SYM_GE:
         return val1 >= val2
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func compareFloat(val1 float64, val2 float64, operation int64) bool {
@@ -2323,7 +2323,7 @@ func compareFloat(val1 float64, val2 float64, operation int64) bool {
     case SYM_GE:
         return val1 >= val2
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func compareBigFloat(val1 *big.Float, val2 *big.Float, operation int64) bool {
@@ -2337,7 +2337,7 @@ func compareBigFloat(val1 *big.Float, val2 *big.Float, operation int64) bool {
     case SYM_GE:
         return val1.Cmp(val2) > -1
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func compareBigInt(val1 *big.Int, val2 *big.Int, operation int64) bool {
@@ -2351,7 +2351,7 @@ func compareBigInt(val1 *big.Int, val2 *big.Int, operation int64) bool {
     case SYM_GE:
         return val1.Cmp(val2) > -1
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func compareI64(val1 int64, val2 int64, operation int64) bool {
@@ -2365,7 +2365,7 @@ func compareI64(val1 int64, val2 int64, operation int64) bool {
     case SYM_GE:
         return val1 >= val2
     }
-    panic(fmt.Errorf("syntax error: unsupported operation %q", operation))
+    panic(fmt.Errorf("syntax error: unsupported operation %d", operation))
 }
 
 func asObjectKey(key any) string {
@@ -3154,86 +3154,6 @@ func handleStdlibError(err error, p *leparser, evalfs uint32) bool {
             // Convert to normal panic
             p.report(p.line, err.Error())
             panic(err)
-            return true
-        case "warn":
-            // Print warning but continue
-            p.report(p.line, "#[6]WARNING: "+err.Error()+" (continuing execution)[#-]")
-            return false // Continue execution
-        case "disabled":
-            // Completely ignore
-            return false // Continue execution
-        default:
-            // Unknown strictness - default to strict
-            p.report(p.line, err.Error())
-            finish(false, ERR_EVAL)
-            return true
-        }
-    }
-
-    // Case 2: Auto-convert to exception if inside a try block
-    if !shouldConvertToException {
-        calllock.RLock()
-        isTryBlock := calltable[p.fs].isTryBlock
-        defaultCategory := calltable[p.fs].defaultExceptionCategory
-        calllock.RUnlock()
-
-        if isTryBlock {
-            shouldConvertToException = true
-            // Store the try block's default category for later use
-            if defaultCategory != nil {
-                calllock.Lock()
-                calltable[p.fs].defaultExceptionCategory = defaultCategory
-                calllock.Unlock()
-            }
-        }
-    }
-
-    if shouldConvertToException {
-        // Convert to exception for try/catch handling
-        var category any
-        var message string
-
-        message = err.Error()
-
-        // Use default category if available
-        calllock.RLock()
-        if calltable[p.fs].defaultExceptionCategory != nil {
-            category = calltable[p.fs].defaultExceptionCategory
-        }
-        calllock.RUnlock()
-
-        // Create exception info with corrected line number (similar to eval.go)
-        excInfo := &exceptionInfo{
-            category:   category,
-            message:    message,
-            line:       int(p.line) + 1,
-            function:   calltable[p.fs].fs,
-            fs:         p.fs,
-            stackTrace: generateStackTrace(calltable[p.fs].fs, p.fs, int16(p.line)+1),
-            source:     "stdlib",
-        }
-
-        // Set exception state atomically
-        atomic.StorePointer(&calltable[p.fs].activeException, unsafe.Pointer(excInfo))
-
-        // Set catch matched to false so try/catch blocks can see the exception
-        atomic.StoreInt32(&calltable[p.fs].currentCatchMatched, 0)
-
-        // Return with exception state for try/catch handling
-        return true
-    } else {
-        // Not converting to exception - check exception strictness
-        switch exceptionStrictness {
-        case "strict":
-            // Fatal termination with helpful message (default)
-            p.report(p.line, err.Error())
-            finish(false, ERR_EVAL)
-            return true
-        case "permissive":
-            // Convert to normal panic
-            p.report(p.line, err.Error())
-            panic(err)
-            return true
         case "warn":
             // Print warning but continue
             p.report(p.line, "#[6]WARNING: "+err.Error()+" (continuing execution)[#-]")

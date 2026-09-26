@@ -13,7 +13,7 @@ func nlmcreate(sz int) *Nmap {
 }
 
 func (u *Nmap) lmshow() string {
-    return sf("%#v",u.m)
+    return sf("%#v",&u.m)
 }
 
 

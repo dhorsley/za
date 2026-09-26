@@ -2713,7 +2713,7 @@ func buildInternalLib() {
         return prev, nil
     }
 
-    slhelp["autocomplete_colours"] = LibHelp{in: "string|[]string|null", out: "string|[]string", action: "Set the Za colour code(s) used for the autosuggestion tail, e.g. "[#dim][#7]" for grey. Returns the previous colours."}
+    slhelp["autocomplete_colours"] = LibHelp{in: "string|[]string|null", out: "string|[]string", action: "Set the Za colour code(s) used for the autosuggestion tail, e.g. \"[#dim][#7]\" for grey. Returns the previous colours."}
     stdlib["autocomplete_colours"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         previous := append([]string{}, autocompleteColours...)
         switch len(args) {
