@@ -187,6 +187,10 @@ var depthColours []string = []string{
 var autocompleteEnabled bool
 var autocompleteColours []string
 
+// tab-pager grid view for the REPL TAB completion pane.
+// toggled by the tabpager() stdlib call; default off (classic list).
+var tabpagerEnabled bool
+
 // for refactoring: find a var
 var var_refs bool
 var var_refs_name string

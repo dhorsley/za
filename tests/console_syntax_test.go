@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	str "strings"
 )
 
 func TestFuzzyTermMatch(t *testing.T) {
@@ -349,6 +351,120 @@ func TestColourSyntaxCommandPositions(t *testing.T) {
 
 	resetSyntaxColours()
 	os.Setenv("PATH", oldpath)
+}
+
+func TestSplitDescriptionLines(t *testing.T) {
+	got := splitDescriptionLines("a\nb[#SOL]c")
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Fatalf("splitDescriptionLines = %v", got)
+	}
+	// the conventional "\n[#SOL]" pair (LF + column reset) is ONE break
+	got = splitDescriptionLines("a\n[#SOL]b")
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Fatalf("splitDescriptionLines(\\n[#SOL]) = %v", got)
+	}
+}
+
+func TestBuildPagerPane(t *testing.T) {
+	ansiMode = true
+	if fairyReplacer == nil {
+		setupAnsiPalette()
+	}
+	oldMW := MW
+	MW = 100
+	defer func() { MW = oldMW }()
+
+	slhelp["zzfn1"] = LibHelp{in: "a,b", action: "first line\n[#SOL]second\nthird\nfourth"}
+	defer delete(slhelp, "zzfn1")
+
+	helpList := []string{"zzfn1(", "zzfn2(", "zzkw"}
+	helpType := []int{HELP_FUNC, HELP_FUNC, HELP_KEYWORD}
+	fileList := map[string]os.FileInfo{}
+
+	// collapsed description clips; pane never exceeds the budgeted rows
+	s := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, false, 0, 11)
+	lines := str.Split(s, "\n")
+	if len(lines) > 11 {
+		t.Fatalf("pane has %d lines (max 11):\n%s", len(lines), s)
+	}
+	if !hasSub(s, "zzfn1") || !hasSub(s, "3 matches") {
+		t.Fatalf("grid/status missing: %q", s)
+	}
+	if !hasSub(s, "first line") {
+		t.Fatalf("detail missing first line: %q", s)
+	}
+	if hasSub(s, "fourth") {
+		t.Fatalf("collapsed detail leaked later line: %q", s)
+	}
+	if !hasSub(s, "more") {
+		t.Fatalf("overflow marker missing: %q", s)
+	}
+	// expanded shows the remaining description lines
+	s2 := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, true, 0, 11)
+	if !hasSub(s2, "fourth") {
+		t.Fatalf("expanded detail missing later line: %q", s2)
+	}
+	// the typed prefix is underlined in the grid
+	if !hasSub(s, "\x1b[4mzz") {
+		t.Fatalf("prefix not underlined: %q", s)
+	}
+	// dirs render with a trailing slash and the dir colour
+	os.Mkdir("zzdir", 0o755)
+	defer os.Remove("zzdir")
+	fi, _ := os.Stat("zzdir")
+	s3 := buildPagerPane([]string{"zzdir"}, []int{HELP_DIRENT},
+		map[string]os.FileInfo{"zzdir": fi}, []rune("zz"), 0, false, 0, 11)
+	if !hasSub(stripANSI(s3), "zzdir/") || !hasSub(s3, "Directory") {
+		t.Fatalf("dir entry missing slash/kind: %q", s3)
+	}
+	// empty list
+	s4 := buildPagerPane(nil, nil, nil, []rune("zz"), -1, false, 0, 11)
+	if !hasSub(s4, "no matches") {
+		t.Fatalf("empty pane: %q", s4)
+	}
+}
+
+func TestBuildPagerPaneScroll(t *testing.T) {
+	ansiMode = true
+	if fairyReplacer == nil {
+		setupAnsiPalette()
+	}
+	oldMW := MW
+	MW = 100
+	defer func() { MW = oldMW }()
+
+	// a genuinely long description (10 lines) so the 7-row expanded view clips
+	action := "l1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10"
+	slhelp["zzlong"] = LibHelp{in: "x", action: action}
+	defer delete(slhelp, "zzlong")
+
+	helpList := []string{"zzlong("}
+	helpType := []int{HELP_FUNC}
+	fileList := map[string]os.FileInfo{}
+
+	// collapsed: 3 rows, first line only (plus overflow marker)
+	coll := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, false, 0, 11)
+	if !hasSub(coll, "l1") || hasSub(coll, "l4") {
+		t.Fatalf("collapsed should cap at 3 lines: %q", coll)
+	}
+	// expanded at the top: signature + desc rows 1-6, overflow marker
+	exp0 := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, true, 0, 11)
+	if !hasSub(exp0, "l6") || hasSub(exp0, "l7") {
+		t.Fatalf("expanded top should show sig+l1..l6: %q", exp0)
+	}
+	if !hasSub(exp0, "4 more") {
+		t.Fatalf("expanded top missing overflow marker: %q", exp0)
+	}
+	// scrolled to the end (scroll 4 = dlines[4..10]): l4..l10, no marker
+	exp4 := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, true, 4, 11)
+	if !hasSub(exp4, "l4") || !hasSub(exp4, "l10") || hasSub(exp4, "l3") {
+		t.Fatalf("scrolled display wrong: %q", exp4)
+	}
+	// overscroll is clamped to the last scrollable page
+	exp9 := buildPagerPane(helpList, helpType, fileList, []rune("zz"), 0, true, 99, 11)
+	if !hasSub(exp9, "l10") || hasSub(exp9, "l3") {
+		t.Fatalf("overscroll clamp failed: %q", exp9)
+	}
 }
 
 func hasSub(s, sub string) bool {

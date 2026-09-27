@@ -2753,6 +2753,19 @@ func buildInternalLib() {
         }
     }
 
+    slhelp["tabpager"] = LibHelp{in: "bool|null", out: "bool|null", action: "Enable/disable the grid TAB-pager in the REPL (columns, paging, live description pane). Off by default: TAB shows the classic single-line list. Returns the previous state."}
+    stdlib["tabpager"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        prev := tabpagerEnabled
+        if len(args) == 0 {
+            return prev, nil
+        }
+        if ok, err := expect_args("tabpager", args, 1, "1", "bool"); !ok {
+            return nil, err
+        }
+        tabpagerEnabled = args[0].(bool)
+        return prev, nil
+    }
+
     slhelp["syntax_colours"] = LibHelp{in: "map|null", out: "map|null", action: "Get or set the live REPL syntax-highlighting colours. Call with a map of colour-class name to [#colour] markup — classes: keyword, function, string, number, comment, variable, shellcommand, error, operator — to override any subset (an empty string disables a class); returns the previous colours. No argument: returns the current colours. \"reset\": restores the defaults."}
     stdlib["syntax_colours"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         switch len(args) {

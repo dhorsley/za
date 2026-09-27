@@ -1017,6 +1017,259 @@ func colourSyntax(input string) string {
 	return b.String()
 }
 
+// ---------------------------------------------------------------------------
+// TAB completion pager (opt-in via tabpager()): renders the completion pane
+// as a column grid with a status row and a clipped description block. The pane
+// is a single multi-line string separated by '\n' so the existing draw code
+// (clear the rows below the input, print at irow+1) needs no geometry changes,
+// and the total line count never exceeds HELP_SIZE.
+// ---------------------------------------------------------------------------
+
+const pagerDetailRowsClosed = 3
+const pagerDetailRowsOpen = 7
+
+// splitDescriptionLines splits an slhelp action string into render lines.
+// Both '\n' and the "[#SOL]" marker start a new line, but the conventional
+// "\n[#SOL]" pair (LF to drop a row + ESC[1G back to column 1) is a SINGLE
+// line break — the pair is collapsed first so it never yields a phantom
+// blank line.
+func splitDescriptionLines(s string) []string {
+	s = str.ReplaceAll(s, "\n[#SOL]", "\n")
+	s = str.ReplaceAll(s, "[#SOL]", "\n")
+	return str.Split(s, "\n")
+}
+
+// pagerColWidth returns the TAB-pager column width: the longest visible
+// candidate name plus padding, capped.
+func pagerColWidth(helpList []string) int {
+	w := 8
+	for _, h := range helpList {
+		if L := rlen(h); L > w {
+			w = L
+		}
+	}
+	w += 2
+	if w > 30 {
+		w = 30
+	}
+	return w
+}
+
+// pagerGridCols returns the number of grid columns for the given pane width.
+func pagerGridCols(helpList []string) int {
+	cols := MW / pagerColWidth(helpList)
+	if cols < 1 {
+		cols = 1
+	}
+	return cols
+}
+
+// pagerMetrics returns the grid geometry used by pager key handling: column
+// count and page size, computed with the collapsed detail budget (good enough
+// for navigation; the exact grid is recomputed at render time).
+func pagerMetrics(helpList []string) (cols, pageSize int) {
+	cols = pagerGridCols(helpList)
+	gridRows := 11 - 1 - pagerDetailRowsClosed // HELP_SIZE is local to getInput
+	if gridRows < 1 {
+		gridRows = 1
+	}
+	return cols, cols * gridRows
+}
+
+// pagerDetailLines builds the raw description lines for the entry at sel.
+func pagerDetailLines(helpList []string, helpType []int, fileList map[string]os.FileInfo, sel int) []string {
+	switch helpType[sel] {
+	case HELP_FUNC:
+		name := helpList[sel]
+		if str.HasSuffix(name, "(") {
+			name = name[:len(name)-1]
+		}
+		var lines []string
+		sig := name
+		if h, ok := slhelp[name]; ok {
+			sig = name + "(" + h.in + ")"
+			lines = append(lines, "[#bold]"+sig+"[#boff]")
+			lines = append(lines, splitDescriptionLines(h.action)...)
+			return lines
+		}
+		return []string{"[#bold]" + sig + "[#boff]"}
+	case HELP_DIRENT:
+		if f, ok := fileList[helpList[sel]]; ok {
+			kind := "File"
+			if f.IsDir() {
+				kind = "Directory"
+			}
+			return []string{helpList[sel] + " " + kind + sf("  Size:%d Mode:%o Mod:%v", f.Size(), f.Mode(), f.ModTime())}
+		}
+		return []string{helpList[sel]}
+	case HELP_KEYWORD:
+		return []string{"[#6]" + helpList[sel] + "[#-]"}
+	}
+	return nil
+}
+
+// clampLine truncates a rendered line to maxCols visible runes.
+func clampLine(s string, maxCols int) string {
+	r := []rune(s)
+	if maxCols > 0 && len(r) > maxCols {
+		return string(r[:maxCols])
+	}
+	return s
+}
+
+// buildPagerPane renders the TAB completion pane for tabpager mode. paneRows
+// is the number of rows the pane owns (HELP_SIZE in getInput); the pane is
+// split between the grid, one status row and the (clipped) description block.
+func buildPagerPane(helpList []string, helpType []int, fileList map[string]os.FileInfo, wordUnderCursor []rune, selectedStar int, expanded bool, descScroll int, paneRows int) string {
+	n := len(helpList)
+	if n == 0 {
+		return "[#dim]no matches[#-]"
+	}
+	sel := selectedStar
+	if sel < 0 {
+		sel = 0
+	}
+	if sel >= n {
+		sel = n - 1
+	}
+
+	detailRows := pagerDetailRowsClosed
+	if expanded {
+		detailRows = pagerDetailRowsOpen
+	}
+	if detailRows > paneRows-2 {
+		detailRows = paneRows - 2
+	}
+	gridRows := paneRows - 1 - detailRows
+	if gridRows < 1 {
+		gridRows = 1
+	}
+
+	colWidth := pagerColWidth(helpList)
+	cols := MW / colWidth
+	if cols < 1 {
+		cols = 1
+	}
+	pageSize := cols * gridRows
+	page := sel / pageSize
+	pageCount := (n + pageSize - 1) / pageSize
+	pageTop := page * pageSize
+
+	pfxR := []rune(str.ToLower(string(wordUnderCursor)))
+
+	lines := make([]string, 0, gridRows+1+detailRows)
+	for r := 0; r < gridRows; r++ {
+		var b str.Builder
+		for c := 0; c < cols; c++ {
+			idx := pageTop + r*cols + c
+			if idx >= n {
+				continue
+			}
+			full := helpList[idx]
+			disp := full
+			if helpType[idx] == HELP_DIRENT {
+				if f, ok := fileList[full]; ok && f.IsDir() {
+					disp = full + "/"
+				}
+			}
+			if rr := []rune(disp); len(rr) > colWidth-1 {
+				disp = string(rr[:colWidth-1])
+			}
+			// underline the portion matching the typed prefix
+			lr := []rune(str.ToLower(disp))
+			m := 0
+			for m < len(lr) && m < len(pfxR) && lr[m] == pfxR[m] {
+				m++
+			}
+			body := disp
+			if m > 0 {
+				dr := []rune(disp)
+				body = sparkle("[#ul]") + string(dr[:m]) + sparkle("[#-]") + string(dr[m:])
+			}
+			for displayedLen(body) < colWidth-1 {
+				body += " "
+			}
+			if idx == sel {
+				b.WriteString("[#b7][#0]" + body + "[#-]")
+				continue
+			}
+			switch helpType[idx] {
+			case HELP_FUNC:
+				b.WriteString(sparkle("[#5]") + body + sparkle("[#-]"))
+			case HELP_KEYWORD:
+				b.WriteString(sparkle("[#6]") + body + sparkle("[#-]"))
+			case HELP_DIRENT:
+				if f, ok := fileList[full]; ok && f.IsDir() {
+					b.WriteString(sparkle("[#3]") + body + sparkle("[#-]"))
+				} else {
+					b.WriteString(sparkle("[#4]") + body + sparkle("[#-]"))
+				}
+			default:
+				b.WriteString(body)
+			}
+		}
+		lines = append(lines, b.String())
+	}
+
+	// status row
+	plural := "es"
+	if n == 1 {
+		plural = ""
+	}
+	status := "[#dim]" + sf("%d match%s", n, plural)
+	if pageCount > 1 {
+		status += sf(" · page %d/%d", page+1, pageCount)
+	}
+	if expanded {
+		status += " · full description"
+		if total := len(pagerDetailLines(helpList, helpType, fileList, sel)); total > detailRows {
+			visEnd := descScroll + detailRows
+			if visEnd > total {
+				visEnd = total
+			}
+			status += sf(" (%d-%d/%d)", descScroll+1, visEnd, total)
+		}
+		status += " · [?] grid[#-]"
+	} else {
+		status += " · [?] full[#-]"
+	}
+	lines = append(lines, status)
+
+	// clipped description block (the expanded view scrolls through it)
+	dlines := pagerDetailLines(helpList, helpType, fileList, sel)
+	if max := len(dlines) - detailRows; descScroll > max {
+		descScroll = max
+	}
+	if descScroll < 0 {
+		descScroll = 0
+	}
+	extra := len(dlines) - (descScroll + detailRows)
+	detail := make([]string, 0, detailRows)
+	for i := 0; i < detailRows; i++ {
+		j := descScroll + i
+		if j < len(dlines) && dlines[j] != "" {
+			detail = append(detail, clampLine(dlines[j], MW-1))
+		} else {
+			detail = append(detail, "")
+		}
+	}
+	if extra > 0 {
+		detail[detailRows-1] = clampLine(dlines[descScroll+detailRows-1], MW-1) + "  " +
+			sparkle("[#dim]") + sf("… +%d more [PgDn]", extra) + sparkle("[#-]")
+	}
+	if descScroll > 0 {
+		detail[0] = sparkle("[#dim]") + sf("… [-] %d lines above [PgUp]", descScroll) + sparkle("[#-]") +
+			" " + detail[0]
+	}
+	lines = append(lines, detail...)
+
+	// join the pane rows with an explicit column-1 reset: za runs the tty in
+	// raw mode (OPOST off), so a bare '\n' moves down WITHOUT a carriage
+	// return, and every subsequent line would start at the previous line's
+	// ending column. "[#SOL]" (= ESC[1G) anchors each row back to column 1.
+	return "[#SOL]" + str.Join(lines, "\n[#SOL]")
+}
+
 // getInput() : get an input string from stdin, in raw mode
 func getInput(prompt string, in_defaultString string, pane string, girow int, gicol int, width int, ddopts []string, pcol string, histEnable bool, hintEnable bool, mask string, replEditor bool) (out_s string, eof bool, broken bool, cancelled bool) {
 
@@ -1123,6 +1376,15 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // the previously drawn ghost tail, cleared before the next repaint
         var prevGhostRow, prevGhostCol, prevGhostLen int
 
+        // TAB-pager state (opt-in): the description block starts collapsed and
+        // '?' expands it; opening a big description expands automatically
+        pagerDetailExpanded := false
+        pagerLastSel := -2
+        prevPagerExpanded := false
+        // vertical offset into the expanded description (PgUp/PgDn scroll it)
+        pagerDescScroll := 0
+        prevPagerDescScroll := 0
+
         // set when an unrecognised ESC-prefixed byte has been seen, so that
         // the rest of its control sequence (which may arrive fragmented over
         // the following reads) is discarded instead of leaking into the input
@@ -1186,12 +1448,12 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         }
 
         // when the completion popup is open it occupies the rows below the
-        // input block (HELP_SIZE rows starting at irow+1); lift the block by
-        // exactly the overflow so the popup fits on-screen. Recomputed every
-        // iteration off the stable baseRow, so it never drifts.
-        irow0 := srow + (int(scol+promptL-1) / MW)
+        // input block (HELP_SIZE rows starting below the last input row,
+        // irow+rowLen+1); lift the block by exactly the overflow so the popup
+        // fits on-screen. Recomputed every iteration off the stable baseRow,
+        // so it never drifts. `height` already includes the wrapped input rows.
         if startedContextHelp {
-            if over := irow0 + HELP_SIZE - MH; over > 0 {
+            if over := srow + height + HELP_SIZE - MH; over > 0 {
                 srow -= over
                 if srow < 1 {
                     srow = 1
@@ -1245,7 +1507,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             colored = colourSyntax(sinput)
         }
         needPaint := sinput != prevInput || sdispprompt != prevPrompt || startedContextHelp != prevHelp ||
-            irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar || editForceRepaint
+            irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar ||
+            pagerDetailExpanded != prevPagerExpanded || pagerDescScroll != prevPagerDescScroll || editForceRepaint
         editForceRepaint = false
         prevInput = sinput
         prevPrompt = sdispprompt
@@ -1253,6 +1516,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         prevIrow = irow
         prevRowLen = rowLen
         prevStar = selectedStar
+        prevPagerExpanded = pagerDetailExpanded
+        prevPagerDescScroll = pagerDescScroll
 
         if needPaint {
             // clear the previously drawn ghost tail before redrawing
@@ -1307,11 +1572,15 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 fmt.Print(str.Repeat(mask, inputL))
             }
             if startedContextHelp {
-                for i := irow + 1 + rowLen; i <= irow+HELP_SIZE; i += 1 {
+                // the pane begins below the LAST input row: with a wrapped
+                // (multi-row) input the old irow+1 start overlapped the input's
+                // continuation lines
+                paneStart := irow + rowLen + 1
+                for i := paneStart; i <= paneStart+HELP_SIZE-1; i += 1 {
                     at(i, 1)
                     clearToEOL()
                 }
-                at(irow+1, 1)
+                at(paneStart, 1)
                 fmt.Print(sparkle(helpstring))
             }
         }
@@ -1778,6 +2047,17 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}): // UP
                     removeProcessedKeycode(&c, 3)
+                    // the TAB pager owns UP while the pane is open
+                    if startedContextHelp && tabpagerEnabled {
+                        if len(helpList) > 0 {
+                            cols := pagerGridCols(helpList)
+                            selectedStar -= cols
+                            if selectedStar < 0 {
+                                selectedStar = 0
+                            }
+                        }
+                        break
+                    }
                     if MW < displayedLenUtf8(s) && cpos > MW {
                         cpos -= MW
                         break
@@ -1879,6 +2159,16 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     }
 
                     // normal down key operations resume here
+                    if startedContextHelp && tabpagerEnabled {
+                        if len(helpList) > 0 {
+                            cols := pagerGridCols(helpList)
+                            selectedStar += cols
+                            if m := len(helpList) - 1; selectedStar > m {
+                                selectedStar = m
+                            }
+                        }
+                        break
+                    }
                     if displayedLenUtf8(s) > MW && cpos < MW {
                         cpos += MW
                         break
@@ -1935,7 +2225,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                             startedContextHelp = true
                             helpstring = ""
-                            selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                            pagerDetailExpanded = false
+                            pagerDescScroll = 0
+                            if tabpagerEnabled {
+                                selectedStar = 0 // pager: first match is live
+                            } else {
+                                selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
+                            }
 
                             //.. add functionnames
                             for k, _ := range slhelp {
@@ -1951,6 +2247,8 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             helpstring = ""
                             selectedStar = -1 // start is off the list so that RIGHT has to be pressed to activate.
                             contextHelpSelected = false
+                            pagerDetailExpanded = false
+                            pagerDescScroll = 0
                             startedContextHelp = false
                         }
                     } else { // accept default
@@ -1967,6 +2265,15 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x5A}): // SHIFT-TAB
                     removeProcessedKeycode(&c, 3)
+                    if startedContextHelp && tabpagerEnabled {
+                        if len(helpList) > 0 {
+                            _, pageSize := pagerMetrics(helpList)
+                            selectedStar -= pageSize
+                            if selectedStar < 0 {
+                                selectedStar = 0
+                            }
+                        }
+                    }
 
                 case bytes.Equal(c, []byte{0x1B, 0x63}): // alt-c
                     removeProcessedKeycode(&c, 2)
@@ -2030,14 +2337,59 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     wordUnderCursor, _ = getWord(s, cpos)
 
                 // ignore list
-                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
-                    removeProcessedKeycode(&c, 3)
-                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36}): // pgdown
-                    removeProcessedKeycode(&c, 3)
-                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32}): // insert
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35, 0x7E}): // pgup
+                    removeProcessedKeycode(&c, 4)
+                    if startedContextHelp && tabpagerEnabled {
+                        if len(helpList) > 0 {
+                            if pagerDetailExpanded {
+                                // scroll back through the expanded description
+                                if pagerDescScroll > 0 {
+                                    pagerDescScroll--
+                                }
+                            } else {
+                                _, pageSize := pagerMetrics(helpList)
+                                selectedStar -= pageSize
+                                if selectedStar < 0 {
+                                    selectedStar = 0
+                                }
+                            }
+                        }
+                        break
+                    }
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x36, 0x7E}): // pgdown
+                    removeProcessedKeycode(&c, 4)
+                    if startedContextHelp && tabpagerEnabled {
+                        if len(helpList) > 0 {
+                            if pagerDetailExpanded {
+                                // scroll forward through the expanded description
+                                total := len(pagerDetailLines(helpList, helpType, fileList, selectedStar))
+                                max := total - pagerDetailRowsOpen
+                                if pagerDetailRowsOpen > total {
+                                    max = 0
+                                }
+                                if pagerDescScroll < max {
+                                    pagerDescScroll++
+                                }
+                            } else {
+                                _, pageSize := pagerMetrics(helpList)
+                                selectedStar += pageSize
+                                if m := len(helpList) - 1; selectedStar > m {
+                                    selectedStar = m
+                                }
+                            }
+                        }
+                        break
+                    }
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x32, 0x7E}): // insert
                     removeProcessedKeycode(&c, 3)
 
                 default:
+
+                    // '?' toggles the TAB-pager's full-description view
+                    if len(c) == 1 && c[0] == '?' && startedContextHelp && tabpagerEnabled {
+                        pagerDetailExpanded = !pagerDetailExpanded
+                        removeProcessedKeycode(&c, 1)
+                    } else {
 
                     // Decode escape sequences the explicit byte cases above do
                     // not enumerate (SS3 arrows, CSI-u arrows and alt-f):
@@ -2125,6 +2477,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             clearToEOL()
                         }
                     }
+                    } // end pager-'?' else (decoded key / normal text)
                 }
             }
 
@@ -2163,6 +2516,24 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             //.. get file list
             max_depth, _ := gvget("context_dir_depth")
             fileList=buildHelpPath(wordUnderCursor, &helpColoured, &helpList, &helpType, max_depth.(int))
+
+            if tabpagerEnabled {
+
+                // the pager keeps a live selection on the first match and
+                // resets the expanded-description view when it moves
+                if len(helpList) == 0 {
+                    selectedStar = -1
+                } else if selectedStar < 0 || selectedStar >= len(helpList) {
+                    selectedStar = 0
+                }
+                starMax = len(helpList) - 1
+                if selectedStar != pagerLastSel {
+                    pagerLastSel = selectedStar
+                    pagerDetailExpanded = false
+                    pagerDescScroll = 0
+                }
+                helpstring = buildPagerPane(helpList, helpType, fileList, wordUnderCursor, selectedStar, pagerDetailExpanded, pagerDescScroll, HELP_SIZE)
+            } else {
 
             //.. build display string
 
@@ -2228,6 +2599,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     }
                 }
             }
+            } // end tabpager-else (classic completion list)
 
         }
 
