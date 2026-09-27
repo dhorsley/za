@@ -333,3 +333,7 @@ _ = syntax_colours(map(
     .operator     "[#6]"            # | ; & && ||  (shell lines) yellow
 ))
 
+# enable alternate tab mode
+
+_=tabpager(true)
+

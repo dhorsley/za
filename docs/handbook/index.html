@@ -406,7 +406,11 @@ match remains.</p>
 the most likely continuation (the most recent history entry that starts
 with the typed text, otherwise a matching standard-library function or
 keyword) is shown dimmed in the input line. Press RIGHT or Ctrl-F to
-accept it, or keep typing to ignore it.</p>
+accept it, or keep typing to ignore it. When history has no match, the
+trailing token is completed against the current directory — fish-style,
+no <code>/</code> required — with literal, case-insensitive matching (a
+dot is a plain dot, not a wildcard); directories complete with a
+trailing slash.</p>
 <pre class="za"><code># Enable in ~/.zarc (or type it in the REPL)
 _=autocomplete(true)
 
@@ -426,6 +430,61 @@ code, e.g. <code>[#7]</code> for grey) and returns the previous colours;
 no argument returns the current colours.</li>
 <li>The suggestion shows only while the caret is at the end of the
 input. It does not modify the input until accepted.</li>
+<li><strong>Word-wise accept</strong>: <code>Alt-F</code> (or
+<code>Alt-Right</code>) accepts just the first word of the suggestion
+instead of the whole line, mirroring fish. When no suggestion is shown,
+<code>Alt-Right</code> moves the cursor forward one word.</li>
+<li><strong>Word motion</strong>:
+<code>Shift-Left</code>/<code>Shift-Right</code> (and
+<code>Ctrl-Left</code>/<code>Ctrl-Right</code>, <code>Alt-Left</code>)
+move the cursor one word at a time instead of one character.</li>
+<li><strong>Fuzzy history search</strong>: <code>Ctrl-R</code> searches
+history incrementally as you type. Matching is substring-first, then
+fuzzy subsequence — e.g. <code>gts</code> finds <code>git status</code>.
+<code>Up</code>/<code>Down</code> cycle the results, <code>Enter</code>
+accepts, <code>Ctrl-U</code> clears, a second <code>Ctrl-R</code>
+cancels.</li>
+<li><strong>Live syntax highlighting</strong>: the typed input is
+colourised as you type — keywords bold-yellow, stdlib functions cyan,
+strings red, numbers blue, comments dimmed (matching the TAB completion
+popup palette). The <code>-c</code> (monochrome) flag disables it along
+with all other colour.</li>
+<li><strong>Command-position highlighting</strong>: the first word of
+the line is treated as a command position. If it resolves to a real
+executable on <code>$PATH</code> (za’s shell fallback), the line is
+treated as shell/mixed and words after <code>|</code>, <code>;</code>,
+<code>&amp;</code>, <code>&amp;&amp;</code> and <code>||</code> become
+further command positions (the separators get the operator colour). A
+command-position word that is neither za syntax, a declared
+global/macro, nor on <code>PATH</code> is highlighted with the error
+colour — as is the command inside <code>${...}</code> substitutions.
+Za-like positions (assignment targets, <code>name(...)</code> calls,
+<code>name[...]</code>) are never flagged.</li>
+<li><strong>Configurable colours</strong>:
+<code>syntax_colours(map(...))</code> overrides any subset of the
+highlighting classes — <code>keyword</code>, <code>function</code>,
+<code>string</code>, <code>number</code>, <code>comment</code>,
+<code>variable</code>, <code>shellcommand</code>, <code>error</code>,
+<code>operator</code> — and returns the previous colours. No argument
+returns the current colours; <code>"reset"</code> restores the defaults;
+an empty colour disables a class.</li>
+<li><strong>TAB completion</strong>: completing a single directory
+inserts the trailing slash automatically, so repeated TAB walks into
+subdirectories. Enable the grid <strong>pager</strong> view with
+<code>_ = tabpager(true)</code>: TAB then shows candidates in aligned
+columns (the typed prefix is underlined, directories get a
+<code>/</code>), with a status row (<code>N matches · page X/Y</code>)
+and a clipped description block for the selected entry. Navigate with
+<code>↑</code>/<code>↓</code> (vertical), <code>←</code>/<code>→</code>
+(horizontal), <code>PgUp</code>/<code>PgDn</code> and
+<code>Shift-Tab</code> (pages); <code>?</code> expands/collapses a long
+description — expanded, <code>PgUp</code>/<code>PgDn</code> scroll
+through it (status shows <code>desc X–Y/N</code>); <code>Enter</code>
+accepts (directory → append <code>/</code>). <code>tabpager()</code>
+returns the previous state; default off. Descriptions
+(<code>slhelp</code> actions) may span several lines via <code>\n</code>
+or <code>[#SOL]</code> breaks, and are always clipped to the pane budget
+— they never overflow it.</li>
 </ul>
 <h4 id="multi-line-editor">Multi-line Editor</h4>
 <p>For editing multi-line statements or pasting complex code blocks,
