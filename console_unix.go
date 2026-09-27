@@ -221,10 +221,72 @@ var bigbytelist = make([]byte, 6*4096)
 // upper bound for a single volume-detected paste burst
 const maxBurstPaste = 1 << 20
 
+// bytes split off the head of a read because a control sequence was glued
+// to typed text (fast typing); returned by the next getch() call.
+var pendingKey []byte
+
+// how long getch() will wait for the continuation of a partial escape
+// sequence before giving it to the key handler anyway
+const escGraceMs = 35
+
 var (
     bracketedPasteStart = []byte{0x1B, 0x5B, 0x32, 0x30, 0x30, 0x7E}
     bracketedPasteEnd   = []byte{0x1B, 0x5B, 0x32, 0x30, 0x31, 0x7E}
 )
+
+// completeEscEnd returns the index just past the complete escape sequence
+// starting at b[0] (which must be ESC), or -1 when it is not finished yet.
+// Handles ESC <final> (e.g. ESC f), SS3 ESC O <final> and CSI ESC [ ... <final>.
+func completeEscEnd(b []byte) int {
+    if len(b) == 0 || b[0] != 0x1B {
+        return -1
+    }
+    i := 1
+    if i < len(b) && (b[i] == 0x5B || b[i] == 0x4F) { // CSI or SS3
+        i++
+        for i < len(b) && (b[i] >= 0x30 && b[i] <= 0x3F || b[i] >= 0x20 && b[i] <= 0x2F) {
+            i++ // parameter and intermediate bytes
+        }
+    }
+    if i < len(b) && b[i] >= 0x40 && b[i] <= 0x7E {
+        return i + 1 // final byte
+    }
+    return -1
+}
+
+// escGraceGather completes an escape sequence that arrived split across
+// reads: it polls for continuation bytes within escGraceMs and returns the
+// assembled bytes. Trailing bytes after a complete sequence are parked in
+// pendingKey so a following keystroke is never swallowed.
+func escGraceGather(acc []byte) []byte {
+    start := time.Now()
+    for time.Since(start) < time.Duration(escGraceMs)*time.Millisecond {
+        if end := completeEscEnd(acc); end > 0 {
+            if end < len(acc) {
+                pendingKey = append(pendingKey, acc[end:]...)
+                acc = acc[:end]
+            }
+            return acc
+        }
+        if ttPollFd < 0 {
+            return acc
+        }
+        pollFd := []unix.PollFd{{Fd: int32(ttPollFd), Events: unix.POLLIN}}
+        n, perr := unix.Poll(pollFd, 5)
+        if perr != nil {
+            return acc
+        }
+        if n == 0 {
+            continue // still inside the grace window; wait for the continuation
+        }
+        num, e := tt.Read(bigbytelist)
+        if e != nil || num == 0 {
+            return acc
+        }
+        acc = append(acc, bigbytelist[:num]...)
+    }
+    return acc
+}
 
 // get a key press
 func getch(timeo int) ([]byte, bool, bool, string) {
@@ -235,6 +297,13 @@ func getch(timeo int) ([]byte, bool, bool, string) {
 
     if tt == nil {
         return nil, true, false, ""
+    }
+
+    // leftover text split from an escape sequence arrives first
+    if len(pendingKey) > 0 {
+        b := append([]byte{}, pendingKey...)
+        pendingKey = pendingKey[:0]
+        return b, false, false, ""
     }
 
     var numRead int
@@ -257,6 +326,22 @@ func getch(timeo int) ([]byte, bool, bool, string) {
         // (start+content+end in one shot); seed the collector with the bytes
         // after the start marker instead of discarding them.
         return collectBracketedPaste(data[6:])
+    }
+
+    // A control sequence glued to typed text (fast typing) must not be lost:
+    // hand the text part to the editor now and let the ESC tail come back
+    // reassembled via pendingKey on the next call. This also stops the
+    // volume-based paste heuristic below from stripping away the sequence.
+    if ei := bytes.IndexByte(data, 0x1B); ei > 0 {
+        pendingKey = append(pendingKey, data[ei:]...)
+        return data[:ei], false, false, ""
+    }
+
+    // A read starting with ESC is a control sequence (arrow, modified arrow,
+    // function key), however long it is: it must reach the key handler, not
+    // the paste path. Give fragmented delivery a short grace period first.
+    if numRead > 0 && data[0] == 0x1B {
+        return escGraceGather(append([]byte{}, data...)), false, false, ""
     }
 
     // Fall back to volume-based detection

@@ -311,6 +311,25 @@ macro +ask(query,ask_rv) `
     unset data,headers
 `
 
+# Autocomplete settings
+
 _=autocomplete(true)
 _=autocomplete_colours("[#dim][#5]")
+
+# REPL syntax-highlighting colours.
+# Classes: keyword, function, string, number, comment, variable,
+#          shellcommand, error, operator
+# An empty string disables a class; "reset" restores the defaults.
+
+_ = syntax_colours(map(
+    .keyword      "[#bold][#6]",    # if / for / endif ...      bold yellow
+    .function     "[#5]",           # builtin za functions      cyan
+    .string       "[#dim][#b1][#7]",# "..." `...` '...'         blue bg, white text
+    .number       "[#1]",           # 42, 0xff, 3.14            bright blue
+    .comment      "[#dim][#7]",     # # comments                dim white
+    .variable     "[#1]",           # $x, @global               bright blue
+    .shellcommand "[#4]",           # valid $PATH command       green
+    .error        "[#fbred]",       # unknown command position  bright red
+    .operator     "[#6]"            # | ; & && ||  (shell lines) yellow
+))
 

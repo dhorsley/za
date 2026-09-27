@@ -2753,6 +2753,28 @@ func buildInternalLib() {
         }
     }
 
+    slhelp["syntax_colours"] = LibHelp{in: "map|null", out: "map|null", action: "Get or set the live REPL syntax-highlighting colours. Call with a map of colour-class name to [#colour] markup — classes: keyword, function, string, number, comment, variable, shellcommand, error, operator — to override any subset (an empty string disables a class); returns the previous colours. No argument: returns the current colours. \"reset\": restores the defaults."}
+    stdlib["syntax_colours"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        switch len(args) {
+        case 0:
+            return currentSyntaxColourMap(), nil
+        case 1:
+            switch v := args[0].(type) {
+            case string:
+                if v != "reset" {
+                    return nil, errors.New("syntax_colours: expected a map of colour classes, or \"reset\"")
+                }
+                return resetSyntaxColours(), nil
+            case map[string]any:
+                return setSyntaxColours(v)
+            default:
+                return nil, errors.New("syntax_colours: expected a map of colour classes")
+            }
+        default:
+            return nil, errors.New("syntax_colours: expected at most 1 argument")
+        }
+    }
+
     slhelp["import_errors"] = LibHelp{in: "module_alias_string", out: "[]string", action: "Returns a list of import errors for an AUTO module. Each error message describes a struct/union that was skipped due to unresolvable fields. Returns empty list if no errors."}
     stdlib["import_errors"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("import_errors", args, 1, "1", "string"); !ok {

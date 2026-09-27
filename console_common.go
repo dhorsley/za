@@ -248,18 +248,16 @@ func buildHelpPath(wordUnderCursor []rune, helpColoured *[]string, helpList *[]s
     parent    := filepath.Dir(s)
     searchName:= filepath.Base(s)
 
-    var re_n *regexp.Regexp
-    if regexWillCompile(searchName) {
-        re_n=regexp.MustCompile(searchName)
-    } else {
-        re_n=regexp.MustCompile(".*")
-    }
+    // literal, case-insensitive prefix matching (fish-style): the typed
+    // text — dots, plus signs, brackets and all — is plain text for
+    // filename completion, never a regex.
+    lsearch := str.ToLower(searchName)
 
     for _, paf := range dirplus(parent, max_depth) {
 
         name := paf.DirEntry.Name() // each file name
 
-        if !onSlash && ! re_n.MatchString(name) {
+        if !onSlash && !str.HasPrefix(str.ToLower(name), lsearch) {
             continue
         }
 
@@ -335,6 +333,14 @@ func replHint(input string) string {
 		return ""
 	}
 
+	// path suggestions are ranked after history (fish's autosuggestion is
+	// history-first) but before the function/keyword fallbacks: a matching
+	// entry in the current directory — directories completing with a
+	// trailing slash — usually means the user is navigating.
+	if ps := pathSuggestion(input); ps != "" && ps != input {
+		return ps
+	}
+
 	for _, f := range hintFuncnames {
 		if f == input {
 			continue
@@ -357,16 +363,17 @@ func replHint(input string) string {
 }
 
 // suggestionMarkup wraps a suggestion tail in dim+italic (optionally with the
-// user-configured foreground colour) ready for console output.
+// user-configured foreground colour) ready for console output. Colours go
+// through the fairydust interpolation so the -c monochrome flag is honoured.
 func suggestionMarkup(tail string) string {
-	markup := "\033[2m\033[3m" // dim + italic
+	markup := sparkle("[#dim][#i1]") // dim + italic
 	if len(autocompleteColours) > 0 && autocompleteColours[0] != "" {
 		markup += sparkle(autocompleteColours[0])
 	}
 	markup += tail
-	markup += "\033[23m\033[22m"
+	markup += sparkle("[#i0][#boff]")
 	if len(autocompleteColours) > 0 {
-		markup += "\033[39m"
+		markup += sparkle("[#fd]")
 	}
 	return markup
 }
@@ -389,6 +396,625 @@ func capGhostTail(tail string, icol, inputL int) string {
 		r = r[:remaining]
 	}
 	return string(r)
+}
+
+// acceptSuggestionWord appends the first whitespace-delimited word of the
+// suggestion tail to the input (fish alt-right/alt-f behaviour). The tail may
+// be a continuation of the final token (path completion, e.g. "ls doc" ->
+// "ls docs/") or the start of a following argument (history, e.g. "git" ->
+// "git status"); a space is inserted only when the suggestion separates the
+// next word with one. Returns the new input runes, the new cursor position,
+// and whether anything was added.
+func acceptSuggestionWord(s []rune, cand string) ([]rune, int, bool) {
+	cur := string(s)
+	if !str.HasPrefix(cand, cur) || cand == cur {
+		return s, 0, false
+	}
+	tail := cand[len(cur):]
+	tail = str.TrimLeft(tail, " ")
+	if tail == "" {
+		return s, 0, false
+	}
+	sep := ""
+	if cur != "" && !str.HasSuffix(cur, " ") && len(cur) < len(cand) && cand[len(cur)] == ' ' {
+		sep = " "
+	}
+	sp := str.IndexByte(tail, ' ')
+	word := tail
+	if sp != -1 {
+		word = tail[:sp]
+	}
+	if word == "" {
+		return s, 0, false
+	}
+	ns := cur + sep + word
+	r := []rune(ns)
+	return r, len(r), true
+}
+
+// wordStep moves the cursor forward (+1) or backward (-1) by one
+// whitespace-delimited word, clamping at the input ends (fish-style word
+// motion for shift/ctrl/alt arrow keys).
+func wordStep(s []rune, cpos int, dir int) int {
+	n := len(s)
+	if dir > 0 {
+		for cpos < n && s[cpos] == ' ' {
+			cpos++
+		}
+		for cpos < n && s[cpos] != ' ' {
+			cpos++
+		}
+	} else {
+		for cpos > 0 && s[cpos-1] == ' ' {
+			cpos--
+		}
+		for cpos > 0 && s[cpos-1] != ' ' {
+			cpos--
+		}
+	}
+	return cpos
+}
+
+// escKeyResult describes a decoded modified-arrow / function-key sequence.
+type escKeyResult struct {
+	dir    int  // -1 left, +1 right; 0 for accept/consume-only
+	word   bool // move by word (a modifier was present) vs one character
+	accept bool // word-accept of the suggestion (alt-f)
+}
+
+// decodeEscKey interprets escape-sequence encodings not enumerated as
+// explicit cases: SS3 plain arrows (ESC O C/D), CSI-u modified arrows
+// (ESC [ k ; m u, kitty/ghostty: 1..4 = left/right/up/down) and the
+// alt-f forms (ESC f and kitty-style ESC [ 102 ; 3 u). The modifier value
+// is shared with xterm's CSI (2=shift, 3=alt, 5=ctrl), so xterm's own
+// ESC [ 1 ; m C/D also decode here if the explicit cases ever miss them.
+func decodeEscKey(c []byte) (esc escKeyResult, ok bool) {
+	if len(c) < 2 || c[0] != 0x1B {
+		return
+	}
+	if len(c) == 2 && c[1] == 'f' {
+		return escKeyResult{accept: true}, true // ESC f = alt-f
+	}
+	if c[1] != '[' && c[1] != 'O' {
+		return
+	}
+	final := c[len(c)-1]
+	if c[1] == 'O' { // SS3: ESC O C = right, ESC O D = left, A/B = up/down
+		switch final {
+		case 'C':
+			return escKeyResult{dir: +1}, true
+		case 'D':
+			return escKeyResult{dir: -1}, true
+		}
+		return escKeyResult{}, true // up/down handled by explicit cases elsewhere
+	}
+	// CSI: parse "n" or "n;m" parameters before the final byte
+	body := c[2 : len(c)-1]
+	sep := bytes.IndexByte(body, ';')
+	var p1, p2 int
+	var err error
+	if sep == -1 {
+		p1, err = strconv.Atoi(string(body))
+		p2 = 1
+	} else {
+		p1, err = strconv.Atoi(string(body[:sep]))
+		if err != nil {
+			return
+		}
+		p2, err = strconv.Atoi(string(body[sep+1:]))
+		if err != nil {
+			return
+		}
+	}
+	word := p2 != 1
+	switch final {
+	case 'C':
+		return escKeyResult{dir: +1, word: word}, true
+	case 'D':
+		return escKeyResult{dir: -1, word: word}, true
+	case 'u': // kitty/ghostty CSI-u
+		switch p1 {
+		case 1:
+			return escKeyResult{dir: -1, word: word}, true // left
+		case 2:
+			return escKeyResult{dir: +1, word: word}, true // right
+		case 102: // 'f'
+			if p2 == 3 {
+				return escKeyResult{accept: true}, true // alt-f
+			}
+			return escKeyResult{}, true
+		}
+		return escKeyResult{}, true
+	}
+	return
+}
+
+// fuzzyTermMatch reports whether term matches target as a case-insensitive
+// substring (the classic behaviour) or, failing that, as a subsequence
+// (fish-style fuzzy history search).
+func fuzzyTermMatch(term, target string) bool {
+	lowT := str.ToLower(term)
+	lowG := str.ToLower(target)
+	if lowT == "" {
+		return true
+	}
+	if str.Contains(lowG, lowT) {
+		return true
+	}
+	ti := 0
+	for i := 0; i < len(lowG) && ti < len(lowT); i++ {
+		if lowG[i] == lowT[ti] {
+			ti++
+		}
+	}
+	return ti == len(lowT)
+}
+
+// pathSuggestion builds a directory/file completion candidate for the final
+// whitespace-delimited token of input and returns it as a full-line suggestion
+// (so the ghost-tail prefix invariant "candidate starts with the input" holds).
+// It matches literally and case-insensitively, fish-style, preferring a
+// matching directory (trailing slash) over a file, and works against the
+// current directory even without a '/'. "" is returned when nothing matches so
+// history/function/keyword suggestions take over.
+func pathSuggestion(input string) string {
+	sp := str.LastIndexByte(input, ' ')
+	prefix, tok := "", input
+	if sp != -1 {
+		prefix = input[:sp+1]
+		tok = input[sp+1:]
+	}
+	if tok == "" || tok == "/" {
+		return ""
+	}
+
+	// mirror buildHelpPath's normalisation to reconstruct completed paths
+	searchName := filepath.Base(tok)
+	head := ""
+	if str.HasSuffix(tok, "/") {
+		// user already typed the trailing slash: suggest any entry inside
+		searchName = ""
+		head = tok
+	} else {
+		if searchName == "." || searchName == ".." || searchName == "" {
+			return ""
+		}
+		if str.HasSuffix(tok, searchName) {
+			head = tok[:len(tok)-len(searchName)]
+		}
+	}
+
+	// scan only the immediate level the token lives in: the current directory
+	// for slash-less tokens (fish suggests the visible entries, not recursive
+	// ones), otherwise the token's own parent.
+	var cols []string
+	var list []string
+	var types []int
+	fl := buildHelpPath([]rune(tok), &cols, &list, &types, 0)
+
+	cand := ""
+	for _, nm := range list {
+		if searchName != "" && !str.HasPrefix(nm, searchName) {
+			continue
+		}
+		if cand == "" {
+			cand = nm
+		}
+		if fi, ok := fl[nm]; ok && fi.IsDir() {
+			cand = nm
+			break
+		}
+	}
+	if cand == "" {
+		return ""
+	}
+	if fi, ok := fl[cand]; ok && fi.IsDir() && !str.HasSuffix(cand, "/") {
+		cand += "/"
+	}
+	return prefix + head + cand
+}
+
+// defaultSyntaxColours are the built-in colour classes used for live REPL
+// syntax highlighting. Every class can be overridden (or disabled with an
+// empty string) through the syntax_colours() stdlib call.
+var defaultSyntaxColours = map[string]string{
+	"keyword":      "[#bold][#6]",
+	"function":     "[#5]",
+	"string":       "[#2]",
+	"number":       "[#1]",
+	"comment":      "[#dim]",
+	"variable":     "[#1]",
+	"shellcommand": "[#1]",
+	"error":        "[#2]",
+	"operator":     "[#6]",
+}
+
+// syntaxColourOverride holds per-class overrides set by syntax_colours();
+// an override of "" disables the class.
+var syntaxColourOverride = struct {
+	sync.Mutex
+	m map[string]string
+}{m: map[string]string{}}
+
+// syntaxColourClassValid reports whether a colour-class name is recognised.
+func syntaxColourClassValid(c string) bool {
+	switch c {
+	case "keyword", "function", "string", "number", "comment",
+		"variable", "shellcommand", "error", "operator":
+		return true
+	}
+	return false
+}
+
+// syntaxColour returns the effective markup for a colour class, or "" when
+// the class has been disabled.
+func syntaxColour(class string) string {
+	syntaxColourOverride.Lock()
+	v, ok := syntaxColourOverride.m[class]
+	syntaxColourOverride.Unlock()
+	if ok {
+		return v
+	}
+	return defaultSyntaxColours[class]
+}
+
+// currentSyntaxColourMap returns the effective colour map (defaults plus any
+// overrides) for the syntax_colours() stdlib call.
+func currentSyntaxColourMap() map[string]any {
+	syntaxColourOverride.Lock()
+	defer syntaxColourOverride.Unlock()
+	out := make(map[string]any, len(defaultSyntaxColours))
+	for k, v := range defaultSyntaxColours {
+		if ov, ok := syntaxColourOverride.m[k]; ok {
+			out[k] = ov
+		} else {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// setSyntaxColours applies colour-class overrides and returns the previous
+// effective map.
+func setSyntaxColours(m map[string]any) (map[string]any, error) {
+	syntaxColourOverride.Lock()
+	defer syntaxColourOverride.Unlock()
+	prev := make(map[string]any, len(defaultSyntaxColours))
+	for k, v := range defaultSyntaxColours {
+		if ov, ok := syntaxColourOverride.m[k]; ok {
+			prev[k] = ov
+		} else {
+			prev[k] = v
+		}
+	}
+	for k, v := range m {
+		if !syntaxColourClassValid(k) {
+			return prev, fmt.Errorf("syntax_colours: unknown colour class \"%s\"", k)
+		}
+		s, ok := v.(string)
+		if !ok {
+			return prev, fmt.Errorf("syntax_colours: class \"%s\" must be a [#colour] string", k)
+		}
+		if s != "" && !str.HasPrefix(s, "[#") {
+			return prev, fmt.Errorf("syntax_colours: invalid colour format for \"%s\", expected [#color] markup", k)
+		}
+		syntaxColourOverride.m[k] = s
+	}
+	return prev, nil
+}
+
+// resetSyntaxColours removes all overrides and returns the previous map.
+func resetSyntaxColours() map[string]any {
+	syntaxColourOverride.Lock()
+	defer syntaxColourOverride.Unlock()
+	prev := make(map[string]any, len(defaultSyntaxColours))
+	for k, v := range defaultSyntaxColours {
+		if ov, ok := syntaxColourOverride.m[k]; ok {
+			prev[k] = ov
+		} else {
+			prev[k] = v
+		}
+	}
+	syntaxColourOverride.m = map[string]string{}
+	return prev
+}
+
+// colourSpan writes text wrapped in the markup for class, or plainly when the
+// class is disabled.
+func colourSpan(b *str.Builder, class, text string) {
+	if c := syntaxColour(class); c != "" {
+		b.WriteString(sparkle(c) + text + sparkle("[#-]"))
+	} else {
+		b.WriteString(text)
+	}
+}
+
+// shellCmdCache memoises PATH lookups made by the highlighter so per-keystroke
+// rendering stays cheap. Keyed on the exact word; true = found on PATH.
+var shellCmdCache sync.Map
+
+// isShellCommand reports whether word resolves to an executable on PATH. Note
+// that even with -S (coprocess shell disabled) commands still run through the
+// parent-process fallback, so the PATH check is always meaningful.
+func isShellCommand(word string) bool {
+	if v, ok := shellCmdCache.Load(word); ok {
+		return v.(bool)
+	}
+	_, err := exec.LookPath(word)
+	found := err == nil
+	shellCmdCache.Store(word, found)
+	return found
+}
+
+// shellCmdMarkup renders a bare word in shell context: on PATH → the
+// shellcommand class, otherwise the error class.
+func shellCmdMarkup(b *str.Builder, word string) {
+	if isShellCommand(word) {
+		colourSpan(b, "shellcommand", word)
+	} else {
+		colourSpan(b, "error", word)
+	}
+}
+
+// isZaKnownWord reports whether word is already known za state: a declared
+// global or a REPL macro name.
+func isZaKnownWord(word string) bool {
+	if _, ok := gvget(word); ok {
+		return true
+	}
+	_, ok := macroMap.Load(word)
+	return ok
+}
+
+// shellishPosition reports whether the byte after the word at index j
+// (jumping over whitespace) marks a za-language position rather than a shell
+// command: an assignment target ('='), a call ('(') or an index ('[').
+func shellishPosition(input string, j int) bool {
+	n := len(input)
+	k := j
+	for k < n && (input[k] == ' ' || input[k] == '\t') {
+		k++
+	}
+	if k >= n {
+		return false
+	}
+	switch input[k] {
+	case '=', '(', '[':
+		return true
+	}
+	return false
+}
+
+// colourSyntax returns an ANSI-coloured rendering of a Za source line for live
+// syntax highlighting in the REPL editor. It is a deliberately small, tolerant
+// scanner: the user is frequently mid-token, so it never fails on partial
+// input and never runs the real parser.
+//
+// Colours come from syntaxColour() classes and are configurable via the
+// syntax_colours() stdlib call. Beyond lexical classes (keywords, functions,
+// strings, numbers, comments, variables) it also marks SHELL command positions,
+// gated to stay useful in a language REPL:
+//   - the first word of the line is a command position; when it resolves to a
+//     real executable on PATH the line is treated as shell/mixed and words
+//     after `|`, `;`, `&`, `&&`, `||` become further command positions
+//     (the separators themselves get the operator class);
+//   - a command-position word that is neither za syntax nor on PATH gets the
+//     error class;
+//   - `${...}` regions are always treated as shell command substitutions;
+//   - unknowns are not flagged when they sit in za-ish positions (assignment
+//     targets, or followed by '(' or '[').
+func colourSyntax(input string) string {
+
+	// sparkle() relies on the ANSI palette replacer built by setupAnsiPalette()
+	// (normally called from main()); build it lazily so the highlighter is
+	// safe in any context, including tests.
+	if fairyReplacer == nil {
+		setupAnsiPalette()
+	}
+
+	keywordSet := func(w string) bool {
+		low := str.ToLower(w)
+		for _, k := range completions {
+			if str.ToLower(k) == low {
+				return true
+			}
+		}
+		return false
+	}
+	funcSet := func(w string) bool {
+		_, ok := slhelp[w]
+		if !ok {
+			_, ok = slhelp[str.ToLower(w)]
+		}
+		return ok
+	}
+
+	var b str.Builder
+	i := 0
+	n := len(input)
+
+	shellConfirmed := false // a command position resolved to a real shell command
+	expectCmd := true       // the next word is at a command position
+
+	for i < n {
+		ch := input[i]
+
+		// comments run to the end of the line
+		if ch == '#' {
+			j := str.IndexByte(input[i:], '\n')
+			if j == -1 {
+				colourSpan(&b, "comment", input[i:])
+				break
+			}
+			colourSpan(&b, "comment", input[i:i+j])
+			i += j
+			continue
+		}
+
+		// string literals: "..." `...` '...'
+		if ch == '"' || ch == '`' || ch == '\'' {
+			j := i + 1
+			for j < n && input[j] != ch {
+				j++
+			}
+			if j < n {
+				j++ // include the closing quote
+			} else {
+				j = n
+			}
+			colourSpan(&b, "string", input[i:j])
+			i = j
+			expectCmd = false
+			continue
+		}
+
+		// numbers (hex/binary/octal/floats all covered by the alphanumeric
+		// scan; the digit start anchor keeps identifiers out of this branch)
+		if ch >= '0' && ch <= '9' {
+			j := i
+			for j < n {
+				c := input[j]
+				if (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') ||
+					c == 'x' || c == 'X' || c == 'o' || c == 'O' || c == 'b' || c == 'B' || c == '.' || c == '_' {
+					j++
+				} else {
+					break
+				}
+			}
+			colourSpan(&b, "number", input[i:j])
+			i = j
+			expectCmd = false
+			continue
+		}
+
+		// ${...} shell command substitution
+		if ch == '$' && i+1 < n && input[i+1] == '{' {
+			colourSpan(&b, "operator", "${")
+			close := str.IndexByte(input[i+2:], '}')
+			hasClose := close != -1
+			inner := input[i+2:]
+			after := ""
+			if hasClose {
+				inner = input[i+2 : i+2+close]
+				after = input[i+2+close:]
+			}
+			// colour only the first word as the shell command and preserve
+			// the inner text (including any leading spaces) exactly, in the
+			// original order: the render must never drop or shift characters
+			lead := 0
+			for lead < len(inner) && (inner[lead] == ' ' || inner[lead] == '\t') {
+				lead++
+			}
+			rest := inner[lead:]
+			sp := 0
+			for sp < len(rest) && rest[sp] != ' ' && rest[sp] != '\t' {
+				sp++
+			}
+			if lead > 0 {
+				b.WriteString(inner[:lead])
+			}
+			if sp > 0 {
+				shellCmdMarkup(&b, rest[:sp])
+			}
+			b.WriteString(rest[sp:])
+			if hasClose {
+				colourSpan(&b, "operator", after[:1]) // the '}'
+				b.WriteString(after[1:])
+				i = i + 2 + close + 1
+			} else {
+				i = n
+			}
+			expectCmd = false
+			continue
+		}
+
+		// identifiers, keywords, function names, variables, globals and
+		// shell command positions
+		if ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '$' || ch == '@' {
+			j := i + 1
+			for j < n {
+				c := input[j]
+				if c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') {
+					j++
+				} else {
+					break
+				}
+			}
+			w := input[i:j]
+			atCmd := expectCmd
+			expectCmd = false
+
+			if ch == '$' || ch == '@' {
+				colourSpan(&b, "variable", w)
+			} else if keywordSet(w) {
+				colourSpan(&b, "keyword", w)
+			} else if funcSet(w) {
+				colourSpan(&b, "function", w)
+			} else if atCmd {
+				// command position: za-first, then PATH, then error
+				if shellishPosition(input, j) || isZaKnownWord(w) {
+					colourSpan(&b, "variable", w)
+				} else if isShellCommand(w) {
+					colourSpan(&b, "shellcommand", w)
+					shellConfirmed = true
+				} else {
+					colourSpan(&b, "error", w)
+				}
+			} else {
+				b.WriteString(w)
+			}
+			i = j
+			continue
+		}
+
+		// operator / separator handling once a real shell command anchors the
+		// line as shell/mixed
+		if shellConfirmed {
+			switch ch {
+			case '|':
+				if i+1 < n && input[i+1] == '|' {
+					colourSpan(&b, "operator", "||")
+					i += 2
+				} else {
+					colourSpan(&b, "operator", "|")
+					i++
+				}
+				expectCmd = true
+				continue
+			case '&':
+				if i+1 < n && input[i+1] == '&' {
+					colourSpan(&b, "operator", "&&")
+					i += 2
+				} else {
+					colourSpan(&b, "operator", "&")
+					i++
+				}
+				expectCmd = true
+				continue
+			case ';':
+				colourSpan(&b, "operator", ";")
+				expectCmd = true
+				i++
+				continue
+			case '>', '<':
+				// redirection: the following token is an argument, not a command
+				if i+1 < n && (input[i+1] == ch || input[i+1] == '&' || input[i+1] == '|') {
+					colourSpan(&b, "operator", input[i:i+2])
+					i += 2
+				} else {
+					colourSpan(&b, "operator", string(ch))
+					i++
+				}
+				expectCmd = false
+				continue
+			}
+		}
+
+		b.WriteByte(ch)
+		i++
+	}
+
+	return b.String()
 }
 
 // getInput() : get an input string from stdin, in raw mode
@@ -497,6 +1123,36 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // the previously drawn ghost tail, cleared before the next repaint
         var prevGhostRow, prevGhostCol, prevGhostLen int
 
+        // set when an unrecognised ESC-prefixed byte has been seen, so that
+        // the rest of its control sequence (which may arrive fragmented over
+        // the following reads) is discarded instead of leaking into the input
+        dropSeq := false
+
+        // rebuilds the reverse-history-search (Ctrl-R) result list from the
+        // current search buffer (fuzzy: substring or subsequence match) and
+        // redraws the search prompt + preview line
+        rescan := func() {
+            searchResults = []int{}
+            if len(searchBuffer) > 0 {
+                searchTerm := str.ToLower(string(searchBuffer))
+                for i := len(hist) - 1; i >= 0; i-- {
+                    if fuzzyTermMatch(searchTerm, str.ToLower(hist[i])) {
+                        searchResults = append(searchResults, i)
+                    }
+                }
+            }
+            currentSearchResult = 0
+            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
+            if remainingWidth := width - searchDisplayCol; remainingWidth > len(searchPrompt)+len(searchBuffer) {
+                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
+            }
+            at(searchDisplayRow, searchDisplayCol)
+            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
+            if len(searchResults) > 0 {
+                pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
+            }
+        }
+
     fmt.Print(sparkle(pcol))
     clearChars(girow, gicol, clearWidth)
     for {
@@ -581,6 +1237,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         // moves (arrows, home/end) just reposition the cursor.
         sinput := string(s)
         sdispprompt := string(sprompt)
+        // live syntax highlighting: colour the typed input for this paint;
+        // all length/cursor math uses displayedLen() so the zero-width ANSI
+        // codes inserted here never disturb the layout
+        var colored string
+        if echo.(bool) {
+            colored = colourSyntax(sinput)
+        }
         needPaint := sinput != prevInput || sdispprompt != prevPrompt || startedContextHelp != prevHelp ||
             irow != prevIrow || rowLen != prevRowLen || selectedStar != prevStar || editForceRepaint
         editForceRepaint = false
@@ -610,13 +1273,13 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
             at(irow, icol)
             if echo.(bool) {
                 if len(s) > len(suggestionRunes) {
-                    fmt.Print(string(s))
+                    fmt.Print(colored)
                 } else if str.HasPrefix(suggestion, string(s)) && !defaultAccepted {
                     if useSuggestion && cpos == len(s) {
                         // render the typed prefix normally and the suggestion
                         // tail dimmed/coloured (fish-style ghost)
                         tail := capGhostTail(suggestion[len(string(s)):], icol, inputL)
-                        fmt.Print(string(s))
+                        fmt.Print(colored)
                         if tail != "" {
                             fmt.Print(suggestionMarkup(tail))
                             prevGhostRow = irow + rowLen
@@ -633,12 +1296,12 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     } else {
                         // legacy default hint (or REPL caret not at end):
                         // dimmed+italic whole candidate, unchanged behaviour
-                        fmt.Print("\033[2m\033[3m" + suggestion + "\033[23m\033[22m")
+                        fmt.Print(sparkle("[#dim][#i1]") + suggestion + sparkle("[#i0][#boff]"))
                     }
                 } else {
                     clearChars(irow, icol, len(suggestionRunes))
                     at(irow, icol)
-                    fmt.Print(string(s))
+                    fmt.Print(colored)
                 }
             } else {
                 fmt.Print(str.Repeat(mask, inputL))
@@ -802,76 +1465,19 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                         } else if c[0] >= 32 && c[0] <= 126 { // Printable character
                             // Add character to search buffer
                             searchBuffer = append(searchBuffer, rune(c[0]))
-
-                            // Search through history backwards
-                            searchResults = []int{}
-                            searchTerm := str.ToLower(string(searchBuffer))
-                            for i := len(hist) - 1; i >= 0; i-- {
-                                if str.Contains(str.ToLower(hist[i]), searchTerm) {
-                                    searchResults = append(searchResults, i)
-                                }
-                            }
-                            currentSearchResult = 0
                             removeProcessedKeycode(&c, 1)
-
-                            // Update display - clear the search area and redraw
-                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                            // Clear any remaining characters that might be displayed
-                            remainingWidth := width - searchDisplayCol
-                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
-                            }
-                            at(searchDisplayRow, searchDisplayCol)
-                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                            if len(searchResults) > 0 {
-                                pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
-                            }
+                            rescan()
 
                         } else if c[0] == 127 { // Backspace
                             removeProcessedKeycode(&c, 1)
                             if len(searchBuffer) > 0 {
                                 searchBuffer = searchBuffer[:len(searchBuffer)-1]
-
-                                // Re-search with updated buffer
-                                searchResults = []int{}
-                                if len(searchBuffer) > 0 {
-                                    searchTerm := str.ToLower(string(searchBuffer))
-                                    for i := len(hist) - 1; i >= 0; i-- {
-                                        if str.Contains(str.ToLower(hist[i]), searchTerm) {
-                                            searchResults = append(searchResults, i)
-                                        }
-                                    }
-                                }
-                                currentSearchResult = 0
-
-                                // Update display - clear the search area and redraw
-                                clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                                // Clear any remaining characters that might be displayed
-                                remainingWidth := width - searchDisplayCol
-                                if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                                    clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
-                                }
-                                at(searchDisplayRow, searchDisplayCol)
-                                pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
-                                if len(searchResults) > 0 {
-                                    pf(" -> [#4]" + hist[searchResults[currentSearchResult]] + "[#-]")
-                                }
+                                rescan()
                             }
                         } else if c[0] == 21 { // Ctrl+U - clear search buffer
                             removeProcessedKeycode(&c, 1)
                             searchBuffer = []rune{}
-                            searchResults = []int{}
-                            currentSearchResult = 0
-
-                            // Update display - clear the search area and redraw
-                            clearChars(searchDisplayRow, searchDisplayCol, len(searchPrompt)+len(searchBuffer))
-                            // Clear any remaining characters that might be displayed
-                            remainingWidth := width - searchDisplayCol
-                            if remainingWidth > len(searchPrompt)+len(searchBuffer) {
-                                clearChars(searchDisplayRow, searchDisplayCol+len(searchPrompt)+len(searchBuffer), remainingWidth-(len(searchPrompt)+len(searchBuffer)))
-                            }
-                            at(searchDisplayRow, searchDisplayCol)
-                            pf("[#bold][#6]" + searchPrompt + string(searchBuffer) + "[#-][#4]▋[#-]")
+                            rescan()
                         }
                     } else if bytes.Equal(c, []byte{0x1B, 0x5B, 0x41}) { // UP arrow in search
                         removeProcessedKeycode(&c, 3)
@@ -1367,6 +1973,62 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                 case bytes.Equal(c, []byte{0x1B, 0x76}): // alt-v
                     removeProcessedKeycode(&c, 2)
 
+                case bytes.Equal(c, []byte{0x1B, 0x66}): // alt-f: accept the first word of the suggestion (fish-style)
+                    removeProcessedKeycode(&c, 2)
+                    if useSuggestion && !startedContextHelp && cpos == len(s) {
+                        if cand := replHint(string(s)); cand != "" && str.HasPrefix(cand, string(s)) {
+                            if ns, npos, ok := acceptSuggestionWord(s, cand); ok {
+                                s = ns
+                                cpos = npos
+                                defaultAccepted = true
+                            }
+                        }
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x43}): // alt-right: accept the first word (fish-style)
+                    removeProcessedKeycode(&c, 6)
+                    acceptedWord := false
+                    if useSuggestion && !startedContextHelp && cpos == len(s) {
+                        if cand := replHint(string(s)); cand != "" && str.HasPrefix(cand, string(s)) {
+                            if ns, npos, ok := acceptSuggestionWord(s, cand); ok {
+                                s = ns
+                                cpos = npos
+                                defaultAccepted = true
+                                acceptedWord = true
+                            }
+                        }
+                    }
+                    // otherwise move forward one word (fish-style)
+                    if !acceptedWord {
+                        cpos = wordStep(s, cpos, +1)
+                        wordUnderCursor, _ = getWord(s, cpos)
+                    }
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x32, 0x44}): // shift-left: one word left
+                    removeProcessedKeycode(&c, 6)
+                    cpos = wordStep(s, cpos, -1)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x32, 0x43}): // shift-right: one word right
+                    removeProcessedKeycode(&c, 6)
+                    cpos = wordStep(s, cpos, +1)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x44}): // ctrl-left: one word left
+                    removeProcessedKeycode(&c, 6)
+                    cpos = wordStep(s, cpos, -1)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x35, 0x43}): // ctrl-right: one word right
+                    removeProcessedKeycode(&c, 6)
+                    cpos = wordStep(s, cpos, +1)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
+                case bytes.Equal(c, []byte{0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x44}): // alt-left: one word left
+                    removeProcessedKeycode(&c, 6)
+                    cpos = wordStep(s, cpos, -1)
+                    wordUnderCursor, _ = getWord(s, cpos)
+
                 // ignore list
                 case bytes.Equal(c, []byte{0x1B, 0x5B, 0x35}): // pgup
                     removeProcessedKeycode(&c, 3)
@@ -1377,14 +2039,62 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
 
                 default:
 
+                    // Decode escape sequences the explicit byte cases above do
+                    // not enumerate (SS3 arrows, CSI-u arrows and alt-f):
+                    // apply the movement / word-accept they describe.
+                    if res, rok := decodeEscKey(c); rok {
+                        if res.accept {
+                            if useSuggestion && !startedContextHelp && cpos == len(s) {
+                                if cand := replHint(string(s)); cand != "" && str.HasPrefix(cand, string(s)) {
+                                    if ns, npos, aok := acceptSuggestionWord(s, cand); aok {
+                                        s = ns
+                                        cpos = npos
+                                        defaultAccepted = true
+                                    }
+                                }
+                            }
+                        } else if res.dir != 0 {
+                            if res.word {
+                                cpos = wordStep(s, cpos, res.dir)
+                            } else if res.dir > 0 {
+                                if cpos < len(s) {
+                                    cpos++
+                                }
+                            } else if cpos > 0 {
+                                cpos--
+                            }
+                            wordUnderCursor, _ = getWord(s, cpos)
+                        }
+                    } else {
+
                     // Normal input processing (only reached when not in reverse search mode)
                     // multi-byte, like utf8? decode a fresh rune per iteration
                     // so burst input chunks (fast typing) insert every
                     // character, and a line terminator inside the chunk
                     // submits the line just like the Enter key.
                     for len(c) > 0 {
+                        if dropSeq {
+                            // consume the tail of an unrecognised escape
+                            // sequence: the CSI/SS3 introducer '[' / 'O' is
+                            // not a final byte, so keep dropping until the
+                            // true final byte (0x40-0x7E).
+                            b := c[0]
+                            removeProcessedKeycode(&c, 1)
+                            if b == 0x5B || b == 0x4F {
+                                continue
+                            }
+                            if b >= 0x40 && b <= 0x7E {
+                                dropSeq = false
+                            }
+                            continue
+                        }
                         r, sz := utf8.DecodeRune(c)
                         if r != utf8.RuneError {
+                            if r == 0x1B { // ESC: start of a control sequence
+                                dropSeq = true
+                                removeProcessedKeycode(&c, 1)
+                                continue
+                            }
                             if r == '\r' || r == '\n' {
                                 removeProcessedKeycode(&c, sz)
                                 if len(s) != 0 {
@@ -1405,6 +2115,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                             removeProcessedKeycode(&c, 1)
                         }
                     }
+                    } // end decodeEscKey else (normal text insertion)
                     wordUnderCursor, _ = getWord(s, cpos)
                     selectedStar = -1 // also reset the selector position for auto-complete
 
@@ -1541,6 +2252,17 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
                     helpList = []string{helpList[selectedStar]}
                 }
                 if len(helpList) == 1 {
+                    // a sole directory completion gets a trailing slash,
+                    // matching shell-editor behaviour (fish etc.)
+                    hi := 0
+                    if selectedStar > -1 {
+                        hi = selectedStar
+                    }
+                    if hi < len(helpType) && helpType[hi] == HELP_DIRENT {
+                        if fi, ok := fileList[helpList[0]]; ok && fi.IsDir() && !str.HasSuffix(helpList[0], "/") {
+                            helpList[0] = helpList[0] + "/"
+                        }
+                    }
                     var newstart int
                     s, newstart = deleteWord(s, cpos)
                     if newstart == -1 {
@@ -1592,7 +2314,7 @@ func getInput(prompt string, in_defaultString string, pane string, girow int, gi
         clearChars(srow, scol, clearWidth)
         at(srow, scol)
         fmt.Print(sparkle(sprompt))
-        fmt.Print(string(s))
+        fmt.Print(colourSyntax(string(s)))
     }
 
     lineWrap = old_wrap

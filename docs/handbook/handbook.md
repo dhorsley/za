@@ -305,7 +305,7 @@ Press TAB to complete standard-library function names, language keywords, and fi
 
 #### Autosuggestion
 
-The REPL can offer fish-style history autosuggestion: as you type, the most likely continuation (the most recent history entry that starts with the typed text, otherwise a matching standard-library function or keyword) is shown dimmed in the input line. Press RIGHT or Ctrl-F to accept it, or keep typing to ignore it.
+The REPL can offer fish-style history autosuggestion: as you type, the most likely continuation (the most recent history entry that starts with the typed text, otherwise a matching standard-library function or keyword) is shown dimmed in the input line. Press RIGHT or Ctrl-F to accept it, or keep typing to ignore it. When history has no match, the trailing token is completed against the current directory — fish-style, no `/` required — with literal, case-insensitive matching (a dot is a plain dot, not a wildcard); directories complete with a trailing slash.
 
 ```za
 # Enable in ~/.zarc (or type it in the REPL)
@@ -322,6 +322,13 @@ _=autocomplete_colours("[#7]")
 - `autocomplete(bool)` enables/disables the feature and returns the previous state; calling it with no argument returns the current state.
 - `autocomplete_colours(string|[]string)` sets the colour code(s) used for the suggestion tail (each a `[#colour]` code, e.g. `[#7]` for grey) and returns the previous colours; no argument returns the current colours.
 - The suggestion shows only while the caret is at the end of the input. It does not modify the input until accepted.
+- **Word-wise accept**: `Alt-F` (or `Alt-Right`) accepts just the first word of the suggestion instead of the whole line, mirroring fish. When no suggestion is shown, `Alt-Right` moves the cursor forward one word.
+- **Word motion**: `Shift-Left`/`Shift-Right` (and `Ctrl-Left`/`Ctrl-Right`, `Alt-Left`) move the cursor one word at a time instead of one character.
+- **Fuzzy history search**: `Ctrl-R` searches history incrementally as you type. Matching is substring-first, then fuzzy subsequence — e.g. `gts` finds `git status`. `Up`/`Down` cycle the results, `Enter` accepts, `Ctrl-U` clears, a second `Ctrl-R` cancels.
+- **Live syntax highlighting**: the typed input is colourised as you type — keywords bold-yellow, stdlib functions cyan, strings red, numbers blue, comments dimmed (matching the TAB completion popup palette). The `-c` (monochrome) flag disables it along with all other colour.
+- **Command-position highlighting**: the first word of the line is treated as a command position. If it resolves to a real executable on `$PATH` (za's shell fallback), the line is treated as shell/mixed and words after `|`, `;`, `&`, `&&` and `||` become further command positions (the separators get the operator colour). A command-position word that is neither za syntax, a declared global/macro, nor on `PATH` is highlighted with the error colour — as is the command inside `` ${...} `` substitutions. Za-like positions (assignment targets, `name(...)` calls, `name[...]`) are never flagged.
+- **Configurable colours**: `syntax_colours(map(...))` overrides any subset of the highlighting classes — `keyword`, `function`, `string`, `number`, `comment`, `variable`, `shellcommand`, `error`, `operator` — and returns the previous colours. No argument returns the current colours; `"reset"` restores the defaults; an empty colour disables a class.
+- **TAB completion**: completing a single directory inserts the trailing slash automatically, so repeated TAB walks into subdirectories.
 
 #### Multi-line Editor
 
