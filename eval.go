@@ -1253,7 +1253,7 @@ func (p *leparser) accessArray(left any, right Token) any {
 
         // end map case
 
-    case uint, int, float64, uint8, uint64, int64, *big.Int, *big.Float:
+    case uint, int, float64, float32, uint8, uint64, int64, *big.Int, *big.Float:
         // just allow these through. handled as a clamp operation later.
         // but do flag to allow missing start/end
         hasRange = true
@@ -1279,7 +1279,7 @@ func (p *leparser) accessArray(left any, right Token) any {
                 panic(fmt.Errorf("array range start could not be evaluated"))
             }
             switch dp.(type) {
-            case int, float64, *big.Int, *big.Float:
+            case int, float64, float32, *big.Int, *big.Float:
                 start = dp
                 hasStart = true
             }
@@ -1295,7 +1295,7 @@ func (p *leparser) accessArray(left any, right Token) any {
                     panic(fmt.Errorf("array range end could not be evaluated"))
                 }
                 switch dp.(type) {
-                case int, float64, *big.Int, *big.Float:
+                case int, float64, float32, *big.Int, *big.Float:
                     end = dp
                     hasEnd = true
                 }
@@ -2681,13 +2681,13 @@ func vset(tok *Token, fs uint32, ident *[]Variable, name string, value any) {
 
         case kbigi:
             switch value.(type) {
-            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+            case uint, uint32, int, int64, uint64, float64, float32, *big.Int, *big.Float, string, uint8:
                 GetAsBigIntInto((*ident)[bin].IValue.(*big.Int), value)
                 ok = true
             }
         case kbigf:
             switch value.(type) {
-            case uint, uint32, int, int64, uint64, float64, *big.Int, *big.Float, string, uint8:
+            case uint, uint32, int, int64, uint64, float64, float32, *big.Int, *big.Float, string, uint8:
                 GetAsBigFloatInto((*ident)[bin].IValue.(*big.Float), value)
                 ok = true
             }

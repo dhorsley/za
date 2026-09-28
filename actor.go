@@ -625,6 +625,8 @@ func GetAsBigIntInto(dst *big.Int, i any) {
 		dst.SetUint64(v)
 	case int:
 		dst.SetInt64(int64(v))
+	case float32:
+		dst.SetInt64(int64(v))
 	case float64:
 		dst.SetInt64(int64(v))
 	case *big.Int:
@@ -651,6 +653,8 @@ func GetAsBigFloatInto(dst *big.Float, i any) {
 	case uint64:
 		dst.SetFloat64(float64(v))
 	case int:
+		dst.SetFloat64(float64(v))
+	case float32:
 		dst.SetFloat64(float64(v))
 	case float64:
 		dst.SetFloat64(v)

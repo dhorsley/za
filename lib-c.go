@@ -1784,6 +1784,24 @@ func buildFfiLib() {
                     CSetFloat32(p, (start+i)*4, fv)
                 case int:
                     CSetFloat32(p, (start+i)*4, float32(fv))
+                case int8:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case int16:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case int32:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case int64:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case uint:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case uint8:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case uint16:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case uint32:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
+                case uint64:
+                    CSetFloat32(p, (start+i)*4, float32(fv))
                 default:
                     return nil, fmt.Errorf("c_array_bulk_set_float32: value at index %d is not numeric (%T)", i, v)
                 }
@@ -1820,7 +1838,27 @@ func buildFfiLib() {
             switch fv := v.(type) {
             case float64:
                 CSetDouble(p, (start+i)*8, fv)
+            case float32:
+                CSetDouble(p, (start+i)*8, float64(fv))
             case int:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case int8:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case int16:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case int32:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case int64:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case uint:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case uint8:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case uint16:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case uint32:
+                CSetDouble(p, (start+i)*8, float64(fv))
+            case uint64:
                 CSetDouble(p, (start+i)*8, float64(fv))
             default:
                 return nil, fmt.Errorf("c_array_bulk_set_float64: value at index %d is not numeric (%T)", i, v)
@@ -1892,6 +1930,24 @@ func buildFfiLib() {
                     CSetFloat32(dst, i*4, fv)
                 case int:
                     CSetFloat32(dst, i*4, float32(fv))
+                case int8:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case int16:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case int32:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case int64:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case uint:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case uint8:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case uint16:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case uint32:
+                    CSetFloat32(dst, i*4, float32(fv))
+                case uint64:
+                    CSetFloat32(dst, i*4, float32(fv))
                 default:
                     return nil, fmt.Errorf("c_array_copy_to_c_float32: element %d is not numeric (%T)", i, v)
                 }
@@ -1925,7 +1981,27 @@ func buildFfiLib() {
                 switch fv := v.(type) {
                 case float64:
                     CSetDouble(dst, i*8, fv)
+                case float32:
+                    CSetDouble(dst, i*8, float64(fv))
                 case int:
+                    CSetDouble(dst, i*8, float64(fv))
+                case int8:
+                    CSetDouble(dst, i*8, float64(fv))
+                case int16:
+                    CSetDouble(dst, i*8, float64(fv))
+                case int32:
+                    CSetDouble(dst, i*8, float64(fv))
+                case int64:
+                    CSetDouble(dst, i*8, float64(fv))
+                case uint:
+                    CSetDouble(dst, i*8, float64(fv))
+                case uint8:
+                    CSetDouble(dst, i*8, float64(fv))
+                case uint16:
+                    CSetDouble(dst, i*8, float64(fv))
+                case uint32:
+                    CSetDouble(dst, i*8, float64(fv))
+                case uint64:
                     CSetDouble(dst, i*8, float64(fv))
                 default:
                     return nil, fmt.Errorf("c_array_copy_to_c_float64: element %d is not numeric (%T)", i, v)

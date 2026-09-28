@@ -140,6 +140,8 @@ func as_integer(val any) int {
         return int(v)
     case float64:
         return int(v)
+    case float32:
+        return int(v)
     }
     panic(fmt.Errorf("type error: required number of type integer, but '%+v' was %s", val, typeOf(val)))
 }
@@ -2637,7 +2639,7 @@ func slice(v any, from, to any) any {
     case []*CPointerValue:
         isArr = true
         arl = len(v.([]*CPointerValue))
-    case int, uint, int64, uint64, uint8, float64, *big.Int, *big.Float:
+    case int, uint, int64, uint64, uint8, float64, float32, *big.Int, *big.Float:
         // clamp operator
         if from == nil && to != nil { // only expressing upper limit
             return num_min(v, to)
