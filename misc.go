@@ -719,6 +719,55 @@ hidden          Enable hidden text. (where supported.)
     gpf(ns, colourpage)
 }
 
+func help_repl(ns string) {
+
+    replpage := `
+[#1][#bold]REPL Editing Keybindings[#boff][#-]
+
+[#2]Cursor Movement[#-]
+[#4]Left / Right[#-]          move one character
+[#4]Shift-Left/Right[#-]      move one word (Ctrl/Alt + arrows too)
+[#4]Home / End[#-]            move to start / end of line
+[#4]Ctrl-A[#-] / [#4]Ctrl-E[#-]       start / end of line
+
+[#2]Editing[#-]
+[#4]Backspace[#-]/[#4]Del[#-]         delete a character
+[#4]Ctrl-K[#-]                delete to end of line
+[#4]Ctrl-U[#-]                delete to start of line
+[#4]Ctrl-C[#-]                cancel the line and re-prompt
+[#4]Ctrl-D[#-]                exit on an empty line (readline-style EOF)
+[#4]Ctrl-Z[#-]                suspend
+
+[#2]History[#-]
+[#4]Up / Down[#-]             previous / next command
+[#4]Ctrl-R[#-]                fuzzy history search (substring then subsequence)
+[#4]Up/Down[#-]               cycle results   [#4]Enter[#-] accept
+[#4]Ctrl-U[#-]                clear search    [#4]Ctrl-R[#-] cancel
+
+[#2]Autosuggestion[#-]
+[#4]Right / Ctrl-F[#-]        accept the suggestion
+[#4]Alt-F / Alt-Right[#-]     accept the first word of the suggestion
+
+[#2]Tab Completion[#-]
+[#4]Tab[#-]                   open the pane (Tab again closes it)
+[#4]Up/Down[#-]               move the selection
+[#4]Left/Right[#-]            move the selection horizontally
+[#4]Enter[#-]                 accept (directories append '/')
+[#4]PgUp/PgDn[#-]             page results; scroll the description in '?' view
+[#4]Shift-Tab[#-]             page back
+[#4]?[#-]                     expand / collapse the description
+[#4]typing[#-]                narrows the results
+
+[#2]Multi-line Editor[#-]
+[#4]Ctrl-O[#-]                open the multi-line editor
+[#4]Ctrl-D / Esc[#-]          submit / cancel
+
+tunables:
+[#4]tabpager(bool)[#-], [#4]syntax_colours(map)[#-], [#4]autocomplete(bool)[#-], [#4]autocomplete_colours(markup)[#-]
+`
+    gpf(ns, replpage)
+}
+
 func help_ops(ns string) {
 
     opspage := `
@@ -846,12 +895,12 @@ func ihelp(ns string, hargs []string) {
     case 0:
 
         helppage := `
-[#4]help command    [#-]: available statements
-[#4]help op         [#-]: show operator info
-[#4]help colour     [#-]: show colour codes
-[#4]help <string>   [#-]: show specific statement/function info
-[#4]funcs()         [#-]: all functions
-[#4]funcs(<string>) [#-]: finds matching categories or functions
+[#4]help command      [#-]: available statements
+[#4]help op           [#-]: show operator info
+[#4]help colour       [#-]: show colour codes
+[#4]help repl         [#-]: REPL editing keybindings
+[#4]help <string>     [#-]: show specific statement/function info
+[#4]funcs([<string>]) [#-]: finds matching categories or functions
 `
         gpf(ns, helppage)
 
@@ -880,6 +929,9 @@ func ihelp(ns string, hargs []string) {
             fallthrough
         case "colours":
             help_colour(ns)
+
+        case "repl":
+            help_repl(ns)
 
         case "plugin":
             fallthrough
