@@ -279,16 +279,16 @@ macro +p(prof,cluster) `
 `
 
 macro +ask(query,ask_rv) `
-    url="https://api.cerebras.ai/v1/chat/completions"
-    # model="llama-3.3-70b"
-    model="llama3.1-8b"
+    url="https://opencode.ai/inference/openai/v1/chat/completions"
+    # model="big-pickle"
+    model="deepseek-v4-flash"
     maxtokens=1000
     data=\`{
             "model":"{model}",
-            "stream":false,
             "max_tokens":{maxtokens},
             "temperature":0.2,
             "top_p":1,
+            "stream":false,
             "messages":[{"role":"user","content":"$query"}]
         }\`
     headers=map(
