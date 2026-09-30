@@ -86,6 +86,10 @@ func CFreePtr(p *CPointerValue) {
 func CSetByte(p *CPointerValue, offset int, value byte) {
 }
 
+// CSetInt8 writes an int8 at an offset in a buffer (stub for noffi builds)
+func CSetInt8(p *CPointerValue, offset int, value int8) {
+}
+
 func CSetUint16(p *CPointerValue, offset int, value uint16) {
 }
 
@@ -105,6 +109,11 @@ func CSetInt64(p *CPointerValue, offset int, value int64) {
 }
 
 func CGetByte(p *CPointerValue, offset int) byte {
+    return 0
+}
+
+// CGetInt8 reads an int8 at an offset in a buffer (stub for noffi builds)
+func CGetInt8(p *CPointerValue, offset int) int8 {
     return 0
 }
 
