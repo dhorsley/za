@@ -1632,8 +1632,73 @@ func (s *LSPServer) handleDefinition(msg *JSONRPCMessage) *JSONRPCMessage {
 	return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: nil}
 }
 
+type ReferenceParams struct {
+	TextDocument struct {
+		URI string `json:"uri"`
+	} `json:"textDocument"`
+	Position Position `json:"position"`
+	Context  struct {
+		IncludeDeclaration bool `json:"includeDeclaration"`
+	} `json:"context"`
+}
+
 func (s *LSPServer) handleReferences(msg *JSONRPCMessage) *JSONRPCMessage {
-	return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: []interface{}{}}
+	var params ReferenceParams
+	json.Unmarshal(msg.Params, &params)
+
+	s.mu.RLock()
+	doc := s.documents[params.TextDocument.URI]
+	s.mu.RUnlock()
+
+	if doc == nil {
+		return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: []Location{}}
+	}
+
+	lines := strings.Split(doc.Content, "\n")
+	if params.Position.Line >= len(lines) {
+		return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: []Location{}}
+	}
+
+	word := extractWordAtPosition(lines[params.Position.Line], params.Position.Character)
+	if word == "" {
+		return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: []Location{}}
+	}
+
+	declLine := -1
+	if sym, ok := doc.Symbols[word]; ok {
+		declLine = sym.Location.Line - 1
+	}
+
+	refs := []Location{}
+	for i, ln := range lines {
+		if !params.Context.IncludeDeclaration && i == declLine {
+			continue
+		}
+		for idx := 0; idx < len(ln); {
+			j := strings.Index(ln[idx:], word)
+			if j < 0 {
+				break
+			}
+			start := idx + j
+			end := start + len(word)
+			idx = end
+			if start > 0 && isWordChar(rune(ln[start-1])) {
+				continue
+			}
+			if end < len(ln) && isWordChar(rune(ln[end])) {
+				continue
+			}
+			refs = append(refs, Location{
+				URI: params.TextDocument.URI,
+				Range: Range{
+					Start: Position{Line: i, Character: start},
+					End:   Position{Line: i, Character: end},
+				},
+			})
+		}
+	}
+
+	return &JSONRPCMessage{JsonRPC: "2.0", ID: msg.ID, Result: refs}
 }
 
 type DocumentSymbolParams struct {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -373,5 +375,89 @@ func TestExtractSymbolsAtSetglob(t *testing.T) {
 
 	if s, ok := doc.Symbols["global_var"]; !ok || s.Kind != "variable" {
 		t.Errorf("Expected 'global_var' from @ declaration, got: %v", s)
+	}
+}
+
+func TestHandleReferences(t *testing.T) {
+	server := NewLSPServer(nil, "za")
+	uri := "test://refs.za"
+	content := `def greet(name)
+    print "hi"
+enddef
+
+greet("a")
+greet("b")
+greeting = 1
+`
+	server.documents[uri] = &Document{
+		URI:     uri,
+		Content: content,
+		Symbols: make(map[string]*Symbol),
+	}
+	server.extractSymbols(uri, content)
+
+	if _, ok := server.documents[uri].Symbols["greet"]; !ok {
+		t.Fatalf("expected 'greet' symbol to be extracted")
+	}
+
+	newReq := func(line, character int, includeDecl bool) *JSONRPCMessage {
+		return &JSONRPCMessage{
+			JsonRPC: "2.0",
+			ID:      1,
+			Params:  json.RawMessage(fmt.Sprintf(`{"textDocument":{"uri":%q},"position":{"line":%d,"character":%d},"context":{"includeDeclaration":%v}}`, uri, line, character, includeDecl)),
+		}
+	}
+
+	// Position on first usage (line 4), include declaration
+	resp := server.handleReferences(newReq(4, 2, true))
+	refs, ok := resp.Result.([]Location)
+	if !ok {
+		t.Fatalf("expected []Location result, got %T", resp.Result)
+	}
+	if len(refs) != 3 {
+		t.Fatalf("expected 3 references (decl + 2 usages), got %d: %+v", len(refs), refs)
+	}
+	for i, want := range []struct{ line, start, end int }{
+		{0, 4, 9}, // declaration in "def greet(name)"
+		{4, 0, 5}, // greet("a")
+		{5, 0, 5}, // greet("b")
+	} {
+		r := refs[i]
+		if r.URI != uri {
+			t.Errorf("ref %d: uri = %q, want %q", i, r.URI, uri)
+		}
+		if r.Range.Start.Line != want.line || r.Range.Start.Character != want.start || r.Range.End.Character != want.end {
+			t.Errorf("ref %d = line %d [%d,%d), want line %d [%d,%d)",
+				i, r.Range.Start.Line, r.Range.Start.Character, r.Range.End.Character,
+				want.line, want.start, want.end)
+		}
+	}
+
+	// Without declaration: 2 usages. "greeting" must not match "greet".
+	resp = server.handleReferences(newReq(4, 2, false))
+	refs, ok = resp.Result.([]Location)
+	if !ok {
+		t.Fatalf("expected []Location result, got %T", resp.Result)
+	}
+	if len(refs) != 2 {
+		t.Fatalf("expected 2 references without declaration, got %d: %+v", len(refs), refs)
+	}
+	if refs[0].Range.Start.Line != 4 || refs[1].Range.Start.Line != 5 {
+		t.Errorf("expected usage lines 4 and 5, got %d and %d",
+			refs[0].Range.Start.Line, refs[1].Range.Start.Line)
+	}
+
+	// Position on whitespace: no word -> empty result
+	resp = server.handleReferences(newReq(3, 0, true))
+	if refs, ok := resp.Result.([]Location); !ok || len(refs) != 0 {
+		t.Errorf("whitespace position: expected empty []Location, got %+v", resp.Result)
+	}
+
+	// Unknown document: empty result
+	req := newReq(4, 2, true)
+	req.Params = json.RawMessage(`{"textDocument":{"uri":"test://missing.za"},"position":{"line":0,"character":0},"context":{"includeDeclaration":true}}`)
+	resp = server.handleReferences(req)
+	if refs, ok := resp.Result.([]Location); !ok || len(refs) != 0 {
+		t.Errorf("missing document: expected empty []Location, got %+v", resp.Result)
 	}
 }

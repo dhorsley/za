@@ -229,12 +229,15 @@ Keywords begin a statement when they appear at statement position:
 ```
 var, setglob, init, in, pause, help, nop, hist, debug, require, exit, version,
 quiet, loud, unset, input, prompt, log, print, println, logging, cls, at, define,
-showdef, enddef, return, async, yield, emit, lib, module, namespace, use, uses, while, endwhile,
+showdef, enddef, return, async, yield, emit, lib, module, namespace, use, while, endwhile,
 for, foreach, endfor, continue, break, if, else, endif, case, is, contains, has,
 or, endcase, with, endwith, struct, endstruct, showstruct, pane, doc, test, endtest,
-assert, on, to, step, as, do, macro, enum, try, catch, then, throws, throw, endtry,
-permit, trap, test, assert, doc, on
+assert, on, to, step, as, do, macro, enum, try, catch, then, throws, throw, endtry
 ```
+
+`permit` and `trap` are library functions, not statement keywords (see
+handbook sections 27 and 30). `uses` is lexed but reserved for future use
+(closure capture) and is currently not a valid statement.
 
 ## 4. Control flow
 
@@ -375,11 +378,11 @@ catch_pred       ::= "is" expression
                    | "in" expression
                    | "contains" string_literal
 throw            ::= "throw" expression
-trap_stmt        ::= "trap" [ "on" | "off" ] [ expression ]   -- error trap registration
 ```
 
 `then` is the cleanup section that runs regardless of exception. `error_*` functions
-introspect error context inside a handler.
+introspect error context inside a handler. Error trap registration is the library
+call `trap("int"|"error", handler)`, not a statement (see handbook section 27).
 
 Note: like `def`, the `try` body begins on the **next line**; any tokens after the
 `try` header on the same line are discarded as freeform trailing content, so
@@ -404,16 +407,21 @@ print_family     ::= ( "print" | "println" ) [ expression ( "," expression )* ]
                    | "printf" format_args
 output_file      ::= expression "$out" string_literal    -- infix write
 input_file       ::= "$in" string_literal                -- read file (unary)
-require          ::= "require" identifier                -- require an executable
+require          ::= "require" ( identifier [ integer ] | semver )
+                     -- feature/version check against the stdlib feature table,
+                     -- or a Za language version check for a bare semver;
+                     -- prints the reason and exits (ERR_REQUIRE) on failure
 exit_stmt        ::= "exit" [ expression ]
 unset            ::= "unset" identifier
 pause            ::= "pause" [ expression ]
 yield            ::= "yield" [ expression ]
 emit             ::= "emit" [ expression ]
-permit           ::= "permit" "on" | "permit" "off" [ permit_items ]
 log_stmt         ::= "log" ...                            -- logging family
 at_stmt          ::= "at" ...
 ```
+
+Runtime capability control is the library call `permit(behaviour, bool)`, not a
+statement (see handbook section 30).
 
 `$out` is an infix operator: `content $out "/path"` writes to a file. `$in` reads a
 file: `content = $in "/path"`.

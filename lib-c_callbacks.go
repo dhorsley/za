@@ -706,6 +706,7 @@ func za_callback_ptr_ptr_bool(arg1, arg2 unsafe.Pointer, context C.uintptr_t) C.
 func init() {
     // Register callback functions in stdlib
 
+    slhelp["c_register_callback"] = LibHelp{in: "function_name,signature", out: "map", action: "Register a Za function as a C callback. [#i1]signature[#i0] is like \"int,int->int\". Returns a map with 'trampoline' and 'handle' pointers for C APIs that take callback function pointers. Cleanup with c_unregister_callback()."}
     stdlib["c_register_callback"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if len(args) < 2 {
             return nil, fmt.Errorf("c_register_callback requires 2 arguments: function_name, signature")
@@ -770,6 +771,7 @@ func init() {
         }, nil
     }
 
+    slhelp["c_unregister_callback"] = LibHelp{in: "callback_object", out: "", action: "Unregister a callback previously registered with c_register_callback() and free its resources. Always call this before the callback can be invoked again."}
     stdlib["c_unregister_callback"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if len(args) < 1 {
             return nil, fmt.Errorf("c_unregister_callback requires callback object")
@@ -813,6 +815,7 @@ func init() {
 
 
 
+    slhelp["c_as_function_ptr"] = LibHelp{in: "pointer,signature", out: "cfunctionpointer", action: "Convert a C function pointer to a callable CFunctionPointer object. [#i1]signature[#i0] is like \"int,int->int\" (param types, then return type after '->')."}
     stdlib["c_as_function_ptr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if len(args) < 2 {
             return nil, fmt.Errorf("c_as_function_ptr requires 2 arguments: pointer, signature")
@@ -874,6 +877,7 @@ func init() {
         return fp, nil
     }
 
+    slhelp["c_call_function_ptr"] = LibHelp{in: "function_pointer,...args", out: "any", action: "Call a C function pointer (created with c_as_function_ptr()) with the provided arguments and return its result."}
     stdlib["c_call_function_ptr"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if len(args) < 1 {
             return nil, fmt.Errorf("c_call_function_ptr requires at least 1 argument: function_pointer")

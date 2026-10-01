@@ -159,6 +159,48 @@ func isCacheable(rules []web_rule) bool {
     return true
 }
 
+// webCacheBytes returns the total cached content size. Caller must hold web_cache_lock.
+func webCacheBytes() int64 {
+    var total int64
+    for _, v := range web_cache {
+        total += int64(len(v.content))
+    }
+    return total
+}
+
+// webCacheEvictOldest deletes the oldest cache entry. Caller must hold
+// web_cache_lock. Returns false if the cache was empty.
+func webCacheEvictOldest() bool {
+    var oldest_key string
+    var oldest_time = time.Now()
+    for k, v := range web_cache {
+        if v.timestamp.Before(oldest_time) {
+            oldest_time = v.timestamp
+            oldest_key = k
+        }
+    }
+    if oldest_key == "" {
+        return false
+    }
+    delete(web_cache, oldest_key)
+    return true
+}
+
+// webCacheEnforceMemory evicts oldest entries until the cache fits the
+// configured memory cap (web_cache_max_memory, in MB; <= 0 means unlimited).
+// Caller must hold web_cache_lock.
+func webCacheEnforceMemory() {
+    if web_cache_max_memory <= 0 {
+        return
+    }
+    limit := int64(web_cache_max_memory) * 1024 * 1024
+    for webCacheBytes() > limit {
+        if !webCacheEvictOldest() {
+            break
+        }
+    }
+}
+
 func cleanupWebCache() {
     web_cache_lock.Lock()
     defer web_cache_lock.Unlock()
@@ -168,7 +210,7 @@ func cleanupWebCache() {
             delete(web_cache, k)
         }
     }
-    // TODO: check memory usage if needed
+    webCacheEnforceMemory()
 }
 
 func getFileModTime(fp string) time.Time {
@@ -692,17 +734,7 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                     if web_cache_enabled && isCacheable(wr_copy) && method != "HEAD" {
                         web_cache_lock.Lock()
                         if len(web_cache) >= web_cache_max_size {
-                            var oldest_key string
-                            var oldest_time = time.Now()
-                            for k, v := range web_cache {
-                                if v.timestamp.Before(oldest_time) {
-                                    oldest_time = v.timestamp
-                                    oldest_key = k
-                                }
-                            }
-                            if oldest_key != "" {
-                                delete(web_cache, oldest_key)
-                            }
+                            webCacheEvictOldest()
                         }
                         web_cache[cache_key] = web_cache_entry{
                             content:      content,
@@ -710,6 +742,7 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                             is_rewritten: is_rewritten,
                             headers:      header,
                         }
+                        webCacheEnforceMemory()
                         web_cache_lock.Unlock()
                     }
                 }
@@ -940,7 +973,7 @@ func buildWebLib() {
     web_client = &http.Client{Transport: web_tr}
 
     features["web"] = Feature{version: 1, category: "web"}
-    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download",         "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable", "web_template"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download",         "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.
@@ -1375,7 +1408,7 @@ func buildWebLib() {
         return true, nil
     }
 
-    slhelp["web_cache_max_memory"] = LibHelp{in: "int", out: "bool", action: "Set the maximum memory usage for cache in MB."}
+    slhelp["web_cache_max_memory"] = LibHelp{in: "int", out: "bool", action: "Set the maximum memory usage for cache in MB. Values <= 0 disable the limit."}
     stdlib["web_cache_max_memory"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("web_cache_max_memory", args, 1, "1", "int"); !ok {
             return nil, err
@@ -1403,9 +1436,11 @@ func buildWebLib() {
         web_cache_lock.RLock()
         size := len(web_cache)
         stats := map[string]any{
-            "size":     size,
-            "max_size": web_cache_max_size,
-            "max_age":  web_cache_max_age,
+            "size":          size,
+            "max_size":      web_cache_max_size,
+            "max_age":       web_cache_max_age,
+            "memory_bytes":  webCacheBytes(),
+            "max_memory_mb": web_cache_max_memory,
         }
         web_cache_lock.RUnlock()
         return stats, nil

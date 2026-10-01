@@ -507,7 +507,6 @@ syntax match auto_functions "\(^|.\|\s*\)top_dio\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)top_mem\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)top_nio\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)traceroute\s*("he=e-1
-syntax match auto_functions "\(^|.\|\s*\)trim\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)user_add\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)user_del\s*("he=e-1
 syntax match auto_functions "\(^|.\|\s*\)user_info\s*("he=e-1
@@ -850,16 +849,14 @@ syntax match internal_functions "\(^|.\|\s*\)drain\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)lock\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)unlock\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)trylock\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)conclear\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)conread\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)conset\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)conwrite\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)defined\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)import_errors\s*("he=e-1
 syntax match internal_functions "\(^|.\|\s*\)import_has_errors\s*("he=e-1
-syntax match internal_functions "\(^|.\|\s*\)suppress_prompt\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)autocomplete\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)autocomplete_colours\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)syntax_colours\s*("he=e-1
+syntax match internal_functions "\(^|.\|\s*\)tabpager\s*("he=e-1
 
-syntax match conversion_functions "\(^|.\|\s*\)explain\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)pp\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)table\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)as_float32\s*("he=e-1
@@ -876,14 +873,10 @@ syntax match conversion_functions "\(^|.\|\s*\)gzip_decompress\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)gzip_decompress_bytes\s*("he=e-1
 syntax match conversion_functions "\(^|.\|\s*\)human_size\s*("he=e-1
 
-syntax match string_functions "\(^|.\|\s*\)msplit\s*("he=e-1
 syntax match string_functions "\(^|.\|\s*\)sanitisation\s*("he=e-1
 
-syntax match os_functions "\(^|.\|\s*\)fileabs\s*("he=e-1
-syntax match os_functions "\(^|.\|\s*\)filebase\s*("he=e-1
 syntax match os_functions "\(^|.\|\s*\)glob\s*("he=e-1
 
-syntax match web_functions "\(^|.\|\s*\)web_template\s*("he=e-1
 syntax match web_functions "\(^|.\|\s*\)tcp_server\s*("he=e-1
 
 syntax match auto_functions "\(^|.\|\s*\)trace\s*("he=e-1

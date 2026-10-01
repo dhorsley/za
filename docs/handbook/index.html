@@ -1,22 +1,16 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.11" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Daniel Horsley" />
   <title>Za - The Za Programming Language Handbook</title>
   <style>
-    /* Default styles provided by pandoc.
-    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
-    */
+    code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -27,6 +21,7 @@
       margin: 0 0.8em 0.2em -1.6em;
       vertical-align: middle;
     }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
     /* CSS for syntax highlighting */
     html { -webkit-text-size-adjust: 100%; }
     pre > code.sourceCode { white-space: pre; position: relative; }
@@ -4112,10 +4107,11 @@ stack, std, trace, variance, where, zeros</p>
 <li>prod</li>
 </ul>
 <h2 id="conversion">conversion</h2>
-<p><strong>Functions (42):</strong></p>
-<p>as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int64,
-as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo,
-explain, f2n, format_currency, hex_decode, hex_encode, is_number, itob,
+<p><strong>Functions (52):</strong></p>
+<p>as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int16,
+as_int32, as_int64, as_int8, as_string, as_uint, as_uint16, as_uint32,
+as_uint64, as_uint8, asc, base64d, base64e, btoi, byte, char, dtoo, f2n,
+format_currency, hex_decode, hex_encode, human_size, is_number, itob,
 json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat,
 maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table,
 to_typed, type, typeof, url_decode, url_encode, write_struct</p>
@@ -4145,7 +4141,7 @@ to_typed, type, typeof, url_decode, url_encode, write_struct</p>
 <li>cron_validate</li>
 </ul>
 <h2 id="date">date</h2>
-<p><strong>Functions (17):</strong></p>
+<p><strong>Functions (18):</strong></p>
 <p>date, date_human, epoch_nano_time, epoch_time, format_date,
 format_time, now, time_diff, time_dom, time_dow, time_hours,
 time_minutes, time_month, time_nanos, time_seconds, time_year,
@@ -4277,23 +4273,24 @@ svg_roundrect, svg_square, svg_start, svg_text, svg_title</p>
 <li>svg_link</li>
 </ul>
 <h2 id="internal">internal</h2>
-<p><strong>Functions (105):</strong></p>
-<p>ansi, argc, argv, array_colours, array_format, ast, await,
-bash_versinfo, bash_version, capture_shell, clear_line, clktck,
-cmd_version, conclear, conread, conset, conwrite, coproc, cursoroff,
-cursoron, cursorx, difference, dinfo, dump, dup, echo, enum_all,
+<p><strong>Functions (109):</strong></p>
+<p>ansi, argc, argv, array_colours, array_format, ast,
+async_wait_startup, await, bash_versinfo, bash_version, capture_shell,
+clear_line, clktck, cmd_version, coproc, cursoroff, cursoron, cursorx,
+defined, difference, dinfo, drain, dump, dup, echo, enum_all,
 enum_names, eval, exception_strictness, exec, execpath, expect, exreg,
 feed, format_stack_trace, func_categories, func_descriptions,
 func_inputs, func_outputs, funcref, funcs, gdump, get_col, get_cores,
 get_mem, get_row, has_colour, has_shell, has_term, home, hostname,
-interpol, interpolate, intersect, is_disjoint, is_subset, is_superset,
-key, keypress, lang, last, last_err, len, local, log_queue_status,
-logging_stats, mdump, merge, os, pane_c, pane_h, pane_r, pane_w, panic,
-permit, pid, powershell_version, ppid, release_id, release_name,
-release_version, rlen, set_depth, shell_pid, sizeof, suppress_prompt,
-symmetric_difference, system, sysvar, term, term_h, term_w, thisfunc,
-thisref, tokens, trap, unmap, user, utf8supported, varbind, wininfo,
-winterm, zainfo, zsh_version</p>
+import_errors, import_has_errors, interpol, interpolate, intersect,
+is_disjoint, is_subset, is_superset, key, keypress, lang, last,
+last_err, len, local, lock, log_queue_status, logging_stats, mdump,
+merge, os, pane_c, pane_h, pane_r, pane_w, panic, permit, pid,
+powershell_version, ppid, release_id, release_name, release_version,
+resume, rlen, set_depth, shell_pid, sizeof, symmetric_difference,
+system, sysvar, term, term_h, term_w, thisfunc, thisref, tokens, trap,
+trylock, unlock, unmap, user, utf8supported, varbind, wininfo, winterm,
+zainfo, zsh_version</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>len</li>
@@ -4314,8 +4311,8 @@ winterm, zainfo, zsh_version</p>
 <p>alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen,
 esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool,
 list_fill, list_float, list_float32, list_int, list_int64, list_string,
-max, max_float32, min, min_float32, msplit, peek, pop, push_front,
-remove, scan_left, sort, ssort, sum, tail, uniq, zip</p>
+max, min, peek, pop, push_front, remove, scan_left, sort, ssort, sum,
+tail, uniq, zip</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>append</li>
@@ -4339,11 +4336,11 @@ decorate/sort/undecorate patterns. Example:</p>
 <pre class="za"><code>sort(costs, map(.key `#.price`, .reverse true))
 sort(items, map(.key `#.name`))</code></pre>
 <h2 id="math">math</h2>
-<p><strong>Functions (38):</strong></p>
-<p>abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot,
-e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma,
-phi, pi, pow, prec, rad2deg, rand, randf, randf32, round, seed, sin,
-sinh, tan, tanh, transpose, ubin8, uhex32</p>
+<p><strong>Functions (40):</strong></p>
+<p>abs, acos, acosh, asin, asinh, atan, atan2, atanh, cos, cosh,
+deg2rad, dot, e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul,
+numcomma, phi, pi, pow, prec, rad2deg, rand, randf, randf32, round,
+seed, sin, sinh, tan, tanh, transpose, ubin8, uhex32</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>rand</li>
@@ -4408,14 +4405,14 @@ ev_watch_remove</p>
 <li>ev_event</li>
 </ul>
 <h2 id="os">os</h2>
-<p><strong>Functions (48):</strong></p>
+<p><strong>Functions (46):</strong></p>
 <p>can_read, can_write, cd, chmod, chown, chroot, copy, cwd, delete,
-dir, env, fileabs, filebase, get_env, glob, group_add, group_del,
-group_info, group_list, group_membership, group_mod, groupname,
-is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky,
-is_symlink, mkdir, mkdir_p, parent, readlink, rename, set_env, symlink,
-sync, temp_dir, temp_file, touch, truncate, umask, user_add, user_del,
-user_info, user_list, user_mod, username</p>
+dir, env, get_env, glob, group_add, group_del, group_info, group_list,
+group_membership, group_mod, groupname, is_device, is_pipe, is_setgid,
+is_setuid, is_socket, is_sticky, is_symlink, mkdir, mkdir_p, parent,
+readlink, rename, set_env, symlink, sync, temp_dir, temp_file, touch,
+truncate, umask, user_add, user_del, user_info, user_list, user_mod,
+username</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>dir</li>
@@ -4474,7 +4471,7 @@ smtp_send_with_auth</p>
 <li>email_add_header</li>
 </ul>
 <h2 id="string">string</h2>
-<p><strong>Functions (58):</strong></p>
+<p><strong>Functions (59):</strong></p>
 <p>addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256,
 fgrgb, field, fields, filter, format, get_value, grep, gsub, has_end,
 has_start, inset, is_utf8, join, keys, levdist, line_add,
@@ -4530,10 +4527,11 @@ sys_load, sys_resources, top_cpu, top_dio, top_mem, top_nio</p>
 <li>pkill</li>
 </ul>
 <h2 id="tui">tui</h2>
-<p><strong>Functions (16):</strong></p>
-<p>editor, tui, tui_box, tui_clear, tui_input, tui_menu, selector,
+<p><strong>Functions (18):</strong></p>
+<p>editor, selector, tui, tui_box, tui_clear, tui_input, tui_menu,
 tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset,
-tui_radio, tui_screen, tui_table, tui_template, tui_text</p>
+tui_radio, tui_screen, tui_table, tui_table_select, tui_template,
+tui_text</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>tui_clear</li>
@@ -4558,14 +4556,14 @@ tui_radio, tui_screen, tui_table, tui_template, tui_text</p>
 <li>uuid_parse</li>
 </ul>
 <h2 id="web">web</h2>
-<p><strong>Functions (28):</strong></p>
+<p><strong>Functions (27):</strong></p>
 <p>download, html_escape, html_unescape, net_interfaces,
 web_cache_cleanup_interval, web_cache_enable, web_cache_max_age,
 web_cache_max_memory, web_cache_max_size, web_cache_purge,
 web_cache_stats, web_custom, web_display, web_download, web_get,
 web_gzip_enable, web_head, web_max_clients, web_post, web_raw_send,
 web_serve_decode, web_serve_log, web_serve_log_throttle, web_serve_path,
-web_serve_start, web_serve_stop, web_serve_up, web_template</p>
+web_serve_start, web_serve_stop, web_serve_up</p>
 <p><strong>Commonly used (from examples/tests):</strong></p>
 <ul>
 <li>web_serve_path</li>

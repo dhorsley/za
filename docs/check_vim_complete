@@ -16,7 +16,7 @@ funclist = funclist.sort.join("\n")
 
 doclist = $in "za.vim" . grep(`^syntax .*_functions.*\)`) . col(2,")")
 foreach e in doclist
-    doclist[key_e]=e.field(1,"\\")
+    doclist[key_e]=e.field(1,`\s*(`)
 endfor
 doclist = doclist.sort.join("\n")
 

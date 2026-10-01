@@ -24,7 +24,7 @@ func buildDbLib() {
     slhelp["db_init"] = LibHelp{in: "string", out: "handle",
         action: "Returns a database connection [#i1]handle[#i0], with a default schema of [#i1]string[#i0] based on\n[#SOL]" +
             "inbound environmental variables. (ZA_DB_HOST, ZA_DB_ENGINE, ZA_DB_PORT, ZA_DB_USER, ZA_DB_PASS.)\n[#SOL]" +
-            "Only 'mysql' is currently supported as an engine type."}
+            "Supported engine types: 'mysql' and 'sqlite3'."}
     stdlib["db_init"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("db_init", args, 1, "1", "string"); !ok {
             return nil, err
@@ -53,6 +53,8 @@ func buildDbLib() {
             dbh, err = sql.Open(dbeng, dbuser+":"+dbpass+"@tcp("+dbhost+":"+dbport+")/"+schema)
         case "sqlite3":
             dbh, err = sql.Open(dbeng, schema) // schema will be path or uri
+        default:
+            return nil, fmt.Errorf("unsupported DB engine '%s' (supported: mysql, sqlite3)", dbeng)
         }
         if err != nil {
             return nil, err

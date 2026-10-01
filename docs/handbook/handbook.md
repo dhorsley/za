@@ -4443,10 +4443,10 @@ argmax, argmin, concatenate, det, det_big, find, flatten, identity, inverse, inv
 
 ## conversion
 
-**Functions (42):**
+**Functions (52):**
 
 
-as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int64, as_string, as_uint, asc, base64d, base64e, btoi, byte, char, dtoo, explain, f2n, format_currency, hex_decode, hex_encode, is_number, itob, json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed, type, typeof, url_decode, url_encode, write_struct
+as_bigf, as_bigi, as_bool, as_float, as_float32, as_int, as_int16, as_int32, as_int64, as_int8, as_string, as_uint, as_uint16, as_uint32, as_uint64, as_uint8, asc, base64d, base64e, btoi, byte, char, dtoo, f2n, format_currency, hex_decode, hex_encode, human_size, is_number, itob, json_decode, json_encode, json_format, json_query, kind, m2s, maxfloat, maxint, maxuint, md2ansi, otod, pp, read_struct, s2m, str, table, to_typed, type, typeof, url_decode, url_encode, write_struct
 
 
 **Commonly used (from examples/tests):**
@@ -4485,7 +4485,7 @@ cron_next, cron_parse, cron_validate, quartz_to_cron
 
 ## date
 
-**Functions (17):**
+**Functions (18):**
 
 
 date, date_human, epoch_nano_time, epoch_time, format_date, format_time, now, time_diff, time_dom, time_dow, time_hours, time_minutes, time_month, time_nanos, time_seconds, time_year, time_zone, time_zone_offset
@@ -4651,10 +4651,10 @@ svg_circle, svg_def, svg_def_end, svg_desc, svg_ellipse, svg_end, svg_grid, svg_
 
 ## internal
 
-**Functions (105):**
+**Functions (109):**
 
 
-ansi, argc, argv, array_colours, array_format, ast, await, bash_versinfo, bash_version, capture_shell, clear_line, clktck, cmd_version, conclear, conread, conset, conwrite, coproc, cursoroff, cursoron, cursorx, difference, dinfo, dump, dup, echo, enum_all, enum_names, eval, exception_strictness, exec, execpath, expect, exreg, feed, format_stack_trace, func_categories, func_descriptions, func_inputs, func_outputs, funcref, funcs, gdump, get_col, get_cores, get_mem, get_row, has_colour, has_shell, has_term, home, hostname, interpol, interpolate, intersect, is_disjoint, is_subset, is_superset, key, keypress, lang, last, last_err, len, local, log_queue_status, logging_stats, mdump, merge, os, pane_c, pane_h, pane_r, pane_w, panic, permit, pid, powershell_version, ppid, release_id, release_name, release_version, rlen, set_depth, shell_pid, sizeof, suppress_prompt, symmetric_difference, system, sysvar, term, term_h, term_w, thisfunc, thisref, tokens, trap, unmap, user, utf8supported, varbind, wininfo, winterm, zainfo, zsh_version
+ansi, argc, argv, array_colours, array_format, ast, async_wait_startup, await, bash_versinfo, bash_version, capture_shell, clear_line, clktck, cmd_version, coproc, cursoroff, cursoron, cursorx, defined, difference, dinfo, drain, dump, dup, echo, enum_all, enum_names, eval, exception_strictness, exec, execpath, expect, exreg, feed, format_stack_trace, func_categories, func_descriptions, func_inputs, func_outputs, funcref, funcs, gdump, get_col, get_cores, get_mem, get_row, has_colour, has_shell, has_term, home, hostname, import_errors, import_has_errors, interpol, interpolate, intersect, is_disjoint, is_subset, is_superset, key, keypress, lang, last, last_err, len, local, lock, log_queue_status, logging_stats, mdump, merge, os, pane_c, pane_h, pane_r, pane_w, panic, permit, pid, powershell_version, ppid, release_id, release_name, release_version, resume, rlen, set_depth, shell_pid, sizeof, symmetric_difference, system, sysvar, term, term_h, term_w, thisfunc, thisref, tokens, trap, trylock, unlock, unmap, user, utf8supported, varbind, wininfo, winterm, zainfo, zsh_version
 
 
 **Commonly used (from examples/tests):**
@@ -4679,7 +4679,7 @@ ansi, argc, argv, array_colours, array_format, ast, await, bash_versinfo, bash_v
 **Functions (35):**
 
 
-alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen, esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool, list_fill, list_float, list_float32, list_int, list_int64, list_string, max, max_float32, min, min_float32, msplit, peek, pop, push_front, remove, scan_left, sort, ssort, sum, tail, uniq, zip
+alltrue, anytrue, append, append_to, avg, col, concat, empty, eqlen, esplit, fieldsort, head, insert, list_bigf, list_bigi, list_bool, list_fill, list_float, list_float32, list_int, list_int64, list_string, max, min, peek, pop, push_front, remove, scan_left, sort, ssort, sum, tail, uniq, zip
 
 
 **Commonly used (from examples/tests):**
@@ -4710,10 +4710,10 @@ sort(items, map(.key `#.name`))
 
 ## math
 
-**Functions (38):**
+**Functions (40):**
 
 
-abs, acos, acosh, asin, asinh, atan, atanh, cos, cosh, deg2rad, dot, e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma, phi, pi, pow, prec, rad2deg, rand, randf, randf32, round, seed, sin, sinh, tan, tanh, transpose, ubin8, uhex32
+abs, acos, acosh, asin, asinh, atan, atan2, atanh, cos, cosh, deg2rad, dot, e, floor, ibase, ln, ln10, ln2, log10, log2, logn, matmul, numcomma, phi, pi, pow, prec, rad2deg, rand, randf, randf32, round, seed, sin, sinh, tan, tanh, transpose, ubin8, uhex32
 
 
 **Commonly used (from examples/tests):**
@@ -4796,10 +4796,10 @@ ev_event, ev_exists, ev_mask, ev_watch, ev_watch_add, ev_watch_close, ev_watch_r
 
 ## os
 
-**Functions (48):**
+**Functions (46):**
 
 
-can_read, can_write, cd, chmod, chown, chroot, copy, cwd, delete, dir, env, fileabs, filebase, get_env, glob, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, mkdir, mkdir_p, parent, readlink, rename, set_env, symlink, sync, temp_dir, temp_file, touch, truncate, umask, user_add, user_del, user_info, user_list, user_mod, username
+can_read, can_write, cd, chmod, chown, chroot, copy, cwd, delete, dir, env, get_env, glob, group_add, group_del, group_info, group_list, group_membership, group_mod, groupname, is_device, is_pipe, is_setgid, is_setuid, is_socket, is_sticky, is_symlink, mkdir, mkdir_p, parent, readlink, rename, set_env, symlink, sync, temp_dir, temp_file, touch, truncate, umask, user_add, user_del, user_info, user_list, user_mod, username
 
 
 **Commonly used (from examples/tests):**
@@ -4880,7 +4880,7 @@ email_add_header, email_base64_decode, email_base64_encode, email_extract_addres
 
 ## string
 
-**Functions (58):**
+**Functions (59):**
 
 
 addansi, bg256, bgrgb, ccformat, clean, collapse, count, fg256, fgrgb, field, fields, filter, format, get_value, grep, gsub, has_end, has_start, inset, is_utf8, join, keys, levdist, line_add, line_add_after, line_add_before, line_delete, line_filter, line_head, line_match, line_replace, line_tail, lines, literal, log_sanitise, lower, match, next_match, pad, pos, progress_bar, replace, reverse, rvalid, sanitisation, sgrep, split, stripansi, stripcc, stripquotes, strpos, substr, tr, trim, trunc, upper, values, wrap, wrap_text
@@ -4942,10 +4942,10 @@ cpu_info, debug_cpu_files, dio, disk_usage, gw_address, gw_info, gw_interface, i
 
 ## tui
 
-**Functions (16):**
+**Functions (18):**
 
 
-editor, tui, tui_box, tui_clear, tui_input, tui_menu, selector, tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset, tui_radio, tui_screen, tui_table, tui_template, tui_text
+editor, selector, tui, tui_box, tui_clear, tui_input, tui_menu, tui_new, tui_new_style, tui_pager, tui_progress, tui_progress_reset, tui_radio, tui_screen, tui_table, tui_table_select, tui_template, tui_text
 
 
 **Commonly used (from examples/tests):**
@@ -4982,10 +4982,10 @@ uuid_generate, uuid_parse, uuid_validate
 
 ## web
 
-**Functions (28):**
+**Functions (27):**
 
 
-download, html_escape, html_unescape, net_interfaces, web_cache_cleanup_interval, web_cache_enable, web_cache_max_age, web_cache_max_memory, web_cache_max_size, web_cache_purge, web_cache_stats, web_custom, web_display, web_download, web_get, web_gzip_enable, web_head, web_max_clients, web_post, web_raw_send, web_serve_decode, web_serve_log, web_serve_log_throttle, web_serve_path, web_serve_start, web_serve_stop, web_serve_up, web_template
+download, html_escape, html_unescape, net_interfaces, web_cache_cleanup_interval, web_cache_enable, web_cache_max_age, web_cache_max_memory, web_cache_max_size, web_cache_purge, web_cache_stats, web_custom, web_display, web_download, web_get, web_gzip_enable, web_head, web_max_clients, web_post, web_raw_send, web_serve_decode, web_serve_log, web_serve_log_throttle, web_serve_path, web_serve_start, web_serve_stop, web_serve_up
 
 
 **Commonly used (from examples/tests):**

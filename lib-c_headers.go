@@ -75,7 +75,7 @@ var (
     stringConcatRe   = regexp.MustCompile(`"([^"]*)"[ \t]+"`)                                                // transformStringConcatenation
     intSuffixRe      = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)([uU]?[lL]{0,2}|[lL]{0,2}[uU]?)\b`)      // stripCIntegerSuffixes
     floatSuffixRe    = regexp.MustCompile(`\b(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)[fFlLdD]\b`)                    // stripCIntegerSuffixes
-    ternaryCondRe    = regexp.MustCompile(`\b(\d+|0[xX][0-9a-fA-F]+)\s*\?`)                                  // convertTernaryConditions
+    ternaryCondRe    = regexp.MustCompile(`(^|[(|&!,:]\s*)(0[xX][0-9a-fA-F]+|\d+)\s*\?`)                   // convertTernaryConditions
     boolContextIntRe = regexp.MustCompile(`(^|\(|\&\&|\|\|)\s*(\d+|0[xX][0-9a-fA-F]+)\s*(\&\&|\|\||[?:]|$)`) // convertCBooleanOps
     notIntRe         = regexp.MustCompile(`!\s*(\d+|0[xX][0-9a-fA-F]+)`)                                     // convertCBooleanOps
     notVarRe         = regexp.MustCompile(`!\s*([A-Za-z_][A-Za-z0-9_]*)`)                                    // convertCBooleanOps
@@ -2425,19 +2425,26 @@ func stripCIntegerSuffixes(s string) string {
 // Za requires boolean conditions for ternary operators, not integers
 // Examples: 0 ? x : y → false ? x : y, 1 ? x : y → true ? x : y
 func convertTernaryConditions(expr string) string {
-    // Match: <integer> followed by ?
-    // Replace the integer with true/false based on C truthiness
+    // Match an integer literal that IS the ternary condition: it must appear
+    // at the start of the expression or right after '(', '&&', '||', '!', ','
+    // or ':'. Integers that are operands of a preceding comparison (e.g.
+    // "x > 0 ?") are left alone - the comparison already yields a boolean.
     expr = ternaryCondRe.ReplaceAllStringFunc(expr, func(match string) string {
-        // Extract the number
-        numPart := strings.TrimRight(match, " \t?")
+        submatch := ternaryCondRe.FindStringSubmatch(match)
+        if len(submatch) < 3 {
+            return match
+        }
+
+        prefix := submatch[1]
+        numStr := submatch[2]
 
         // Parse as integer
         var num int64
         var err error
-        if strings.HasPrefix(numPart, "0x") || strings.HasPrefix(numPart, "0X") {
-            num, err = strconv.ParseInt(numPart[2:], 16, 64)
+        if strings.HasPrefix(numStr, "0x") || strings.HasPrefix(numStr, "0X") {
+            num, err = strconv.ParseInt(numStr[2:], 16, 64)
         } else {
-            num, err = strconv.ParseInt(numPart, 10, 64)
+            num, err = strconv.ParseInt(numStr, 10, 64)
         }
 
         if err != nil {
@@ -2445,10 +2452,11 @@ func convertTernaryConditions(expr string) string {
         }
 
         // C semantics: 0 is false, non-zero is true
+        boolStr := "true"
         if num == 0 {
-            return "false ?"
+            boolStr = "false"
         }
-        return "true ?"
+        return prefix + boolStr + " ?"
     })
 
     return expr
@@ -2831,15 +2839,6 @@ func evaluateConstant(valueStr string, state *PreprocessorState, alias string, f
 
     // Only apply boolean conversions for conditional expressions (#if), not for constant values
     if isConditional {
-        // Check if expression contains ternary operator - if so, treat as false for now
-        // TODO: Fix ternary operator support in Za's ev()
-        if strings.Contains(valueStr, "?") {
-            if debugAuto {
-                fmt.Printf("[AUTO]     → Skipping ternary expression: %q, treating as false\n", valueStr)
-            }
-            return false, true // Treat as false instead of failing
-        }
-
         // Convert ternary conditions from integers to booleans
         valueStr = convertTernaryConditions(valueStr)
 
@@ -2984,8 +2983,18 @@ func evaluateConstant(valueStr string, state *PreprocessorState, alias string, f
 
     parser.ident = &tempIdent
 
-    // Evaluate using fs=0 (global) to avoid polluting C module bindings
+    // Evaluate using fs=0 (global) to avoid polluting C module bindings.
+    // Temporarily suppress ev()'s report()/finish() hard-abort: failures here
+    // are handled by returning (nil, false), which callers treat as
+    // "skip evaluation / condition false".
+    autoProcessingLock.Lock()
+    prevAutoProcessing := inAutoProcessing
+    inAutoProcessing = true
+    autoProcessingLock.Unlock()
     result, err := ev(parser, 0, valueStr)
+    autoProcessingLock.Lock()
+    inAutoProcessing = prevAutoProcessing
+    autoProcessingLock.Unlock()
 
     if debugAuto {
         fmt.Printf("[AUTO]     → ev() returned: result=%v, err=%v\n", result, err)

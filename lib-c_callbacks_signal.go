@@ -140,6 +140,7 @@ func za_callback_int_void(signum C.int) {
 }
 
 func init() {
+    slhelp["c_register_signal_handler"] = LibHelp{in: "signal_number,function_name[,handler_type]", out: "cpointer", action: "Register a Za function as a POSIX signal handler (e.g. 2=SIGINT, 15=SIGTERM). [#i1]handler_type[#i0] is \"simple\" (int->void, default) or \"sigaction\". Returns the handler pointer. Unix only."}
     stdlib["c_register_signal_handler"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if ok, err := expect_args("c_register_signal_handler", args, 2,
             "2", "int", "string",           // Variant 1: signum, function_name
@@ -214,6 +215,7 @@ func init() {
         return NewCPointer(trampoline, "signal_handler"), nil
     }
 
+    slhelp["c_unregister_signal_handler"] = LibHelp{in: "signal_number", out: "", action: "Remove the signal handler registered with c_register_signal_handler() for the given signal number. Unix only."}
     stdlib["c_unregister_signal_handler"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (any, error) {
         if len(args) < 1 {
             return nil, fmt.Errorf("c_unregister_signal_handler requires signal_number")
