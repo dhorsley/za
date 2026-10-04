@@ -11,7 +11,7 @@ exreg("debug_info", "debug")
 
 println "\n[#6]Test 1: log during exception handling (no explicit level)[#-]"
 try
-    throw "critical_error", "This is a critical error"
+    throw "critical_error" with "This is a critical error"
 catch err is "critical_error"
     log "Handling critical error"  # Should use ERROR level from exreg()
     println "Exception caught and logged"
@@ -19,7 +19,7 @@ endtry
 
 println "\n[#6]Test 2: log with explicit level (should override exception severity)[#-]"
 try
-    throw "warning_condition", "This is a warning"
+    throw "warning_condition" with "This is a warning"
 catch err is "warning_condition"
     log debug: "Handling warning with explicit debug level"  # Should use DEBUG (explicit wins)
     log "Handling warning without explicit level"  # Should use WARN from exreg()
@@ -28,7 +28,7 @@ endtry
 
 println "\n[#6]Test 3: log with info exception severity[#-]"
 try
-    throw "info_message", "This is an info message"
+    throw "info_message" with "This is an info message"
 catch err is "info_message"
     log "Handling info message"  # Should use INFO level from exreg()
     println "Info message caught and logged"
@@ -36,7 +36,7 @@ endtry
 
 println "\n[#6]Test 4: log with debug exception severity[#-]"
 try
-    throw "debug_info", "This is debug info"
+    throw "debug_info" with "This is debug info"
 catch err is "debug_info"
     log "Handling debug info"  # Should use DEBUG level from exreg()
     println "Debug info caught and logged"
@@ -47,7 +47,7 @@ log "This is a normal log message"  # Should use default level
 
 println "\n[#6]Test 6: Exception without registered severity (should use default level)[#-]"
 try
-    throw "unregistered_error", "This error is not registered"
+    throw "unregistered_error" with "This error is not registered"
 catch err is "unregistered_error"
     log "Handling unregistered error"  # Should use default level
     println "Unregistered error caught and logged"

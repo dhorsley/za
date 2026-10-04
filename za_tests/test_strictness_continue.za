@@ -1,0 +1,77 @@
+#!/usr/bin/env za
+
+# Verifies that exception_strictness("warn") and ("disabled") actually let a
+# script continue past an unhandled exception, which is what those modes
+# promise. Under "strict" (the default) an unhandled exception must still
+# terminate the script with ERR_EXCEPTION (14).
+#
+# Regression: a top-level throw with no enclosing try used to exit from the
+# C_Throw handler before reaching the continuation guard in C_Endtry, so the
+# script stopped even though the handler reported "(continuing execution)".
+
+@failed = 0
+
+def check(cond, label)
+    if cond
+        println "✓ " , label
+    else
+        println "✗ " , label
+        @failed = failed + 1
+    endif
+end
+
+# ---------------------------------------------------------------- warn mode
+println "=== warn mode continues past an unhandled exception ==="
+permit("exception_strictness", true)
+exception_strictness("warn")
+
+@reached_b = false
+@reached_c = false
+
+println "MARK-A"
+throw "warn_top_level"
+println "MARK-B"
+@reached_b = true
+throw "warn_second"
+println "MARK-C"
+@reached_c = true
+
+check(reached_b, "warn: execution continued past the first throw")
+check(reached_c, "warn: execution continued past the second throw")
+
+# a throw from inside a function must also be survivable under warn
+def warn_boom()
+    throw "warn_from_function"
+end
+
+println "MARK-D"
+warn_boom()
+println "MARK-E"
+@reached_e = true
+check(true, "warn: returned from the function that threw")
+
+# ------------------------------------------------------------ disabled mode
+println ""
+println "=== disabled mode continues past an unhandled exception ==="
+exception_strictness("disabled")
+
+println "MARK-F"
+throw "disabled_top_level"
+println "MARK-G"
+check(true, "disabled: execution continued past the throw")
+
+# ------------------------------------------------------------- strict mode
+# strict must still terminate. This is checked last because it exits.
+println ""
+println "=== strict mode still terminates (checked by exit code) ==="
+exception_strictness("strict")
+println "MARK-H"
+throw "strict_should_exit"
+println "MARK-I-SHOULD-NOT-APPEAR"
+
+# reached only if strict failed to terminate, which is itself a failure
+println "✗ strict: script continued past an unhandled exception"
+exit 1
+
+# ------------------------------------------------------------------- summary
+# (unreachable: strict always exits above)

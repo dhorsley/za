@@ -1723,6 +1723,38 @@ catch err is "invalid"
 
 `then` is the cleanup/finally section and runs regardless of whether an exception occurred.
 
+### 26.1 Exception strictness (`exception_strictness`)
+
+`exception_strictness(mode)` selects what happens to an exception that reaches no
+matching `catch`. Modes:
+
+| mode | behaviour on an unhandled exception |
+|---|---|
+| `strict` | terminate with a diagnostic and `ERR_EXCEPTION` (14) — **the default** |
+| `permissive` | convert it to a normal panic |
+| `warn` | print a warning and **continue with the next statement** |
+| `disabled` | ignore it silently and continue |
+
+```za
+permit("exception_strictness", true)   # required, see below
+exception_strictness("warn")
+
+throw "something went wrong"
+println "this line still runs"
+```
+
+**The call is refused unless explicitly permitted.** `permit_exception_strictness`
+defaults to `false`, and in that state `exception_strictness()` returns `nil`
+*without raising an error* — the mode is simply not applied. Enable it first:
+
+```za
+permit("exception_strictness", true)
+```
+
+This gate exists so a deployment can fix the strictness policy once at startup
+rather than have individual scripts opt into lax handling. The same pattern
+applies to `permit("macro", ...)` and `permit("sanitisation", ...)`.
+
 ## 27. Enhanced error handling (`trap`, `error_*`)
 
 Za supports registering an error trap and introspecting error context inside the handler using `error_*` functions. Use this to produce better diagnostics (message, source location, source context, call stack, locals/globals) than the default handler when needed.
@@ -3361,141 +3393,194 @@ endif
 ## 39. CLI data ingestion
 
 Use `table()` to turn columnar CLI output into structured data, avoiding fragile string slicing.
+Both `|` and `=|` work as expressions; `|` takes a quoted string.
 
 ```za
 t = table(| "df -h", map(.parse_only true))
 println t.pp
+
+# |= returns the full result struct, so exit status is available.
+# Note the quoting rule: as an expression `|` takes a quoted string,
+# but `=|` and `=<` take the command unquoted.
+r =| df -h
+on not r.okay do println "df failed: " , r.err
+t = table(r.out, map(.parse_only true))
 ```
 
+When output is already structured, prefer the library call over the subprocess:
+`disk_usage()`, `mount_info()`, `ps_list()`, `netstat()`, `mem_info()` all return
+maps directly and work on any platform where Za is built.
+
 ## 40. Disk and filesystem checks
+
+`disk_usage()` returns maps with keys `path`, `mounted_path`, `fstype`, `size`,
+`used`, `available`, `usage_percent`, `inodes_total`, `inodes_free`, `inodes_used`.
 
 ```za
 t = disk_usage()
 bad = t ?> `#.usage_percent > 90`
 foreach r in bad
-    println r.path, r.mounted_path, r.usage
+    println r.mounted_path, " ", r.usage_percent, "% used (", r.fstype, ")"
 endfor
+
+# Filter out virtual filesystems you do not care about
+real = disk_usage(map(.exclude_patterns ["tmpfs", "devtmpfs", "proc", "sysfs"]))
 ```
 
 ## 41. Process and service inspection
 
-Use system/process library calls where available; otherwise, ingest CLI output via `table()` where possible and operate structurally.
+Use `ps_list()` / `ps_info()` rather than walking `/proc` by hand — they parse
+`/proc/<pid>/stat`, `statm` and `cmdline` for you and return a `ProcessInfo`
+struct. Fields include `PID`, `Name`, `State`, `PPID`, `UserTime`,
+`SystemTime`, `MemoryUsage`, `MemoryRSS`, `Threads` and `Command`.
 
 ### 41.1 Process Monitoring
 
 ```za
-# Get process list from /proc filesystem
-proc_dirs = dir("/proc") ?> `#.name ~ "^[0-9]+$"` -> `#.name`
-println "Found processes:", len(proc_dirs)
+# Whole-system snapshot
+procs = ps_list()
+println "processes: " , procs.len
 
-# Read process information
-if len(proc_dirs) > 0
-    first_pid = proc_dirs[0]
-    stat_file = "/proc/" + first_pid + "/stat"
-    if is_file(stat_file)
-        stat_content = $in stat_file
-        parts = split(stat_content, " ")
-        if len(parts) > 1
-            println "PID:", first_pid, "Process:", parts[1]
-        endif
-    endif
-endif
+# Filter structurally
+big = procs ?> `#.MemoryRSS > 100000000`
+foreach p in big
+    println p.PID, " ", p.Name, " rss=", p.MemoryRSS, " ", p.Command
+endfor
 
-# Filter processes by criteria
-test_pids = proc_dirs[0:10]  # First 10 processes
-filtered_pids = test_pids ?> `int(#) > 100`
-println "High PIDs:", filtered_pids
+# Top consumers
+println "top cpu : " , top_cpu(5).pp
+println "top mem : " , top_mem(5).pp
+
+# Find by name, then inspect one in detail
+pids = pgrep("nginx")
+on len(pids) > 0 do println ps_info(pids[0]).pp
+
+# Process tree from a given pid (omit the argument for the whole tree)
+println ps_tree().pp
 ```
 
-### 41.2 Service Status via CLI
+`ps_info(pid, map(.include_environ true))` populates `.Environ` from
+`/proc/<pid>/environ`. That file is readable only for processes you own, so the
+field stays empty for other pids unless you are root.
+
+### 41.2 Service Status
+
+`service(name, action)` is systemd/upstart aware where available and is
+preferable to scraping `systemctl`. It returns a boolean.
 
 ```za
-# Parse service status using table()
-service_output = ${systemctl list-units --type=service --state=running}
-services = table(service_output, map(.parse_only true))
-
-# Filter services by name
-web_services = services ?> `#.0 ~ "nginx|apache|httpd"`
-println "Web services:", web_services
-
-# Check specific service status
-nginx_status = ${systemctl is-active nginx}
-if $st nginx_status == "active"
-    println "Nginx is running"
+if service("nginx", "status")
+    println "nginx is running"
 else
-    println "Nginx is not running"
+    println "nginx is not running"
+endif
+
+service("nginx", "restart")
+```
+
+Where you need the full unit list, `table()` over `systemctl` output works, but
+mind that `${...}` discards the exit status — use `=|` when that matters.
+(`on <cond> do <stmt>` covers a single statement; there is no `enddo`.)
+
+```za
+r =| systemctl list-units --type=service --state=running
+if r.okay
+    services = table(r.out, map(.parse_only true))
+    println "running units: " , services.len
 endif
 ```
 
 ## 42. Network diagnostics
 
-Za provides network helpers for common tasks (reachability, DNS, port checks). Prefer structured results over parsing external tool output.
+Prefer the built-in helpers — they return structured maps and need no external
+binaries. `icmp_ping` needs raw socket privileges (root); `tcp_ping` does not.
 
-### 42.1 Basic Network Testing
+### 42.1 Reachability and DNS
 
 ```za
-# Test connectivity using ping
-ping_result = ${ping -c 1 8.8.8.8}
-if ping_result ~ "1 received"
-    println "Internet connectivity OK"
+# ICMP - requires root. Returns .success, .latency, .error
+r = icmp_ping("8.8.8.8", 2)
+if r.success
+    println "reachable in " , r.latency, "ms"
 else
-    println "Internet connectivity failed"
+    println "unreachable: " , r.error
 endif
 
-# DNS resolution test
-dns_result = ${nslookup google.com}
-if dns_result ~ "Address:"
-    println "DNS resolution working"
-else
-    println "DNS resolution failed"
-endif
+# TCP reachability - no privileges needed
+t = tcp_ping("github.com", 443, 3)
+println "443 open: " , t.success , " (" , t.latency , "ms)"
+
+# DNS: A, AAAA, CNAME, MX, TXT, NS, PTR, SRV, ANY
+d = dns_resolve("github.com", "A")
+println d.pp
 ```
 
 ### 42.2 Port Checking
 
 ```za
-# Check if ports are open using netcat
+# Check a port with tcp_ping - no netcat, no exit-status parsing
 def check_port(host, port)
-    result = ${nc -z {host} {port} 2>&1}
-    return result.len() == 0  # Empty output means port is open
+    return tcp_ping(host, port, 2).success
 end
 
-# Test multiple ports
-ports_to_check = [80, 443, 22, 3306]
-for port in ports_to_check
-    if check_port("localhost", port)
-        println "Port", port, "is open"
-    else
-        println "Port", port, "is closed"
-    endif
+foreach port in [80, 443, 22, 3306]
+    println "port ", port, " open: " , check_port("localhost", port)
 endfor
+
+# Scan a range in one call
+println port_scan("localhost", [22, 80, 443, 3306], 2).pp
 ```
+
+Note that a shell equivalent is easy to get backwards: `nc -z host port` prints
+`Connection to host port [tcp/*] succeeded!` **on success**, so testing for empty
+output reports the opposite of the truth. `tcp_ping` avoids the problem.
 
 ## 43. Parallel host probing
 
-Use async fan-out and deterministic collection:
+Use async fan-out and deterministic collection. Launch outside any `try`
+block, and collect with `await`.
 
 ```za
 def check(h)
-    return icmp_ping(h, 2)
+    return tcp_ping(h, 443, 2)
 end
 
 var handles map
 foreach h in hosts
     async handles check(h) h
 endfor
-res = await(ref handles, true)
-println res.pp
+
+res = await(ref handles, true)   # true = wait for all
+foreach h in hosts
+    r = res[h]
+    println h, " -> ", r.success
+endfor
 ```
+
+`await(ref handles, false)` polls without blocking. For streaming results use
+`drain()` in a loop with `await(..., false)`; see section 31.
 
 ## 44. Drift detection and set-based reasoning
 
-Represent key sets as maps and use set operators/predicates:
+Represent key sets as maps and use set operators/predicates. These act on keys
+only — values are never compared.
 
 ```za
-changed = before ^ after
-on changed.len > 0 do println changed.pp
+changed = before ^ after          # symmetric difference
+added   = after - before
+removed = before - after
+on changed.len > 0 do println "drift: " , changed.pp
+
+is_subset(expected, actual)
+is_superset(expected, actual)
+is_disjoint(a, b)
+
+# drop keys by building a literal whose keys are the unwanted set
+cleaned = full - map(.weather 0, .settings 0)
 ```
+
+See `eg/docker_exporter`, `eg/mon` and `eg/diskusage` for complete worked
+examples of these patterns.
 
 ---
 
@@ -3601,8 +3686,9 @@ logging status
 
 # View detailed statistics
 stats = logging_stats()
-println "Queue usage: ", stats.queue_usage, "%"
-println "Processed: ", stats.total_processed, " entries"
+println "Queue in use : ", stats.queue_used, " of ", stats.queue_total
+println "Worker active: ", stats.queue_running
+println "Processed    : ", stats.main_processed, " main, ", stats.web_processed, " web"
 ```
 
 The background queue system provides:
@@ -4133,33 +4219,42 @@ Observability of the Za interpreter process itself:
 - `za_process_uptime_seconds` — elapsed time since process start
 - `za_process_open_fds` — number of open file descriptors
 - `za_process_max_fds` — maximum allowed file descriptors (ulimit)
+- `za_process_cpu_seconds_total{mode="user"}` — user CPU seconds consumed
+- `za_process_cpu_seconds_total{mode="system"}` — system CPU seconds consumed
+- `za_process_memory_bytes{type="rss"}` — resident set size
+- `za_process_memory_bytes{type="peak"}` — peak resident memory
+- `za_process_threads` — OS threads in use
 - `za_process_io_bytes_total{direction="read"}` — total bytes read from disk
 - `za_process_io_bytes_total{direction="write"}` — total bytes written to disk
+- `za_concurrent_funcs` — functions currently executing concurrently
 
 #### System Metrics (`za_system_*`)
 
 Host-level system state and activity:
 
-- `za_system_load_average{period="1m"}`, `{period="5m"}`, `{period="15m"}` — load average
-- `za_system_memory_total_bytes` — total RAM
-- `za_system_memory_used_bytes` — RAM in use
-- `za_system_memory_available_bytes` — available RAM
-- `za_system_swap_total_bytes` — total swap space
-- `za_system_swap_used_bytes` — swap in use
+- `za_system_load_average{interval="1m"}`, `{interval="5m"}`, `{interval="15m"}` — load average
+- `za_system_memory_bytes{type="total"}` — total RAM
+- `za_system_memory_bytes{type="used"}` — RAM in use
+- `za_system_memory_bytes{type="free"}` — free RAM
+- `za_system_memory_bytes{type="cached"}` — RAM in page cache
+- `za_system_memory_bytes{type="buffers"}` — RAM in buffer cache
+- `za_system_swap_bytes{type="total"}` — total swap space
+- `za_system_swap_bytes{type="used"}` — swap in use
+- `za_system_swap_bytes{type="free"}` — free swap
 - `za_system_cpu_count` — number of CPU cores
 - `za_system_boot_time_seconds` — Unix timestamp of last boot
 - `za_system_context_switches_total` — total context switches
 - `za_system_interrupts_total` — total hardware interrupts
 - `za_system_filefd_allocated` — allocated file descriptors
 - `za_system_filefd_maximum` — max file descriptors allowed
-- `za_system_network_bytes_total{device, direction}` — bytes sent/received per interface
-- `za_system_network_packets_total{device, direction}` — packets sent/received per interface
-- `za_system_network_errors_total{device, direction}` — network errors per interface
-- `za_system_network_dropped_total{device, direction}` — dropped packets per interface
+- `za_system_network_bytes_total{interface, direction}` — bytes sent/received per interface
+- `za_system_network_packets_total{interface, direction}` — packets sent/received per interface
+- `za_system_network_errors_total{interface, direction}` — network errors per interface
+- `za_system_network_dropped_total{interface, direction}` — dropped packets per interface
 - `za_system_disk_bytes_total{device, direction}` — bytes read/written per disk
 - `za_system_disk_ops_total{device, direction}` — operations per disk
 - `za_system_disk_time_ms{device, direction}` — time spent in I/O per disk
-- `za_system_disk_usage_bytes{mount_point}` — used bytes per mount point
+- `za_system_disk_usage_bytes{mount_point, type}` — bytes per mount point, `type` is `total`, `used` or `available`
 - `za_system_disk_usage_percent{mount_point}` — usage percentage per mount point
 
 #### Web Request Metrics (`za_web_*`)
@@ -4177,19 +4272,31 @@ HTTP request/response tracking for the embedded web server:
 
 Static metadata about the Za interpreter:
 
-- `za_build_info{version, commit, timestamp, arch, os, branch}` — version and build details (label-based)
+- `za_build_info{version, build_date, comment}` — version and build details (label-based)
 
-#### Application Metrics (`za_app_*`)
+#### Interpreter Activity Metrics
 
-Internal interpreter activity:
+Internal interpreter counters. Most are registered on first use, so they only
+appear in the scrape output once the relevant feature has been exercised. The
+per-mount-point disk usage series are registered from inside an aggregate
+gauge's callback, so `za_system_disk_usage_bytes{mount_point=...}` and
+`za_system_disk_usage_percent{mount_point=...}` only appear from the *second*
+scrape onwards.
 
-- `za_app_ffi_libs_loaded` — C libraries loaded via FFI
-- `za_app_ffi_functions_loaded` — C functions loaded via FFI
-- `za_app_eval_calls_total` — total `eval()` calls
-- `za_app_exec_calls_total` — total `exec()` calls
-- `za_app_shell_commands_total` — total shell command executions
-- `za_app_exceptions_total` — total exceptions thrown
-- `za_app_log_entries_total{level}` — log entries by severity
+- `za_ffi_loaded_libraries` — C libraries loaded via FFI
+- `za_ffi_declared_functions{library}` — C functions declared via FFI
+- `za_ffi_active_callbacks` — registered Za callbacks currently alive
+- `za_eval_calls_total` / `za_eval_errors_total` — `eval()` activity
+- `za_exec_calls_total` / `za_exec_errors_total` — `exec()` activity
+- `za_shell_calls_total` / `za_shell_success_total` / `za_shell_errors_total` — shell command executions
+- `za_shell_duration_ms` — shell command duration (summary)
+- `za_exceptions_thrown_total` — exceptions raised
+- `za_exceptions_caught_total` — exceptions caught by a `catch` clause
+- `za_exceptions_unhandled_total` — exceptions that reached no matching `catch`
+- `za_log_messages_by_level_total{level}` — log entries by severity
+- `za_log_messages_total{dest}` — log entries by destination, `dest` is `main` or `web`
+- `za_lock_acquire_total` / `za_lock_timeout_total` / `za_lock_errors_total` — named lock activity
+- `za_task_yield_total` / `za_task_emit_total` / `za_task_resume_total` / `za_task_drain_total` — async task activity
 
 ### Scraping with Prometheus
 
@@ -4210,8 +4317,10 @@ Reload Prometheus to begin collecting metrics. Use PromQL to query, alert, and v
 # Example queries
 rate(za_web_requests_total[1m])                    # Request rate
 za_process_uptime_seconds                          # Za process uptime
-sum(za_system_memory_used_bytes) / 1e9             # Memory in GB
-histogram_quantile(0.95, za_web_request_duration_ms)  # 95th percentile latency
+za_system_memory_bytes{type="used"} / 1e9          # Memory in GB
+za_web_request_duration_ms{quantile="0.99"}        # p99 latency (summary; quantiles are 0.5/0.9/0.97/0.99/1)
+rate(za_web_request_duration_ms_sum[5m]) / rate(za_web_request_duration_ms_count[5m])   # rolling p95
+za_system_disk_usage_percent{mount_point="/"}      # root filesystem usage %
 ```
 
 ---

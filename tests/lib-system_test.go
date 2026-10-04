@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 )
@@ -154,5 +155,123 @@ func TestSendSignalPermissionDenied(t *testing.T) {
 	if got.(bool) {
 		// Running as root - check if we can verify it actually worked
 		t.Logf("send_signal to PID 1 succeeded (running as root?)")
+	}
+}
+
+func TestPsInfoOptionsAccepted(t *testing.T) {
+	// The documented two argument form ps_info(pid, options) must be accepted.
+	// The expect_args spec previously declared the second variant with an
+	// arity of 1, which made every two argument call unreachable.
+	pid := os.Getpid()
+
+	if _, err := stdlib["ps_info"]("", 0, nil, pid); err != nil {
+		t.Fatalf("ps_info(pid) failed: %v", err)
+	}
+
+	if _, err := stdlib["ps_info"]("", 0, nil, pid, map[string]any{}); err != nil {
+		t.Fatalf("ps_info(pid, options) rejected an empty options map: %v", err)
+	}
+
+	if _, err := stdlib["ps_info"]("", 0, nil, pid, map[string]any{"include_environ": false}); err != nil {
+		t.Fatalf("ps_info(pid, .include_environ false) failed: %v", err)
+	}
+}
+
+func TestPsInfoEnviron(t *testing.T) {
+	pid := os.Getpid()
+
+	// Off by default
+	got, err := stdlib["ps_info"]("", 0, nil, pid)
+	if err != nil {
+		t.Fatalf("ps_info failed: %v", err)
+	}
+	if len(got.(ProcessInfo).Environ) != 0 {
+		t.Errorf("Environ populated without .include_environ, got %d entries",
+			len(got.(ProcessInfo).Environ))
+	}
+
+	// On - our own environ is always readable
+	got, err = stdlib["ps_info"]("", 0, nil, pid, map[string]any{"include_environ": true})
+	if err != nil {
+		t.Fatalf("ps_info with .include_environ failed: %v", err)
+	}
+	env := got.(ProcessInfo).Environ
+	if len(env) == 0 {
+		t.Fatalf("Environ empty for own pid %d, want at least one entry", pid)
+	}
+	for _, kv := range env {
+		if kv == "" {
+			t.Errorf("Environ contains an empty entry")
+			break
+		}
+		if !strings.Contains(kv, "=") {
+			t.Errorf("Environ entry %q is not a KEY=VALUE pair", kv)
+			break
+		}
+	}
+}
+
+func TestDiskUsageExcludePatterns(t *testing.T) {
+	all, err := getDiskUsage(nil)
+	if err != nil {
+		t.Skipf("getDiskUsage unavailable: %v", err)
+	}
+	if len(all) == 0 {
+		t.Skip("no mounts reported, nothing to filter")
+	}
+
+	// Pick a filesystem type that is actually present so the assertion is
+	// meaningful on any host.
+	var target string
+	for _, m := range all {
+		if m["fstype"] != nil {
+			target = m["fstype"].(string)
+			break
+		}
+	}
+	if target == "" {
+		t.Skip("no fstype available to filter on")
+	}
+
+	filtered, err := getDiskUsage(map[string]any{"exclude_patterns": []any{target}})
+	if err != nil {
+		t.Fatalf("getDiskUsage with exclude_patterns failed: %v", err)
+	}
+
+	if len(filtered) >= len(all) {
+		t.Errorf("exclude_patterns [%q] did not reduce the mount count: %d -> %d",
+			target, len(all), len(filtered))
+	}
+
+	// Nothing that was excluded may survive.
+	for _, m := range filtered {
+		fs, _ := m["fstype"].(string)
+		mp, _ := m["mounted_path"].(string)
+		if fs == target || mp == target {
+			t.Errorf("excluded mount %q (%s) still present", mp, fs)
+		}
+	}
+}
+
+func TestMatchesAnyPattern(t *testing.T) {
+	cases := []struct {
+		patterns any
+		values   []string
+		want     bool
+	}{
+		{[]any{"tmpfs"}, []string{"proc", "tmpfs"}, true},
+		{[]any{"tmpfs"}, []string{"proc", "sysfs"}, false},
+		{[]string{"proc"}, []string{"proc"}, true},
+		{[]any{"nomatch"}, []string{"proc", "sysfs"}, false},
+		{[]any{1, "proc"}, []string{"proc"}, true}, // non string entries skipped
+		{[]any{}, []string{"proc"}, false},
+		{"notalist", []string{"proc"}, false},
+	}
+
+	for _, c := range cases {
+		if got := matchesAnyPattern(c.patterns, c.values...); got != c.want {
+			t.Errorf("matchesAnyPattern(%#v, %v) = %v, want %v",
+				c.patterns, c.values, got, c.want)
+		}
 	}
 }

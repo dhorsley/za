@@ -3875,9 +3875,13 @@ func NewCoprocess(loc string, args ...string) (process *exec.Cmd, pi io.WriteClo
 
 // synchronous execution and capture
 func GetCommand(c string) (s string, err error) {
-    cmdlock.Lock()
-    defer cmdlock.Unlock()
-
+    // NOTE: no cmdlock here. Each call builds its own exec.Cmd and its own
+    // child process, and touches no shared mutable state (only os.Stdin /
+    // os.Stdout and a local buffer), so there is nothing to serialise.
+    // Holding cmdlock across cmd.Run() made every parent-path shell call
+    // wait for the previous one to finish, which defeated async fan-out.
+    // The coprocess path still takes cmdlock in Copper(), where it is
+    // required: that path shares one bash process and one stdout reader.
     c = str.Trim(c, " \t\n")
     bargs := str.Split(c, " ")
     cmd := exec.Command(bargs[0], bargs[1:]...)

@@ -1355,6 +1355,17 @@ func showUnhandled(header string, category map[string]any) {
 
 // handleUnhandledExceptionCore applies the exception strictness policy with optional parameters
 func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
+	// This is the single point at which an exception is deemed unhandled: every
+	// route that gives up on a catch clause funnels here (top-level throw in
+	// main, bubbling out of the last user function, and the warn/disabled
+	// strictness paths). Counting here rather than in the panic recover means
+	// the metric reflects the policy outcome and stays reachable under every
+	// error_style and exception_strictness setting.
+	atomic.AddInt64(&exceptionUnhandledCount, 1)
+	if enableMetrics {
+		metrics.GetOrCreateCounter(`za_exceptions_unhandled_total`).Inc()
+	}
+
 	// Log the exception first (regardless of strictness policy)
 	var line int
 	var function string
@@ -1800,11 +1811,10 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 					}
 					setEcho(true)
 				}
-				// Increment unhandled exception counter
-				atomic.AddInt64(&exceptionUnhandledCount, 1)
-				if enableMetrics {
-					metrics.GetOrCreateCounter(`za_exceptions_unhandled_total`).Inc()
-				}
+				// Unhandled exceptions are counted in handleUnhandledException,
+				// which every no-catch route funnels through. Counting here
+				// instead was unreachable: the convert-to-exception branch
+				// returns above, and the eval engines recover first.
 				finish(false, ERR_EVAL)
 			}
 		}
@@ -8895,6 +8905,18 @@ case []uint:
 
 				// Stack trace is already correct - no need to modify
 
+				// Count the raise here. A throw sets exception state directly
+				// rather than panicking, so it never reaches the deferred
+				// recover where the panic-side counter sits. Counted once, at
+				// creation, so an exception bubbling through frames or a
+				// bare rethrow does not multiply it.
+				if !rethrowActive {
+					atomic.AddInt64(&exceptionThrowCount, 1)
+					if enableMetrics {
+						metrics.GetOrCreateCounter(`za_exceptions_thrown_total`).Inc()
+					}
+				}
+
 				atomic.StorePointer(&calltable[ifs].activeException, unsafe.Pointer(excInfo))
 				atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 0)
 
@@ -8903,6 +8925,21 @@ case []uint:
 
 				if !endtryFound || endtryErr {
 					// We're not inside a try block - exception should bubble up to parent function
+
+					// At top level under warn/disabled, the strictness policy is
+					// to report and keep going rather than terminate. The
+					// equivalent guard in C_Endtry is unreachable from here
+					// because a throw with no enclosing try never reaches an
+					// endtry, so without this the script exits despite the
+					// handler reporting that execution continues.
+					if ifs < 3 && (exceptionStrictness == "warn" || exceptionStrictness == "disabled") {
+						handleUnhandledException(excInfo, ifs)
+						// Clear the state we just reported so the next statement
+						// is not treated as being inside an unhandled exception.
+						atomic.StorePointer(&calltable[ifs].activeException, nil)
+						atomic.StoreInt32(&calltable[ifs].currentCatchMatched, 0)
+						continue
+					}
 
 					// Set return values to indicate exception bubbling
 					retvalues = []any{EXCEPTION_THROWN, category, message, excInfo}

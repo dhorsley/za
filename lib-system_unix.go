@@ -463,6 +463,25 @@ func getProcessInfo(pid int, options map[string]interface{}) (ProcessInfo, error
         }
     }
 
+    // Read environment when requested. /proc/{pid}/environ is mode 0400 and
+    // owned by the process owner, so this only yields entries for processes
+    // the caller can read - typically its own, or any when running as root.
+    if options != nil {
+        if includeEnviron, exists := options["include_environ"]; exists {
+            if want, ok := includeEnviron.(bool); ok && want {
+                environPath := fmt.Sprintf("/proc/%d/environ", pid)
+                if envData, err := os.ReadFile(environPath); err == nil {
+                    // entries are NUL separated, with a trailing NUL
+                    for _, kv := range strings.Split(strings.TrimRight(string(envData), "\x00"), "\x00") {
+                        if kv != "" {
+                            proc.Environ = append(proc.Environ, kv)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Get user/group info
     if stat, err := os.Stat(fmt.Sprintf("/proc/%d", pid)); err == nil {
         if sysStat, ok := stat.Sys().(*syscall.Stat_t); ok {
@@ -1434,6 +1453,39 @@ func calculateIODiff(snapshot1, snapshot2 ResourceSnapshot, duration time.Durati
     return result
 }
 
+// anyPatternList normalises an option value that should hold a list of
+// patterns. Za arrays arrive as []any, but []string is accepted too so the
+// same helper works for values built on the Go side.
+func anyPatternList(v any) []string {
+    switch p := v.(type) {
+    case []string:
+        return p
+    case []any:
+        out := make([]string, 0, len(p))
+        for _, e := range p {
+            if s, ok := e.(string); ok {
+                out = append(out, s)
+            }
+        }
+        return out
+    }
+    return nil
+}
+
+// matchesAnyPattern reports whether any pattern is a substring of any of the
+// supplied values.
+func matchesAnyPattern(patterns any, values ...string) bool {
+    list := anyPatternList(patterns)
+    for _, pat := range list {
+        for _, v := range values {
+            if strings.Contains(v, pat) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 // getDiskUsage returns filesystem usage information
 func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, error) {
     var result []map[string]interface{}
@@ -1462,12 +1514,11 @@ func getDiskUsage(options map[string]interface{}) ([]map[string]interface{}, err
         // Apply filters if specified
         if options != nil {
             if excludePatterns, exists := options["exclude_patterns"]; exists {
-                if patterns, ok := excludePatterns.([]string); ok {
-                    for _, pattern := range patterns {
-                        if strings.Contains(filesystem, pattern) || strings.Contains(mountPoint, pattern) {
-                            continue
-                        }
-                    }
+                // continue applies to the /proc/mounts loop, so the mount is
+                // actually skipped. The previous nested-loop continue only
+                // advanced the pattern iteration and matched nothing.
+                if matchesAnyPattern(excludePatterns, filesystem, mountPoint) {
+                    continue
                 }
             }
         }

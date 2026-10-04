@@ -2,7 +2,10 @@
 
 # Tests that terminate non-zero by design: base name (minus .za) -> expected exit code.
 # All other tests are expected to exit 0.
-expected = map(.try_operator 14, .test_error_handler 99, .test_line_numbers 14)
+expected = map(.try_operator 14, .test_error_handler 99, .test_line_numbers 14,
+    .test_case_enum_err_full_or 1, .test_case_enum_err_missing 1, .test_case_enum_err_mixed 1,
+    .test_stack_trace_debug 14, .test_unhandled_exception 14,
+    .test_strictness_continue 14)
 
 foreach f in dir(".","\.za$")
     println "\n[#4][#ul][#bold]{=f.name}[#boff][#-]\n"

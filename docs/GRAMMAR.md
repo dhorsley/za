@@ -227,7 +227,7 @@ but passes the syntax checker (`-zz`) — see tools/zzaudit/FINDINGS.md.
 Keywords begin a statement when they appear at statement position:
 
 ```
-var, setglob, init, in, pause, help, nop, hist, debug, require, exit, version,
+var, global, setglob, init, in, pause, help, nop, hist, debug, require, exit, version,
 quiet, loud, unset, input, prompt, log, print, println, logging, cls, at, define,
 showdef, enddef, return, async, yield, emit, lib, module, namespace, use, while, endwhile,
 for, foreach, endfor, continue, break, if, else, endif, case, is, contains, has,
@@ -236,8 +236,34 @@ assert, on, to, step, as, do, macro, enum, try, catch, then, throws, throw, endt
 ```
 
 `permit` and `trap` are library functions, not statement keywords (see
-handbook sections 27 and 30). `uses` is lexed but reserved for future use
-(closure capture) and is currently not a valid statement.
+handbook sections 26.1, 27 and 30). `uses` is lexed but reserved and is not a
+valid statement; `enddef` is accepted as an alias for `end` when closing a
+`def`/`define`.
+
+### 3.4 `global` declarations
+
+`global` declares a variable in the main function space, so it survives module
+loading and is writable from any scope with the `@` prefix. Syntax mirrors
+`var`:
+
+```
+global_decl      ::= "global" name_list [ size ] type [ "=" expression ]
+```
+
+```
+global counter int = 0
+global a, b float
+global sizes [100]int
+
+def bump()
+    @counter = counter + 1     # @ required for writes from inside a function
+end
+```
+
+Inside a function, reads use the bare name and writes require `@`; a bare
+assignment creates a local that shadows the global.
+
+## 4. Control flow
 
 ## 4. Control flow
 
@@ -263,12 +289,12 @@ statement when the condition is true. Statement-modifier conditionals apply to
 ### 4.2 Loops
 
 ```
-for_to           ::= "for" assignment "to" expression [ "step" expression ] stmt_sep
+for_to           ::= "for" assignment "to" expression [ "step" expression ] [ "do" ] stmt_sep
                      ( statement stmt_sep )* "endfor" [ stmt_sep ]
-for_c            ::= "for" [ assignment ] "," [ expression ] "," [ update ] stmt_sep
+for_c            ::= "for" [ assignment ] "," [ expression ] "," [ update ] [ "do" ] stmt_sep
                      ( statement stmt_sep )* "endfor" [ stmt_sep ]
 update           ::= expression (typically "i++" | "i--" | "i+=n")
-foreach          ::= "foreach" identifier "in" expression stmt_sep
+foreach          ::= "foreach" identifier [ ":" type ] "in" expression [ "do" ] stmt_sep
                      ( statement stmt_sep )* "endfor" [ stmt_sep ]
 while            ::= "while" [ expression ] stmt_sep
                      ( statement stmt_sep )* "endwhile" [ stmt_sep ]
@@ -281,6 +307,18 @@ loop_type        ::= identifier
 A `while` condition is optional and defaults to `true` (`while` alone is an
 infinite loop). The C-form `for` header terms are all optional, so `for ,,`
 is legal.
+
+An optional inline `do` may follow the loop header. The body is still a block
+closed by `endfor`/`endwhile` — `do` is not a single-statement form:
+
+```
+foreach x in list do
+    println x
+endfor
+```
+
+`foreach` also accepts a type annotation, which binds the loop variable as a
+struct: `foreach a : animal in farm`.
 
 ### 4.3 `case` (switch / pattern match)
 
@@ -310,10 +348,13 @@ scoped block.
 ## 5. Functions
 
 ```
-def_stmt         ::= "def" identifier "(" [ param_list ] ")" [ stmt_sep ]
+def_stmt         ::= "def" identifier [ "(" [ param_list ] ")" ]
+                     [ "->" return_types ] [ stmt_sep ]
                      ( statement [ stmt_sep ] )*    -- "end" may follow directly
-                     "end" [ stmt_sep ]
-param_list       ::= identifier ( "," identifier )*
+                     ( "end" | "enddef" ) [ stmt_sep ]
+param_list       ::= param ( "," param )*
+param            ::= identifier [ ":" type ] [ "=" expression ]   -- typed, defaulted
+return_types     ::= type ( "," type )*
 return           ::= "return" [ expr_list ]
 expr_list        ::= expression ( "," expression )*
                    | "[" expression ( "," expression )* "]"   -- packed multi-return
@@ -321,11 +362,45 @@ async_call       ::= "async" identifier call_expr [ identifier ]
 call_expr        ::= [ namespace "::" ] identifier "(" [ args ] ")"   -- function call
 ```
 
+The parentheses in a `def` header are optional: `def level_3_function` and
+`define test_from_function` are both accepted. `enddef` is an alias for `end`.
+
+Parameters may be typed and given defaults; the return type may be declared with
+`->`, including multiple return types:
+
+```
+def with_defaults(a:int=10, b:string="default")
+    return a
+end
+
+def multi(x:int) -> int, string, bool
+    return x, "ok", true
+end
+```
+
 Functions may return multiple comma-separated values; callers unpack them with
 multi-target assignment. `return if condition` (and `return value if condition`,
-or with the condition omitted) are statement-modifier forms. `end` closes a
-`def`. Struct-associated functions use `self` inside the body to refer to the
-current instance.
+or with the condition omitted) are statement-modifier forms.
+
+Struct-associated functions are declared **inside** a `struct` block and take
+no `self` parameter — `self` is bound implicitly and is invoked **without
+parentheses**:
+
+```
+struct point
+    x int
+    y int
+    def sum()          -- no self parameter
+        return self.x + self.y
+    end
+endstruct
+
+p = point(3,4)
+n = p.sum             -- not p.sum()
+```
+
+Calling with `()` also works. Qualified calls (`point::sum(p)`) resolve against
+the standard library first, so prefer the bare form.
 
 Note: the function body begins on the **next line**. Any tokens after the `def`
 header on the same line are discarded as freeform trailing content, so `def f() end`
@@ -348,22 +423,38 @@ enum.
 ## 7. Modules, namespaces, and C interop
 
 ```
-module_stmt      ::= "module" string_literal [ "as" identifier ]
+module_stmt      ::= "module" string_literal [ "as" identifier ] [ "auto" header_list ]
+header_list      ::= string_literal ( string_literal )*
 use_stmt         ::= "use" ("-" | "+" | "^") identifier
                    | "use" "push" | "use" "pop"
 namespace_stmt   ::= "namespace" identifier          -- current namespace
 lib_stmt         ::= "lib" lib_decl
 lib_decl         ::= identifier "::" identifier "(" [ c_params ] ")" [ "->" c_type ]
-c_params         ::= identifier ":" c_type ( "," identifier ":" c_type )*
+c_params         ::= c_param ( "," c_param )*
+c_param          ::= identifier ":" c_type | "..." identifier   -- variadic C
 c_type           ::= "int" | "uint" | "float" | "double" | "string" | "pointer" | ...
 qualified_ref    ::= identifier "::" identifier      -- namespaced value/type/function
 std_bypass       ::= "std::" identifier              -- force stdlib resolution
 ```
 
-`module` imports a script module; `as` gives an alias. `use` manages the namespace
-resolution chain (`-` clears/removes, `+` adds, `^` pushes to top, `push`/`pop` stack
-the chain). `lib` declares a C library symbol for FFI. `std::` forces stdlib lookup,
-bypassing the USE chain.
+`module` imports a script module; `as` gives an alias. `module "<lib>" as x auto
+"<hdr.h>"` additionally parses the C header to discover `#define` constants,
+enums, typedefs, struct layouts and function signatures.
+
+`use` manages the namespace resolution chain (`+` adds, `^` moves to front, `-`
+removes or resets, `push`/`pop` stack it). `lib` declares a C library symbol for
+FFI, and `...name` marks a variadic C function:
+
+```
+lib c::printf(format:string, ...args) -> int
+```
+
+`std::` forces stdlib lookup, bypassing the USE chain.
+
+**Performance note.** Bare-name resolution walks the chain and takes a lock per
+namespace on every lookup. For hot loops or many modules, declaring
+`namespace main` at the top of each module bypasses the chain entirely; the cost
+is that every function name across all modules must then be unique.
 
 ## 8. Errors and exceptions
 
@@ -374,19 +465,59 @@ try_stmt         ::= "try" [ "throws" category ] [ stmt_sep ]
                      [ "then" [ stmt_sep ] ( statement [ stmt_sep ] )* ]
                      "endtry" [ stmt_sep ]
 catch_clause     ::= "catch" [ identifier ] [ catch_pred ] [ stmt_sep ]
-catch_pred       ::= "is" expression
+catch_pred       ::= "is" expr_list              -- comma list = OR
                    | "in" expression
                    | "contains" string_literal
-throw            ::= "throw" expression
+throw_stmt       ::= "throw" [ expression ] [ "with" expression ]
+throws_stmt      ::= "throws" expression         -- default category for the block
+try_op           ::= expression "??" [ expression ]
 ```
 
-`then` is the cleanup section that runs regardless of exception. `error_*` functions
-introspect error context inside a handler. Error trap registration is the library
-call `trap("int"|"error", handler)`, not a statement (see handbook section 27).
+`then` is the cleanup section that runs regardless of exception. `error_*`
+functions introspect error context inside a handler. Error trap registration is
+the library call `trap("int"|"error", handler)`, not a statement (see handbook
+section 27).
+
+`catch err is "a", "b"` treats the list as alternatives. Predicates may be string
+literals, enum members, integers, or variables holding any of those.
+
+**A comma terminates the statement, so `with` is how you attach a message.**
+`throw "cat" with "detail"` populates `err.message`. Written as
+`throw "cat", "detail"` the comma ends the `throw` after `cat`, and `"detail"`
+begins the next statement — so the category is `cat` and the message is empty.
+This is the same terminator rule that splits assignment targets from a following
+expression in `a, b = f()`.
+
+A bare `throw` inside a `catch` block is a rethrow of the active exception.
+
+**`??` is a throw operator, not a default-value operator.** It raises when the
+left side is a failure value — `nil`, a shell result whose `okay` is false, an
+`error`, `false`, `0`, or `""` — and the right side is the exception
+**category**. A bare `??` with nothing on the right raises with no category.
+
+```
+r =| some_command
+if r ?? "command_failed"      # raises "command_failed" when r is a failure
+    handle(r)
+endif
+```
+
+The right side must be a usable category: a string literal or an `exreg`
+exception member (`ex.my_cat`). An integer literal raises *"Invalid expression in
+try operator message"*. It never yields a fallback value, so where a default is
+meant, guard explicitly instead.
 
 Note: like `def`, the `try` body begins on the **next line**; any tokens after the
 `try` header on the same line are discarded as freeform trailing content, so
 `try endtry` is accepted with an empty body.
+
+### 8.1 Exception strictness
+
+What happens to an exception that matches no `catch` is set by the library call
+`exception_strictness(mode)` — one of `strict` (default, terminate with
+`ERR_EXCEPTION`), `permissive`, `warn` or `disabled`. The call is refused unless
+`permit("exception_strictness", true)` has been issued first; without that permit
+it returns `nil` and the mode is not applied. See handbook section 26.1.
 
 ## 9. Testing
 
@@ -413,10 +544,11 @@ require          ::= "require" ( identifier [ integer ] | semver )
                      -- prints the reason and exits (ERR_REQUIRE) on failure
 exit_stmt        ::= "exit" [ expression ]
 unset            ::= "unset" identifier
-pause            ::= "pause" [ expression ]
+pause            ::= "pause" expression
 yield            ::= "yield" [ expression ]
 emit             ::= "emit" [ expression ]
-log_stmt         ::= "log" ...                            -- logging family
+log_stmt         ::= "log" [ level ":" ] expression
+ level            ::= "emerg" | "alert" | "crit" | "err" | "warn" | "notice" | "info" | "debug"
 at_stmt          ::= "at" ...
 ```
 
@@ -424,7 +556,12 @@ Runtime capability control is the library call `permit(behaviour, bool)`, not a
 statement (see handbook section 30).
 
 `$out` is an infix operator: `content $out "/path"` writes to a file. `$in` reads a
-file: `content = $in "/path"`.
+file: `content = $in "/path"`. The two file tiers are distinct: `read_file`/`$in`
+are for **text**, while binary reads, seeking and appending use the C-style
+`fopen`/`fread`/`fseek`/`fwrite`/`fclose`/`feof`/`flock` family.
+
+`pause` takes a number of milliseconds (or a string duration such as `"250ms"`).
+`log` accepts an explicit level prefix, as in `log warn: "disk nearly full"`.
 
 The `print`/`println` argument list is optional: bare `print` prints nothing
 outside the REPL (a bare line in the REPL), and bare `println` prints just a
@@ -441,18 +578,60 @@ Unary: `$pa $pp $pb $pn $pe $uc $lc $st $lt $rt $in $out - + & @`
 Range: `..`
 Increment: `++ --`
 Mapping/filtering: `-> ?>`
-Shell: `|= | ${...}`
+Throw operator: `??`
+String repetition: `*` (e.g. `"ab" * 3`)
+Shell: `| |= =< =@ {…} ${…} &{…}`
 Punctuation: `( ) [ ] { } , : :: . ;`
 Global: `@`
 Path: `$pa $pp $pb $pn $pe`
 
+Numeric clamping reuses bracket indexing: `value[low:high]`, `value[low:]`,
+`value[:high]`.
+
+### 11.1 Shell forms
+
+Seven distinct forms, differing in what they return and whether they block:
+
+| form | blocks | result | `.out` | `.code`/`.okay` |
+|---|---|---|---|---|
+| `\| cmd` | yes | none (prints) | printed | in message only |
+| `v =\| cmd` | yes | `{Out,Err,Code,Okay}` | yes | yes |
+| `r ={cmd}` | yes | `{Out,Err,Code,Okay}` | yes | yes |
+| `system("cmd")` | yes | `{Out,Err,Code,Okay}` | yes | yes |
+| `v =< cmd` | yes | stdout string | = value | no |
+| `${cmd}` | yes | stdout string | = value | no |
+| `&{cmd}` | **no** | `{name, handle}` | via `await` | via `await` |
+
+`=|`, `{…}` and `system()` are the forms that expose exit status. `=<` and
+`${…}` yield stdout only, so a non-zero exit is invisible to them.
+
+**Quoting differs by form.** The bare `|` expression takes a **quoted** string.
+`=|` and `=<` take the command **unquoted**. `{…}`, `${…}` and `&{…}` are their
+own brace tokens and take bare command text — internal spacing is irrelevant:
+
+```
+t = table(| "df -h", map(.parse_only true))    # | quoted
+r =| df -h                                     # =| unquoted
+r ={ df -h }                                   # brace token, bare text
+| systemctl restart nginx                      # statement, unquoted
+```
+
+Shell calls execute in a long-lived bash coprocess, so `cd` and `export` persist
+between calls. Pass `-S` (or call `coproc(false)`) to execute in the parent
+process instead, which removes the shell environment — including `$HOME` — but
+allows shell calls to run concurrently.
+
 ## 12. Statement-layer gaps in `-zz`
 
 The static syntax checker (`za -zz`) performs lexical analysis, phrase/block nesting
-validation, and static module resolution. It does **not** compile expressions or
-validate statement shapes. Consequences (detailed in tools/zzaudit/FINDINGS.md):
+validation, statement-shape validation for the common keywords (`if`, `while`,
+`for`, `foreach`, `break`, `continue`, `return`, `on`, `with`, `async`, `throw`,
+`struct`, `require`, `module`, `namespace`, `assert`, `exit`, `pause`), and static
+module resolution. It does **not** compile expressions or type-check statement
+bodies. Consequences (detailed in tools/zzaudit/FINDINGS.md):
 
-- Missing statement keywords/terminators (e.g. `var xyz` with no type) are not caught.
+- Expression-level errors are not caught.
 - Bare-name C module declarations that resolve only at runtime are flagged even though
   valid (false positives).
-- Statement bodies are never type-checked; only nesting and lexical structure matter.
+- Statement bodies are never type-checked; only nesting, lexical structure and the
+  checked keyword shapes matter.

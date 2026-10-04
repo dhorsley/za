@@ -8,6 +8,7 @@ import (
     "io"
     "os"
     "path/filepath"
+    "strings"
 )
 
 func buildZipLib() {
@@ -429,10 +430,35 @@ func copyFileInZip(zipWriter *zip.Writer, zipFile *zip.File) error {
     return err
 }
 
+// zipSafeJoin resolves a zip entry name against the destination directory and
+// refuses any result that would land outside it (zip-slip).
+//
+// filepath.Join cleans the result, so "../x" collapses before the check; the
+// guard therefore has to compare the cleaned path against the cleaned base
+// rather than inspecting the raw entry name for "..".
+func zipSafeJoin(destDir string, name string) (string, error) {
+    target := filepath.Join(destDir, name)
+    base := filepath.Clean(destDir)
+
+    rel, err := filepath.Rel(base, target)
+    if err != nil {
+        return "", err
+    }
+
+    if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+        return "", fmt.Errorf("zip entry %q escapes destination directory", name)
+    }
+
+    return target, nil
+}
+
 // Helper function to extract a file from a ZIP
 func extractFileFromZip(zipFile *zip.File, destDir string) error {
-    // Create the full path
-    fullPath := filepath.Join(destDir, zipFile.Name)
+    // Resolve the entry path, rejecting traversal outside destDir
+    fullPath, err := zipSafeJoin(destDir, zipFile.Name)
+    if err != nil {
+        return err
+    }
 
     // Create directory if needed
     if zipFile.FileInfo().IsDir() {
@@ -440,7 +466,7 @@ func extractFileFromZip(zipFile *zip.File, destDir string) error {
     }
 
     // Create parent directories
-    err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+    err = os.MkdirAll(filepath.Dir(fullPath), 0755)
     if err != nil {
         return err
     }

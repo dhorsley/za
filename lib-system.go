@@ -30,6 +30,7 @@ type ProcessInfo struct {
     MemoryRSS          uint64
     Threads            int
     Command            string
+    Environ            []string // only populated when .include_environ is set
 }
 
 // SystemResources represents overall system resource usage
@@ -281,9 +282,9 @@ func buildSystemLib() {
     }
 
     // Process information functions
-    slhelp["ps_info"] = LibHelp{in: "pid[,options]", out: "ProcessInfo", action: "Returns detailed process information. Options: map(.include_environ false)"}
+    slhelp["ps_info"] = LibHelp{in: "pid[,options]", out: "ProcessInfo", action: "Returns detailed process information. Options: map(.include_environ false)\n[#SOL]When .include_environ is true the .Environ field is populated from /proc/[pid]/environ. That file is readable only for processes you own, so the field is empty for other pids unless running as root.[#-]"}
     stdlib["ps_info"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
-        if ok, err := expect_args("ps_info", args, 2, "1", "int", "1", "int", "map[string]interface{}"); !ok {
+        if ok, err := expect_args("ps_info", args, 2, "1", "int", "2", "int", "map"); !ok {
             return nil, err
         }
         pid := args[0].(int)
@@ -318,7 +319,7 @@ func buildSystemLib() {
         return getProcessMap(pid)
     }
 
-    slhelp["ps_list"] = LibHelp{in: "[options]", out: "[]ProcessInfo", action: "Returns list of all processes. Options: map(.include_environ false)"}
+    slhelp["ps_list"] = LibHelp{in: "[options]", out: "[]ProcessInfo", action: "Returns list of all processes. Options: map(.include_environ false)\n[#SOL]When .include_environ is true the .Environ field is populated from /proc/[pid]/environ, costing one extra read per process. That file is readable only for processes you own, so the field is empty for other pids unless running as root.[#-]"}
     stdlib["ps_list"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         var options map[string]interface{}
         if ok, err := expect_args("ps_list", args, 2, "1", "map", "0"); !ok {
