@@ -29,6 +29,7 @@ func buildStandardLib() {
     buildNotifyLib()
     buildConversionLib()
     buildWebLib()
+    buildAuthLib()
     buildNetworkLib()
     buildSystemLib()
     buildDbLib()

@@ -11,7 +11,6 @@ import (
     "html"
     "io"
     "io/ioutil"
-    "log"
     "math/rand"
     "mime"
     "net"
@@ -231,6 +230,166 @@ func writeResponse(w http.ResponseWriter, data []byte, use_gzip bool) {
     }
 }
 
+func writeWebResponse(w http.ResponseWriter, resp web_response, use_gzip bool) {
+    for k, v := range resp.headers {
+        w.Header().Set(k, v)
+    }
+    for _, c := range resp.cookies {
+        w.Header().Add("Set-Cookie", c)
+    }
+
+    status := resp.status
+    if status == 0 {
+        status = http.StatusOK
+    }
+
+    if status == http.StatusNoContent || status == http.StatusNotModified {
+        w.WriteHeader(status)
+        return
+    }
+
+    body := []byte(resp.body)
+    gzipBody := use_gzip && len(body) > 0 && status >= 200 && status < 300
+
+    if gzipBody {
+        w.Header().Set("Content-Encoding", "gzip")
+    }
+
+    if status != http.StatusOK {
+        w.WriteHeader(status)
+    }
+
+    if len(body) == 0 {
+        return
+    }
+
+    if gzipBody {
+        gz := gzip.NewWriter(w)
+        gz.Write(body)
+        gz.Close()
+    } else {
+        w.Write(body)
+    }
+}
+
+func webServeStart(docroot string, port int, host, certFile, keyFile string, evalfs uint32, ident *[]Variable) (string, error) {
+    if port <= 0 || port > 65535 {
+        return "", errors.New("port must be between 1 and 65535 in web_serve_start()")
+    }
+
+    var e error
+    var srv http.Server
+    addr := host + ":" + sf("%v", port)
+    srv.Addr = addr
+
+    mux := http.NewServeMux()
+    srv.Handler = mux
+    mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS, evalfs, ident))
+
+    go func() {
+        // @note manually enforce tcp4 to make docker happier.
+        l, err := net.Listen("tcp4", addr)
+        if err != nil {
+            e = err
+            return
+        }
+        if certFile != "" || keyFile != "" {
+            e = srv.ServeTLS(l, certFile, keyFile)
+        } else {
+            e = srv.Serve(l)
+        }
+    }()
+
+    // have to give listenandserve a chance to fail and write 'e'
+    // @note: there's probably a graceful way to do this.
+    time.Sleep(100 * time.Millisecond)
+
+    if e != nil {
+        return "", e
+    }
+
+    var uid string
+    for {
+        b := make([]byte, 16)
+        _, err := rand.Read(b)
+        if err != nil {
+            return "", err
+        }
+        uid = sf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+        weblock.RLock()
+        _, exists := web_handles[uid]
+        weblock.RUnlock()
+        if !exists {
+            break
+        }
+    }
+
+    weblock.Lock()
+    web_handles[uid] = web_table_entry{srv: &srv, mux: mux, docroot: docroot, addr: addr, host: host, port: port}
+    weblock.Unlock()
+    wlog("* Started web service %s\n", uid)
+    return uid, nil
+}
+
+func webReplyFromMap(body string, options map[string]any) (web_response, error) {
+    resp := web_response{body: body, headers: map[string]string{}}
+
+    if v, ok := options["status"]; ok && v != nil {
+        switch n := v.(type) {
+        case int:
+            resp.status = n
+        case int64:
+            resp.status = int(n)
+        case uint64:
+            resp.status = int(n)
+        case float64:
+            resp.status = int(n)
+        default:
+            return resp, fmt.Errorf("web_reply: status must be an integer")
+        }
+        if resp.status < 100 || resp.status > 599 {
+            return resp, fmt.Errorf("web_reply: status must be between 100 and 599")
+        }
+    }
+
+    if v, ok := options["headers"]; ok && v != nil {
+        setHeader := func(k, val string) {
+            resp.headers[str.ReplaceAll(k, "_", "-")] = val
+        }
+        switch h := v.(type) {
+        case map[string]string:
+            for k, val := range h {
+                setHeader(k, val)
+            }
+        case map[string]any:
+            for k, val := range h {
+                setHeader(k, GetAsString(val))
+            }
+        case map[string][]string:
+            for k, vals := range h {
+                setHeader(k, str.Join(vals, ", "))
+            }
+        default:
+            return resp, fmt.Errorf("web_reply: headers must be a map")
+        }
+    }
+
+    if v, ok := options["cookies"]; ok && v != nil {
+        switch c := v.(type) {
+        case []string:
+            resp.cookies = append(resp.cookies, c...)
+        case []any:
+            for _, val := range c {
+                resp.cookies = append(resp.cookies, GetAsString(val))
+            }
+        default:
+            return resp, fmt.Errorf("web_reply: cookies must be an array of strings")
+        }
+    }
+
+    return resp, nil
+}
+
 func wlog(s string, va ...any) {
     lastlock.Lock()
     if log_web {
@@ -445,13 +604,23 @@ func webRoutes(uid string) {
 }
 
 type webstruct struct {
-    host     string
-    path     string
-    method   string
-    remote   string
-    query    string
-    fragment string
-    data     []any
+    Host     string
+    Path     string
+    Method   string
+    Remote   string
+    Query    string
+    Fragment string
+    Data     []any
+    Headers  map[string]string
+    Cookies  map[string]string
+    Form     map[string]string
+}
+
+type web_response struct {
+    body    string
+    status  int
+    headers map[string]string
+    cookies []string
 }
 
 /// webRouter()
@@ -780,10 +949,34 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                 var query string
                 var fragment string
 
+                r.ParseForm()
+
+                headers := make(map[string]string, len(r.Header))
+                for k, vals := range r.Header {
+                    headers[k] = str.Join(vals, ", ")
+                }
+
+                cookies := make(map[string]string)
+                for _, c := range r.Cookies() {
+                    cookies[c.Name] = c.Value
+                }
+
+                form := make(map[string]string)
+                for k, vals := range r.PostForm {
+                    if len(vals) > 0 {
+                        form[k] = vals[0]
+                    }
+                }
+                if len(form) == 0 {
+                    for k, vals := range r.Form {
+                        if len(vals) > 0 {
+                            form[k] = vals[0]
+                        }
+                    }
+                }
+
                 switch method {
                 case "GET", "PUT", "POST":
-                    r.ParseForm()
-
                     // query kv pairs
                     query = purl.RawQuery
                     fragment = purl.Fragment
@@ -808,6 +1001,9 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                     query,
                     fragment,
                     iargs,
+                    headers,
+                    cookies,
+                    form,
                 }
 
                 // make call
@@ -827,19 +1023,28 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
 
                 calllock.Lock()
                 tmp := calltable[loc].retvals
-                switch rcount {
-                case 0:
-                    writeResponse(w, []byte(""), use_gzip)
-                case 1:
-                    switch tmp.(type) {
-                    case nil:
-                        // translate bad func call to error page
-                        http.NotFound(w, r)
-                    default:
-                        writeResponse(w, []byte(sf("%v", tmp.([]any)[0])), use_gzip)
+
+                var first any
+                hasFirst := false
+                if rcount > 0 && tmp != nil {
+                    if arr, ok := tmp.([]any); ok && len(arr) > 0 {
+                        first = arr[0]
+                        hasFirst = true
                     }
+                }
+
+                switch {
+                case !hasFirst:
+                    writeResponse(w, []byte(""), use_gzip)
+                case first == nil:
+                    // translate bad func call to error page
+                    http.NotFound(w, r)
                 default:
-                    writeResponse(w, []byte(sf("%v", tmp.([]any)[0])), use_gzip)
+                    if resp, ok := first.(web_response); ok {
+                        writeWebResponse(w, resp, use_gzip)
+                    } else {
+                        writeResponse(w, []byte(sf("%v", first)), use_gzip)
+                    }
                 }
 
                 calltable[loc].gcShyness = 40
@@ -973,7 +1178,7 @@ func buildWebLib() {
     web_client = &http.Client{Transport: web_tr}
 
     features["web"] = Feature{version: 1, category: "web"}
-    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download",         "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable"}
+    categories["web"] = []string{"web_download", "web_head", "web_get", "web_custom", "web_post", "web_raw_send", "web_serve_start", "web_serve_start_tls", "web_serve_stop", "web_serve_up", "web_serve_path", "web_serve_log_throttle", "web_display", "web_serve_decode", "web_reply", "web_serve_log", "web_max_clients", "net_interfaces", "html_escape", "html_unescape", "download",         "web_cache_enable", "web_cache_max_size", "web_cache_max_age", "web_cache_cleanup_interval", "web_cache_max_memory", "web_cache_purge", "web_cache_stats", "web_gzip_enable"}
 
     // listenandserve always fires off a server we don't fully control. The Serve() part returns a non-nil
     // error under all circumstances. We'll have track handles against ip/port here.
@@ -1027,7 +1232,8 @@ func buildWebLib() {
     slhelp["web_serve_decode"] = LibHelp{in: "webcallstruct", out: "call_details",
         action: "Returns a struct representing details of an inbound web request.\n" +
             "[#SOL]web_serve_decode() returns the following member fields:\n" +
-            "[#SOL]  .host (host:port), .method, .path, .remote (remote_ip:port) and .data (POST data).",
+            "[#SOL]  .host (host:port), .method, .path, .remote (remote_ip:port), .data (POST data),\n" +
+            "[#SOL]  .headers (request headers), .cookies (request cookies) and .form (form/query values).",
     }
     stdlib["web_serve_decode"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("web_serve_decode", args, 1, "1", "main.webstruct"); !ok {
@@ -1042,6 +1248,35 @@ func buildWebLib() {
         return nil, err
     }
 
+    slhelp["web_reply"] = LibHelp{in: "body[,options]", out: "web_response",
+        action: "Returns a structured web response. Options: map(.status 200, .headers map(.Content_Type \"text/html\"), .cookies [\"sid=...; Path=/; HttpOnly\"])",
+    }
+    stdlib["web_reply"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_reply", args, 2,
+            "2", "string", "map",
+            "1", "string"); !ok {
+            return nil, err
+        }
+
+        body := args[0].(string)
+        if len(args) == 1 {
+            return web_response{body: body}, nil
+        }
+
+        switch opts := args[1].(type) {
+        case map[string]any:
+            return webReplyFromMap(body, opts)
+        case map[string]string:
+            converted := make(map[string]any, len(opts))
+            for k, v := range opts {
+                converted[k] = v
+            }
+            return webReplyFromMap(body, converted)
+        default:
+            return nil, fmt.Errorf("web_reply: options must be a map")
+        }
+    }
+
     slhelp["web_serve_start"] = LibHelp{in: "docroot,port[,vhost]", out: "handle", action: "Returns an identifier for a new http server."}
     stdlib["web_serve_start"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
         if ok, err := expect_args("web_serve_start", args, 2,
@@ -1049,8 +1284,6 @@ func buildWebLib() {
             "2", "string", "int"); !ok {
             return nil, err
         }
-
-        // validate args (docroot,port,addr)
 
         var host string
         docroot := args[0].(string)
@@ -1060,66 +1293,32 @@ func buildWebLib() {
             host = args[2].(string)
         }
 
-        // verify
-        if port <= 0 || port > 65535 {
-            return "", errors.New("port must be between 1 and 65535 in web_serve_start()")
+        return webServeStart(docroot, port, host, "", "", evalfs, ident)
+    }
+
+    slhelp["web_serve_start_tls"] = LibHelp{in: "docroot,port,cert,key[,vhost]", out: "handle", action: "Returns an identifier for a new https server."}
+    stdlib["web_serve_start_tls"] = func(ns string, evalfs uint32, ident *[]Variable, args ...any) (ret any, err error) {
+        if ok, err := expect_args("web_serve_start_tls", args, 2,
+            "5", "string", "int", "string", "string", "string",
+            "4", "string", "int", "string", "string"); !ok {
+            return nil, err
         }
 
-        // setup server
+        var host string
+        docroot := args[0].(string)
+        port := args[1].(int)
+        certFile := args[2].(string)
+        keyFile := args[3].(string)
 
-        var e error
-        var srv http.Server
-        var addr string
-
-        addr = host + ":" + sf("%v", port)
-        srv.Addr = addr
-
-        // setup basic serving and the generic handler
-        mux := http.NewServeMux()
-        srv.Handler = mux
-        mux.HandleFunc("/", limitNumClients(webRouter, MAX_CLIENTS, evalfs, ident))
-
-        go func() {
-            // @note manually enforce tcp4 to make docker happier.
-            l, e := net.Listen("tcp4", addr)
-            if e != nil {
-                log.Fatal(err)
-            } else {
-                e = srv.Serve(l)
-            }
-        }()
-
-        // have to give listenandserve a chance to fail and write 'e'
-        // @note: there's probably a graceful way to do this.
-
-        time.Sleep(100 * time.Millisecond)
-
-        if e == nil {
-            // create a handle
-            var uid string
-            for {
-                b := make([]byte, 16)
-                _, err := rand.Read(b)
-                if err != nil {
-                    log.Fatal(err)
-                }
-                uid = sf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
-                weblock.RLock()
-                if _, exists := web_handles[uid]; !exists {
-                    weblock.RUnlock()
-                    break
-                }
-                weblock.RUnlock()
-            }
-            // store in lookup table
-            weblock.Lock()
-            web_handles[uid] = web_table_entry{srv: &srv, mux: mux, docroot: docroot, addr: addr, host: host, port: port}
-            weblock.Unlock()
-            wlog("* Started web service %s\n", uid)
-            return uid, nil
-        } else {
-            return "", e
+        if len(args) == 5 {
+            host = args[4].(string)
         }
+
+        if certFile == "" || keyFile == "" {
+            return "", errors.New("cert and key must be provided in web_serve_start_tls()")
+        }
+
+        return webServeStart(docroot, port, host, certFile, keyFile, evalfs, ident)
     }
 
     slhelp["web_serve_stop"] = LibHelp{in: "handle", out: "success_flag", action: "Stops and discards a running http server."}
