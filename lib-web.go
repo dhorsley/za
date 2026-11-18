@@ -89,6 +89,9 @@ type webResponseRecorder struct {
 }
 
 func (r *webResponseRecorder) WriteHeader(code int) {
+    if r.status != 0 {
+        return
+    }
     r.status = code
     r.ResponseWriter.WriteHeader(code)
 }
@@ -1055,6 +1058,10 @@ func webRouter(origW http.ResponseWriter, r *http.Request) {
                 serviced = true
             }
 
+        }
+
+        if serviced {
+            break
         }
 
     }
