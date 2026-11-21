@@ -1,5 +1,12 @@
 # Test else-if control flow construct
 
+global side_effect_count int = 0
+
+define bump_side_effect()
+    @side_effect_count = side_effect_count + 1
+    return true
+end
+
 # Test 1: Simple else-if chain
 define test_simple_else_if()
     x = 5
@@ -137,6 +144,218 @@ define test_else_if_second_true_but_first_matched()
     return result
 end
 
+# Test 11: inline semicolon syntax
+define test_else_if_inline()
+    x = 3
+    if x == 1; result = 1; else if x == 3; result = 3; else; result = 9; endif
+    return result
+end
+
+# Test 12: else-if condition with side effects must not evaluate after a match
+define test_else_if_short_circuit()
+    x = 10
+    result = 0
+    if x > 5
+        result = 1
+    else if bump_side_effect()
+        result = 2
+    endif
+    return result
+end
+
+# Test 13: all conditions false with no trailing else
+define test_else_if_all_false_no_else()
+    x = 100
+    result = 0
+    if x < 10
+        result = 1
+    else if x < 50
+        result = 2
+    endif
+    return result
+end
+
+# Test 14: else-if inside a loop resets match state each iteration
+define test_else_if_in_loop()
+    out = ""
+    for i = 0 to 4
+        if i == 1
+            out = out + "a"
+        else if i == 3
+            out = out + "b"
+        else
+            out = out + "c"
+        endif
+    endfor
+    return out
+end
+
+# Test 15: nested if/else-if inside an else-if body
+define test_else_if_nested_inner()
+    x = 50
+    y = 5
+    if x < 10
+        return "outer"
+    else if x < 100
+        if y < 3
+            return "inner-a"
+        else if y < 10
+            return "inner-b"
+        else
+            return "inner-c"
+        endif
+    else
+        return "fallback"
+    endif
+end
+
+# Test 16: consecutive empty else-if clauses
+define test_else_if_empty_clauses()
+    x = 2
+    result = 0
+    if x == 1
+        result = 1
+    else if x == 2
+    else if x == 3
+        result = 3
+    else
+        result = 4
+    endif
+    return result
+end
+
+# Test 17: deep nesting (3 levels) with else-if at each level
+define test_else_if_deep()
+    a = 1
+    b = 2
+    c = 3
+    result = ""
+    if a == 1
+        if b == 2
+            if c == 3
+                result = result + "x"
+            else if c == 4
+                result = result + "y"
+            else
+                result = result + "z"
+            endif
+        else if b == 3
+            result = result + "w"
+        endif
+        result = result + "m"
+    else if a == 2
+        result = result + "n"
+    endif
+    return result
+end
+
+# Test 18: else-if inside a while loop
+define test_else_if_in_while()
+    i = 0
+    out = ""
+    while i < 5
+        if i == 1
+            out = out + "a"
+        else if i == 3
+            out = out + "b"
+        else
+            out = out + "c"
+        endif
+        i = i + 1
+    endwhile
+    return out
+end
+
+# Test 19: else-if inside a foreach loop
+define test_else_if_in_foreach()
+    out = ""
+    foreach n in [1,2,3,4]
+        if n == 1
+            out = out + "a"
+        else if n == 3
+            out = out + "b"
+        else
+            out = out + "c"
+        endif
+    endfor
+    return out
+end
+
+# Test 20: break and continue inside else-if branches
+define test_else_if_break_continue()
+    out = ""
+    for i = 0 to 10
+        if i == 2
+            continue
+        else if i == 4
+            break
+        else
+            out = out + i
+        endif
+    endfor
+    return out
+end
+
+# Test 21: return if modifier inside else-if branches
+define test_else_if_return_if()
+    x = 10
+    if x > 20
+        return if true, "a"
+    else if x > 5
+        return if true, "b"
+    endif
+    return "fallback"
+end
+
+# Test 22: return if with false condition inside else-if falls through
+define test_else_if_return_if_false()
+    x = 10
+    if x > 20
+        return if true, "a"
+    else if x > 5
+        return if false, "b"
+    endif
+    return "fallback"
+end
+
+# Test 23: non-boolean conditions are always false (strict truthiness)
+define test_else_if_strict_truthiness()
+    n = 5
+    s = "x"
+    result = 0
+    if false
+        result = 1
+    else if n
+        result = 2
+    else if s
+        result = 3
+    else
+        result = 4
+    endif
+    return result
+end
+
+# Test 24: sibling if/else-if chains at the same depth are independent
+define test_else_if_sibling_chains()
+    a = 1
+    result = ""
+    if a == 1
+        if false
+            result = result + "i"
+        else if true
+            result = result + "j"
+        endif
+        if true
+            result = result + "k"
+        else if true
+            result = result + "l"
+        endif
+    else if true
+        result = result + "o"
+    endif
+    return result
+end
+
 # Run tests
 println "=== else-if tests ==="
 
@@ -179,6 +398,63 @@ assert result == 1
 result = test_else_if_second_true_but_first_matched()
 println format("test_else_if_second_true_but_first_matched: %d (expected: 1)", result)
 assert result == 1
+
+result = test_else_if_inline()
+println format("test_else_if_inline: %d (expected: 3)", result)
+assert result == 3
+
+result = test_else_if_short_circuit()
+println format("test_else_if_short_circuit: %d (expected: 1)", result)
+assert result == 1
+assert side_effect_count == 0
+
+result = test_else_if_all_false_no_else()
+println format("test_else_if_all_false_no_else: %d (expected: 0)", result)
+assert result == 0
+
+result = test_else_if_in_loop()
+println format("test_else_if_in_loop: %s (expected: cacbc)", result)
+assert result == "cacbc"
+
+result = test_else_if_nested_inner()
+println format("test_else_if_nested_inner: %s (expected: inner-b)", result)
+assert result == "inner-b"
+
+result = test_else_if_empty_clauses()
+println format("test_else_if_empty_clauses: %d (expected: 0)", result)
+assert result == 0
+
+result = test_else_if_deep()
+println format("test_else_if_deep: %s (expected: xm)", result)
+assert result == "xm"
+
+result = test_else_if_in_while()
+println format("test_else_if_in_while: %s (expected: cacbc)", result)
+assert result == "cacbc"
+
+result = test_else_if_in_foreach()
+println format("test_else_if_in_foreach: %s (expected: acbc)", result)
+assert result == "acbc"
+
+result = test_else_if_break_continue()
+println format("test_else_if_break_continue: %s (expected: 013)", result)
+assert result == "013"
+
+result = test_else_if_return_if()
+println format("test_else_if_return_if: %s (expected: b)", result)
+assert result == "b"
+
+result = test_else_if_return_if_false()
+println format("test_else_if_return_if_false: %s (expected: fallback)", result)
+assert result == "fallback"
+
+result = test_else_if_strict_truthiness()
+println format("test_else_if_strict_truthiness: %d (expected: 4)", result)
+assert result == 4
+
+result = test_else_if_sibling_chains()
+println format("test_else_if_sibling_chains: %s (expected: jk)", result)
+assert result == "jk"
 
 println "All else-if tests passed!"
 
