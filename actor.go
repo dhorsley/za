@@ -983,7 +983,10 @@ func lookahead(fs uint32, startLine int16, indent int, endlevel int, term int64,
 func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, string) {
 
 	// fmt.Printf("Entered gnfs\n")
-	calllock.Lock()
+	if do_lock {
+		calllock.Lock()
+		defer calllock.Unlock()
+	}
 
 	// : sets up a re-use value
 	var reuse, e uint32
@@ -1015,7 +1018,6 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 		if cap(calltable) >= gnfsModulus {
 			fmt.Printf("call table overgrown\n")
 			finish(true, ERR_FATAL)
-			calllock.Unlock()
 			return 0, ""
 		}
 		ncs := make([]call_s, len(calltable)*2, cap(calltable)*2)
@@ -1050,7 +1052,6 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 
 	// fmt.Printf("(gnf) allocated for %v with %d\n",newName,reuse)
 
-	calllock.Unlock()
 	return reuse, newName
 
 }
@@ -6612,6 +6613,7 @@ case []uint:
 
 					//.. parse and execute
 					basemodmap[loc] = modRealAlias
+					fileMap.Store(loc, moduleloc)
 
 					if debugMode {
 						start := time.Now()
@@ -6627,8 +6629,6 @@ case []uint:
 					modcs.fs = modRealAlias
 					calltable[loc] = modcs
 					calllock.Unlock()
-
-					fileMap.Store(loc, moduleloc)
 
 					var modident = make([]Variable, identInitialSize)
 

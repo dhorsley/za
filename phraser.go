@@ -294,7 +294,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                             globseq = 4
                         }
 
-                        tryFS, tryFSName := GetNextFnSpace(true, sf("try_block_%d_%d@", lmv, tryBlockCounter), call_s{
+                        tryFS, tryFSName := GetNextFnSpace(false, sf("try_block_%d_%d@", lmv, tryBlockCounter), call_s{
                             prepared:   true,
                             base:       lmv, // Temporarily set to main, will be updated after parsing
                             caller:     lmv,
@@ -309,9 +309,7 @@ func phraseParse(ctx context.Context, fs string, input string, start int, lineOf
                         }
 
                         // Set base to tryFS so try block executes its own code
-                        calllock.Lock()
                         calltable[tryFS].base = tryFS
-                        calllock.Unlock()
 
                         // Set up fileMap entry for try block function space
                         if parentFileMap, exists := fileMap.Load(lmv); exists {
