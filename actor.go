@@ -992,6 +992,9 @@ func GetNextFnSpace(do_lock bool, requiredName string, cs call_s) (uint32, strin
 	var reuse, e uint32
 	if (globseq % globseq_disposal_freq) == 0 {
 		for e = 0; e < globseq; e += 1 {
+			if calltable[e].isTryBlock {
+				continue
+			}
 			if calltable[e].gc && calltable[e].disposable {
 				if calltable[e].gcShyness > 0 {
 					calltable[e].gcShyness -= 1
@@ -10535,6 +10538,7 @@ func parseAndConstructType(typeStr string) reflect.Type {
 	return nil // Unknown type
 }
 
+/*
 // executeTryBlocks handles try block execution when a panic occurs
 // Returns true if the exception was handled, false if it should continue to standard error handling
 func executeTryBlocks(ctx context.Context, tryBlocks []tryBlockInfo, err error, ident *[]Variable, inbound *Phrase) bool {
@@ -10582,6 +10586,7 @@ func executeTryBlocks(ctx context.Context, tryBlocks []tryBlockInfo, err error, 
 	// No try block handled the exception
 	return false
 }
+*/
 
 // findApplicableTryBlocks uses the registry to find try blocks that can handle the current exception
 // Returns try blocks in the correct order (innermost first) for nested scenarios
@@ -10684,6 +10689,7 @@ func isTryBlockApplicable(tryInfo *tryBlockInfo, currentFS uint32, executionPath
 	return false
 }
 
+/*
 // executeApplicableTryBlocks executes try blocks found by the registry in proper order
 func executeApplicableTryBlocks(ctx context.Context, applicableTryBlocks []tryBlockInfo, err error, ident *[]Variable, inbound *Phrase) bool {
 	for _, tryBlock := range applicableTryBlocks {
@@ -10728,3 +10734,4 @@ func executeApplicableTryBlocks(ctx context.Context, applicableTryBlocks []tryBl
 	// No try block handled the exception
 	return false
 }
+*/
