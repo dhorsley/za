@@ -3905,13 +3905,66 @@ type BashRead struct {
     E error
 }
 
+const defaultCmdSep byte = 0x1e
+
+func cmdSepByte() byte {
+    v, ok := gvget("@cmdsep")
+    if !ok || v == nil {
+        return defaultCmdSep
+    }
+    switch n := v.(type) {
+    case byte:
+        return n
+    case int:
+        if n >= 0 && n <= 255 {
+            return byte(n)
+        }
+    case int8:
+        if n >= 0 {
+            return byte(n)
+        }
+    case int16:
+        if n >= 0 && n <= 255 {
+            return byte(n)
+        }
+    case int32:
+        if n >= 0 && n <= 255 {
+            return byte(n)
+        }
+    case int64:
+        if n >= 0 && n <= 255 {
+            return byte(n)
+        }
+    case uint:
+        if n <= 255 {
+            return byte(n)
+        }
+    case uint16:
+        if n <= 255 {
+            return byte(n)
+        }
+    case uint32:
+        if n <= 255 {
+            return byte(n)
+        }
+    case uint64:
+        if n <= 255 {
+            return byte(n)
+        }
+    case string:
+        if i, err := strconv.Atoi(n); err == nil && i >= 0 && i <= 255 {
+            return byte(i)
+        }
+    }
+    return defaultCmdSep
+}
+
 // execute a command in the coprocess, return output.
 func NextCopper(cmd string, r *bufio.Reader) (s []byte, err error) {
 
     var result BashRead
 
-    CMDSEP, _ := gvget("@cmdsep")
-    cmdsep := CMDSEP.(byte)
+    cmdsep := cmdSepByte()
 
     lastlock.Lock()
     coproc_active = true
@@ -4142,8 +4195,7 @@ func Copper(line string, squashErr bool) (result struct {
         read_out := bufio.NewReader(po)
 
         // issue command
-        CMDSEP, _ := gvget("@cmdsep")
-        cmdsep := CMDSEP.(byte)
+        cmdsep := cmdSepByte()
         hexenc := hex.EncodeToString([]byte{cmdsep})
         io.WriteString(pi, "\n"+line+` 2>`+errorFile.Name()+` ; last=$? ; echo -en "\x`+hexenc+`${last}\x`+hexenc+`"`+"\n")
 
