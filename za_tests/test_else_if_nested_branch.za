@@ -1,0 +1,37 @@
+define check(v)
+    result = ""
+    if as_string(v) == "task"
+        if false
+            result = result + "inner"
+        endif
+        result = result + "task"
+    else if as_string(v) != "scan"
+        result = result + "unknown " + as_string(v)
+    endif
+    return result
+end
+
+define check_false_chain()
+    result = ""
+    if false
+        result = result + "a"
+    else if false
+        result = result + "b"
+    endif
+    if true
+        result = result + "c"
+    else if true
+        result = result + "BAD"
+    endif
+    return result
+end
+
+result = check("task")
+println result
+assert result == "task"
+
+result = check_false_chain()
+println result
+assert result == "c"
+
+println "nested else-if regression passed"

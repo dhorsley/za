@@ -8191,7 +8191,7 @@ case []uint:
 						parser.pc += elsedistance
 					}
 				} else {
-					parser.pc += enddistance
+					parser.pc += enddistance - 1
 				}
 			}
 
@@ -8252,8 +8252,8 @@ case []uint:
 						parser.pc += nextElseDist + 1
 					}
 				} else if nextEndFound {
-					// Jump past endif (loop increment lands after it)
-					parser.pc += nextEndDist + 1
+					// Land on ENDIF so its cleanup runs on the next iteration
+					parser.pc += nextEndDist
 				} else {
 					parser.report(inbound.SourceLine, "ELSE IF without an ENDIF\n")
 					finish(false, ERR_SYNTAX)
@@ -8276,12 +8276,12 @@ case []uint:
 			}
 
 			// we already jumped to else+1 to deal with a failed IF test
-			// so jump straight to the endif here
+			// so jump to ENDIF here so its cleanup runs on the next iteration
 
 			endfound, enddistance, _ := lookahead(source_base, parser.pc, 1, 0, C_Endif, []int64{C_If}, []int64{C_Endif})
 
 			if endfound {
-				parser.pc += enddistance
+				parser.pc += enddistance - 1
 			} else { // this shouldn't ever occur, as endif checked during C_If, but...
 				parser.report(inbound.SourceLine, "ELSE without an ENDIF\n")
 				finish(false, ERR_SYNTAX)
