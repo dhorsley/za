@@ -1061,6 +1061,7 @@ var calllock = &sync.RWMutex{}       // function call related
 var lastlock = &sync.RWMutex{}       // cached globals
 var farglock = &sync.RWMutex{}       // function args manipulation
 var fspacelock = &sync.RWMutex{}     // token storage related
+var tryParentFS sync.Map
 var globlock = &sync.RWMutex{}       // enum access lock
 var sglock = &sync.RWMutex{}         // setglob lock
 var structmapslock = &sync.RWMutex{} // structmaps access
@@ -1502,6 +1503,67 @@ func handleUnhandledException(excInfo *exceptionInfo, ifs uint32) {
 	}
 }
 
+func compilePhraseBytecodeDefault(tokens []Token, fs uint32) *phraseBytecode {
+	if len(tokens) == 0 {
+		return &phraseBytecode{fallback: true}
+	}
+	var newBC *phraseBytecode
+	switch {
+	case tokens[0].tokType == C_If || tokens[0].tokType == C_While:
+		if len(tokens) > 1 {
+			code, pool, err := compileExpr(tokens[1:], fs, nil, nil, currentModule)
+			if err == nil {
+				newBC = &phraseBytecode{code: code, pool: pool, compiled: true}
+			}
+		}
+	default:
+		code, pool, err := compileExpr(tokens, fs, nil, nil, currentModule)
+		if err == nil {
+			newBC = &phraseBytecode{code: code, pool: pool, compiled: true}
+		}
+	}
+	return newBC
+}
+
+func rebindPhraseToFS(phrase *Phrase, fs uint32) {
+	for i := range phrase.Tokens {
+		if phrase.Tokens[i].tokType == Identifier {
+			phrase.Tokens[i].bindpos = bind_int(fs, phrase.Tokens[i].tokText)
+			phrase.Tokens[i].bound = true
+		}
+	}
+	if phrase.bc != nil && phrase.bc.compiled && !phrase.bc.fallback {
+		if phrase.bc.vmAssigned {
+			code, pool, err := compileSimpleAssign(phrase.Tokens, fs, nil, nil, currentModule)
+			if err == nil {
+				phrase.bc = &phraseBytecode{code: code, pool: pool, compiled: true, vmAssigned: true}
+			} else {
+				phrase.bc = &phraseBytecode{fallback: true}
+			}
+			return
+		}
+		if phrase.bc.isAssign {
+			assignPos, hasComma := findAssignment(phrase.Tokens)
+			if assignPos >= 0 && !hasComma && assignPos+1 < len(phrase.Tokens) {
+				rhsCode, rhsPool, rhsErr := compileExpr(phrase.Tokens[assignPos+1:], fs, nil, nil, currentModule)
+				if rhsErr == nil {
+					phrase.bc = &phraseBytecode{code: rhsCode, pool: rhsPool, compiled: true, isAssign: true, assignPos: assignPos}
+				} else {
+					phrase.bc = &phraseBytecode{fallback: true}
+				}
+				return
+			}
+			phrase.bc = &phraseBytecode{fallback: true}
+			return
+		}
+		if newBC := compilePhraseBytecodeDefault(phrase.Tokens, fs); newBC != nil {
+			phrase.bc = newBC
+		} else {
+			phrase.bc = &phraseBytecode{fallback: true}
+		}
+	}
+}
+
 // defined function entry point
 // everything about what is to be executed is contained in calltable[csloc]
 func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, registrant uint8, method bool, method_value any, kind_override string, arg_names []string, captured_vars []any, va ...any) (retval_count uint8, endFunc bool, method_result any, captured_result []any, callErr error) {
@@ -1872,6 +1934,16 @@ func Call(ctx context.Context, varmode uint8, ident *[]Variable, csloc uint32, r
 	if varmode == MODE_NEW || varmode == MODE_TRY {
 		bindings[ifs] = make(map[string]uint64)
 	}
+	if varmode == MODE_TRY {
+		if parent, ok := tryParentFS.Load(source_base); ok {
+			parentFS := parent.(uint32)
+			if int(parentFS) < len(bindings) && bindings[parentFS] != nil {
+				for name, slot := range bindings[parentFS] {
+					bindings[ifs][name] = slot
+				}
+			}
+		}
+	}
 
 	// copy bindings from source tokens
 	for _, phrase := range functionspaces[source_base] {
@@ -2117,47 +2189,7 @@ tco_reentry:
 			// fnTypeHints[main], which causes wrong slot numbers and cross-
 			// function type leakage. We fix the tokens' bindpos and recompile
 			// with nil type hints so the bytecode is correct for this space.
-			for i := range inbound.Tokens {
-				if inbound.Tokens[i].tokType == Identifier {
-					inbound.Tokens[i].bindpos = bind_int(lmv, inbound.Tokens[i].tokText)
-					inbound.Tokens[i].bound = true
-				}
-			}
-			if inbound.bc != nil && inbound.bc.compiled && !inbound.bc.fallback {
-				var newBC *phraseBytecode
-				switch {
-				case inbound.bc.vmAssigned:
-					code, pool, err := compileSimpleAssign(inbound.Tokens, lmv, nil, nil, currentModule)
-					if err == nil {
-						newBC = &phraseBytecode{code: code, pool: pool, compiled: true, vmAssigned: true}
-					}
-				case inbound.bc.isAssign:
-					assignPos, hasComma := findAssignment(inbound.Tokens)
-					if assignPos >= 0 && !hasComma && assignPos+1 < len(inbound.Tokens) {
-						rhsCode, rhsPool, rhsErr := compileExpr(inbound.Tokens[assignPos+1:], lmv, nil, nil, currentModule)
-						if rhsErr == nil {
-							newBC = &phraseBytecode{code: rhsCode, pool: rhsPool, compiled: true, isAssign: true, assignPos: assignPos}
-						}
-					}
-				case inbound.Tokens[0].tokType == C_If || inbound.Tokens[0].tokType == C_While:
-					if len(inbound.Tokens) > 1 {
-						condCode, condPool, condErr := compileExpr(inbound.Tokens[1:], lmv, nil, nil, currentModule)
-						if condErr == nil {
-							newBC = &phraseBytecode{code: condCode, pool: condPool, compiled: true}
-						}
-					}
-				default:
-					code, pool, err := compileExpr(inbound.Tokens, lmv, nil, nil, currentModule)
-					if err == nil {
-						newBC = &phraseBytecode{code: code, pool: pool, compiled: true}
-					}
-				}
-				if newBC != nil {
-					inbound.bc = newBC
-				} else {
-					inbound.bc = &phraseBytecode{fallback: true}
-				}
-			}
+			rebindPhraseToFS(inbound, lmv)
 			functionspaces[lmv] = append(functionspaces[lmv], *inbound)
 			basecode_entry = &basecode[source_base][parser.pc]
 			basecode[lmv] = append(basecode[lmv], *basecode_entry)
@@ -8347,6 +8379,14 @@ case []uint:
 				// Execute the matching try block directly using its function space ID
 				// Only execute during actual execution, not during function definition
 				if matchingTryBlock.functionSpace != 0 && !defining {
+					tryParentFS.Store(matchingTryBlock.functionSpace, ifs)
+					fspacelock.Lock()
+					if int(matchingTryBlock.functionSpace) < len(functionspaces) {
+						for i := range functionspaces[matchingTryBlock.functionSpace] {
+							rebindPhraseToFS(&functionspaces[matchingTryBlock.functionSpace][i], ifs)
+						}
+					}
+					fspacelock.Unlock()
 
 					// Store the default category in the call context
 					calllock.Lock()

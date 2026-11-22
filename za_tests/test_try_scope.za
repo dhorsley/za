@@ -1,0 +1,82 @@
+#!/usr/bin/za
+
+def local_scope()
+    x = 1
+    try
+        assert x == 1, "local visible in try"
+        x = 2
+    catch err
+        println as_string(err)
+        return "failed"
+    endtry
+    assert x == 2, "try mutation visible after try"
+    return "ok"
+end
+
+def arg_scope(x)
+    try
+        assert x == 7, "argument visible in try"
+        x = 8
+    catch err
+        println as_string(err)
+        return "failed"
+    endtry
+    assert x == 8, "argument mutation visible after try"
+    return "ok"
+end
+
+def catch_scope(x)
+    y = 3
+    try
+        throws "scope_test"
+        throw
+    catch err is "scope_test"
+        assert x == 9, "argument visible in catch"
+        assert y == 3, "local visible in catch"
+    endtry
+    return "ok"
+end
+
+def nested_scope()
+    outer = 10
+    try
+        inner = 20
+        try
+            assert outer + inner == 30, "outer local visible in nested try"
+            inner = 21
+        catch err
+            println as_string(err)
+            return "failed"
+        endtry
+        assert inner == 21, "nested try mutation visible"
+    catch err
+        println as_string(err)
+        return "failed"
+    endtry
+    return "ok"
+end
+
+@TRY_SCOPE_GLOBAL = 5
+
+def global_scope()
+    try
+        assert TRY_SCOPE_GLOBAL == 5, "bare global visible in try"
+    catch err
+        println as_string(err)
+        return "failed"
+    endtry
+    return "ok"
+end
+
+r = local_scope()
+assert r == "ok", "local scope"
+r = arg_scope(7)
+assert r == "ok", "argument scope"
+r = catch_scope(9)
+assert r == "ok", "catch scope"
+r = nested_scope()
+assert r == "ok", "nested scope"
+r = global_scope()
+assert r == "ok", "global scope"
+
+println "try scope tests passed"
