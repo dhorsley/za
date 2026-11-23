@@ -1,0 +1,54 @@
+#!/usr/bin/za
+
+@TRY_REPEAT_GLOBAL = 7
+
+def check(cond, msg)
+    if not cond
+        println "FAIL: " + msg
+        exit 1
+    endif
+end
+
+def repeated_try(n)
+    value = 0
+    try
+        value = n
+    catch err
+        return "failed: " + as_string(err)
+    endtry
+    system("true")
+    check(TRY_REPEAT_GLOBAL == 7, "global changed after try " + as_string(n))
+    return value
+end
+
+check(repeated_try(1) == 1, "first repeated try")
+check(repeated_try(2) == 2, "second repeated try")
+check(repeated_try(3) == 3, "third repeated try")
+
+def repeated_catch(n)
+    seen = 0
+    try
+        throw "repeat_error"
+    catch err is "repeat_error"
+        seen = n
+    endtry
+    system("true")
+    return seen
+end
+
+check(repeated_catch(4) == 4, "first repeated catch")
+check(repeated_catch(5) == 5, "second repeated catch")
+
+for i = 1 to 3
+    loop_value = 0
+    try
+        loop_value = i
+    catch err
+        println as_string(err)
+        exit 1
+    endtry
+    system("true")
+    check(loop_value == i, "loop try iteration " + as_string(i))
+endfor
+
+println "repeated try tests passed"

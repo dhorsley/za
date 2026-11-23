@@ -9326,7 +9326,9 @@ case []uint:
 		if retvalues != nil {
 			calltable[ifs].retvals = retvalues
 		}
-		calltable[ifs].disposable = true
+		if varmode != MODE_TRY {
+			calltable[ifs].disposable = true
+		}
 		calllock.Unlock()
 
 		// clean up
@@ -9336,7 +9338,7 @@ case []uint:
 		// pf("about to enter call de-allocation with fs of '%s'\n",fs)
 
 		// drop allocated names
-		if varmode != MODE_STATIC {
+		if varmode != MODE_STATIC && varmode != MODE_TRY {
 			fnlookup.lmdelete(fs)
 			numlookup.lmdelete(ifs)
 		}
